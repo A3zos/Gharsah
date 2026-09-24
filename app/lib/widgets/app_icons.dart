@@ -440,8 +440,9 @@ $art
         : a.girl
         ? '<path d="M28.5 38 C30.5 40 34 40 36.5 38" stroke="$ink" stroke-width="2" stroke-linecap="round"/>'
         : '<path d="M28.5 37 C30.5 39 34 39 36.5 37" stroke="$ink" stroke-width="2" stroke-linecap="round"/>';
-    final picker = variant == AvatarVariant.picker;
-    final circle = picker
+    final picker =
+        variant == AvatarVariant.picker || variant == AvatarVariant.row;
+    final circle = variant == AvatarVariant.picker
         ? ''
         : '<circle cx="32" cy="32" r="32" fill="${_hex(a.tint)}"/>';
     final String body;
@@ -490,7 +491,9 @@ $art
   }
 }
 
-enum AvatarVariant { card, chip, picker }
+/// card = 05/12 cards; chip = 12 chips; picker = 10 picker (no circle);
+/// row = 17 leaderboard rows (picker shapes on the tinted circle).
+enum AvatarVariant { card, chip, picker, row }
 
 /// The nine modest avatars of 10-AvatarPicker, with their design labels.
 class AvatarStyle {

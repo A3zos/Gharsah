@@ -144,9 +144,9 @@ class FirebaseChildSessionRepository implements ChildSessionRepository {
       if (user == null || !user.isAnonymous) {
         user = (await _auth.signInAnonymously()).user!;
       }
-      final r = await _fn.httpsCallable('claimPairingCode').call<Map<Object?, Object?>>({
-        'code': code,
-      });
+      final r = await _fn
+          .httpsCallable('claimPairingCode')
+          .call<Map<Object?, Object?>>({'code': code});
       final d = r.data;
       final s = ChildSession(
         deviceUid: user.uid,
@@ -169,7 +169,9 @@ class FirebaseChildSessionRepository implements ChildSessionRepository {
       });
     } on FirebaseAuthException catch (e) {
       throw ClaimFailure(
-        e.code == 'network-request-failed' ? ClaimError.offline : ClaimError.unknown,
+        e.code == 'network-request-failed'
+            ? ClaimError.offline
+            : ClaimError.unknown,
       );
     }
   }

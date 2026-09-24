@@ -391,7 +391,8 @@ class _ChildFormState extends State<_ChildForm> {
             const SizedBox(height: 10),
             CodeInput(
               controller: _code,
-              error: _status == _CodeStatus.wrong ||
+              error:
+                  _status == _CodeStatus.wrong ||
                   _status == _CodeStatus.tooMany,
               enabled: !_busy && _status != _CodeStatus.verified,
               onChanged: (_) {

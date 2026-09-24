@@ -1,7 +1,8 @@
 {
   "_comment": "Test-only emulator ports (separate from firebase.json dev ports) so test runs never collide with a running dev emulator. Use: firebase emulators:exec -c firebase.test.json ...",
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   },
   "emulators": {
     "auth": {

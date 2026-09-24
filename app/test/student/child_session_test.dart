@@ -12,10 +12,24 @@ void main() {
       gender: 'girl',
     );
     final json = s.toJson();
-    expect(json.keys.toSet(), {'deviceUid', 'parentUid', 'childId', 'name', 'avatar', 'gender'});
+    expect(json.keys.toSet(), {
+      'deviceUid',
+      'parentUid',
+      'childId',
+      'name',
+      'avatar',
+      'gender',
+    });
     final back = ChildSession.fromJson(json);
     expect(
-      [back.deviceUid, back.parentUid, back.childId, back.name, back.avatar, back.gender],
+      [
+        back.deviceUid,
+        back.parentUid,
+        back.childId,
+        back.name,
+        back.avatar,
+        back.gender,
+      ],
       ['dev1', 'p1', 'c1', 'سارة', 'g2', 'girl'],
     );
   });

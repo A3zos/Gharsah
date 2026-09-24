@@ -177,6 +177,54 @@ await t('parent: cannot read a device session', assertFails(getDoc(doc(alice, 'c
 await t('anonymous user with a parent uid is not the owner', assertFails(getDoc(doc(anonAlice, 'parents/alice'))));
 await t('anonymous user cannot create a child', assertFails(setDoc(kidRef(anonAlice, 'alice', 'k2'), child())));
 
+// ── progress/{lessonId} (child device checkpoints) ──
+const progRef = (db, id = 'm01-w03-ikhlas') => doc(db, `parents/alice/children/kid9/progress/${id}`);
+const prog = (over = {}) => ({
+  lessonId: 'm01-w03-ikhlas', stepIndex: 2, doneRefs: ['112:1'], surahsCompleted: [], hadithDone: [],
+  projectAssigned: null, reportedProject: null, completed: false,
+  startedAt: serverTimestamp(), updatedAt: serverTimestamp(), ...over,
+});
+await t('progress: linked device creates', assertSucceeds(setDoc(progRef(device), prog())));
+let started;
+await env.withSecurityRulesDisabled(async (c) => {
+  started = (await getDoc(doc(c.firestore(), 'parents/alice/children/kid9/progress/m01-w03-ikhlas'))).data().startedAt;
+});
+await t('progress: linked device updates', assertSucceeds(setDoc(progRef(device), prog({ stepIndex: 3, startedAt: started }))));
+await t('progress: startedAt is fixed', assertFails(setDoc(progRef(device), prog({ stepIndex: 4, startedAt: Timestamp.fromMillis(0) }))));
+await t('progress: parent reads', assertSucceeds(getDoc(progRef(alice))));
+await t('progress: parent cannot write', assertFails(setDoc(progRef(alice, 'x'), prog({ lessonId: 'x' }))));
+await t('progress: other device cannot write', assertFails(setDoc(progRef(device2, 'm01-w03-day2'), prog({ lessonId: 'm01-w03-day2' }))));
+await t('progress: other device cannot read', assertFails(getDoc(progRef(device2))));
+await t('progress: lessonId must match doc id', assertFails(setDoc(progRef(device, 'm01-w03-day2'), prog())));
+await t('progress: extra field rejected', assertFails(setDoc(progRef(device, 'm01-w03-day2'), prog({ lessonId: 'm01-w03-day2', ayat: 295 }))));
+await t('progress: client updatedAt rejected', assertFails(setDoc(progRef(device, 'm01-w03-day2'), prog({ lessonId: 'm01-w03-day2', updatedAt: new Date(0) }))));
+await t('progress: stepIndex bounded', assertFails(setDoc(progRef(device, 'm01-w03-day2'), prog({ lessonId: 'm01-w03-day2', stepIndex: 500 }))));
+await t('progress: bad lesson id rejected', assertFails(setDoc(progRef(device, 'BAD_ID!'), prog({ lessonId: 'BAD_ID!' }))));
+await env.withSecurityRulesDisabled(async (c) => {
+  await setDoc(doc(c.firestore(), 'parents/alice/children/kid9/progress/done'), { ...prog({ lessonId: 'done', completed: true }), startedAt: Timestamp.now(), updatedAt: Timestamp.now() });
+});
+await t('progress: finished lesson cannot be un-finished', assertFails(updateDoc(progRef(device, 'done'), { completed: false, updatedAt: serverTimestamp() })));
+await t('progress: device cannot delete', assertFails(deleteDoc(progRef(device))));
+
+// ── submissions/{id} (project report) ──
+const subDoc = (db, id = 's1') => doc(db, `parents/alice/children/kid9/submissions/${id}`);
+const submission = (id = 's1', over = {}) => ({
+  projectId: 'birr-3-acts', lessonId: 'm01-w03-day2', storagePath: `recordings/alice/kid9/${id}.m4a`,
+  durationMs: 12000, createdAt: serverTimestamp(), ...over,
+});
+await t('submission: linked device creates', assertSucceeds(setDoc(subDoc(device), submission())));
+await t('submission: parent reads', assertSucceeds(getDoc(subDoc(alice))));
+await t('submission: parent lists', assertSucceeds(getDocs(collection(alice, 'parents/alice/children/kid9/submissions'))));
+await t('submission: device cannot read back', assertFails(getDoc(subDoc(device))));
+await t('submission: device cannot update', assertFails(updateDoc(subDoc(device), { durationMs: 5000 })));
+await t('submission: other device cannot create', assertFails(setDoc(subDoc(device2, 's2'), submission('s2'))));
+await t('submission: parent cannot create', assertFails(setDoc(subDoc(alice, 's3'), submission('s3'))));
+await t('submission: storagePath must be its own file', assertFails(setDoc(subDoc(device, 's4'), submission('s4', { storagePath: 'recordings/alice/kid9/other.m4a' }))));
+await t('submission: other child path rejected', assertFails(setDoc(subDoc(device, 's5'), submission('s5', { storagePath: 'recordings/bob/kid1/s5.m4a' }))));
+await t('submission: too long rejected', assertFails(setDoc(subDoc(device, 's6'), submission('s6', { durationMs: 999999 }))));
+await t('submission: extra field rejected', assertFails(setDoc(subDoc(device, 's7'), submission('s7', { text: 'x' }))));
+await t('submission: parent deletes', assertSucceeds(deleteDoc(subDoc(alice))));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 await env.cleanup();
 process.exit(fail ? 1 : 0);

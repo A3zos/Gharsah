@@ -16,6 +16,7 @@ import 'features/student/screens/student_home_screen.dart';
 import 'features/dashboard/widgets/detail_panels.dart';
 import 'core/auth_gate.dart';
 import 'core/debug_preview.dart';
+import 'core/preview_data.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/screens/auth_screen.dart';
 import 'features/auth/screens/login_screen.dart';
@@ -121,6 +122,15 @@ class GharsahApp extends StatelessWidget {
         );
       case 'playconfirm':
         return const ParentShell(debugOpenBuy: SubscriptionPlan.annual);
+      case 'student-home':
+        return previewStudentHome();
+      case 'lesson-18':
+      case 'lesson-19':
+      case 'lesson-20':
+      case 'lesson-21':
+      case 'lesson-22':
+      case 'lesson-23':
+        return previewLesson(DebugPreview.screen!.substring(7), content)!;
       case 'splash':
         return SplashScreen(
           onDone: () {},

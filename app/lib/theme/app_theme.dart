@@ -81,6 +81,37 @@ abstract final class AppColors {
     0xFFEFD9A8,
   ); // gold code cells, in-progress items
 
+  // 17–23 child app & live lesson
+  static const Color berryBorder = Color(0xFFF6D3DF); // «مباشر» pill, end call
+  static const Color skyText = Color(0xFF24638F); // «٤ آيات قصيرة» chip
+  static const Color voiceBarOff = Color(0xFFC9DED7); // quiet voice bars
+  static const Color hadithDash = Color(
+    0xFFD8CDB4,
+  ); // placeholder hadith border
+  static const Color hadithPlaceholderBg = Color(0xFFFDF6E6);
+  static const Color medalSilver = Color(0xFFC9CFCB);
+  static const Color medalSilverText = Color(0xFF2C3733);
+  static const Color leafLight = Color(0xFF9BD9C8); // hero sprout, tree canopy
+  // TeacherCharacter art (frames 18–23)
+  static const Color teacherSkin = Color(0xFFE8B98C);
+  static const Color teacherNeck = Color(0xFFD9A273);
+  static const Color teacherBeard = Color(0xFF6B5646);
+  static const Color teacherShade = Color(0xFFF1EFE6);
+  static const Color teacherCollar = Color(0xFFDDE2DA);
+  static const Color teacherCapBand = Color(0xFFF4F2EA);
+  static const Color teacherCapLine = Color(0xFFE4E0D4);
+  static const Color teacherEye = Color(0xFF2A211C);
+  static const Color teacherMouth = Color(0xFF7A3B2E);
+  static Color glowSpeaking = primary.withValues(alpha: 0.20);
+  static Color glowListening = gold.withValues(alpha: 0.26);
+  static Color micPulse = gold.withValues(alpha: 0.34);
+  static Color micPromptPulse = gold.withValues(alpha: 0.30);
+  static Color goPulse = primary.withValues(alpha: 0.34);
+  static Color heroChip = surface.withValues(alpha: 0.16);
+  static Color blobGreen09 = primary.withValues(alpha: 0.09);
+  static Color blobGreen10 = primary.withValues(alpha: 0.10);
+  static Color blobGold14 = gold.withValues(alpha: 0.14);
+
   // Google Play system sheet (06-PlayConfirm) — Google's own greys, not brand.
   static const Color playSurface = Color(0xFFF8F9FA);
   static const Color playChip = Color(0xFFF1F3F4);
@@ -171,6 +202,27 @@ abstract final class AppRadii {
   static const double playButton = 26;
 }
 
+/// 17–23 child app & live lesson radii (design values).
+abstract final class LessonRadii {
+  static const double planRow = 20;
+  static const double planIcon = 13;
+  static const double ayahCard = 32;
+  static const double hadithDash = 18;
+  static const double projectCard = 28;
+  static const double stepRow = 18;
+  static const double statCard = 22;
+  static const double doneCard = 26;
+  static const double streakDay = 12;
+  static const double reRecord = 16;
+  static const double homeCard = 28;
+  static const double leaderRow = 18;
+  static const double leaderNote = 16;
+  static const double heroChip = 14;
+  static const double shortcut = 24;
+  static const double shortcutIcon = 18;
+  static const double profileButton = 15;
+}
+
 abstract final class AppShadows {
   static const List<BoxShadow> card = [
     BoxShadow(color: Color(0x0F1F3D37), offset: Offset(0, 10), blurRadius: 26),
@@ -198,6 +250,98 @@ abstract final class AppShadows {
   ];
   static const List<BoxShadow> tab = [
     BoxShadow(color: Color(0x141F3D37), offset: Offset(0, 4), blurRadius: 12),
+  ];
+}
+
+/// 17–23 shadows (design values).
+abstract final class LessonShadows {
+  static const List<BoxShadow> ayahCard = [
+    BoxShadow(color: Color(0x0F1F3D37), offset: Offset(0, 14), blurRadius: 30),
+  ];
+  static const List<BoxShadow> micLive = [
+    BoxShadow(color: Color(0x66F4B740), offset: Offset(0, 14), blurRadius: 30),
+  ];
+  static const List<BoxShadow> micClosed = [
+    BoxShadow(color: Color(0x141F3D37), offset: Offset(0, 10), blurRadius: 22),
+  ];
+  static const List<BoxShadow> micIdle = [
+    BoxShadow(color: Color(0x0F1F3D37), offset: Offset(0, 10), blurRadius: 22),
+  ];
+  static const List<BoxShadow> goNext = [
+    BoxShadow(color: Color(0x521B7F69), offset: Offset(0, 14), blurRadius: 30),
+  ];
+  static const List<BoxShadow> statCard = [
+    BoxShadow(color: Color(0x0D1F3D37), offset: Offset(0, 8), blurRadius: 20),
+  ];
+  static const List<BoxShadow> stepRow = [
+    BoxShadow(color: Color(0x0A1F3D37), offset: Offset(0, 6), blurRadius: 16),
+  ];
+  static const List<BoxShadow> reportCard = [
+    BoxShadow(color: Color(0x0F1F3D37), offset: Offset(0, 12), blurRadius: 28),
+  ];
+  static const List<BoxShadow> doneCard = [
+    BoxShadow(color: Color(0x0D1F3D37), offset: Offset(0, 10), blurRadius: 24),
+  ];
+  static const List<BoxShadow> homeButton = [
+    BoxShadow(color: Color(0x421B7F69), offset: Offset(0, 12), blurRadius: 24),
+  ];
+}
+
+/// 17–23 sizes (design values).
+abstract final class LessonSizes {
+  static const double framePaddingTop = 24;
+  static const double framePaddingH = 20;
+  static const double framePaddingBottom = 26;
+  static const double frameGap = 12;
+  static const double maxWidth = 520;
+  static const double endCall = 44;
+  static const double liveDot = 8;
+  static const double teacherBox = 190; // 18/20; 178 in 19/21/22, 172 in 23
+  static const double teacher = 180; // 18/20; 170 in 19/21/22, 164 in 23
+  static const double captionMinHeight = 34;
+  static const double middleMinHeight = 292;
+  static const double reportMinHeight = 250;
+  static const double mic = 118; // 112 in 23
+  static const double micGlyph = 50; // 48 in 23
+  static const double voiceBarsHeight = 18; // 16 in 23
+  static const double hintHeight = 18;
+  static const double planIcon = 40;
+  static const double doneArt = 132;
+  static const double stepNumber = 30;
+  static const double homeButtonHeight = 64;
+  static const double reRecordHeight = 48;
+  static const double streakDayHeight = 34;
+  static const double homeAvatar = 62;
+  static const double leaderMedal = 28;
+  static const double leaderAvatar = 38;
+  static const double heroCtaHeight = 68;
+  static const double shortcutMinHeight = 124;
+  static const double shortcutIcon = 54;
+  static const double studentNavHeight = 90;
+
+  /// Voice-bar heights from the design (21 bars).
+  static const List<double> voiceBars = [
+    9,
+    14,
+    7,
+    16,
+    11,
+    18,
+    6,
+    13,
+    17,
+    8,
+    15,
+    10,
+    18,
+    7,
+    14,
+    9,
+    16,
+    11,
+    6,
+    13,
+    8,
   ];
 }
 
@@ -928,4 +1072,109 @@ abstract final class AppTheme {
       ),
     );
   }
+}
+
+/// Text styles for 17–23 (child app & live lesson), from the design HTML.
+/// Every style has an explicit fontSize; colors default to the design's and
+/// can be overridden with copyWith.
+abstract final class LessonText {
+  static TextStyle _b(
+    double size,
+    FontWeight w, [
+    Color c = AppColors.textDark,
+    double? h,
+  ]) => AppFonts.body(
+    TextStyle(fontSize: size, fontWeight: w, color: c, height: h),
+  );
+  static TextStyle _h(
+    double size,
+    FontWeight w, [
+    Color c = AppColors.textDark,
+    double? h,
+  ]) => AppFonts.heading(
+    TextStyle(fontSize: size, fontWeight: w, color: c, height: h),
+  );
+
+  // Live call chrome (18–23)
+  static TextStyle get live => _b(12, FontWeight.w800, AppColors.berryDeep);
+  static TextStyle get timer => _h(13.5, FontWeight.w700, AppColors.textMuted);
+  static TextStyle get caption =>
+      _b(17, FontWeight.w700, AppColors.textDark, 1.7);
+  static TextStyle get hint => _b(12.5, FontWeight.w700, AppColors.textMuted);
+
+  // 18 plan + ayah
+  static TextStyle get planTitle =>
+      _h(17, FontWeight.w700, AppColors.textDark, 1.5);
+  static TextStyle get planRow => _b(15.5, FontWeight.w700);
+  static TextStyle get planMeta =>
+      _b(12.5, FontWeight.w800, AppColors.textMuted);
+  static TextStyle get chip => _b(12, FontWeight.w800);
+  static TextStyle get ayah => AppFonts.ayah(
+    const TextStyle(fontSize: 31, height: 1.9, color: AppColors.textDark),
+  );
+  static TextStyle get ayahBracket => AppFonts.ayah(
+    const TextStyle(fontSize: 35, height: 1.9, color: AppColors.ayahBracket),
+  );
+  static TextStyle get ayahRef => _b(13, FontWeight.w700, AppColors.textMuted);
+
+  // 20 hadith
+  static TextStyle get hadithTopic => _h(28, FontWeight.w700);
+  static TextStyle get hadithBadge =>
+      _b(12.5, FontWeight.w800, AppColors.berryDeep);
+  static TextStyle get hadithPlaceholder =>
+      _b(15, FontWeight.w700, AppColors.warningText, 1.85);
+  static TextStyle get hadithText => AppFonts.ayah(
+    const TextStyle(fontSize: 24, height: 1.9, color: AppColors.textDark),
+  );
+  static TextStyle get takhrij => _b(13, FontWeight.w700, AppColors.textFaint);
+
+  // 19 / 23 celebration
+  static TextStyle get doneTitle =>
+      _h(29, FontWeight.w700, AppColors.deepGreen, 1.5);
+  static TextStyle get statNumber =>
+      _h(28, FontWeight.w800, AppColors.deepGreen, 1.2);
+  static TextStyle get statLabel =>
+      _b(12.5, FontWeight.w700, AppColors.textMuted);
+  static TextStyle get doneRow => _h(20, FontWeight.w700, AppColors.deepGreen);
+  static TextStyle get streakTitle => _b(14, FontWeight.w800);
+  static TextStyle get streakDay =>
+      _b(12, FontWeight.w800, AppColors.deepGreen);
+  static TextStyle get homeButton => _h(20, FontWeight.w700, AppColors.surface);
+
+  // 21 / 22 project
+  static TextStyle get projectTitle =>
+      _h(24, FontWeight.w700, AppColors.onGold, 1.55);
+  static TextStyle get stepNumber =>
+      _h(15, FontWeight.w800, AppColors.deepGreen);
+  static TextStyle get stepText => _b(14.5, FontWeight.w700);
+  static TextStyle get recChip => _b(13, FontWeight.w800, AppColors.berryDeep);
+  static TextStyle get note =>
+      _b(12.5, FontWeight.w700, AppColors.textMuted, 1.7);
+  static TextStyle get reRecord => _b(14, FontWeight.w700, AppColors.textMuted);
+
+  // 17 StudentHome
+  static TextStyle get greeting =>
+      _h(25, FontWeight.w700, AppColors.textDark, 1.4);
+  static TextStyle get cardTitle =>
+      _h(18, FontWeight.w700, AppColors.textDark, 1.5);
+  static TextStyle get pillSmall =>
+      _b(11, FontWeight.w800, AppColors.textMuted);
+  static TextStyle get leaderName => _b(14.5, FontWeight.w700);
+  static TextStyle get leaderPoints => _h(16, FontWeight.w800);
+  static TextStyle get medal => _h(14, FontWeight.w800);
+  static TextStyle get leaderNote =>
+      _b(13, FontWeight.w700, AppColors.textDark, 1.7);
+  static TextStyle get tinyCenter =>
+      _b(11.5, FontWeight.w400, AppColors.textMuted);
+  static TextStyle get heroTitle =>
+      _h(24, FontWeight.w700, AppColors.surface, 1.4);
+  static TextStyle get heroBadge => _b(11.5, FontWeight.w800, AppColors.onGold);
+  static TextStyle get heroChip => _b(13.5, FontWeight.w700, AppColors.surface);
+  static TextStyle get heroProgress =>
+      _b(12.5, FontWeight.w700, AppColors.onDeepGreenMuted);
+  static TextStyle get heroCta => _h(22, FontWeight.w700, AppColors.onGold);
+  static TextStyle get shortcutTitle => _b(14.5, FontWeight.w800);
+  static TextStyle get shortcutMeta =>
+      _b(11.5, FontWeight.w700, AppColors.textMuted);
+  static TextStyle get nav => _b(13, FontWeight.w700, AppColors.textMuted);
 }

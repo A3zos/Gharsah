@@ -87,6 +87,67 @@ service cloud.firestore {
                .hasOnly(['name', 'age', 'gender', 'avatar', 'schedule'])
           && validProfile();
         allow delete: if isOwner(uid);
+
+        // The child's linked device (claimPairingCode) — checked against the
+        // parent's child doc on every write.
+        function linkedDevice() {
+          return isDevice()
+            && get(/databases/$(database)/documents/parents/$(uid)/children/$(childId))
+                 .data.get('linkedDeviceUid', '') == request.auth.uid;
+        }
+
+        // progress/{lessonId} — lesson checkpoints written by the child device
+        // (LessonAgent). Stats are derived from these by a Cloud Function, so
+        // the device can never write totals directly.
+        match /progress/{lessonId} {
+          function p() { return request.resource.data; }
+          function strList(l, max) { return l is list && l.size() <= max; }
+          function validProgress() {
+            return lessonId.matches('^[a-z0-9-]{1,64}$')
+              && p().keys().hasOnly(['lessonId', 'stepIndex', 'doneRefs', 'surahsCompleted',
+                   'hadithDone', 'projectAssigned', 'reportedProject', 'completed',
+                   'startedAt', 'updatedAt'])
+              && p().keys().hasAll(['lessonId', 'stepIndex', 'doneRefs', 'surahsCompleted',
+                   'hadithDone', 'completed', 'startedAt', 'updatedAt'])
+              && p().lessonId == lessonId
+              && p().stepIndex is int && p().stepIndex >= 0 && p().stepIndex < 100
+              && strList(p().doneRefs, 300)
+              && strList(p().surahsCompleted, 114)
+              && strList(p().hadithDone, 20)
+              && (!('projectAssigned' in p()) || p().projectAssigned == null
+                  || (p().projectAssigned is string && p().projectAssigned.size() <= 64))
+              && (!('reportedProject' in p()) || p().reportedProject == null
+                  || (p().reportedProject is string && p().reportedProject.size() <= 64))
+              && p().completed is bool
+              && p().startedAt is timestamp
+              && p().updatedAt == request.time;
+          }
+          allow read: if isOwner(uid) || linkedDevice();
+          allow create: if linkedDevice() && validProgress() && p().startedAt == request.time;
+          allow update: if linkedDevice() && validProgress()
+            && p().startedAt == resource.data.startedAt
+            // A finished lesson stays finished.
+            && (resource.data.completed == false || p().completed == true);
+          allow delete: if isOwner(uid);
+        }
+
+        // submissions/{submissionId} — the project report (frame 22). The
+        // audio itself is in Storage at exactly storagePath.
+        match /submissions/{submissionId} {
+          function sb() { return request.resource.data; }
+          allow read, delete: if isOwner(uid);
+          allow create: if linkedDevice()
+            && submissionId.matches('^[A-Za-z0-9_-]{1,64}$')
+            && sb().keys().hasOnly(['projectId', 'lessonId', 'storagePath', 'durationMs', 'createdAt'])
+            && sb().keys().hasAll(['projectId', 'lessonId', 'storagePath', 'durationMs', 'createdAt'])
+            && sb().projectId is string && sb().projectId.matches('^[a-z0-9-]{1,64}$')
+            && sb().lessonId is string && sb().lessonId.matches('^[a-z0-9-]{1,64}$')
+            && (sb().storagePath == 'recordings/' + uid + '/' + childId + '/' + submissionId + '.m4a'
+                || sb().storagePath == 'recordings/' + uid + '/' + childId + '/' + submissionId + '.wav')
+            && sb().durationMs is int && sb().durationMs >= 1000 && sb().durationMs <= 180000
+            && sb().createdAt == request.time;
+          allow update: if false;
+        }
       }
 
       // parents/{uid}/subscription/current — the parent's plan.
