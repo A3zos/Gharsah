@@ -34,10 +34,6 @@ class PreviewPairingRepository implements PairingRepository {
   @override
   Future<PairingInfo> revokeAndReissue(String childId) async =>
       MockData.children.first.pairing!;
-
-  @override
-  Future<PairingResult> verifyCode(String code) async =>
-      code == '472918' ? PairingResult.verified : PairingResult.wrong;
 }
 
 class PreviewSubmissionsRepository implements SubmissionsRepository {

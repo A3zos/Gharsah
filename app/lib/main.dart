@@ -9,6 +9,7 @@ import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/pairing_repository.dart';
 import 'features/children/data/children_repository.dart';
 import 'features/dashboard/data/submissions_repository.dart';
+import 'features/student/data/child_session.dart';
 import 'features/subscription/data/subscription_repository.dart';
 import 'firebase_options.dart';
 
@@ -16,6 +17,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final content = await AppContent.load();
+  final childSession = await FirebaseChildSessionRepository.load();
   // Debug design-comparison previews show the design's sample children.
   final preview = DebugPreview.screen != null;
   final PairingRepository pairing = preview
@@ -29,6 +31,7 @@ Future<void> main() async {
       children: preview
           ? PreviewChildrenRepository()
           : FirestoreChildrenRepository(pairing),
+      childSession: childSession,
       submissions: preview
           ? PreviewSubmissionsRepository()
           : FirebaseSubmissionsRepository(),

@@ -124,5 +124,6 @@ class AuthRepository {
           email: u.email,
           displayName: u.displayName,
           emailVerified: u.emailVerified,
+          isAnonymous: u.isAnonymous,
         );
 }

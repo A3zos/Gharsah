@@ -1,15 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../children/data/child_profile.dart';
 import 'auth_failure.dart';
 
-enum PairingResult { verified, wrong }
-
-/// Pairing codes. The server is the source of truth (CLAUDE.md §2): codes are
-/// issued, revoked and claimed only by Cloud Functions; clients can never
-/// read or list `pairingCodes` (firestore.rules).
+/// Pairing codes, parent side. The server is the source of truth (CLAUDE.md
+/// §2): codes are issued, revoked and claimed only by Cloud Functions; clients
+/// can never read or list `pairingCodes` (firestore.rules). The child device
+/// claims a code via `ChildSessionRepository`.
 abstract interface class PairingRepository {
   /// Parent: the child's valid code, or a freshly issued one (24 h).
   /// Throws [AuthFailure] with an Arabic message.
@@ -18,9 +16,6 @@ abstract interface class PairingRepository {
   /// Parent (frame 11 «إصدار رمز جديد»): the old code dies, the linked child
   /// device is unlinked, and a new code is issued.
   Future<PairingInfo> revokeAndReissue(String childId);
-
-  /// Child device: [code] is 6 Latin digits (the UI converts from Arabic-Indic).
-  Future<PairingResult> verifyCode(String code);
 }
 
 /// Calls the `createPairingCode` / `revokePairingCode` callables (us-central1).
@@ -55,16 +50,6 @@ class FunctionsPairingRepository implements PairingRepository {
   @override
   Future<PairingInfo> revokeAndReissue(String childId) =>
       _call('revokePairingCode', childId);
-
-  /// TODO(phase-4): anonymous sign-in + the `claimPairingCode` Function.
-  /// Until then only the design's demo code works, in debug builds.
-  @override
-  Future<PairingResult> verifyCode(String code) async {
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    return kDebugMode && code == '472918'
-        ? PairingResult.verified
-        : PairingResult.wrong;
-  }
 }
 
 /// Arabic messages for the pairing Functions' errors.

@@ -6,7 +6,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
-    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid
+        && request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'anonymous';
+    }
+    function isDevice() {
+      return signedIn() && request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'anonymous';
+    }
 
     // parents/{uid} — the parent's own profile. Only that parent can read/write it.
     match /parents/{uid} {
@@ -65,6 +71,9 @@ service cloud.firestore {
         }
 
         allow read: if isOwner(uid);
+        // The child's own linked device (set by claimPairingCode) may read
+        // this one document — never list, never write.
+        allow get: if isDevice() && resource.data.get('linkedDeviceUid', '') == request.auth.uid;
         allow create: if isOwner(uid)
           && exists(/databases/$(database)/documents/parents/$(uid))
           && ch().keys().hasOnly(['name', 'age', 'gender', 'avatar', 'schedule', 'ownerUid', 'createdAt'])
@@ -114,8 +123,14 @@ service cloud.firestore {
       }
     }
 
-    // pairingCodes/{code}, childSessions/{deviceUid}, rateLimits/{deviceUid}:
-    // Cloud Functions (Admin SDK) only — no client can read, list or write
-    // them. They have no match block on purpose: default deny.
+    // childSessions/{deviceUid} — written only by Cloud Functions. The device
+    // may read its own session (relaunch: still linked, or revoked?).
+    match /childSessions/{deviceUid} {
+      allow get: if isDevice() && request.auth.uid == deviceUid;
+    }
+
+    // pairingCodes/{code}, rateLimits/{deviceUid}: Cloud Functions (Admin SDK)
+    // only — no client can read, list or write them. No match block on
+    // purpose: default deny.
   }
 }

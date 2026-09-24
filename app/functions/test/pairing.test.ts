@@ -1,6 +1,6 @@
 // Runs against the Firestore emulator: `npm run test:emu` (from app/functions).
 import assert from 'assert';
-import { initializeApp } from 'firebase-admin/app';
+import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
 import { CODE_TTL_MS, issueCode, requireId } from '../src/pairing';
@@ -9,7 +9,7 @@ process.env.GCLOUD_PROJECT = 'nibras-59284';
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
   throw new Error('Run with the Firestore emulator (npm run test:emu)');
 }
-initializeApp({ projectId: 'nibras-59284' });
+if (!getApps().length) initializeApp({ projectId: 'nibras-59284' });
 const db = getFirestore();
 
 const NOW = new Date('2026-09-24T12:00:00Z');

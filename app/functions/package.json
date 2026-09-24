@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "test": "tsc && mocha \"lib/test/**/*.test.js\" --timeout 20000 --exit",
-    "test:emu": "firebase emulators:exec -c ../firebase.test.json --only firestore,storage --project nibras-59284 \"npm test\""
+    "test:emu": "bash ../tool/emu_test.sh firestore \"npm --prefix functions test\""
   },
   "dependencies": {
     "firebase-admin": "^13.6.0",

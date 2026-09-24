@@ -212,6 +212,8 @@ The HTML is a mockup, not code to port. Mockup data and the hadith text are plac
 - [ ] **Tanzil attribution (CC BY 3.0).** Quran text comes from the Tanzil Project
       (`assets/data/splash_ayat.json`). Credit «نص القرآن: مشروع تنزيل — tanzil.net» with a link in a
       visible place (e.g. an «عن التطبيق» screen or the terms page) before release.
+- [ ] **Reciter audio licence.** Confirm the reciter recordings' usage terms (Mishary Alafasy via
+      Al Quran Cloud / islamic.network) allow use in a paid app before release.
 - [ ] **Remove `lib/core/mock_data.dart`.** Children, per-child stats and the sample plan card are the
       design's sample data, shown only until real Firestore data exists. Also needs a designed
       "no subscription yet" state for the Packages plan card.

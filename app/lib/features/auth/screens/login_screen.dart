@@ -14,8 +14,8 @@ import '../../../widgets/g_text_field.dart';
 import '../../../widgets/info_note.dart';
 import '../../../widgets/loading_label.dart';
 import '../../../widgets/screen_frame.dart';
+import '../../student/data/child_session.dart';
 import '../data/auth_failure.dart';
-import '../data/pairing_repository.dart';
 import 'forgot_password_sheet.dart';
 import 'signup_screen.dart';
 
@@ -305,7 +305,7 @@ class _ParentFormState extends State<_ParentForm> {
 
 // ───────────────────────────── Child tab ─────────────────────────────
 
-enum _CodeStatus { none, incomplete, wrong, verified }
+enum _CodeStatus { none, incomplete, wrong, verified, tooMany, offline, failed }
 
 class _ChildForm extends StatefulWidget {
   const _ChildForm({super.key});
@@ -331,16 +331,32 @@ class _ChildFormState extends State<_ChildForm> {
       return;
     }
     setState(() => _busy = true);
-    final result = await AppScope.of(context).pairing
-        .verifyCode(_code.text.latinDigits);
+    final nav = Navigator.of(context);
+    final repo = AppScope.of(context).childSession;
+    _CodeStatus status;
+    try {
+      // Anonymous sign-in + claimPairingCode on the server; only the verified
+      // session is cached on this device.
+      await repo.claim(_code.text.latinDigits);
+      status = _CodeStatus.verified;
+    } on ClaimFailure catch (e) {
+      status = switch (e.error) {
+        ClaimError.wrong => _CodeStatus.wrong,
+        ClaimError.tooManyAttempts => _CodeStatus.tooMany,
+        ClaimError.offline => _CodeStatus.offline,
+        ClaimError.unknown => _CodeStatus.failed,
+      };
+    }
     if (!mounted) return;
     setState(() {
       _busy = false;
-      _status = result == PairingResult.verified
-          ? _CodeStatus.verified
-          : _CodeStatus.wrong;
+      _status = status;
     });
-    // TODO(phase-c): on verified, cache the server session and open the child app (StudentHome).
+    if (status == _CodeStatus.verified) {
+      // Let «تم التحقق» show, then the gate below opens the child app.
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      nav.popUntil((r) => r.isFirst);
+    }
   }
 
   @override
@@ -375,7 +391,8 @@ class _ChildFormState extends State<_ChildForm> {
             const SizedBox(height: 10),
             CodeInput(
               controller: _code,
-              error: _status == _CodeStatus.wrong,
+              error: _status == _CodeStatus.wrong ||
+                  _status == _CodeStatus.tooMany,
               enabled: !_busy && _status != _CodeStatus.verified,
               onChanged: (_) {
                 if (_status != _CodeStatus.none) {
@@ -434,6 +451,23 @@ class _ChildFormState extends State<_ChildForm> {
       _CodeStatus.wrong => row(
         AppIcon.alertCircle(),
         'الرمز غير صحيح',
+        AppColors.errorText,
+      ),
+      // TODO(design): the three states below have no designed copy yet;
+      // they reuse frame 03's error line style.
+      _CodeStatus.tooMany => row(
+        AppIcon.alertCircle(),
+        'محاولات كثيرة — انتظر قليلًا ثم جرّب',
+        AppColors.errorText,
+      ),
+      _CodeStatus.offline => row(
+        AppIcon.alertCircle(),
+        'لا يوجد اتصال — تحقّق من الإنترنت',
+        AppColors.errorText,
+      ),
+      _CodeStatus.failed => row(
+        AppIcon.alertCircle(),
+        'حدث خطأ — حاول مرة أخرى',
         AppColors.errorText,
       ),
       _CodeStatus.verified => row(

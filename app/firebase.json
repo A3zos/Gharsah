@@ -35,6 +35,9 @@
     "singleProjectMode": true,
     "functions": {
       "port": 5001
+    },
+    "storage": {
+      "port": 9198
     }
   },
   "functions": [
@@ -52,5 +55,8 @@
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
     }
-  ]
+  ],
+  "storage": {
+    "rules": "storage.rules"
+  }
 }

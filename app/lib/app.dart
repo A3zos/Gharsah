@@ -10,6 +10,9 @@ import 'features/children/screens/avatar_picker_screen.dart';
 import 'features/children/screens/pairing_code_screen.dart';
 import 'features/children/screens/schedule_screen.dart';
 import 'features/dashboard/data/submissions_repository.dart';
+import 'features/student/data/child_session.dart';
+import 'features/student/screens/child_gate.dart';
+import 'features/student/screens/student_home_screen.dart';
 import 'features/dashboard/widgets/detail_panels.dart';
 import 'core/auth_gate.dart';
 import 'core/debug_preview.dart';
@@ -34,7 +37,10 @@ class GharsahApp extends StatelessWidget {
     required this.subscriptions,
     required this.children,
     required this.submissions,
+    required this.childSession,
   });
+
+  final ChildSessionRepository childSession;
 
   final AppContent content;
   final SubmissionsRepository submissions;
@@ -47,7 +53,13 @@ class GharsahApp extends StatelessWidget {
 
   Widget _gate() => AuthGate(
     signedIn: (_) => const ParentShell(),
+    child: (session) => ChildGate(
+      session: session,
+      child: StudentHomeScreen(session: session),
+    ),
     signedOut: const AuthScreen(),
+    // After a revoke the device goes straight back to the child code tab.
+    revoked: const LoginScreen(initialTab: 1),
   );
 
   void _leaveSplash() {
@@ -129,6 +141,7 @@ class GharsahApp extends StatelessWidget {
       subscriptions: subscriptions,
       children: children,
       submissions: submissions,
+      childSession: childSession,
       child: MaterialApp(
         navigatorKey: _navigatorKey,
         title: 'غَرْسة',

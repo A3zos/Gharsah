@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import 'app_content.dart';
 import '../features/dashboard/data/submissions_repository.dart';
+import '../features/student/data/child_session.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/pairing_repository.dart';
 import '../features/children/data/children_repository.dart';
@@ -17,8 +18,11 @@ class AppScope extends InheritedWidget {
     required this.subscriptions,
     required this.children,
     required this.submissions,
+    required this.childSession,
     required super.child,
   });
+
+  final ChildSessionRepository childSession;
 
   final AppContent content;
   final SubmissionsRepository submissions;
@@ -41,5 +45,6 @@ class AppScope extends InheritedWidget {
       subscriptions != oldWidget.subscriptions ||
       children != oldWidget.children ||
       submissions != oldWidget.submissions ||
+      childSession != oldWidget.childSession ||
       content != oldWidget.content;
 }

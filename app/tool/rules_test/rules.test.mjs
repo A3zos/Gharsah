@@ -155,6 +155,28 @@ for (const [who, db] of [['parent', alice], ['anonymous device', device], ['sign
 }
 await t('child: anonymous device cannot read a child (not linked yet)', assertFails(getDoc(kidRef(device, 'alice'))));
 
+// ── linked child device (claimPairingCode set linkedDeviceUid + childSessions/dev1) ──
+await env.withSecurityRulesDisabled(async (ctx) => {
+  const f = ctx.firestore();
+  await setDoc(doc(f, 'parents/alice/children/kid9'), { ...child(), createdAt: Timestamp.now(), linkedDeviceUid: 'dev1' });
+});
+const device2 = env.authenticatedContext('dev2', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
+const anonAlice = env.authenticatedContext('alice', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
+await t('device: linked device reads its child', assertSucceeds(getDoc(kidRef(device, 'alice', 'kid9'))));
+await t('device: other device cannot read the child', assertFails(getDoc(kidRef(device2, 'alice', 'kid9'))));
+await t('device: cannot list the parent\'s children', assertFails(getDocs(collection(device, 'parents/alice/children'))));
+await t('device: cannot update its child', assertFails(updateDoc(kidRef(device, 'alice', 'kid9'), { name: 'x' })));
+await t('device: cannot unlink/relink itself', assertFails(updateDoc(kidRef(device, 'alice', 'kid9'), { linkedDeviceUid: 'dev2' })));
+await t('device: cannot delete its child', assertFails(deleteDoc(kidRef(device, 'alice', 'kid9'))));
+await t('device: cannot read the parent doc', assertFails(getDoc(doc(device, 'parents/alice'))));
+await t('device: cannot read the subscription', assertFails(getDoc(subRef(device, 'alice'))));
+await t('device: reads its own session', assertSucceeds(getDoc(doc(device, 'childSessions/dev1'))));
+await t('device: cannot read another session', assertFails(getDoc(doc(device2, 'childSessions/dev1'))));
+await t('device: cannot list sessions', assertFails(getDocs(collection(device, 'childSessions'))));
+await t('parent: cannot read a device session', assertFails(getDoc(doc(alice, 'childSessions/dev1'))));
+await t('anonymous user with a parent uid is not the owner', assertFails(getDoc(doc(anonAlice, 'parents/alice'))));
+await t('anonymous user cannot create a child', assertFails(setDoc(kidRef(anonAlice, 'alice', 'k2'), child())));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 await env.cleanup();
 process.exit(fail ? 1 : 0);

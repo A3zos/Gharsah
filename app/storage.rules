@@ -1,0 +1,41 @@
+rules_version = '2';
+
+// غَرْسة — Storage rules. Default: everything denied.
+// The only stored child audio is the project report (frame 22), kept for the
+// parent (GUARDRAILS §11): recordings/{parentUid}/{childId}/{submissionId}.m4a
+// (.wav from a web build). Deleted after 90 days by a scheduled Function.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /recordings/{parentUid}/{childId}/{file} {
+      function signedIn() { return request.auth != null; }
+      function isParent() {
+        return signedIn()
+          && request.auth.uid == parentUid
+          && request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'anonymous';
+      }
+      function childPath() {
+        return /databases/(default)/documents/parents/$(parentUid)/children/$(childId);
+      }
+      // The anonymous device the server linked to this child (claimPairingCode).
+      function isLinkedDevice() {
+        return signedIn()
+          && request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'anonymous'
+          && firestore.exists(childPath())
+          && firestore.get(childPath()).data.get('linkedDeviceUid', '') == request.auth.uid;
+      }
+      function validAudio() {
+        return (file.matches('^[A-Za-z0-9_-]{1,64}[.]m4a$') && request.resource.contentType == 'audio/mp4')
+          || (file.matches('^[A-Za-z0-9_-]{1,64}[.]wav$') && request.resource.contentType == 'audio/wav');
+      }
+
+      allow read, delete: if isParent();
+      // Create only (no overwrite), ≤ 5 MB, audio only.
+      allow create: if isLinkedDevice()
+        && resource == null
+        && request.resource.size > 0
+        && request.resource.size <= 5 * 1024 * 1024
+        && validAudio();
+      allow update: if false;
+    }
+  }
+}
