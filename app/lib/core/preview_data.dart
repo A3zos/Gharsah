@@ -8,7 +8,7 @@ import '../features/children/data/children_repository.dart';
 import '../features/dashboard/data/submissions_repository.dart';
 import '../features/lesson/agent/lesson_state.dart';
 import '../features/lesson/screens/lesson_view.dart';
-import '../features/student/screens/student_home_screen.dart';
+import '../features/student/data/leaderboard.dart';
 import '../features/student/screens/student_home_view.dart';
 import 'app_content.dart';
 import 'mock_data.dart';
@@ -91,8 +91,25 @@ Widget previewStudentHome() => StudentHomeView(
       doneSteps: 0,
       totalSteps: 5,
     ),
-    leaders: sampleLeaders('عبدالله', 'b1'),
-    leaderNote: sampleLeaderNote,
+    // Anonymous board as shipped (product-owner rule): «طالب N» + one
+    // generic avatar for others; the design's point values.
+    leaders: buildBoard(
+      board: const LeaderBoard(
+        weekKey: 'w',
+        total: 25,
+        rows: [(1, 420), (2, 385), (3, 340), (4, 310), (5, 295)],
+      ),
+      own: const {
+        'weekKey': 'w',
+        'rank': 5,
+        'points': 295,
+        'topPercent': 20,
+        'gapToAbove': 15,
+      },
+      myName: 'عبدالله',
+      myAvatar: 'b1',
+    ).rows,
+    leaderNote: 'أنت ضمن أفضل ٢٠٪ هذا الأسبوع — باقي ١٥ نقطة لتلحق بطالب ٤.',
     daysLeftInWeek: 3,
   ),
   onStart: () {},

@@ -9,6 +9,7 @@ import '../../lesson/agent/lesson_state.dart';
 import '../../lesson/recording/project_recorder.dart';
 import '../../quran/data/quran_ref.dart';
 import 'child_session.dart';
+import 'leaderboard.dart';
 import 'upload_stub.dart' if (dart.library.io) 'upload_io.dart' as upload;
 
 /// The lesson sequence (interim until the yearly plan is delivered): the
@@ -139,6 +140,13 @@ class StudentRepository {
     };
     return controller.stream;
   }
+
+  /// The anonymous weekly board (rank + points rows only).
+  Stream<LeaderBoard?> watchLeaderboard() => _db
+      .doc('leaderboard/current')
+      .snapshots()
+      .map((d) => d.exists ? LeaderBoard.fromMap(d.data()!) : null)
+      .handleError((Object _) {});
 
   LessonProgressSink sinkFor(String lessonId) =>
       FirestoreLessonProgressSink(this, lessonId);

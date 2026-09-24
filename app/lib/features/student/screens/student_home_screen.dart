@@ -5,6 +5,7 @@ import '../../children/data/child_profile.dart';
 import '../../lesson/data/lesson_script.dart';
 import '../../lesson/screens/lesson_screen.dart';
 import '../data/child_session.dart';
+import '../data/leaderboard.dart';
 import '../data/student_repository.dart';
 import 'student_home_view.dart';
 
@@ -29,19 +30,6 @@ String stageLabel(Object? stage) => switch (stage) {
   _ => 'بذرة',
 };
 
-/// Leaderboard rows. TODO(data-rule): the product owner decides what other
-/// children's data may appear (child privacy, Google Play Families) — until
-/// then this is the design's SAMPLE data, never real children.
-List<LeaderRow> sampleLeaders(String myName, String myAvatar) => [
-  const LeaderRow(name: 'سارة', points: 420, avatarId: 'g1'),
-  const LeaderRow(name: 'يوسف', points: 385, avatarId: 'b2'),
-  const LeaderRow(name: 'ليان', points: 340, avatarId: 'g4'),
-  const LeaderRow(name: 'مها', points: 310, avatarId: 'g5'),
-  LeaderRow(name: myName, points: 295, avatarId: myAvatar, me: true),
-];
-const sampleLeaderNote =
-    'أنت ضمن أفضل ٢٠٪ هذا الأسبوع — باقي ١٥ نقطة لتلحق بمها.';
-
 /// Frame 17 — the linked child's home.
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key, required this.session});
@@ -57,6 +45,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   late final Stream<ChildProfile?> _child = _repo.watchChild();
   late final Stream<Map<String, StoredProgress>> _progress = _repo
       .watchProgress();
+  late final Stream<LeaderBoard?> _board = _repo.watchLeaderboard();
   final Map<String, LessonScript> _scripts = {};
 
   @override
@@ -113,12 +102,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  static int _daysLeftInWeek(DateTime now) {
-    // Week starts on Saturday (design); DateTime.weekday: Mon=1 … Sun=7.
-    final index = (now.weekday + 1) % 7; // sat=0 … fri=6
-    return 7 - index - 1 == 0 ? 1 : 7 - index - 1;
-  }
-
   @override
   Widget build(BuildContext context) {
     final s = widget.session;
@@ -127,43 +110,52 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       builder: (context, childSnap) =>
           StreamBuilder<Map<String, StoredProgress>>(
             stream: _progress,
-            builder: (context, progSnap) {
-              final child = childSnap.data;
-              final stats = child?.stats ?? const {};
-              int n(String k) => (stats[k] as num?)?.toInt() ?? 0;
-              final stored = progSnap.data;
-              final today = stored == null
-                  ? null
-                  : pickTodayLesson(stored, DateTime.now());
-              final name = child?.name ?? s.name;
-              final avatar = child?.avatarId ?? s.avatar;
-              return StudentHomeView(
-                data: StudentHomeData(
-                  name: name,
-                  avatarId: avatar,
-                  stage: stageLabel(stats['stage']),
-                  streak: n('streak'),
-                  surahs: n('surahs'),
-                  hadith: n('hadith'),
-                  projects: n('projects'),
-                  hero: today == null ? null : _hero(today, stored!),
-                  leaders: sampleLeaders(name, avatar),
-                  leaderNote: sampleLeaderNote,
-                  daysLeftInWeek: _daysLeftInWeek(DateTime.now()),
-                ),
-                onStart: today is LessonAvailable
-                    ? () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => LessonCallScreen(
-                            session: s,
-                            lessonId: today.lessonId,
-                            resume: today.resume,
+            builder: (context, progSnap) => StreamBuilder<LeaderBoard?>(
+              stream: _board,
+              builder: (context, boardSnap) {
+                final child = childSnap.data;
+                final stats = child?.stats ?? const {};
+                int n(String k) => (stats[k] as num?)?.toInt() ?? 0;
+                final stored = progSnap.data;
+                final today = stored == null
+                    ? null
+                    : pickTodayLesson(stored, DateTime.now());
+                final name = child?.name ?? s.name;
+                final avatar = child?.avatarId ?? s.avatar;
+                final board = buildBoard(
+                  board: boardSnap.data,
+                  own: child?.leader,
+                  myName: name,
+                  myAvatar: avatar,
+                );
+                return StudentHomeView(
+                  data: StudentHomeData(
+                    name: name,
+                    avatarId: avatar,
+                    stage: stageLabel(stats['stage']),
+                    streak: n('streak'),
+                    surahs: n('surahs'),
+                    hadith: n('hadith'),
+                    projects: n('projects'),
+                    hero: today == null ? null : _hero(today, stored!),
+                    leaders: board.rows,
+                    leaderNote: board.note,
+                    daysLeftInWeek: daysUntilReset(DateTime.now()),
+                  ),
+                  onStart: today is LessonAvailable
+                      ? () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => LessonCallScreen(
+                              session: s,
+                              lessonId: today.lessonId,
+                              resume: today.resume,
+                            ),
                           ),
-                        ),
-                      )
-                    : null,
-              );
-            },
+                        )
+                      : null,
+                );
+              },
+            ),
           ),
     );
   }

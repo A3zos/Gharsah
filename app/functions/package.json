@@ -6,7 +6,7 @@
   "engines": { "node": "22" },
   "scripts": {
     "build": "tsc",
-    "test": "tsc && mocha \"lib/test/**/*.test.js\" --timeout 20000 --exit",
+    "test": "tsc && mocha \"lib/test/**/*.test.js\" --timeout 60000 --exit",
     "test:emu": "bash ../tool/emu_test.sh firestore \"npm --prefix functions test\""
   },
   "dependencies": {

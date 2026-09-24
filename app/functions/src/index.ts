@@ -11,6 +11,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getStorage } from 'firebase-admin/storage';
 
 import { claimCode } from './claim';
+import { runLeaderboard } from './leaderboard';
 import { issueCode, requireId } from './pairing';
 import {
   cleanup,
@@ -119,5 +120,17 @@ export const scheduledCleanup = onSchedule(
   async () => {
     const r = await cleanup(getFirestore(), files);
     console.log('cleanup', r);
+  },
+);
+
+/**
+ * Weekly leaderboard (anonymous): every 30 min. `leaderboard/current` holds
+ * only rank + points rows; each child's own rank/percentile is written to that
+ * child's doc only. Week = Saturday 00:00 Riyadh.
+ */
+export const leaderboardRefresh = onSchedule(
+  { schedule: 'every 30 minutes', timeZone: 'Asia/Riyadh' },
+  async () => {
+    console.log('leaderboard', await runLeaderboard(getFirestore()));
   },
 );

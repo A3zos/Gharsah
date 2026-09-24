@@ -3,6 +3,7 @@
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, collection, getDocs, Timestamp,
+  query, where, collectionGroup,
 } from 'firebase/firestore';
 import fs from 'fs';
 import path from 'path';
@@ -224,6 +225,34 @@ await t('submission: other child path rejected', assertFails(setDoc(subDoc(devic
 await t('submission: too long rejected', assertFails(setDoc(subDoc(device, 's6'), submission('s6', { durationMs: 999999 }))));
 await t('submission: extra field rejected', assertFails(setDoc(subDoc(device, 's7'), submission('s7', { text: 'x' }))));
 await t('submission: parent deletes', assertSucceeds(deleteDoc(subDoc(alice))));
+
+// ── leaderboard (anonymous): no child can learn another child's identity ──
+await env.withSecurityRulesDisabled(async (c) => {
+  const f = c.firestore();
+  await setDoc(doc(f, 'leaderboard/current'), { weekKey: '2026-09-19', total: 2, rows: [{ rank: 1, points: 420 }, { rank: 2, points: 10 }], updatedAt: Timestamp.now() });
+  await setDoc(doc(f, 'parents/bob/children/kidB'), { name: 'يوسف', avatar: 'b2', ownerUid: 'bob', linkedDeviceUid: 'devB',
+    stats: { weekKey: '2026-09-19', weekPoints: 420 }, leader: { rank: 1, points: 420, total: 2, topPercent: 50, gapToAbove: null } });
+});
+await t('leaderboard: linked child device reads the board', assertSucceeds(getDoc(doc(device, 'leaderboard/current'))));
+await t('leaderboard: board rows carry rank + points only', (async () => {
+  const board = await getDoc(doc(device, 'leaderboard/current'));
+  for (const r of board.data().rows) {
+    if (Object.keys(r).sort().join() !== 'points,rank') throw new Error('extra keys in row: ' + Object.keys(r));
+  }
+  if (Object.keys(board.data()).sort().join() !== 'rows,total,updatedAt,weekKey') throw new Error('extra board keys');
+})());
+await t('leaderboard: device cannot list leaderboard docs', assertFails(getDocs(collection(device, 'leaderboard'))));
+await t('leaderboard: device cannot read other board docs', assertFails(getDoc(doc(device, 'leaderboard/2026-09-19'))));
+await t('leaderboard: device cannot write the board', assertFails(setDoc(doc(device, 'leaderboard/current'), { rows: [] })));
+await t('leaderboard: parent cannot write the board', assertFails(setDoc(doc(alice, 'leaderboard/current'), { rows: [] })));
+await t('leaderboard: signed-out cannot read the board', assertFails(getDoc(doc(anon, 'leaderboard/current'))));
+await t("leaderboard: device cannot read the top child's doc (name/avatar/leader)", assertFails(getDoc(doc(device, 'parents/bob/children/kidB'))));
+await t('leaderboard: device cannot query children across families', assertFails(getDocs(query(collectionGroup(device, 'children'), where('stats.weekKey', '==', '2026-09-19')))));
+await t('leaderboard: device cannot query other children by points', assertFails(getDocs(query(collection(device, 'parents/bob/children'), where('stats.weekPoints', '>', 0)))));
+await t('leaderboard: device reads only its own standing', assertSucceeds(getDoc(kidRef(device, 'alice', 'kid9'))));
+await t('leaderboard: parent cannot set leader on a child', assertFails(updateDoc(kidRef(alice, 'alice', 'kid9'), { leader: { rank: 1 } })));
+await t('leaderboard: parent cannot set week points', assertFails(updateDoc(kidRef(alice, 'alice', 'kid9'), { 'stats.weekPoints': 9999 })));
+await t('leaderboard: device cannot set its own points', assertFails(updateDoc(kidRef(device, 'alice', 'kid9'), { 'stats.weekPoints': 9999 })));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 await env.cleanup();

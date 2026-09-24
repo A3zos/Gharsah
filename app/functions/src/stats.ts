@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore';
 
 import plan from './config/yearly_plan.json';
+import { pointsDelta, weekKey } from './leaderboard';
 
 /// Progress checkpoint written by the child device (firestore.rules checks it).
 export interface ProgressDoc {
@@ -35,6 +36,9 @@ export interface ChildStats {
   latestAyat: { surah: number; count: number; at: Timestamp } | null;
   pendingProject: string | null;
   lessonDays: string[]; // YYYY-MM-DD (plan time zone), newest last, capped
+  /// Leaderboard: this week's points (server-only, resets Saturday Riyadh).
+  weekKey: string;
+  weekPoints: number;
   updatedAt: Timestamp;
 }
 
@@ -142,6 +146,11 @@ export function computeStats(input: {
   const lessonDays = [...days].sort().slice(-120);
 
   const ayat = refs.size;
+  const wk = weekKey(now);
+  const carried = prev?.weekKey === wk ? (prev?.weekPoints ?? 0) : 0;
+  const weekPoints =
+    carried +
+    pointsDelta(prev, { ayat, hadith: hadithDone.length, projects: submissions.length }, completedNow);
   const planPct = Math.min(100, Math.round((ayat * 100) / PLAN_TOTAL_AYAT));
   return {
     ayat,
@@ -158,6 +167,8 @@ export function computeStats(input: {
     latestAyat,
     pendingProject,
     lessonDays,
+    weekKey: wk,
+    weekPoints,
     updatedAt: at,
   };
 }

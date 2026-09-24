@@ -160,6 +160,7 @@ class ChildProfile {
     this.linked = false,
     this.createdAt,
     this.stats,
+    this.leader,
     this.schedule,
     this.isMock = false,
   });
@@ -176,6 +177,9 @@ class ChildProfile {
         createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
         stats: d['stats'] is Map
             ? Map<String, dynamic>.from(d['stats'] as Map)
+            : null,
+        leader: d['leader'] is Map
+            ? Map<String, dynamic>.from(d['leader'] as Map)
             : null,
         schedule: d['schedule'] is Map
             ? ChildSchedule.fromMap(
@@ -202,6 +206,11 @@ class ChildProfile {
   /// Progress aggregates written by the server (`stats`); null until the
   /// child finishes a first lesson step. Parsed by the dashboard.
   final Map<String, dynamic>? stats;
+
+  /// This child's own leaderboard standing (server-written, visible only to
+  /// this child's device and parent): weekKey, rank, points, total,
+  /// topPercent, gapToAbove.
+  final Map<String, dynamic>? leader;
   final ChildSchedule? schedule;
 
   /// Design sample data (debug previews only), not a Firestore child.
@@ -220,6 +229,7 @@ class ChildProfile {
     linked: linked,
     createdAt: createdAt,
     stats: stats,
+    leader: leader,
     schedule: schedule,
     isMock: isMock,
   );

@@ -190,6 +190,14 @@ service cloud.firestore {
       allow get: if isDevice() && request.auth.uid == deviceUid;
     }
 
+    // leaderboard/current — the anonymous weekly board, written only by the
+    // scheduled Function. It holds rank + points rows only (no uid, child id,
+    // parent id, name or avatar); a child's own standing lives in its own
+    // child doc (`leader`). Child devices may get this one doc; no list/write.
+    match /leaderboard/{docId} {
+      allow get: if isDevice() && docId == 'current';
+    }
+
     // pairingCodes/{code}, rateLimits/{deviceUid}: Cloud Functions (Admin SDK)
     // only — no client can read, list or write them. No match block on
     // purpose: default deny.

@@ -8,24 +8,10 @@ import '../../../theme/app_theme.dart';
 import '../../../widgets/app_icons.dart';
 import '../../../widgets/decor_blob.dart';
 import '../../lesson/widgets/live_widgets.dart';
+import '../data/leaderboard.dart';
 
 String _hex(Color c) =>
     '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
-
-/// One leaderboard row (17).
-class LeaderRow {
-  const LeaderRow({
-    required this.name,
-    required this.points,
-    required this.avatarId,
-    this.me = false,
-  });
-
-  final String name;
-  final int points;
-  final String avatarId;
-  final bool me;
-}
 
 /// «حصة اليوم» hero.
 class TodayHero {
@@ -74,8 +60,10 @@ class StudentHomeData {
   final int hadith;
   final int projects;
   final TodayHero? hero;
-  final List<LeaderRow> leaders;
-  final String leaderNote;
+
+  /// Anonymous board rows (see student/data/leaderboard.dart).
+  final List<BoardRow> leaders;
+  final String? leaderNote;
   final int daysLeftInWeek;
 }
 
@@ -262,23 +250,25 @@ class StudentHomeView extends StatelessWidget {
           if (i > 0) const SizedBox(height: 7),
           _leaderRow(i, data.leaders[i]),
         ],
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-          decoration: BoxDecoration(
-            color: AppColors.greenTint,
-            borderRadius: BorderRadius.circular(LessonRadii.leaderNote),
+        if (data.leaderNote != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            decoration: BoxDecoration(
+              color: AppColors.greenTint,
+              borderRadius: BorderRadius.circular(LessonRadii.leaderNote),
+            ),
+            child: Row(
+              children: [
+                SvgPicture.string(_starIcon, width: 20, height: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(data.leaderNote!, style: LessonText.leaderNote),
+                ),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              SvgPicture.string(_starIcon, width: 20, height: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(data.leaderNote, style: LessonText.leaderNote),
-              ),
-            ],
-          ),
-        ),
+        ],
         const SizedBox(height: 12),
         Text(
           'تبدأ المنافسة من جديد كل أسبوع — فرصة جديدة للجميع.',
@@ -289,12 +279,12 @@ class StudentHomeView extends StatelessWidget {
     ),
   );
 
-  Widget _leaderRow(int i, LeaderRow r) {
-    final (Color bg, Color fg) = switch (i) {
+  Widget _leaderRow(int i, BoardRow r) {
+    final (Color bg, Color fg) = switch (r.rank) {
       _ when r.me => (AppColors.deepGreen, AppColors.surface),
-      0 => (AppColors.gold, AppColors.onGold),
-      1 => (AppColors.medalSilver, AppColors.medalSilverText),
-      2 => (AppColors.avatarSkinMid, AppColors.avatarFeatures),
+      1 => (AppColors.gold, AppColors.onGold),
+      2 => (AppColors.medalSilver, AppColors.medalSilverText),
+      3 => (AppColors.avatarSkinMid, AppColors.avatarFeatures),
       _ => (AppColors.borderSoft, AppColors.textMuted),
     };
     final ink = r.me ? AppColors.deepGreen : AppColors.textDark;
@@ -316,7 +306,7 @@ class StudentHomeView extends StatelessWidget {
             decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
             alignment: Alignment.center,
             child: Text(
-              (i + 1).arabicDigits,
+              r.rank.arabicDigits,
               style: LessonText.medal.copyWith(color: fg),
             ),
           ),
@@ -326,17 +316,24 @@ class StudentHomeView extends StatelessWidget {
             height: LessonSizes.leaderAvatar + 6,
             child: Align(
               alignment: Alignment.topCenter,
-              child: AppIcon.childAvatar(
-                r.avatarId,
-                size: LessonSizes.leaderAvatar,
-                variant: AvatarVariant.row,
-              ),
+              // Other children never show a personal avatar — one generic one.
+              child: r.avatarId == null
+                  ? SvgPicture.string(
+                      _genericAvatar,
+                      width: LessonSizes.leaderAvatar,
+                      height: LessonSizes.leaderAvatar,
+                    )
+                  : AppIcon.childAvatar(
+                      r.avatarId!,
+                      size: LessonSizes.leaderAvatar,
+                      variant: AvatarVariant.row,
+                    ),
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              r.me ? '${r.name} — أنت' : r.name,
+              r.me ? '${r.label} — أنت' : r.label,
               style: LessonText.leaderName.copyWith(
                 color: ink,
                 fontWeight: r.me ? FontWeight.w800 : FontWeight.w700,
@@ -631,6 +628,13 @@ class StudentHomeView extends StatelessWidget {
 <svg viewBox="0 0 24 24" fill="none"><path d="M7 20 H17 M12 16.5 V20" stroke="${_hex(AppColors.goldDeep)}" stroke-width="2" stroke-linecap="round"/>
 <path d="M7 3.5 H17 V9 C17 12 14.8 14.5 12 14.5 C9.2 14.5 7 12 7 9 Z" fill="${_hex(AppColors.gold)}"/>
 <path d="M7 5.5 H4.5 V7 C4.5 8.9 5.6 10.3 7 10.7 M17 5.5 H19.5 V7 C19.5 8.9 18.4 10.3 17 10.7" stroke="${_hex(AppColors.goldDeep)}" stroke-width="1.8" stroke-linecap="round"/></svg>''';
+
+  /// The one generic avatar for anonymous leaderboard rows.
+  static String get _genericAvatar =>
+      '''
+<svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="32" fill="${_hex(AppColors.borderSoft)}"/>
+<circle cx="32" cy="26" r="10" fill="${_hex(AppColors.stageOffStem)}"/>
+<path d="M14 54 C14 43 22 38 32 38 C42 38 50 43 50 54 Z" fill="${_hex(AppColors.stageOffStem)}"/></svg>''';
   static String get _starIcon =>
       '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2.8 L14.3 9.2 L21 9.4 L15.7 13.5 L17.6 20 L12 16.2 L6.4 20 L8.3 13.5 L3 9.4 L9.7 9.2 Z" fill="${_hex(AppColors.primary)}"/></svg>';
   static String get _heroSprout =>
