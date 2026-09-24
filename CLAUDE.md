@@ -9,7 +9,8 @@ plan. It lives at the repo root so it's always in context. **Plan first, then im
 
 ```
 Gharsah/
-├── app/      Flutter app + firebase.json + firestore.rules + tool/ (rules tests, design_compare)
+├── app/      Flutter app + firebase.json + firestore.rules + storage.rules + functions/ (Cloud
+│             Functions, TypeScript) + tool/ (rules tests, emulator wrapper, asset builders, design_compare)
 ├── ai/       AI teacher — owned by a separate AI developer. Do NOT write code here unless asked.
 │             The app ↔ AI interface is ai/CONTRACT.md (Draft v0.1); guardrails in ai/GUARDRAILS.md.
 ├── design/   Approved design (screens/*.png, html/*.html, DESIGN_NOTES.md)
@@ -214,15 +215,94 @@ The HTML is a mockup, not code to port. Mockup data and the hadith text are plac
       visible place (e.g. an «عن التطبيق» screen or the terms page) before release.
 - [ ] **Reciter audio licence.** Confirm the reciter recordings' usage terms (Mishary Alafasy via
       Al Quran Cloud / islamic.network) allow use in a paid app before release.
-- [ ] **Remove `lib/core/mock_data.dart`.** Children, per-child stats and the sample plan card are the
-      design's sample data, shown only until real Firestore data exists. Also needs a designed
-      "no subscription yet" state for the Packages plan card.
+- [ ] **Remove the remaining sample data** (`lib/core/mock_data.dart`): today it's used only for debug
+      design previews, the dashboard of a child with no progress yet (flagged «بيانات توضيحية»), and
+      the Packages plan card when there is no subscription — which still needs a designed
+      "no subscription yet" state.
 - [ ] **Replace the mock Play purchase** (`MockPlaySubscriptionRepository`) with Google Play Billing +
-      server-side token verification; then `parents/{uid}/subscription` becomes server-write-only.
-- [ ] **Extend `firestore.rules` for Phase C — never loosen it.** Children, pairing codes and
-      submissions each get their own `match` block in the same style as `parents/{uid}`: owner-only
-      access (parent uid / verified child session), `keys().hasOnly([...])` strict fields, typed and
-      bounded values, immutable fields (role, createdAt, owner ids) locked on update, no collection
-      listing, and default-deny for anything unmatched. Pairing codes are issued/verified server-side
-      only. Add emulator tests for every new rule (allow + deny cases) and run them before
-      `firebase deploy --only firestore:rules`.
+      server-side token verification; then `parents/{uid}/subscription` becomes server-write-only
+      (`allow write: if false`). `createPairingCode` already requires an active subscription.
+- [ ] **Replace the INTERIM AI teacher** (`lib/features/lesson/ai/interim/`) with the AI developer's
+      module behind `AiTeacher`; review the teacher-line bank (lines marked `// REVIEW`).
+- [ ] **Hadith:** add a vetted hadith (text + takhrij + grading + source + reviewer + audio) and set
+      `approved: true` in `assets/data/hadith.json` — it then displays and plays with no code change.
+- [ ] **Real lesson plan:** replace the interim `m01-w03-day2` script with the yearly plan.
+- [ ] **Designs for the TODO(design) states** (grep `TODO(design)`): mic permission denied, offline /
+      audio unavailable, report save failed, «done for today» hero, «ملفّي», the 3 shortcuts,
+      expired / claimed pairing code + «إصدار رمز جديد» confirm, delete recording, no-children
+      dashboard, sample-data note, too-many-attempts / offline on the child code tab, autoplay-blocked
+      fallback play.
+- [ ] **App Check** (Play Integrity) on the callable Functions (`claimPairingCode` especially).
+- [ ] Every rules change: extend `tool/rules_test/*.mjs` (allow + deny) and run them before deploying —
+      never loosen a rule.
+
+---
+
+## 12. Data model (Firestore + Storage) — server is the source of truth
+
+| Path | Written by | Read by |
+|---|---|---|
+| `parents/{uid}` name, email, role, createdAt | parent | parent |
+| `parents/{uid}/subscription/current` | parent (MOCK Play) | parent |
+| `parents/{uid}/children/{childId}` name, age, gender, avatar, schedule, ownerUid, createdAt | parent | parent; its linked device (get only) |
+| … same doc: `pairing{code,expiresAt,status}`, `linkedDeviceUid`, `stats{…}`, `leader{…}` | **Functions only** | same |
+| `…/children/{childId}/progress/{lessonId}` lesson checkpoints (stepIndex, doneRefs, surahsCompleted, hadithDone, projectAssigned, reportedProject, completed, startedAt, updatedAt) | linked device | parent, device |
+| `…/children/{childId}/submissions/{id}` projectId, lessonId, storagePath, durationMs, createdAt | linked device (create only) | parent (read/delete) |
+| `pairingCodes/{code}` parentUid, childId, createdAt, expiresAt (24 h), status | **Functions only** | nobody |
+| `childSessions/{deviceUid}` parentUid, childId, linkedAt | **Functions only** | that device (get) |
+| `rateLimits/{deviceUid}` | **Functions only** | nobody |
+| `leaderboard/current` weekKey, total, rows[{rank, points}] — NO identities | **Functions only** | child devices (get) |
+| Storage `recordings/{uid}/{childId}/{submissionId}.m4a` (.wav from web) | linked device (create, audio ≤ 5 MB) | parent (read/delete) |
+
+`stats` (child doc): ayat, surahs, hadith, projects, streak (consecutive **scheduled** days, Riyadh time),
+planPct (of the yearly plan — `functions/src/config/yearly_plan.json`, 295 ayat), stage
+(seed 0–33 / sprout 34–66 / tree 67–100), surahsDone[{surah,at}], surahInProgress, hadithDone[{id,at}],
+ayatBySurah, latestAyat, pendingProject, lessonDays, weekKey + weekPoints. `leader`: the child's own
+weekly rank/points/topPercent/gapToAbove. Other children are never identified to a child.
+
+Child device identity: anonymous Firebase Auth → `claimPairingCode` → only the verified session is
+cached on the device (`ChildSessionRepository`); relaunch → StudentHome while `childSessions/{uid}`
+exists; revoked → back to the child code tab.
+
+## 13. The live lesson — `LessonAgent` (lib/features/lesson/agent/)
+
+The single brain of frames 18–23; screens only render `LessonState` and forward taps as commands.
+- Script: ai/CONTRACT.md format in `assets/lessons/*.json` (`m01-w03-ikhlas`; interim `m01-w03-day2`).
+  Quran by surah:ayah (verified Tanzil text `assets/data/quran_text.json`, Alafasy audio bundled in
+  `assets/audio/quran/` + manifest; other surahs downloaded once, sha256-cached, never streamed).
+- Flow: intro → per ayah (recitation autoplays → «الآن ردّد» → 3 presence-counted repeats → praise) →
+  surah done → hadith (placeholder, silent until approved) → project → end; next day the report first.
+- Rules enforced: teacher silent while the reciter plays; mic deaf during reciter/teacher speech
+  (+ echo guard); mute pauses counting only; background pauses, return resumes the same moment;
+  autoplay blocked → small fallback play; silence → nudges, then one replay, then wait; checkpoints
+  after each step so «أكمل الحصة» resumes.
+- Commands: play, pause, resume, stop, replayAyah, nextAyah, previousAyah, setVolume, micTap,
+  tapTeacher, tapFallback, continueTapped, reRecord, endCall.
+- `AiTeacher` mirrors ai/CONTRACT.md events/actions. INTERIM implementation: device Arabic TTS +
+  on-device energy presence detection (nothing stored/uploaded). Surah intro states the ayah count
+  only — never مكية/مدنية or سبب النزول until a verified dataset exists.
+
+## 14. Cloud Functions (`app/functions`, TypeScript, 2nd gen, us-central1 = Firestore nam5)
+
+Callable: `createPairingCode`, `revokePairingCode` (parent only, active subscription, ownership by path),
+`claimPairingCode` (anonymous device, 5 wrong codes / 10 min / device).
+Triggers: `onProgressWritten`, `onSubmissionCreated` (verifies the recording exists), `onSubmissionDeleted`
+→ recompute `stats`; `onChildDeleted` → delete progress, submissions, recordings, code, session.
+Scheduled: `scheduledCleanup` daily 03:00 Riyadh (recordings > 90 days, dead codes, rate limits);
+`leaderboardRefresh` every 30 min (anonymous board, weekly reset Saturday 00:00 Riyadh).
+
+## 15. Tests & deploy
+
+All emulator tests run on TEST ports via `tool/emu_test.sh` (it also stops the Java emulator the CLI
+leaves behind on Windows). From `app/`:
+```
+flutter analyze && flutter test
+bash tool/emu_test.sh firestore "node tool/rules_test/rules.test.mjs"
+bash tool/emu_test.sh firestore,storage "node tool/rules_test/storage.test.mjs"
+npm --prefix functions run test:emu
+```
+Deploy (only after the product owner approves), from `app/`:
+```
+firebase deploy --only firestore:rules,firestore:indexes,storage --project nibras-59284
+firebase deploy --only functions --project nibras-59284
+```
