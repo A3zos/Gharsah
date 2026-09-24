@@ -1,0 +1,16 @@
+{
+  "_notice": "Hadith are shown/played ONLY when approved == true AND text, takhrij, grading, source, reviewedBy and audio are all set (sharia-reviewer approved). Otherwise the app shows the fixed placeholder and plays nothing. Never fill this in by hand from memory or AI output.",
+  "hadith": [
+    {
+      "id": "PLACEHOLDER-birr-alwalidayn",
+      "title": "حديث برّ الوالدين",
+      "approved": false,
+      "text": null,
+      "takhrij": null,
+      "grading": null,
+      "source": null,
+      "reviewedBy": null,
+      "audio": null
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "contractVersion": "0.1",
+  "lessonId": "m01-w03-ikhlas",
+  "title": "سورة الإخلاص + حديث برّ الوالدين",
+  "value": "برّ الوالدين",
+  "_note": "Seeded from ai/examples/lesson-m01-w03-ikhlas.json. App-side additions (proposed contract changes, see CLAUDE.md): intro lines follow frame 18 without the Makki/Madani line; surah_done adds 'surah.proud'; lesson_end adds an optional 'question'. Quran by surah:ayah only; hadith by id.",
+  "steps": [
+    {
+      "type": "intro",
+      "surah": 112,
+      "surahInfoRef": "surahInfo/112",
+      "lines": ["greet", "intro.plan", "intro.surah", "intro.count", "intro.ready"]
+    },
+    { "type": "ayah_loop", "ref": { "surah": 112, "ayah": 1 }, "repeats": 3 },
+    { "type": "ayah_loop", "ref": { "surah": 112, "ayah": 2 }, "repeats": 3 },
+    { "type": "ayah_loop", "ref": { "surah": 112, "ayah": 3 }, "repeats": 3 },
+    { "type": "ayah_loop", "ref": { "surah": 112, "ayah": 4 }, "repeats": 3 },
+    {
+      "type": "surah_done",
+      "lines": ["surah.done", "surah.proud"],
+      "question": "surah.next_hadith"
+    },
+    {
+      "type": "hadith_loop",
+      "hadithId": "PLACEHOLDER-birr-alwalidayn",
+      "repeats": 3
+    },
+    {
+      "type": "project_assign",
+      "projectId": "birr-3-acts",
+      "lines": ["project.intro", "project.tomorrow"],
+      "hints": ["project.hint1", "project.hint2", "project.hint3"],
+      "question": "project.ask"
+    },
+    {
+      "type": "lesson_end",
+      "lines": ["end.praise", "project.tomorrow"],
+      "question": "end.ask"
+    }
+  ]
+}
