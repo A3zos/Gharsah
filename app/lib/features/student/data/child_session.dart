@@ -20,7 +20,23 @@ class ChildSession {
     required this.name,
     required this.avatar,
     required this.gender,
+    this.debugMock = false,
   });
+
+  /// DEBUG builds only: the in-memory mock child «عبدالله» (no server, not
+  /// cached). Never true in a release build.
+  factory ChildSession.debugMockChild() {
+    assert(kDebugMode, 'debug mock child in a release build');
+    return const ChildSession(
+      deviceUid: 'debug-device',
+      parentUid: 'debug-parent',
+      childId: 'mock-abdullah',
+      name: 'عبدالله',
+      avatar: 'b1',
+      gender: 'boy',
+      debugMock: true,
+    );
+  }
 
   factory ChildSession.fromJson(Map<String, dynamic> j) => ChildSession(
     deviceUid: j['deviceUid'] as String,
@@ -37,6 +53,7 @@ class ChildSession {
   final String name;
   final String avatar;
   final String gender;
+  final bool debugMock;
 
   Map<String, dynamic> toJson() => {
     'deviceUid': deviceUid,
@@ -78,6 +95,9 @@ abstract interface class ChildSessionRepository {
 
   /// Forgets the session on this device and signs the anonymous user out.
   Future<void> clear({bool revoked = false});
+
+  /// DEBUG builds only: enter the app as the mock child without the server.
+  void debugUseMockChild();
 }
 
 class FirebaseChildSessionRepository implements ChildSessionRepository {
@@ -193,6 +213,13 @@ class FirebaseChildSessionRepository implements ChildSessionRepository {
         if (e is FirebaseException && e.code == 'permission-denied') return;
         debugPrint('Session check failed: $e');
       });
+
+  @override
+  void debugUseMockChild() {
+    if (!kDebugMode) return;
+    _revoked = false;
+    _session.value = ChildSession.debugMockChild();
+  }
 
   @override
   Future<void> clear({bool revoked = false}) async {

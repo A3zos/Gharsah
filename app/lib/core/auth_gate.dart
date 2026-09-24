@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../features/auth/data/app_user.dart';
@@ -51,6 +52,10 @@ class _AuthGateState extends State<AuthGate> {
               user != null &&
               user.isAnonymous &&
               user.uid == session.deviceUid) {
+            return widget.child(session);
+          }
+          // DEBUG builds only: the in-memory mock child (no server).
+          if (kDebugMode && session != null && session.debugMock) {
             return widget.child(session);
           }
           if (user != null && !user.isAnonymous) return widget.signedIn(user);

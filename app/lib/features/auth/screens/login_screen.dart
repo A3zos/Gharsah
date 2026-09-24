@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_scope.dart';
@@ -315,7 +316,12 @@ class _ChildForm extends StatefulWidget {
 }
 
 class _ChildFormState extends State<_ChildForm> {
-  final _code = TextEditingController();
+  /// DEBUG builds only: prefilled with the demo code ٤٧٢٩١٨.
+  final _code = TextEditingController(
+    text: kDebugMode ? _debugDemoCode.arabicDigits : '',
+  );
+
+  static const _debugDemoCode = '472918';
   _CodeStatus _status = _CodeStatus.none;
   bool _busy = false;
 
@@ -334,6 +340,18 @@ class _ChildFormState extends State<_ChildForm> {
     final nav = Navigator.of(context);
     final repo = AppScope.of(context).childSession;
     _CodeStatus status;
+    // DEBUG builds only: the demo code enters as the in-memory mock child
+    // «عبدالله» without touching the server. Compiled out of release builds.
+    if (kDebugMode && _code.text.latinDigits == _debugDemoCode) {
+      setState(() {
+        _busy = false;
+        _status = _CodeStatus.verified;
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      repo.debugUseMockChild();
+      nav.popUntil((r) => r.isFirst);
+      return;
+    }
     try {
       // Anonymous sign-in + claimPairingCode on the server; only the verified
       // session is cached on this device.

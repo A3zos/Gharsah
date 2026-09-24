@@ -40,7 +40,9 @@ class _LessonCallScreenState extends State<LessonCallScreen>
     implements LessonActions {
   LessonAgent? _agent;
   LessonPlanInfo _plan = const LessonPlanInfo();
-  late final StudentRepository _repo = StudentRepository(widget.session);
+  late final StudentRepository _repo = StudentRepository.forSession(
+    widget.session,
+  );
   late final Stream<ChildProfile?> _child = _repo.watchChild();
   AppLifecycleListener? _life;
   final _teacher = DeviceAiTeacher();

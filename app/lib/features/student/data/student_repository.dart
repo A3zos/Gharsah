@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../children/data/child_profile.dart';
 import '../../lesson/agent/lesson_agent.dart';
@@ -9,6 +10,7 @@ import '../../lesson/agent/lesson_state.dart';
 import '../../lesson/recording/project_recorder.dart';
 import '../../quran/data/quran_ref.dart';
 import 'child_session.dart';
+import 'debug_student_repository.dart';
 import 'leaderboard.dart';
 import 'upload_stub.dart' if (dart.library.io) 'upload_io.dart' as upload;
 
@@ -90,16 +92,33 @@ LessonProgress progressFromMap(String lessonId, Map<String, dynamic> d) {
   );
 }
 
-/// The child device's view of its own data (rules: get own child doc, own
-/// progress docs; create submissions; upload own recordings).
-class StudentRepository {
-  StudentRepository(
+/// The child device's view of its own data.
+abstract interface class StudentRepository {
+  /// The repository for [session]: Firestore — or, in DEBUG builds only, the
+  /// in-memory mock child (see debug_student_repository.dart).
+  factory StudentRepository.forSession(ChildSession session) =>
+      kDebugMode && session.debugMock
+      ? DebugStudentRepository(session)
+      : FirestoreStudentRepository(session);
+
+  ChildSession get session;
+  Stream<ChildProfile?> watchChild();
+  Stream<Map<String, StoredProgress>> watchProgress();
+  Stream<LeaderBoard?> watchLeaderboard();
+  LessonProgressSink sinkFor(String lessonId);
+}
+
+/// Firestore implementation (rules: get own child doc, own progress docs;
+/// create submissions; upload own recordings).
+class FirestoreStudentRepository implements StudentRepository {
+  FirestoreStudentRepository(
     this.session, {
     FirebaseFirestore? db,
     FirebaseStorage? storage,
   }) : _db = db ?? FirebaseFirestore.instance,
        _storage = storage ?? FirebaseStorage.instance;
 
+  @override
   final ChildSession session;
   final FirebaseFirestore _db;
   final FirebaseStorage _storage;
@@ -107,11 +126,13 @@ class StudentRepository {
   DocumentReference<Map<String, dynamic>> get _child =>
       _db.doc('parents/${session.parentUid}/children/${session.childId}');
 
+  @override
   Stream<ChildProfile?> watchChild() => _child.snapshots().map(
     (d) => d.exists ? ChildProfile.fromDoc(d.id, d.data()!) : null,
   );
 
   /// Checkpoints of the lessons in [lessonSequence] (device can only get by id).
+  @override
   Stream<Map<String, StoredProgress>> watchProgress() {
     final controller = StreamController<Map<String, StoredProgress>>();
     final latest = <String, StoredProgress>{};
@@ -142,12 +163,14 @@ class StudentRepository {
   }
 
   /// The anonymous weekly board (rank + points rows only).
+  @override
   Stream<LeaderBoard?> watchLeaderboard() => _db
       .doc('leaderboard/current')
       .snapshots()
       .map((d) => d.exists ? LeaderBoard.fromMap(d.data()!) : null)
       .handleError((Object _) {});
 
+  @override
   LessonProgressSink sinkFor(String lessonId) =>
       FirestoreLessonProgressSink(this, lessonId);
 }
@@ -157,7 +180,7 @@ class StudentRepository {
 class FirestoreLessonProgressSink implements LessonProgressSink {
   FirestoreLessonProgressSink(this._repo, this.lessonId);
 
-  final StudentRepository _repo;
+  final FirestoreStudentRepository _repo;
   final String lessonId;
   Object? _startedAt;
 

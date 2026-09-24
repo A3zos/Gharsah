@@ -25,7 +25,8 @@ class _ChildGateState extends State<ChildGate> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_sub != null) return;
+    // The debug mock child has no server session to check.
+    if (_sub != null || widget.session.debugMock) return;
     final repo = AppScope.of(context).childSession;
     _sub = repo.watchLinked(widget.session).listen((linked) {
       if (!linked) repo.clear(revoked: true);

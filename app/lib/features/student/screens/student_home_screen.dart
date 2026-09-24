@@ -41,7 +41,9 @@ class StudentHomeScreen extends StatefulWidget {
 }
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
-  late final StudentRepository _repo = StudentRepository(widget.session);
+  late final StudentRepository _repo = StudentRepository.forSession(
+    widget.session,
+  );
   late final Stream<ChildProfile?> _child = _repo.watchChild();
   late final Stream<Map<String, StoredProgress>> _progress = _repo
       .watchProgress();
