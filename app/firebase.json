@@ -1,0 +1,37 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "nibras-59284",
+          "appId": "1:884261098380:android:fb3cc88829bfaa120e3ca9",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "nibras-59284",
+          "configurations": {
+            "android": "1:884261098380:android:fb3cc88829bfaa120e3ca9",
+            "web": "1:884261098380:web:71a9bf8d51d109370e3ca9"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  }
+}

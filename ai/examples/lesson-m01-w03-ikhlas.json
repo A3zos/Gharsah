@@ -1,0 +1,36 @@
+{
+  "contractVersion": "0.1",
+  "lessonId": "m01-w03-ikhlas",
+  "title": "سورة الإخلاص + حديث برّ الوالدين",
+  "value": "برّ الوالدين",
+  "_note": "Quran is referenced by surah:ayah only — the app loads the verified Tanzil text and reciter audio. Hadith is a placeholder id until a vetted source is approved.",
+  "steps": [
+    {
+      "type": "intro",
+      "surah": 112,
+      "surahInfoRef": "surahInfo/112",
+      "lines": ["greet.evening", "intro.plan", "intro.ready"]
+    },
+    { "type": "ayah_loop", "ref": { "surah": 112, "ayah": 1 }, "repeats": 3 },
+    { "type": "ayah_loop", "ref": { "surah": 112, "ayah": 2 }, "repeats": 3 },
+    { "type": "ayah_loop", "ref": { "surah": 112, "ayah": 3 }, "repeats": 3 },
+    { "type": "ayah_loop", "ref": { "surah": 112, "ayah": 4 }, "repeats": 3 },
+    {
+      "type": "surah_done",
+      "lines": ["surah.done"],
+      "question": "surah.next_hadith"
+    },
+    {
+      "type": "hadith_loop",
+      "hadithId": "PLACEHOLDER-birr-alwalidayn",
+      "repeats": 3
+    },
+    {
+      "type": "project_assign",
+      "projectId": "birr-3-acts",
+      "lines": ["project.intro", "project.tomorrow"],
+      "hints": ["project.hint1", "project.hint2", "project.hint3"]
+    },
+    { "type": "lesson_end", "lines": ["end.praise", "end.see_you"] }
+  ]
+}

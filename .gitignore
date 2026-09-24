@@ -1,0 +1,43 @@
+# ── Root ignore for the Gharsah monorepo ──
+# (app/ also has Flutter's own .gitignore; android/ has its own for keystores)
+
+# Build output left at the root from before the monorepo move
+/build/
+
+# Logs
+*.log
+
+# Secrets — never commit
+.env
+.env.*
+*service-account*.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+*.jks
+*.keystore
+key.properties
+
+# Node tooling
+node_modules/
+
+# Python (ai/)
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Model weights / large binaries (share via release or storage, not git)
+*.onnx
+*.tflite
+*.pt
+*.bin
+*.nemo
+
+# Editors / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+desktop.ini

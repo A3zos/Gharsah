@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "884261098380",
+    "project_id": "nibras-59284",
+    "storage_bucket": "nibras-59284.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:884261098380:android:fb3cc88829bfaa120e3ca9",
+        "android_client_info": {
+          "package_name": "com.gharsah.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHDTd9Yi2TqmqzwsfvAr3J8w4yfrkMvv0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

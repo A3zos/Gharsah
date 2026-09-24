@@ -1,0 +1,226 @@
+# غَرْسة (Gharsah) — Full Project Brief for Claude Code
+
+This file is the complete spec: product, architecture, design system, all screens, and the build
+plan. It lives at the repo root so it's always in context. **Plan first, then implement.**
+
+---
+
+## 0. Repository layout (monorepo — READ FIRST)
+
+```
+Gharsah/
+├── app/      Flutter app + firebase.json + firestore.rules + tool/ (rules tests, design_compare)
+├── ai/       AI teacher — owned by a separate AI developer. Do NOT write code here unless asked.
+│             The app ↔ AI interface is ai/CONTRACT.md (Draft v0.1); guardrails in ai/GUARDRAILS.md.
+├── design/   Approved design (screens/*.png, html/*.html, DESIGN_NOTES.md)
+├── docs/     BRD and other documents
+└── CLAUDE.md this file
+```
+
+- **All Flutter commands run from `app/`** (`cd app && flutter run -d chrome`). All code paths in this
+  file (`lib/...`, `assets/...`, `tool/...`) are relative to `app/`.
+- **Firebase CLI runs from `app/`** too (firebase.json lives there): `firebase deploy --only firestore:rules --project nibras-59284`.
+- Design files are at the repo root: from `app/` they are `../design/...`.
+- When building the lesson screens (frames 17–23), code against the interface in `ai/CONTRACT.md` and use a
+  local mock of the AI teacher until the real module is delivered. Propose contract changes in writing; don't
+  change `ai/` files silently.
+- Git: private repo https://github.com/A3zos/Gharsah (branch `main`). Commit per finished screen/feature.
+
+---
+
+## 1. What we're building
+
+**غَرْسة** — a mobile app (Flutter, **Android-first via Google Play**) that teaches children
+**ages 8–13** to memorize Quran, hadith, and Islamic values through an **interactive "live-feel"
+lesson** led by an AI teacher (voice), then turns each lesson into a **weekly practical project**
+the child does in real life (e.g. برّ الوالدين) and reports back by voice.
+
+Built for the **"تحدي الذكاء الاصطناعي في خدمة المحتوى الإسلامي" (Bathel Foundation)** — Track 3
+(interactive experiences) + Track 4 (verification & attribution). **Reliability of religious
+content is the top judging criterion.**
+
+**Two users, two experiences under one identity:**
+- **Parent (adult):** subscribes, adds a child, sets a schedule, gets a pairing code, and monitors
+  progress (view-only). Parent screens are **calm & trustworthy**.
+- **Child (8–13):** enters the parent's pairing code (no account), goes through the live lesson.
+  Child screens are **playful**. Audio-first (many can't read vowelized Quran).
+
+## 2. Tech stack & architecture
+
+- **Flutter** (Dart), Android-first. Later: iOS.
+- **Firebase**: Auth (parent email/password) + Firestore (source of truth) + Storage (child audio).
+- **Google Play Billing** for the subscription (NOT a custom card form — Play rejects that).
+- **HARD ARCHITECTURE CONSTRAINT — parent and child are on SEPARATE devices.** Local storage
+  CANNOT bridge them. The pairing code, the child's submissions, and progress MUST live on the
+  server (Firestore). Local storage only caches the verified session so the child needn't re-enter
+  the code. Flow: parent subscribes (Play) → **server** generates a one-time pairing code tied to
+  the child profile → child enters the 6-digit code → child app verifies with the server → server
+  returns a session token + profile → child device caches only that.
+- **AI teacher**: a **guided per-lesson script + dynamic voice responses** (NOT open chat). Uses
+  **Arabic TTS** for the teacher's voice, and **on-device speech-presence detection** to count the
+  child's 3 repeats (detect that the child spoke — NOT pronunciation grading). Real recitation
+  grading (e.g. on-device fastconformer-quran) is a **future** phase, only after testing on kids.
+- **Quran**: text from a **verified local JSON asset** bundled offline (Hafs), audio from a trusted
+  reciter source (e.g. AlQuran Cloud, per-ayah) downloaded offline. **Never fetch splash/lesson
+  Quran text from an API at runtime, and never let the AI generate it.**
+
+## 3. Critical guardrails (do not violate)
+
+1. **The AI never generates or completes Quran/hadith text.** Quran = verified local asset; hadith
+   = a clearly-marked placeholder «[نص حديث برّ الوالدين — يُعتمد لاحقًا من مصدر موثّق مع التخريج]»
+   until a real vetted source is added. Surah info (مكية/مدنية, ayah count, سبب النزول) from a
+   verified source, not free generation.
+2. **Child data privacy (Designed for Families):** parental gate before parent areas; declare audio
+   + progress in Play Data Safety; prefer on-device processing; store child audio securely and delete
+   when no longer needed; child gives no personal data (enters only a code).
+3. **Payment only via Google Play Billing.**
+4. **Server is the source of truth** for pairing and submissions (never local storage).
+
+## 4. Design system (single source of truth)
+
+Create `lib/theme/app_theme.dart` with these exact tokens (extracted from the approved design).
+Add `google_fonts`. **No screen hardcodes a color / size / radius / shadow — all from here.** Give
+the `TextTheme` an explicit `fontSize` on every style (prevents the `fontSize != null` assertion).
+
+- **Colors:** cream bg `#FBF6EC`; surface `#FFFFFF`; primary green `#2FA98C`; deep green (brand/
+  buttons/CTA text-on-light) `#1B7F69`, darker `#14624F`; green tint `#EAF6F2`; soft green `#7ACBB6`;
+  gold `#F4B740`, gold tint `#FDF1DA`, text-on-gold `#4A3206`; berry `#E86A92` / deep `#A8365C` /
+  tint `#FDE9EF`; sky `#4EA9E8` / tint `#E7F2FC`; text dark `#1F3D37`; text muted `#5C716C`; ayah
+  brackets gold `#9C6B12`; borders `#EFE7D6` / `#E4DCC8` / `#F4F0E4`.
+  Also from the approved auth frames (tokens in `AppColors`): input border `inputBorder #E7DECB`;
+  placeholder `placeholder #8A9A95`; error text `errorText #8E2B4D`; warning text `warningText #7A5209`;
+  seed core `seedGold #D99F23`.
+- **Fonts:** body **Cairo**; headings/brand **Baloo Bhaijaan 2**; Quran/ayah **Amiri**.
+- **Radii:** chips 14, icon-box 18, rows 18, auth buttons & text fields 20 (`AppRadii.input`),
+  gold CTA button 22 (`AppRadii.cta`), small card 24, card 28, hero card 30, pills 999.
+- **Shadows:** card `0 10px 26px rgba(31,61,55,0.06)`; soft `0 8px 18px rgba(31,61,55,0.04)`; hero
+  green `0 16px 32px rgba(27,127,105,0.26)`.
+- RTL Arabic (`locale: Locale('ar')`), Arabic-Indic numerals ٠١٢٣ everywhere, touch targets ≥48px,
+  phone width 390 (center content ~560 on tablet), respect safe areas, Android back collapses an
+  open section (doesn't exit).
+
+## 5. Reusable widgets (build before screens)
+
+`TeacherCharacter` (human Muslim teacher: white thobe + head cover + book, large & centered; states
+`speaking` = talking + sound-wave/glow, `listening` = quiet/leans-in; SAME character across all
+lesson screens); `LiveMicButton` (one persistent listening control — open = mic no slash + pulse,
+muted = mic with slash; not tapped per repeat); `LiveBadge` («● مباشر»); `AyahCard` (﴿ … ﴾ Amiri,
+gold brackets + reference, no visible play button, card tappable as silent fallback); `GPrimaryButton`
+(gold CTA); `GHeroCard` (deep-green card + hero shadow); `GStatCard`; `GPill`; `GrowthTimeline`
+(seed→sprout→tree, RTL: seed on the right); `BottomNavBar`.
+
+## 6. Screens & functional requirements
+
+### Parent flow
+- **Splash** — dynamic ayah in ﴿ ﴾ (Amiri, gold brackets) + reference; rotates each launch from a
+  verified local JSON; brand «غَرْسة» + tagline «نغرس حُبّ القرآن… ويكبر معهم»; auto → Login.
+- **Auth** — two buttons: «تسجيل دخول» / «إنشاء حساب» + terms & privacy links.
+- **Login** — two tabs. **ولي الأمر**: email + password (show/hide) + «نسيت كلمة المرور؟» +
+  «تسجيل الدخول» + link «إنشاء حساب». **الطفل**: 6-digit pairing code (Arabic-Indic, auto-advance),
+  verify via server, states: incomplete / wrong / verified; no email/password.
+- **Signup** — name + email + password + confirm.
+- **Packages** — current-plan card (name + days left + progress + expiry + «تجديد»); plans:
+  **سنوية ١١٩ ريال (الأفضل قيمة)** + **شهرية ٢٩ ريال**; «الدفع عبر Google Play»; «إضافة ابن»;
+  children list (avatar + name + age + pairing code + «الإنجازات» → Dashboard); note: subscription
+  managed by Google Play, no in-app card, cancel from Play. Bottom nav: الباقات / لوحة التحكم.
+- **PlayConfirm** — Google-Play-style purchase confirmation (no card entry).
+- **AddChild** — 3-step stepper: (1) البيانات: name + age chips ٨–١٣ (default ١٠) + gender بنت/ولد
+  → (2) الجدول: weekday toggles + unified time (+ per-day custom) + duration ٣٠/٤٥/٦٠ (default ٤٥,
+  daily cap) + reminder → (3) الشخصية: modest Muslim avatar picker.
+- **PairingCode** — big 6-digit code + «انسخ» + «شارك» + «أعطِ هذا الرمز لطفلك»; issued by server
+  after successful payment.
+- **Dashboard** (view-only) — child-switcher chips; growth hero (`GrowthTimeline` by yearly-plan %,
+  + month/week chip); four stat cards (السور / الآيات / الأحاديث / المشاريع), each expands.
+- **DashProjects** (highlight) — list of the child's projects: title + «مكتمل ✓» + date + **audio
+  player** to hear the child's own recording. (DashSurahs / DashAyat / DashHadith similar.)
+
+### Student flow (audio-first, live feel)
+- **StudentHome** — greeting + growth stage + streak; **weekly leaderboard** (top 5, medals top 3,
+  child's row highlighted, encouraging «أنت ضمن أفضل ٢٠٪», «يتجدد أسبوعيًا», first names only);
+  **hero «حصة اليوم»** (chips سورة الإخلاص + حديث برّ الوالدين, progress, gold CTA «ابدأ الحصة»);
+  3 shortcuts (القرآن / الأحاديث / المشاريع); bottom nav الرئيسية / ملفّي.
+- **L1Intro** — `TeacherCharacter` + «● مباشر»; spoken interactive intro (surah name / مكية-مدنية /
+  ayah count) + «خطة اليوم» + «جاهز نبدأ نحفظ؟» (mic answer) → the **ayah loop**: for each of Surah
+  Al-Ikhlas's 4 ayat — `AyahCard` → auto-play recitation (no visible play button) → child repeats
+  **3×** with the mic opened once & staying open, teacher counts by voice → auto-advance. No
+  per-ayah result screen, no chat bubbles, no pronunciation grading (presence only).
+- **L6SurahDone** — live surah-complete: celebration + growth step + teacher praises by voice +
+  stats + mic; asks «جاهز ننتقل للحديث؟» → yes → hadith (fallback button kept).
+- **L7Hadith** — topic **برّ الوالدين**; same style as Quran (repeat 3×); hadith text = placeholder;
+  ends with the teacher voicing the project assignment + «بكرة خبّرني».
+- **L8Project** — teacher assigns برّ-الوالدين project; three step-hints shown as reminder; mic for
+  the child to reply (فهمت / إن شاء الله), not to record now.
+- **L9Record** — next-day report: teacher «وش سويت في مشروع الأمس؟» → child records by voice
+  (recording state + waveform + re-record) → saved to server for the parent.
+- **L10Done** — lesson complete: growth step («غرستك كبرت») + «أكملت درس اليوم ✓» + streak +
+  «عودة للرئيسية» + a mic line «بكرة أنتظرك، علّمني وش سويت».
+
+## 7. Build plan (phased — verify each on the emulator/Chrome before the next)
+
+- **Phase A — foundation:** new Flutter project, `google_fonts`, `app_theme.dart`, RTL + Arabic
+  locale + Arabic-Indic numerals helper, Firebase wired (Auth + Firestore), folder structure.
+- **Phase B — reusable widgets** (section 5).
+- **Phase C — parent flow** screens (section 6) with real Firebase auth + Firestore pairing +
+  Play Billing (mock the Play purchase first, then integrate).
+- **Phase D — student flow** screens (the live lesson), with the verified Quran asset, Arabic TTS,
+  and on-device speech-presence counting.
+- **Phase E — polish, error/edge states** (wrong code, no mic permission, offline, autoplay
+  blocked, expired subscription, multiple children), Play Data Safety + parental gate.
+
+Build **one screen at a time**, run it, and confirm before moving on.
+
+## 8. Do NOT
+
+- Do not generate/complete Quran or hadith text. Do not fetch Quran text at runtime for splash/lesson.
+- Do not use local storage as the source of truth for pairing or submissions (server only).
+- Do not build a custom card-payment form (Google Play Billing only).
+- Do not add chat bubbles, a visible media play button, or per-repeat mic toggling.
+- Do not change the teacher character between lesson screens.
+- Do not collect personal data from the child (code entry only).
+
+## 9. Notes for the developer
+
+- First Android build is slow (Gradle + SDK downloads); on a 16GB machine set
+  `org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m` and `org.gradle.daemon=false` in
+  `android/gradle.properties`, and close browsers, or a real phone is lighter than an emulator.
+- Ask me (the product owner) whenever a requirement is ambiguous rather than guessing on
+  irreversible choices.
+
+---
+
+## 10. Design reference (READ BEFORE EVERY SCREEN)
+
+The approved design lives in `design/` at the repo root:
+- `design/README.md` — screen map (frame number → file → screen name).
+- `design/screens/*.png` — how each screen must look. View the PNG before building that screen.
+- `design/html/*.html` — exact values (colors, sizes, radii, spacing, copy). Read it; don't eyeball.
+- `design/DESIGN_NOTES.md` — behavior notes for the live lesson, mic, dashboard, growth stages.
+
+Workflow per screen: open the PNG + HTML → build with `app_theme.dart` tokens and the shared widgets →
+run it → take a screenshot and compare side by side with the PNG → fix differences before moving on.
+The HTML is a mockup, not code to port. Mockup data and the hadith text are placeholders.
+
+---
+
+## 11. Pre-release TODO (do not ship without these)
+
+- [ ] **Bundle fonts offline.** `google_fonts` downloads Cairo / Baloo Bhaijaan 2 / Amiri at runtime.
+      Before release: add the .ttf files under `assets/google_fonts/` (declared in pubspec) and set
+      `GoogleFonts.config.allowRuntimeFetching = false` so the app works fully offline.
+- [ ] **Require email verification** before subscribing or adding a child (Phase C). Login is allowed
+      while unverified, with a resend banner on the parent home.
+- [ ] **Tanzil attribution (CC BY 3.0).** Quran text comes from the Tanzil Project
+      (`assets/data/splash_ayat.json`). Credit «نص القرآن: مشروع تنزيل — tanzil.net» with a link in a
+      visible place (e.g. an «عن التطبيق» screen or the terms page) before release.
+- [ ] **Remove `lib/core/mock_data.dart`.** Children, per-child stats and the sample plan card are the
+      design's sample data, shown only until real Firestore data exists. Also needs a designed
+      "no subscription yet" state for the Packages plan card.
+- [ ] **Replace the mock Play purchase** (`MockPlaySubscriptionRepository`) with Google Play Billing +
+      server-side token verification; then `parents/{uid}/subscription` becomes server-write-only.
+- [ ] **Extend `firestore.rules` for Phase C — never loosen it.** Children, pairing codes and
+      submissions each get their own `match` block in the same style as `parents/{uid}`: owner-only
+      access (parent uid / verified child session), `keys().hasOnly([...])` strict fields, typed and
+      bounded values, immutable fields (role, createdAt, owner ids) locked on update, no collection
+      listing, and default-deny for anything unmatched. Pairing codes are issued/verified server-side
+      only. Add emulator tests for every new rule (allow + deny cases) and run them before
+      `firebase deploy --only firestore:rules`.

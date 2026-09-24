@@ -1,0 +1,122 @@
+rules_version = '2';
+
+// غَرْسة — Firestore security rules.
+// Default: everything is denied. Only the paths matched below are reachable.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+
+    // parents/{uid} — the parent's own profile. Only that parent can read/write it.
+    match /parents/{uid} {
+      function validName(d) { return d.name is string && d.name.size() > 0 && d.name.size() <= 100; }
+
+      allow read: if isOwner(uid);
+
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'createdAt', 'role'])
+        && validName(request.resource.data)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.role == 'parent';
+
+      // name/email may change; role and createdAt are fixed.
+      allow update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'createdAt', 'role'])
+        && validName(request.resource.data)
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if isOwner(uid);
+
+      // parents/{uid}/children/{childId} — the parent's children (07–11).
+      // Owner-only; every field typed and bounded; owner, createdAt and the
+      // pairing code can't be changed by the client after creation.
+      match /children/{childId} {
+        function ch() { return request.resource.data; }
+        function dayOk(sched, d) {
+          return !(d in sched.custom)
+            || (sched.custom[d] is int && sched.custom[d] >= 0 && sched.custom[d] < 1440);
+        }
+        function validSchedule(sched) {
+          return sched is map
+            && sched.keys().hasOnly(['days', 'time', 'custom', 'duration', 'reminder'])
+            && sched.keys().hasAll(['days', 'time', 'custom', 'duration', 'reminder'])
+            && sched.days is list && sched.days.size() >= 1 && sched.days.size() <= 7
+            && sched.days.hasOnly(['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'])
+            && sched.time is int && sched.time >= 0 && sched.time < 1440
+            && sched.custom is map
+            && sched.custom.keys().hasOnly(['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'])
+            && dayOk(sched, 'sat') && dayOk(sched, 'sun') && dayOk(sched, 'mon')
+            && dayOk(sched, 'tue') && dayOk(sched, 'wed') && dayOk(sched, 'thu')
+            && dayOk(sched, 'fri')
+            && sched.duration in [30, 45, 60]
+            && sched.reminder is bool;
+        }
+        function validChild() {
+          return ch().keys().hasOnly(['name', 'age', 'gender', 'avatar', 'schedule', 'pairing', 'ownerUid', 'createdAt'])
+            && ch().keys().hasAll(['name', 'age', 'gender', 'avatar', 'schedule', 'pairing', 'ownerUid', 'createdAt'])
+            && ch().name is string && ch().name.size() >= 1 && ch().name.size() <= 40
+            && ch().age is int && ch().age >= 8 && ch().age <= 13
+            && ch().gender in ['girl', 'boy']
+            && ch().avatar in ['g1', 'g2', 'g3', 'g4', 'g5', 'b1', 'b2', 'b3', 'b4']
+            && validSchedule(ch().schedule)
+            && ch().pairing is map
+            && ch().pairing.keys().hasOnly(['code', 'provider'])
+            && ch().pairing.keys().hasAll(['code', 'provider'])
+            && ch().pairing.code is string && ch().pairing.code.matches('^[0-9]{6}$')
+            // TODO(phase-c): codes come from a Cloud Function; then provider == 'server'
+            // and only the server may set `pairing`.
+            && ch().pairing.provider == 'mock'
+            && ch().ownerUid == uid;
+        }
+
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && exists(/databases/$(database)/documents/parents/$(uid))
+          && validChild()
+          && ch().createdAt == request.time;
+        allow update: if isOwner(uid)
+          && validChild()
+          && ch().createdAt == resource.data.createdAt
+          && ch().ownerUid == resource.data.ownerUid
+          && ch().pairing == resource.data.pairing;
+        allow delete: if isOwner(uid);
+      }
+
+      // parents/{uid}/subscription/current — the parent's plan.
+      // MOCK Play purchase for now: the client writes it, but only in this exact
+      // shape, marked provider 'mock', and never longer than the plan allows.
+      // TODO(phase-c): real Google Play Billing — a server verifies the purchase
+      // token and writes this doc with the Admin SDK; then change the client
+      // rule to `allow write: if false;`.
+      match /subscription/{docId} {
+        function sub() { return request.resource.data; }
+        function periodDays(plan) { return plan == 'annual' ? 366 : 31; }
+        // A renewal may extend from the current expiry if it is still in the future.
+        function base() {
+          return resource == null || resource.data.expiresAt < request.time
+            ? request.time : resource.data.expiresAt;
+        }
+        function validSubscription() {
+          return docId == 'current'
+            && exists(/databases/$(database)/documents/parents/$(uid))
+            && sub().keys().hasOnly(['plan', 'status', 'provider', 'startedAt', 'expiresAt'])
+            && sub().keys().hasAll(['plan', 'status', 'provider', 'startedAt', 'expiresAt'])
+            && sub().plan in ['annual', 'monthly']
+            && sub().status == 'active'
+            && sub().provider == 'mock'
+            && sub().startedAt == request.time
+            && sub().expiresAt is timestamp
+            && sub().expiresAt > request.time
+            && sub().expiresAt <= base() + duration.value(periodDays(sub().plan), 'd');
+        }
+
+        allow read: if isOwner(uid) && docId == 'current';
+        allow create, update: if isOwner(uid) && validSubscription();
+        allow delete: if false;
+      }
+    }
+  }
+}

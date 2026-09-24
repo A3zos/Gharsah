@@ -1,0 +1,39 @@
+{
+  "_notice": "Quran text copied programmatically from the Tanzil Project — do not edit by hand. Basmala prefix removed from ayah 1 (not part of the ayah in Hafs numbering). Excerpts are cut only at a waqf mark present in the source.",
+  "sourceUrl": "https://tanzil.net/download/",
+  "sourceSha256": "4b91f9e6e8ac645d039e4ed85b3be492e795232a31cd22d668ac58238722e26f",
+  "ayat": [
+    {
+      "surah": 96,
+      "surahName": "العلق",
+      "ayah": 1,
+      "text": "ٱقْرَأْ بِٱسْمِ رَبِّكَ ٱلَّذِى خَلَقَ",
+      "isExcerpt": false,
+      "source": "Tanzil Quran Text (Uthmani, Version 1.1) — tanzil.net — CC BY 3.0"
+    },
+    {
+      "surah": 20,
+      "surahName": "طه",
+      "ayah": 114,
+      "text": "وَقُل رَّبِّ زِدْنِى عِلْمًا",
+      "isExcerpt": true,
+      "source": "Tanzil Quran Text (Uthmani, Version 1.1) — tanzil.net — CC BY 3.0"
+    },
+    {
+      "surah": 17,
+      "surahName": "الإسراء",
+      "ayah": 9,
+      "text": "إِنَّ هَٰذَا ٱلْقُرْءَانَ يَهْدِى لِلَّتِى هِىَ أَقْوَمُ وَيُبَشِّرُ ٱلْمُؤْمِنِينَ ٱلَّذِينَ يَعْمَلُونَ ٱلصَّٰلِحَٰتِ أَنَّ لَهُمْ أَجْرًا كَبِيرًا",
+      "isExcerpt": false,
+      "source": "Tanzil Quran Text (Uthmani, Version 1.1) — tanzil.net — CC BY 3.0"
+    },
+    {
+      "surah": 54,
+      "surahName": "القمر",
+      "ayah": 17,
+      "text": "وَلَقَدْ يَسَّرْنَا ٱلْقُرْءَانَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍ",
+      "isExcerpt": false,
+      "source": "Tanzil Quran Text (Uthmani, Version 1.1) — tanzil.net — CC BY 3.0"
+    }
+  ]
+}
