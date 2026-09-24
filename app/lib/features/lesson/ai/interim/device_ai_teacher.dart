@@ -108,7 +108,8 @@ class DeviceAiTeacher implements AiTeacher {
     _pcm = null;
     await sub?.cancel();
     try {
-      await _mic.cancel(); // stream mode writes no file; cancel drops everything
+      await _mic
+          .cancel(); // stream mode writes no file; cancel drops everything
     } catch (_) {}
     _detector.reset();
     _level.add(0);

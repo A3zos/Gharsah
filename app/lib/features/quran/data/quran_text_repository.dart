@@ -31,5 +31,6 @@ class QuranTextRepository {
 
   /// Throws if the ayah isn't bundled — lessons may only use bundled surahs.
   String text(QuranRef r) =>
-      _text[r] ?? (throw StateError('Ayah ${r.key} is not in the verified asset'));
+      _text[r] ??
+      (throw StateError('Ayah ${r.key} is not in the verified asset'));
 }

@@ -7,7 +7,7 @@ import '../../../theme/app_theme.dart';
 import '../../../widgets/app_icons.dart';
 import '../../../widgets/g_page_header.dart';
 import '../../children/data/child_profile.dart';
-import '../../children/data/children_repository.dart';
+import '../../children/screens/pairing_code_screen.dart';
 import '../../subscription/data/subscription.dart';
 
 const String _googlePlay = 'Google Play';
@@ -36,8 +36,7 @@ class PackagesScreen extends StatelessWidget {
         stream: scope.subscriptions.watchCurrent(),
         builder: (context, snap) {
           final sub = snap.data;
-          // Real children replace the design's samples as soon as one exists.
-          final children = childrenOrSample(kids.data);
+          final children = kids.data ?? const <ChildProfile>[];
           return ListView(
             padding: const EdgeInsets.fromLTRB(
               AppSizes.pagePaddingH,
@@ -488,6 +487,16 @@ class _ChildCard extends StatelessWidget {
   static String ageLabel(int age) =>
       '${age.arabicDigits} ${age >= 3 && age <= 10 ? 'سنوات' : 'سنة'}';
 
+  /// «رمز الربط ٤٧٢٩١٨» while the server-issued code is valid.
+  /// TODO(design): no designed label for a linked child / an expired code.
+  static String codeLabel(ChildProfile child, DateTime now) {
+    final p = child.pairing;
+    if (p != null && p.isActive(now)) {
+      return 'رمز الربط ${p.code.arabicDigits}';
+    }
+    return child.linked ? 'مرتبط بجهاز طفلك' : 'رمز الربط منتهٍ';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -502,16 +511,25 @@ class _ChildCard extends StatelessWidget {
           AppIcon.childAvatar(child.avatarId),
           const SizedBox(width: 13),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(child.name, style: AppTextStyles.childName),
-                const SizedBox(height: 3),
-                Text(
-                  '${ageLabel(child.age)} · رمز الربط ${child.pairingCode.arabicDigits}',
-                  style: AppTextStyles.body13,
+            // TODO(design): the card opens frame 11 (code / «إصدار رمز جديد»).
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => PairingCodeScreen(child: child),
                 ),
-              ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(child.name, style: AppTextStyles.childName),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${ageLabel(child.age)} · ${codeLabel(child, DateTime.now())}',
+                    style: AppTextStyles.body13,
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 13),

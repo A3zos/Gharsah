@@ -53,15 +53,17 @@ void main() {
     );
   });
 
-  test('non-bundled ayah is unavailable until prefetched (no streaming)',
-      () async {
-    final r = repo();
-    await expectLater(
-      r.resolve(const QuranRef(2, 1)),
-      throwsA(isA<RecitationNotAvailable>()),
-    );
-    expect(fetched, isEmpty);
-  });
+  test(
+    'non-bundled ayah is unavailable until prefetched (no streaming)',
+    () async {
+      final r = repo();
+      await expectLater(
+        r.resolve(const QuranRef(2, 1)),
+        throwsA(isA<RecitationNotAvailable>()),
+      );
+      expect(fetched, isEmpty);
+    },
+  );
 
   test('download once, then play from cache', () async {
     final r = repo();

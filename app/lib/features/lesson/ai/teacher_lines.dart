@@ -22,7 +22,8 @@ class TeacherLineBank {
     'ayah.repeat_now': 'الآن ردّد بصوتك… ثلاث مرات.',
     'count.two_left': 'أحسنت… باقي مرتين.',
     'count.one_left': 'ممتاز… باقي مرة.',
-    'count.more': 'أحسنت… باقي {remaining} مرات.', // REVIEW (only if repeats > 3)
+    'count.more':
+        'أحسنت… باقي {remaining} مرات.', // REVIEW (only if repeats > 3)
     'nudge.one_left': 'باقي مرة، هيا…',
     'nudge.two_left': 'باقي مرتين، هيا…', // REVIEW
     'nudge.start': 'هيا… ردّد معي.', // REVIEW

@@ -171,12 +171,16 @@ class LessonAgent {
     }
     _subs
       ..add(teacher.actions.listen(_onAction))
-      ..add(teacher.inputLevel.listen((v) {
-        if (_listening) _setLevel(v);
-      }))
-      ..add(recorder.level.listen((v) {
-        if (_s.beat == LessonBeat.recording) _setLevel(v);
-      }))
+      ..add(
+        teacher.inputLevel.listen((v) {
+          if (_listening) _setLevel(v);
+        }),
+      )
+      ..add(
+        recorder.level.listen((v) {
+          if (_s.beat == LessonBeat.recording) _setLevel(v);
+        }),
+      )
       ..add(player.completed.listen((_) => _onRecitationComplete()));
     teacher.onEvent(LessonStarted(script.lessonId, childFirstName));
     _startClock();
@@ -378,7 +382,9 @@ class LessonAgent {
         teacherSpeaking: false,
       ),
     );
-    if (!finished) await _checkpoint(_progress.copyWith(stepIndex: _s.stepIndex));
+    if (!finished) {
+      await _checkpoint(_progress.copyWith(stepIndex: _s.stepIndex));
+    }
   }
 
   // ═══ Steps ═════════════════════════════════════════════════════════════════
@@ -411,8 +417,11 @@ class LessonAgent {
             surahAyahCount: content.meta.ayahCount(step.surah),
           ),
         );
-        _sayLines(step.lines, question: step.lines.isEmpty ? null : step.lines.last,
-            onYes: _next);
+        _sayLines(
+          step.lines,
+          question: step.lines.isEmpty ? null : step.lines.last,
+          onYes: _next,
+        );
       case AyahLoopStep():
         final r = step.ref;
         final surah = content.meta.surahName(r.surah);
@@ -453,7 +462,9 @@ class LessonAgent {
         _say(
           _line('hadith.topic'),
           beat: LessonBeat.speaking,
-          then: h.canPlay ? _startRecitation : () => _promptRepeat(fromRecitation: false),
+          then: h.canPlay
+              ? _startRecitation
+              : () => _promptRepeat(fromRecitation: false),
         );
       case ProjectAssignStep():
         _set(
@@ -485,7 +496,9 @@ class LessonAgent {
           ),
         );
         _say(
-          _line(_now().hour < 12 ? 'report.greet.morning' : 'report.greet.evening'),
+          _line(
+            _now().hour < 12 ? 'report.greet.morning' : 'report.greet.evening',
+          ),
           beat: LessonBeat.speaking,
           happy: true,
           then: () => _say(
@@ -521,7 +534,11 @@ class LessonAgent {
 
   void _jumpAyah(int dir) {
     if (_paused) return;
-    for (var i = _s.stepIndex + dir; i >= 0 && i < script.steps.length; i += dir) {
+    for (
+      var i = _s.stepIndex + dir;
+      i >= 0 && i < script.steps.length;
+      i += dir
+    ) {
       if (script.steps[i] is AyahLoopStep) {
         _enterStep(i);
         return;
@@ -549,7 +566,8 @@ class LessonAgent {
       },
       skip: stop,
     );
-    await teacher.stopSpeaking(); // the teacher is silent while the reciter plays
+    await teacher
+        .stopSpeaking(); // the teacher is silent while the reciter plays
     final RecitationAudio audio;
     try {
       audio = isHadith
@@ -584,10 +602,8 @@ class LessonAgent {
   }
 
   /// «الآن ردّد بصوتك… ثلاث مرات.» with the mic's gold ring.
-  void _promptRepeat({required bool fromRecitation}) => _say(
-    const TeacherLine('ayah.repeat_now'),
-    beat: LessonBeat.awaitMic,
-  );
+  void _promptRepeat({required bool fromRecitation}) =>
+      _say(const TeacherLine('ayah.repeat_now'), beat: LessonBeat.awaitMic);
 
   void _enterListening() {
     final isHadith = _s.screen == LessonScreen.hadith;
@@ -614,7 +630,9 @@ class LessonAgent {
   void _armSilence(int g) {
     _beatTimer?.cancel();
     _beatTimer = Timer(timings.silence, () {
-      if (g == _gen && !_paused && _s.beat == LessonBeat.listening) _onSilence();
+      if (g == _gen && !_paused && _s.beat == LessonBeat.listening) {
+        _onSilence();
+      }
     });
   }
 
@@ -697,9 +715,8 @@ class LessonAgent {
         : null;
     if (nextRef == null) {
       final count = content.meta.ayahCount(ref.surah);
-      final whole = [
-        for (var a = 1; a <= count; a++) QuranRef(ref.surah, a),
-      ].every(done.contains);
+      final whole = [for (var a = 1; a <= count; a++) QuranRef(ref.surah, a)]
+          .every(done.contains);
       if (whole) {
         _progress = _progress.copyWith(
           surahsCompleted: {..._progress.surahsCompleted, ref.surah},
@@ -717,12 +734,16 @@ class LessonAgent {
       );
       return;
     }
-    final isLastNext = !(_s.stepIndex + 2 < script.steps.length &&
-        script.steps[_s.stepIndex + 2] is AyahLoopStep &&
-        (script.steps[_s.stepIndex + 2] as AyahLoopStep).ref.surah == ref.surah);
-    final firstOfRun = !(_s.stepIndex > 0 &&
-        script.steps[_s.stepIndex - 1] is AyahLoopStep &&
-        (script.steps[_s.stepIndex - 1] as AyahLoopStep).ref.surah == ref.surah);
+    final isLastNext =
+        !(_s.stepIndex + 2 < script.steps.length &&
+            script.steps[_s.stepIndex + 2] is AyahLoopStep &&
+            (script.steps[_s.stepIndex + 2] as AyahLoopStep).ref.surah ==
+                ref.surah);
+    final firstOfRun =
+        !(_s.stepIndex > 0 &&
+            script.steps[_s.stepIndex - 1] is AyahLoopStep &&
+            (script.steps[_s.stepIndex - 1] as AyahLoopStep).ref.surah ==
+                ref.surah);
     final id = isLastNext
         ? 'praise.last_left'
         : firstOfRun
@@ -757,11 +778,7 @@ class LessonAgent {
     final isQuestion = question != null && from == lines.length - 1;
     if (isQuestion) {
       _question = _Question(TeacherLine(id), expect, onYes ?? () {});
-      _say(
-        _line(id),
-        beat: LessonBeat.awaitMic,
-        lineIndex: from,
-      );
+      _say(_line(id), beat: LessonBeat.awaitMic, lineIndex: from);
       return;
     }
     _say(
@@ -882,7 +899,10 @@ class LessonAgent {
     _setLevel(0);
     if (rec == null) {
       // Nothing usable — ask again.
-      _say(_line((_step as ProjectReportStep).question), beat: LessonBeat.awaitMic);
+      _say(
+        _line((_step as ProjectReportStep).question),
+        beat: LessonBeat.awaitMic,
+      );
       return;
     }
     _recorded = rec;
@@ -900,7 +920,9 @@ class LessonAgent {
     _resume = _armAutoAdvance;
     _beatTimer?.cancel();
     _beatTimer = Timer(timings.recordedAutoAdvance, () {
-      if (g == _gen && !_paused && _s.beat == LessonBeat.recorded) _saveReport();
+      if (g == _gen && !_paused && _s.beat == LessonBeat.recorded) {
+        _saveReport();
+      }
     });
   }
 
@@ -943,7 +965,9 @@ class LessonAgent {
     _recorded = null;
     unawaited(recorder.discard(rec)); // the local copy isn't needed any more
     _progress = _progress.copyWith(reportedProject: step.projectId);
-    if (g == _gen) await said.future.timeout(const Duration(seconds: 15), onTimeout: () {});
+    if (g == _gen) {
+      await said.future.timeout(const Duration(seconds: 15), onTimeout: () {});
+    }
     if (_s.screen == LessonScreen.projectReport && !_disposed) _next();
   }
 
@@ -992,7 +1016,13 @@ class LessonAgent {
         happy: happy,
         lineIndex: lineIndex,
       ),
-      resume: () => _say(line, beat: beat, happy: happy, lineIndex: lineIndex, then: then),
+      resume: () => _say(
+        line,
+        beat: beat,
+        happy: happy,
+        lineIndex: lineIndex,
+        then: then,
+      ),
       skip: () {
         if (g != _gen) return;
         unawaited(teacher.stopSpeaking());
@@ -1111,7 +1141,9 @@ class LessonAgent {
       'name': childFirstName,
       if (surah != null) 'surah': content.meta.surahName(surah),
       if (surah != null)
-        'countWords': TeacherLineBank.ayatInWords(content.meta.ayahCount(surah)),
+        'countWords': TeacherLineBank.ayatInWords(
+          content.meta.ayahCount(surah),
+        ),
       if (_s.hadith != null) 'hadithTitle': _s.hadith!.title,
       if (project != null) 'projectIntro': project.intro,
       if (project != null) 'projectTomorrow': project.tomorrow,

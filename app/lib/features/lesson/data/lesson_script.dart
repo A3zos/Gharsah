@@ -34,15 +34,14 @@ class LessonScript {
     );
   }
 
-  static Future<LessonScript> load(String lessonId, [AssetBundle? bundle]) async =>
-      LessonScript.fromJson(
-        jsonDecode(
-              await (bundle ?? rootBundle).loadString(
-                'assets/lessons/$lessonId.json',
-              ),
-            )
-            as Map<String, dynamic>,
-      );
+  static Future<LessonScript> load(
+    String lessonId, [
+    AssetBundle? bundle,
+  ]) async => LessonScript.fromJson(
+    jsonDecode(
+      await (bundle ?? rootBundle).loadString('assets/lessons/$lessonId.json'),
+    ) as Map<String, dynamic>,
+  );
 
   final String lessonId;
   final String title;
@@ -52,9 +51,8 @@ class LessonScript {
   final bool interim;
 
   /// Every Quran ref the lesson recites (to prefetch audio before starting).
-  Iterable<QuranRef> get quranRefs => steps.whereType<AyahLoopStep>().map(
-    (s) => s.ref,
-  );
+  Iterable<QuranRef> get quranRefs =>
+      steps.whereType<AyahLoopStep>().map((s) => s.ref);
 
   /// Checks refs against the mushaf; throws [FormatException] if invalid.
   void validate(QuranMeta meta) {

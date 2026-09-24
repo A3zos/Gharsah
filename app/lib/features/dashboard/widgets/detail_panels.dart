@@ -5,7 +5,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/arabic_digits.dart';
-import '../../../core/mock_data.dart';
+import '../../../widgets/confirm_sheet.dart';
+import '../data/dashboard_data.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/app_icons.dart';
 import '../../../widgets/info_note.dart';
@@ -256,14 +257,43 @@ class DoneRow extends StatelessWidget {
 
 // ───────────────────────────── 13 · Projects ─────────────────────────────
 
+/// One finished project in 13: the child's own recording (real) or the
+/// design sample.
+class ProjectEntry {
+  const ProjectEntry({
+    required this.title,
+    required this.date,
+    required this.duration,
+    required this.loadAudio,
+    this.note,
+    this.onDelete,
+  });
+
+  final String title;
+  final String date;
+  final Duration duration;
+
+  /// The child's words as text — only in the design sample; real reports
+  /// are voice only (never transcribed).
+  final String? note;
+  final Future<Source> Function() loadAudio;
+
+  /// Parent deletes the recording (null for samples).
+  final Future<void> Function()? onDelete;
+}
+
 class ProjectsPanel extends StatefulWidget {
   const ProjectsPanel({
     super.key,
     required this.childName,
+    required this.entries,
+    required this.pendingProject,
     required this.onHide,
   });
 
   final String childName;
+  final List<ProjectEntry> entries;
+  final String? pendingProject;
   final VoidCallback onHide;
 
   @override
@@ -271,9 +301,6 @@ class ProjectsPanel extends StatefulWidget {
 }
 
 class _ProjectsPanelState extends State<ProjectsPanel> {
-  // TODO(phase-d): stream each project's real recording from Firebase Storage.
-  static const _placeholder = 'audio/placeholder_recording.wav';
-
   final AudioPlayer _player = AudioPlayer();
   final List<StreamSubscription<Object?>> _subs = [];
   int _playing = -1;
@@ -318,19 +345,44 @@ class _ProjectsPanelState extends State<ProjectsPanel> {
     setState(() {
       _playing = i;
       _position = Duration.zero;
+      _duration = null;
     });
     await _player.stop();
-    await _player.play(AssetSource(_placeholder));
+    try {
+      await _player.play(await widget.entries[i].loadAudio());
+    } catch (e) {
+      debugPrint('Recording not playable: $e');
+      if (mounted) setState(() => _playing = -1);
+    }
+  }
+
+  Future<void> _delete(int i) async {
+    final entry = widget.entries[i];
+    final ok = await showConfirmSheet(
+      context,
+      title: 'حذف التسجيل',
+      message:
+          'سيُحذف تسجيل ${widget.childName} لمشروع «${entry.title}» نهائيًا.',
+      confirmLabel: 'حذف',
+      destructive: true,
+    );
+    if (!ok) return;
+    if (_playing == i) {
+      await _player.stop();
+      if (mounted) setState(() => _playing = -1);
+    }
+    await entry.onDelete!();
   }
 
   @override
   Widget build(BuildContext context) {
-    const projects = MockData.projects;
+    final projects = widget.entries;
+    final pending = widget.pendingProject;
     return DetailPanel(
       card: DashCard.projects,
       title: 'المشاريع العملية',
       subtitle:
-          '${projects.length.arabicDigits} منجزة · ${1.arabicDigits} قيد التنفيذ',
+          '${projects.length.arabicDigits} منجزة · ${(pending == null ? 0 : 1).arabicDigits} قيد التنفيذ',
       onHide: widget.onHide,
       children: [
         for (var i = 0; i < projects.length; i++)
@@ -344,8 +396,10 @@ class _ProjectsPanelState extends State<ProjectsPanel> {
             position: _playing == i ? _position : Duration.zero,
             duration: _playing == i ? _duration : null,
             onToggle: () => _toggle(i),
+            onDelete: projects[i].onDelete == null ? null : () => _delete(i),
           ),
-        _PendingProject(childName: widget.childName),
+        if (pending != null)
+          _PendingProject(title: pending, childName: widget.childName),
         const InfoNote(
           tone: InfoNoteTone.greenInfo,
           lineHeight: 1.8,
@@ -370,15 +424,17 @@ class _ProjectCard extends StatelessWidget {
     required this.position,
     required this.duration,
     required this.onToggle,
+    this.onDelete,
   });
 
-  final MockProject project;
+  final ProjectEntry project;
   final String childName;
   final bool playing;
   final double fraction;
   final Duration position;
   final Duration? duration;
   final VoidCallback onToggle;
+  final VoidCallback? onDelete;
 
   // Waveform bar heights from the design.
   static const _bars = [
@@ -417,7 +473,7 @@ class _ProjectCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final played = (fraction * _bars.length).round();
-    final total = duration ?? Duration(seconds: project.seconds);
+    final total = duration ?? project.duration;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -439,14 +495,16 @@ class _ProjectCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(project.date, style: AppTextStyles.small),
           const SizedBox(height: 10),
-          Text(
-            project.note,
-            style: AppTextStyles.body13.copyWith(
-              color: AppColors.textDark,
-              height: 1.8,
+          if (project.note != null) ...[
+            Text(
+              project.note!,
+              style: AppTextStyles.body13.copyWith(
+                color: AppColors.textDark,
+                height: 1.8,
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 10),
+          ],
           Container(
             padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
@@ -531,6 +589,20 @@ class _ProjectCard extends StatelessWidget {
               ],
             ),
           ),
+          if (onDelete != null)
+            // TODO(design): no designed delete control for a recording yet.
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                onPressed: onDelete,
+                child: Text(
+                  'حذف التسجيل',
+                  style: AppTextStyles.linkSmall.copyWith(
+                    color: AppColors.berryDeep,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -538,8 +610,9 @@ class _ProjectCard extends StatelessWidget {
 }
 
 class _PendingProject extends StatelessWidget {
-  const _PendingProject({required this.childName});
+  const _PendingProject({required this.title, required this.childName});
 
+  final String title;
   final String childName;
 
   @override
@@ -564,7 +637,7 @@ class _PendingProject extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    MockData.pendingProject,
+                    title,
                     style: AppTextStyles.itemTitle.copyWith(
                       color: AppColors.textMuted,
                     ),
@@ -633,110 +706,112 @@ class _DashedRRectPainter extends CustomPainter {
 // ───────────────────────────── 14 · Surahs ─────────────────────────────
 
 class SurahsPanel extends StatelessWidget {
-  const SurahsPanel({super.key, required this.onHide});
+  const SurahsPanel({super.key, required this.data, required this.onHide});
 
+  final DashboardData data;
   final VoidCallback onHide;
 
   @override
   Widget build(BuildContext context) {
-    const done = MockData.surahsDone;
-    const current = MockData.surahInProgress;
+    final done = data.surahsDone;
+    final current = data.surahInProgress;
     return DetailPanel(
       card: DashCard.surahs,
       title: 'السور',
       subtitle:
-          '${done.length.arabicDigits} مكتملة · ${1.arabicDigits} قيد الحفظ',
+          '${done.length.arabicDigits} مكتملة · ${(current == null ? 0 : 1).arabicDigits} قيد الحفظ',
       onHide: onHide,
       children: [
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.goldTint,
-            borderRadius: BorderRadius.circular(AppRadii.projectCard),
-            border: Border.all(
-              color: AppColors.goldBorder,
-              width: AppSizes.borderWidth,
+        if (current != null)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.goldTint,
+              borderRadius: BorderRadius.circular(AppRadii.projectCard),
+              border: Border.all(
+                color: AppColors.goldBorder,
+                width: AppSizes.borderWidth,
+              ),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: AppSizes.clockBadge,
-                    height: AppSizes.clockBadge,
-                    alignment: Alignment.center,
-                    decoration: const BoxDecoration(
-                      color: AppColors.surface,
-                      shape: BoxShape.circle,
-                    ),
-                    child: AppIcon.clock(
-                      size: AppSizes.iconXs,
-                      color: AppColors.warningText,
-                    ),
-                  ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Text(
-                      current.name,
-                      style: AppTextStyles.actionLabel.copyWith(
-                        color: AppColors.textDark,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: AppSizes.clockBadge,
+                      height: AppSizes.clockBadge,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                      ),
+                      child: AppIcon.clock(
+                        size: AppSizes.iconXs,
+                        color: AppColors.warningText,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 11),
-                  const StatusChip(
-                    text: 'قيد الحفظ',
-                    gold: true,
-                    onWhite: true,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 11),
-              Row(
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(AppRadii.miniBar),
-                      child: SizedBox(
-                        height: AppSizes.miniBarHeight,
-                        child: Stack(
-                          children: [
-                            const Positioned.fill(
-                              child: ColoredBox(color: AppColors.surface),
-                            ),
-                            FractionallySizedBox(
-                              alignment: AlignmentDirectional.centerStart,
-                              widthFactor: current.percent / 100,
-                              heightFactor: 1,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: AppColors.gold,
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadii.miniBar,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Text(
+                        current.name,
+                        style: AppTextStyles.actionLabel.copyWith(
+                          color: AppColors.textDark,
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '${current.percent.arabicDigits}٪',
-                    style: AppTextStyles.small.copyWith(
-                      color: AppColors.warningText,
-                      fontWeight: FontWeight.w800,
+                    const SizedBox(width: 11),
+                    const StatusChip(
+                      text: 'قيد الحفظ',
+                      gold: true,
+                      onWhite: true,
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 11),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadii.miniBar),
+                        child: SizedBox(
+                          height: AppSizes.miniBarHeight,
+                          child: Stack(
+                            children: [
+                              const Positioned.fill(
+                                child: ColoredBox(color: AppColors.surface),
+                              ),
+                              FractionallySizedBox(
+                                alignment: AlignmentDirectional.centerStart,
+                                widthFactor: current.percent / 100,
+                                heightFactor: 1,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.gold,
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadii.miniBar,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '${current.percent.arabicDigits}٪',
+                      style: AppTextStyles.small.copyWith(
+                        color: AppColors.warningText,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
         Padding(
           padding: const EdgeInsetsDirectional.only(start: 4),
           child: Text(
@@ -760,14 +835,20 @@ class SurahsPanel extends StatelessWidget {
 // ───────────────────────────── 15 · Hadith ─────────────────────────────
 
 class HadithPanel extends StatelessWidget {
-  const HadithPanel({super.key, required this.childName, required this.onHide});
+  const HadithPanel({
+    super.key,
+    required this.childName,
+    required this.data,
+    required this.onHide,
+  });
 
   final String childName;
+  final DashboardData data;
   final VoidCallback onHide;
 
   @override
   Widget build(BuildContext context) {
-    const done = MockData.hadithDone;
+    final done = data.hadithDone;
     return DetailPanel(
       card: DashCard.hadith,
       title: 'الأحاديث',
@@ -814,13 +895,16 @@ class HadithPanel extends StatelessWidget {
 // ───────────────────────────── 16 · Ayat ─────────────────────────────
 
 class AyatPanel extends StatelessWidget {
-  const AyatPanel({super.key, required this.total, required this.onHide});
+  const AyatPanel({super.key, required this.data, required this.onHide});
 
-  final int total;
+  final DashboardData data;
   final VoidCallback onHide;
 
   @override
   Widget build(BuildContext context) {
+    final latest = data.ayatLatest;
+    final surahCount =
+        data.ayatSurahs.length + (data.ayatInProgress == null ? 0 : 1);
     Widget chip(String text, {bool gold = false}) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
       decoration: BoxDecoration(
@@ -851,7 +935,10 @@ class AyatPanel extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(total.arabicDigits, style: AppTextStyles.summaryNumber),
+              Text(
+                data.stats.ayat.arabicDigits,
+                style: AppTextStyles.summaryNumber,
+              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
@@ -860,7 +947,7 @@ class AyatPanel extends StatelessWidget {
                     Text('آية محفوظة', style: AppTextStyles.optionLabel),
                     const SizedBox(height: 4),
                     Text(
-                      'موزّعة على ${MockData.ayatSurahCount.arabicDigits} سور قصيرة',
+                      'موزّعة على ${surahCount.arabicDigits} سور قصيرة',
                       style: AppTextStyles.caption,
                     ),
                   ],
@@ -873,22 +960,24 @@ class AyatPanel extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final s in MockData.ayatSurahs) chip(s),
-            chip('${MockData.ayatInProgress} · قيد الحفظ', gold: true),
+            for (final s in data.ayatSurahs) chip(s),
+            if (data.ayatInProgress != null)
+              chip('${data.ayatInProgress} · قيد الحفظ', gold: true),
           ],
         ),
-        Row(
-          children: [
-            AppIcon.sproutTiny(),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Text(
-                'آخر إضافة: ${MockData.ayatAddedThisWeek.arabicDigits} آيات هذا الأسبوع من سورة ${MockData.ayatInProgress}.',
-                style: AppTextStyles.caption.copyWith(height: 1.7),
+        if (latest != null)
+          Row(
+            children: [
+              AppIcon.sproutTiny(),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  'آخر إضافة: ${latest.count.arabicDigits} آيات هذا الأسبوع من سورة ${latest.surah}.',
+                  style: AppTextStyles.caption.copyWith(height: 1.7),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
       ],
     );
   }

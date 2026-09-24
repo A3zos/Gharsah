@@ -1,5 +1,5 @@
 // Firestore rules tests. Run from the repo root:
-//   firebase emulators:exec --only firestore --project nibras-59284 "node tool/rules_test/rules.test.mjs"
+//   firebase emulators:exec -c firebase.test.json --only firestore --project nibras-59284 "node tool/rules_test/rules.test.mjs"
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, collection, getDocs, Timestamp,
@@ -13,8 +13,9 @@ const env = await initializeTestEnvironment({
   projectId: 'nibras-59284',
   firestore: {
     rules: fs.readFileSync(path.join(here, '..', '..', 'firestore.rules'), 'utf8'),
-    host: '127.0.0.1',
-    port: 8080,
+    // Set by `firebase emulators:exec` (see firebase.test.json for the ports).
+    host: (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8180').split(':')[0],
+    port: +(process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8180').split(':')[1],
   },
 });
 
@@ -86,7 +87,7 @@ await t('sub: renewal beyond remaining + period → denied', assertFails(setDoc(
 const schedule = (over = {}) => ({ days: ['sat', 'sun', 'mon', 'wed'], time: 1020, custom: { mon: 1050 }, duration: 45, reminder: true, ...over });
 const child = (over = {}) => ({
   name: 'سارة', age: 10, gender: 'girl', avatar: 'g1', schedule: schedule(),
-  pairing: { code: '472918', provider: 'mock' }, ownerUid: 'alice', createdAt: serverTimestamp(), ...over,
+  ownerUid: 'alice', createdAt: serverTimestamp(), ...over,
 });
 const kidRef = (db, uid, id = 'kid1') => doc(db, `parents/${uid}/children/${id}`);
 
@@ -115,17 +116,44 @@ await t('child: bad custom time rejected', assertFails(setDoc(kidRef(alice, 'ali
 await t('child: bad custom day rejected', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ schedule: schedule({ custom: { someday: 60 } }) }))));
 await t('child: duration 90 rejected', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ schedule: schedule({ duration: 90 }) }))));
 await t('child: extra schedule key rejected', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ schedule: { ...schedule(), x: 1 } }))));
-await t('child: 5-digit code rejected', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ pairing: { code: '12345', provider: 'mock' } }))));
-await t('child: letters in code rejected', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ pairing: { code: '12a456', provider: 'mock' } }))));
-await t('child: provider must be mock', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ pairing: { code: '123456', provider: 'server' } }))));
+// Server-only fields: pairing (Functions), linkedDeviceUid, stats.
+const exp = { code: '123456', expiresAt: days(1), status: 'active' };
+await t('child: client cannot set pairing on create', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ pairing: exp }))));
+await t('child: client cannot set linkedDeviceUid on create', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ linkedDeviceUid: 'dev' }))));
+await t('child: client cannot set stats on create', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ stats: { ayat: 295 } }))));
 await t('child: update name/schedule ok', assertSucceeds(updateDoc(kidRef(alice, 'alice'), { name: 'سارة أحمد', 'schedule.duration': 60 })));
+await t('child: update keeps validation (age 20)', assertFails(updateDoc(kidRef(alice, 'alice'), { age: 20 })));
+// Seed server fields as the Admin SDK would, then try to touch them as the parent.
+await env.withSecurityRulesDisabled(async (ctx) => {
+  await updateDoc(doc(ctx.firestore(), 'parents/alice/children/kid1'), { pairing: exp, linkedDeviceUid: 'dev1', stats: { ayat: 4 } });
+});
+await t('child: update with server fields present still ok', assertSucceeds(updateDoc(kidRef(alice, 'alice'), { name: 'سارة' })));
 await t('child: cannot change pairing code', assertFails(updateDoc(kidRef(alice, 'alice'), { 'pairing.code': '000000' })));
+await t('child: cannot extend pairing expiry', assertFails(updateDoc(kidRef(alice, 'alice'), { 'pairing.expiresAt': days(30) })));
+await t('child: cannot change linkedDeviceUid', assertFails(updateDoc(kidRef(alice, 'alice'), { linkedDeviceUid: 'evil' })));
+await t('child: cannot forge stats', assertFails(updateDoc(kidRef(alice, 'alice'), { 'stats.ayat': 295 })));
+await t('child: cannot add a new field', assertFails(updateDoc(kidRef(alice, 'alice'), { note: 'x' })));
 await t('child: cannot change ownerUid', assertFails(updateDoc(kidRef(alice, 'alice'), { ownerUid: 'bob' })));
 await t('child: cannot change createdAt', assertFails(updateDoc(kidRef(alice, 'alice'), { createdAt: new Date(0) })));
 await t('child: other user cannot delete', assertFails(deleteDoc(kidRef(bob, 'alice'))));
 await t('child: owner deletes', assertSucceeds(deleteDoc(kidRef(alice, 'alice'))));
 const carol = env.authenticatedContext('carol', { email: 'c@example.com' }).firestore();
 await t('child: no parent doc → denied', assertFails(setDoc(kidRef(carol, 'carol', 'k'), child({ ownerUid: 'carol' }))));
+
+// ── server-only collections: default deny for every client ──
+await env.withSecurityRulesDisabled(async (ctx) => {
+  await setDoc(doc(ctx.firestore(), 'pairingCodes/123456'), { parentUid: 'alice', childId: 'kid1', status: 'active' });
+  await setDoc(doc(ctx.firestore(), 'childSessions/dev1'), { parentUid: 'alice', childId: 'kid1' });
+});
+const device = env.authenticatedContext('dev1', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
+for (const [who, db] of [['parent', alice], ['anonymous device', device], ['signed-out', anon]]) {
+  await t(`pairingCodes: ${who} cannot read a code`, assertFails(getDoc(doc(db, 'pairingCodes/123456'))));
+  await t(`pairingCodes: ${who} cannot list codes`, assertFails(getDocs(collection(db, 'pairingCodes'))));
+  await t(`pairingCodes: ${who} cannot write a code`, assertFails(setDoc(doc(db, 'pairingCodes/654321'), { parentUid: 'alice', childId: 'kid1', status: 'active' })));
+  await t(`childSessions: ${who} cannot write`, assertFails(setDoc(doc(db, 'childSessions/dev1'), { parentUid: 'alice', childId: 'kid1' })));
+  await t(`rateLimits: ${who} cannot write`, assertFails(setDoc(doc(db, 'rateLimits/dev1'), { attempts: 0 })));
+}
+await t('child: anonymous device cannot read a child (not linked yet)', assertFails(getDoc(kidRef(device, 'alice'))));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 await env.cleanup();

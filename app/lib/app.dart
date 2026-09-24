@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'core/app_content.dart';
 import 'core/app_scope.dart';
 import 'core/mock_data.dart';
 import 'features/children/data/child_profile.dart';
@@ -8,6 +9,7 @@ import 'features/children/screens/add_child_screen.dart';
 import 'features/children/screens/avatar_picker_screen.dart';
 import 'features/children/screens/pairing_code_screen.dart';
 import 'features/children/screens/schedule_screen.dart';
+import 'features/dashboard/data/submissions_repository.dart';
 import 'features/dashboard/widgets/detail_panels.dart';
 import 'core/auth_gate.dart';
 import 'core/debug_preview.dart';
@@ -26,12 +28,16 @@ import 'theme/app_theme.dart';
 class GharsahApp extends StatelessWidget {
   GharsahApp({
     super.key,
+    required this.content,
     required this.auth,
     required this.pairing,
     required this.subscriptions,
     required this.children,
+    required this.submissions,
   });
 
+  final AppContent content;
+  final SubmissionsRepository submissions;
   final AuthRepository auth;
   final PairingRepository pairing;
   final SubscriptionRepository subscriptions;
@@ -117,10 +123,12 @@ class GharsahApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppScope(
+      content: content,
       auth: auth,
       pairing: pairing,
       subscriptions: subscriptions,
       children: children,
+      submissions: submissions,
       child: MaterialApp(
         navigatorKey: _navigatorKey,
         title: 'غَرْسة',

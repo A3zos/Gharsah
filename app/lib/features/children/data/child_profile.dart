@@ -116,6 +116,38 @@ class ChildDraft {
       );
 }
 
+/// The child's pairing code — issued ONLY by the server (Cloud Functions
+/// `createPairingCode` / `revokePairingCode`), never generated on a device.
+class PairingInfo {
+  const PairingInfo({
+    required this.code,
+    required this.expiresAt,
+    required this.status,
+  });
+
+  static PairingInfo? fromMap(Object? m) {
+    if (m is! Map) return null;
+    final code = m['code'];
+    final exp = m['expiresAt'];
+    if (code is! String) return null;
+    return PairingInfo(
+      code: code,
+      expiresAt: exp is Timestamp ? exp.toDate() : DateTime.now(),
+      status: m['status'] as String? ?? 'active',
+    );
+  }
+
+  /// Six Latin digits; shown with Arabic-Indic digits in the UI.
+  final String code;
+  final DateTime expiresAt;
+
+  /// active | claimed | revoked
+  final String status;
+
+  bool isActive(DateTime now) => status == 'active' && expiresAt.isAfter(now);
+  bool get isClaimed => status == 'claimed';
+}
+
 /// A child on the parent's account (`parents/{uid}/children/{childId}`).
 class ChildProfile {
   const ChildProfile({
@@ -124,7 +156,10 @@ class ChildProfile {
     required this.age,
     required this.gender,
     required this.avatarId,
-    required this.pairingCode,
+    this.pairing,
+    this.linked = false,
+    this.createdAt,
+    this.stats,
     this.schedule,
     this.isMock = false,
   });
@@ -136,7 +171,12 @@ class ChildProfile {
         age: d['age'] as int? ?? 10,
         gender: d['gender'] == 'boy' ? ChildGender.boy : ChildGender.girl,
         avatarId: d['avatar'] as String? ?? 'g1',
-        pairingCode: (d['pairing'] as Map?)?['code'] as String? ?? '',
+        pairing: PairingInfo.fromMap(d['pairing']),
+        linked: d['linkedDeviceUid'] is String,
+        createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
+        stats: d['stats'] is Map
+            ? Map<String, dynamic>.from(d['stats'] as Map)
+            : null,
         schedule: d['schedule'] is Map
             ? ChildSchedule.fromMap(
                 Map<String, dynamic>.from(d['schedule'] as Map),
@@ -152,26 +192,49 @@ class ChildProfile {
   /// Avatar id from 10-AvatarPicker: g1–g5 (girls), b1–b4 (boys).
   final String avatarId;
 
-  /// Six Latin digits; shown with Arabic-Indic digits in the UI.
-  final String pairingCode;
+  /// Server-issued code (null until the server has issued one).
+  final PairingInfo? pairing;
+
+  /// A child device has claimed a code and is linked (server-set).
+  final bool linked;
+  final DateTime? createdAt;
+
+  /// Progress aggregates written by the server (`stats`); null until the
+  /// child finishes a first lesson step. Parsed by the dashboard.
+  final Map<String, dynamic>? stats;
   final ChildSchedule? schedule;
 
-  /// Design sample data (lib/core/mock_data.dart), not a Firestore child.
+  /// Design sample data (debug previews only), not a Firestore child.
   final bool isMock;
 
-  /// Firestore write for a new child (rules check every field).
+  /// Six Latin digits, or '' before the server issued one.
+  String get pairingCode => pairing?.code ?? '';
+
+  ChildProfile withPairing(PairingInfo p) => ChildProfile(
+    id: id,
+    name: name,
+    age: age,
+    gender: gender,
+    avatarId: avatarId,
+    pairing: p,
+    linked: linked,
+    createdAt: createdAt,
+    stats: stats,
+    schedule: schedule,
+    isMock: isMock,
+  );
+
+  /// Firestore write for a new child (rules check every field). The pairing
+  /// code, device link and stats are server-only and never sent from here.
   static Map<String, dynamic> newDoc({
     required String ownerUid,
     required ChildDraft draft,
-    required String pairingCode,
   }) => {
     'name': draft.name.trim(),
     'age': draft.age,
     'gender': draft.gender.name,
     'avatar': draft.avatarId,
     'schedule': draft.schedule.toMap(),
-    // TODO(phase-c): issued by a Cloud Function (provider 'server'), not the device.
-    'pairing': {'code': pairingCode, 'provider': 'mock'},
     'ownerUid': ownerUid,
     'createdAt': FieldValue.serverTimestamp(),
   };

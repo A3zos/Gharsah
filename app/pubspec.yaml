@@ -48,6 +48,9 @@ dependencies:
   path_provider: ^2.1.6
   flutter_tts: ^4.2.5
   record: ^7.1.1
+  cloud_functions: ^6.5.0
+  firebase_storage: ^13.6.0
+  hijri: ^3.0.1
 
 dev_dependencies:
   flutter_test:

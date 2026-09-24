@@ -64,9 +64,7 @@ class QuranMeta {
 
   static List<int> _cumulative(List<({String name, int ayat})> s) {
     var n = 0;
-    return [
-      for (final x in s) (n += x.ayat) - x.ayat,
-    ];
+    return [for (final x in s) (n += x.ayat) - x.ayat];
   }
 
   String surahName(int surah) => _surahs[_checkSurah(surah) - 1].name;
@@ -74,7 +72,10 @@ class QuranMeta {
   int ayahCount(int surah) => _surahs[_checkSurah(surah) - 1].ayat;
 
   bool isValid(QuranRef r) =>
-      r.surah >= 1 && r.surah <= 114 && r.ayah >= 1 && r.ayah <= ayahCount(r.surah);
+      r.surah >= 1 &&
+      r.surah <= 114 &&
+      r.ayah >= 1 &&
+      r.ayah <= ayahCount(r.surah);
 
   /// The global ayah number 1..6236 used by the reciter CDN.
   int globalNumber(QuranRef r) {

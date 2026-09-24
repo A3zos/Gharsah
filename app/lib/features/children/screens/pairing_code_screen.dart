@@ -1,18 +1,25 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/app_scope.dart';
 import '../../../core/arabic_digits.dart';
+import '../../auth/data/auth_failure.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/app_icons.dart';
+import '../../../widgets/confirm_sheet.dart';
 import '../../../widgets/decor_blob.dart';
+import '../../../widgets/info_note.dart';
 import '../../../widgets/screen_frame.dart';
 import '../data/child_profile.dart';
 import 'add_child_screen.dart';
 
-/// Frame 11 — «تمت إضافة …» with the child's 6-digit pairing code.
-/// TODO(phase-c): the code is issued by a Cloud Function; today it comes
-/// from MockPairingRepository (product-owner decision).
+/// Frame 11 — «تمت إضافة …» with the child's 6-digit pairing code, issued by
+/// the server (Cloud Function `createPairingCode`, valid 24 h). Follows the
+/// child document live, and «إصدار رمز جديد» revokes the old code, unlinks
+/// the child's device and issues a new one (`revokePairingCode`).
 class PairingCodeScreen extends StatefulWidget {
   const PairingCodeScreen({super.key, required this.child});
 
@@ -30,12 +37,52 @@ class _PairingCodeScreenState extends State<PairingCodeScreen>
     duration: const Duration(milliseconds: 600),
   )..forward();
 
-  String get _code => widget.child.pairingCode.arabicDigits;
+  late ChildProfile _child = widget.child;
+  StreamSubscription<ChildProfile?>? _sub;
+  bool _busy = false;
+
+  String get _code => _child.pairingCode.arabicDigits;
+  bool get _active => _child.pairing?.isActive(DateTime.now()) ?? false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sub ??= AppScope.of(context).children
+        .watchChild(widget.child.id)
+        .listen((c) {
+          if (c != null && mounted) setState(() => _child = c);
+        });
+  }
 
   @override
   void dispose() {
+    _sub?.cancel();
     _pop.dispose();
     super.dispose();
+  }
+
+  Future<void> _newCode() async {
+    final ok = await showConfirmSheet(
+      context,
+      title: 'إصدار رمز جديد',
+      message: _child.linked
+          ? 'سيتوقف الرمز الحالي، ويُفصل جهاز ${_child.name} المرتبط حتى يُدخل الرمز الجديد.'
+          : 'سيتوقف الرمز الحالي ولن يعمل بعد الآن.',
+      confirmLabel: 'إصدار رمز جديد',
+    );
+    if (!ok || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      final p = await AppScope.of(context).pairing.revokeAndReissue(_child.id);
+      if (mounted) setState(() => _child = _child.withPairing(p));
+    } on AuthFailure catch (e) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _copy() async {
@@ -105,7 +152,7 @@ class _PairingCodeScreenState extends State<PairingCodeScreen>
             ),
             const SizedBox(height: 20),
             Text(
-              'تمت إضافة ${widget.child.name}',
+              'تمت إضافة ${_child.name}',
               style: t.headlineMedium,
               textAlign: TextAlign.center,
             ),
@@ -154,7 +201,7 @@ class _PairingCodeScreenState extends State<PairingCodeScreen>
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: _copy,
+                          onPressed: _active ? _copy : null,
                           icon: AppIcon.copy(),
                           label: const Text('انسخ'),
                           style: OutlinedButton.styleFrom(
@@ -173,7 +220,7 @@ class _PairingCodeScreenState extends State<PairingCodeScreen>
                       const SizedBox(width: 10),
                       Expanded(
                         child: FilledButton.icon(
-                          onPressed: _share,
+                          onPressed: _active ? _share : null,
                           icon: AppIcon.share(),
                           label: const Text('شارك'),
                           style: FilledButton.styleFrom(
@@ -194,7 +241,30 @@ class _PairingCodeScreenState extends State<PairingCodeScreen>
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            if (!_active) ...[
+              const SizedBox(height: 12),
+              // TODO(design): no designed expired / already-linked state.
+              InfoNote(
+                tone: InfoNoteTone.gold,
+                lineHeight: 1.8,
+                text: _child.linked
+                    ? 'استخدم ${_child.name} هذا الرمز وارتبط جهازه. لربط جهاز آخر أصدر رمزًا جديدًا.'
+                    : 'انتهت صلاحية هذا الرمز (يصلح ٢٤ ساعة) — أصدر رمزًا جديدًا.',
+              ),
+            ],
+            const SizedBox(height: 4),
+            Center(
+              child: TextButton(
+                onPressed: _busy ? null : _newCode,
+                child: _busy
+                    ? const SizedBox.square(
+                        dimension: AppSizes.iconLg,
+                        child: CircularProgressIndicator(strokeWidth: 2.4),
+                      )
+                    : Text('إصدار رمز جديد', style: AppTextStyles.linkSmall),
+              ),
+            ),
+            const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
               decoration: BoxDecoration(

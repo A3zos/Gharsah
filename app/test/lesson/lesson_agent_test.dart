@@ -118,17 +118,46 @@ void main() {
       expect(r.s.beat, LessonBeat.done);
 
       expect(r.teacher.spoken, [
-        'greet.evening', 'intro.plan', 'intro.surah', 'intro.count', 'intro.ready',
-        'ayah.repeat_now', 'count.two_left', 'count.one_left', 'praise.first',
-        'ayah.repeat_now', 'count.two_left', 'count.one_left', 'praise.next',
-        'ayah.repeat_now', 'count.two_left', 'count.one_left', 'praise.last_left',
-        'ayah.repeat_now', 'count.two_left', 'count.one_left', 'praise.all_done',
+        'greet.evening',
+        'intro.plan',
+        'intro.surah',
+        'intro.count',
+        'intro.ready',
+        'ayah.repeat_now',
+        'count.two_left',
+        'count.one_left',
+        'praise.first',
+        'ayah.repeat_now',
+        'count.two_left',
+        'count.one_left',
+        'praise.next',
+        'ayah.repeat_now',
+        'count.two_left',
+        'count.one_left',
+        'praise.last_left',
+        'ayah.repeat_now',
+        'count.two_left',
+        'count.one_left',
+        'praise.all_done',
         'surah.complete',
-        'surah.done', 'surah.proud', 'surah.next_hadith', 'surah.go_hadith',
-        'hadith.topic', 'ayah.repeat_now', 'count.two_left', 'count.one_left',
-        'hadith.praise', 'hadith.to_project',
-        'project.intro', 'project.tomorrow', 'project.ask', 'project.bye',
-        'end.praise', 'project.tomorrow', 'end.ask', 'end.bye',
+        'surah.done',
+        'surah.proud',
+        'surah.next_hadith',
+        'surah.go_hadith',
+        'hadith.topic',
+        'ayah.repeat_now',
+        'count.two_left',
+        'count.one_left',
+        'hadith.praise',
+        'hadith.to_project',
+        'project.intro',
+        'project.tomorrow',
+        'project.ask',
+        'project.bye',
+        'end.praise',
+        'project.tomorrow',
+        'end.ask',
+        'end.bye',
       ]);
 
       final p = r.agent.progress;
@@ -138,7 +167,16 @@ void main() {
       expect(p.projectAssigned, 'birr-3-acts');
       expect(p.completed, isTrue);
       expect(r.sink.completedCalls, hasLength(1));
-      expect(r.sink.checkpoints.map((c) => c.stepIndex), [0, 1, 2, 3, 4, 5, 6, 7]);
+      expect(r.sink.checkpoints.map((c) => c.stepIndex), [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+      ]);
       expect(r.s.elapsed.inSeconds, greaterThan(30));
 
       r.agent.dispose();
@@ -154,7 +192,10 @@ void main() {
       a.elapse(_line * 4);
       expect(captions, contains('وهي قصيرة — أربع آيات فقط!'));
       expect(captions, contains('نبدأ بسورة الإخلاص.'));
-      expect(captions.where((c) => c.contains('مك') || c.contains('مدن')), isEmpty);
+      expect(
+        captions.where((c) => c.contains('مك') || c.contains('مدن')),
+        isEmpty,
+      );
       r.agent.dispose();
     });
   });
@@ -489,10 +530,18 @@ void main() {
       a.elapse(_line * 2);
       expect(r.s.beat, LessonBeat.done);
       expect(r.teacher.spoken, [
-        'report.greet.morning', 'report.ask', 'report.thanks', 'report.thanks',
+        'report.greet.morning',
+        'report.ask',
+        'report.thanks',
+        'report.thanks',
         'report.to_hadith',
-        'hadith.topic', 'ayah.repeat_now', 'count.two_left', 'count.one_left',
-        'hadith.praise', 'end.praise', 'end.bye',
+        'hadith.topic',
+        'ayah.repeat_now',
+        'count.two_left',
+        'count.one_left',
+        'hadith.praise',
+        'end.praise',
+        'end.bye',
       ]);
       expect(r.agent.progress.reportedProject, 'birr-3-acts');
       r.agent.dispose();
@@ -540,7 +589,10 @@ void main() {
           },
         ],
       });
-      final r = Rig(lessonId: 'm01-w03-day2', content: realContent(hadith: hadith));
+      final r = Rig(
+        lessonId: 'm01-w03-day2',
+        content: realContent(hadith: hadith),
+      );
       _start(r, a);
       r.agent.nextAyah(); // no ayat in day 2 → no-op
       a.elapse(_line);
@@ -567,7 +619,11 @@ void main() {
         'lessonId': 'offline-test',
         'title': 't',
         'steps': [
-          {'type': 'ayah_loop', 'ref': {'surah': 2, 'ayah': 255}, 'repeats': 3},
+          {
+            'type': 'ayah_loop',
+            'ref': {'surah': 2, 'ayah': 255},
+            'repeats': 3,
+          },
         ],
       });
       final r = Rig();
@@ -596,13 +652,21 @@ void main() {
         'lessonId': 'x',
         'title': 't',
         'steps': [
-          {'type': 'ayah_loop', 'ref': {'surah': 112, 'ayah': 5}},
+          {
+            'type': 'ayah_loop',
+            'ref': {'surah': 112, 'ayah': 5},
+          },
         ],
       }).validate(realContent().meta),
       throwsFormatException,
     );
     expect(
-      () => LessonScript.fromJson({'contractVersion': '9', 'lessonId': 'x', 'title': 't', 'steps': []}),
+      () => LessonScript.fromJson({
+        'contractVersion': '9',
+        'lessonId': 'x',
+        'title': 't',
+        'steps': [],
+      }),
       throwsFormatException,
     );
   });

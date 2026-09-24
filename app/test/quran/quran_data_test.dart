@@ -71,16 +71,20 @@ void main() {
       for (final b in manifest.bundled.values) {
         final f = File('${RecitationManifest.dir}/${b.file}');
         expect(f.existsSync(), isTrue, reason: b.file);
-        expect(sha256.convert(f.readAsBytesSync()).toString(), b.sha256,
-            reason: b.file);
+        expect(
+          sha256.convert(f.readAsBytesSync()).toString(),
+          b.sha256,
+          reason: b.file,
+        );
         expect(b.file, b.ref.audioFileName);
         expect(b.duration.inMilliseconds, greaterThan(1000), reason: b.file);
       }
     });
 
     test('manifest global numbers agree with the meta', () {
-      for (final f in (_json(RecitationManifest.asset)['files'] as List)
-          .cast<Map<String, dynamic>>()) {
+      for (final f
+          in (_json(RecitationManifest.asset)['files'] as List)
+              .cast<Map<String, dynamic>>()) {
         final r = QuranRef(f['surah'] as int, f['ayah'] as int);
         expect(f['global'], meta.globalNumber(r), reason: r.key);
       }

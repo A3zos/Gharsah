@@ -1,7 +1,10 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/arabic_digits.dart';
 import '../../../core/mock_data.dart';
+import '../../../core/time_format.dart';
+import '../../../widgets/info_note.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/app_icons.dart';
 import '../../../widgets/decor_blob.dart';
@@ -9,7 +12,8 @@ import '../../../widgets/g_page_header.dart';
 import '../../../widgets/growth_timeline.dart';
 import '../../../core/app_scope.dart';
 import '../../children/data/child_profile.dart';
-import '../../children/data/children_repository.dart';
+import '../data/dashboard_data.dart';
+import '../data/submissions_repository.dart';
 import '../widgets/detail_panels.dart';
 
 /// Frames 12–16 — «لوحة التحكم» (view-only): child switcher, growth hero and
@@ -61,14 +65,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return StreamBuilder<List<ChildProfile>>(
       stream: _children,
       builder: (context, snap) {
-        // Real children replace the design's samples as soon as one exists.
-        final children = childrenOrSample(snap.data);
+        final children = snap.data ?? const <ChildProfile>[];
+        if (children.isEmpty) {
+          return _NoChildren(
+            onSettings: widget.onSettings,
+            loading: snap.connectionState == ConnectionState.waiting,
+          );
+        }
         final child = children.firstWhere(
           (c) => c.id == _selectedId,
           orElse: () => children.first,
         );
-        // TODO(phase-d): per-child stats from Firestore; design sample until then.
-        const stats = MockData.stats;
+        final content = AppScope.of(context).content;
+        final data = DashboardData.fromChild(
+          child,
+          meta: content.meta,
+          hadith: content.hadith,
+          projects: content.projects,
+        );
+        final stats = data.stats;
         // As in the design, the selected child's chip comes first.
         final ordered = [child, ...children.where((c) => c.id != child.id)];
 
@@ -99,6 +114,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ),
+              // The design's sample numbers stand in until the child's first
+              // lesson — clearly marked for a real child.
+              if (data.isSample && !child.isMock) ...[
+                const SizedBox(height: 14),
+                // TODO(design): marker for sample data (no designed state).
+                InfoNote(
+                  tone: InfoNoteTone.greenInfo,
+                  lineHeight: 1.7,
+                  text:
+                      'بيانات توضيحية — تظهر إنجازات ${child.name} الحقيقية بعد أول حصة.',
+                ),
+              ],
               const SizedBox(height: 18),
               _GrowthHero(name: child.name, stats: stats),
               const SizedBox(height: 18),
@@ -110,21 +137,124 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: AppTextStyles.caption,
                   textAlign: TextAlign.center,
                 ),
-                DashCard.projects => ProjectsPanel(
-                  childName: child.name,
+                DashCard.projects => _Projects(
+                  child: child,
+                  data: data,
                   onHide: _hide,
                 ),
-                DashCard.surahs => SurahsPanel(onHide: _hide),
+                DashCard.surahs => SurahsPanel(data: data, onHide: _hide),
                 DashCard.hadith => HadithPanel(
                   childName: child.name,
+                  data: data,
                   onHide: _hide,
                 ),
-                DashCard.ayat => AyatPanel(total: stats.ayat, onHide: _hide),
+                DashCard.ayat => AyatPanel(data: data, onHide: _hide),
               },
             ],
           ),
         );
       },
+    );
+  }
+}
+
+/// 13 — the child's real recordings (Storage, parent-only), or the design's
+/// sample while the child has no progress yet.
+class _Projects extends StatelessWidget {
+  const _Projects({
+    required this.child,
+    required this.data,
+    required this.onHide,
+  });
+
+  final ChildProfile child;
+  final DashboardData data;
+  final VoidCallback onHide;
+
+  static const _sampleAudio = 'audio/placeholder_recording.wav';
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = AppScope.of(context);
+    final repo = scope.submissions;
+    return StreamBuilder<List<ProjectSubmission>>(
+      stream: repo.watch(child.id),
+      builder: (context, snap) {
+        final subs = snap.data ?? const <ProjectSubmission>[];
+        final List<ProjectEntry> entries;
+        if (subs.isEmpty && data.isSample) {
+          entries = [
+            for (final p in MockData.projects)
+              ProjectEntry(
+                title: p.title,
+                date: p.date,
+                note: p.note,
+                duration: Duration(seconds: p.seconds),
+                loadAudio: () async => AssetSource(_sampleAudio),
+              ),
+          ];
+        } else {
+          entries = [
+            for (final s in subs)
+              ProjectEntry(
+                title: _title(scope, s.projectId),
+                date: 'اكتمل في ${formatHijriDayMonth(s.createdAt)}',
+                duration: s.duration,
+                loadAudio: () async => BytesSource(
+                  await repo.loadAudio(s),
+                  mimeType: s.storagePath.endsWith('.wav')
+                      ? 'audio/wav'
+                      : 'audio/mp4',
+                ),
+                onDelete: () => repo.delete(child.id, s),
+              ),
+          ];
+        }
+        return ProjectsPanel(
+          childName: child.name,
+          entries: entries,
+          pendingProject: data.pendingProject,
+          onHide: onHide,
+        );
+      },
+    );
+  }
+
+  static String _title(AppScope scope, String projectId) {
+    try {
+      return scope.content.projects.byId(projectId).title;
+    } on StateError {
+      return projectId;
+    }
+  }
+}
+
+/// TODO(design): no designed "no children yet" state for the dashboard.
+class _NoChildren extends StatelessWidget {
+  const _NoChildren({required this.onSettings, required this.loading});
+
+  final VoidCallback onSettings;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSizes.pagePaddingH,
+        30 - GPageHeader.targetExtra,
+        AppSizes.pagePaddingH,
+        22,
+      ),
+      children: [
+        GPageHeader(title: 'لوحة التحكم', onSettings: onSettings),
+        const SizedBox(height: 18),
+        if (!loading)
+          const InfoNote(
+            tone: InfoNoteTone.greenInfo,
+            lineHeight: 1.8,
+            text: 'أضف ابنك من تبويب «الباقات» لتظهر إنجازاته هنا.',
+          ),
+      ],
     );
   }
 }

@@ -1,0 +1,22 @@
+{
+  "name": "gharsah-functions",
+  "private": true,
+  "description": "غَرْسة Cloud Functions (2nd gen, us-central1 — same region as Firestore nam5).",
+  "main": "lib/src/index.js",
+  "engines": { "node": "22" },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc && mocha \"lib/test/**/*.test.js\" --timeout 20000 --exit",
+    "test:emu": "firebase emulators:exec -c ../firebase.test.json --only firestore,storage --project nibras-59284 \"npm test\""
+  },
+  "dependencies": {
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.4.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.10.0",
+    "mocha": "^11.7.0",
+    "typescript": "~5.9.0"
+  }
+}

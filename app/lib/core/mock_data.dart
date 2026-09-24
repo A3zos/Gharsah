@@ -1,21 +1,26 @@
 // ╔════════════════════════════════════════════════════════════════════════╗
 // ║  MOCK DATA — copied from the approved design mockups (design/html).      ║
-// ║  Shown only where real Firestore data does not exist yet, so screens    ║
-// ║  look exactly like the design.                                          ║
-// ║  TODO(phase-c): replace every use with real Firestore data and delete.   ║
+// ║  Used ONLY for: debug design-comparison previews (children), and the     ║
+// ║  dashboard of a child with no progress yet (flagged isSample and shown  ║
+// ║  with a visible «بيانات توضيحية» note). Delete before release (§11).    ║
 // ╚════════════════════════════════════════════════════════════════════════╝
 
 import '../features/children/data/child_profile.dart';
+import '../features/dashboard/data/dashboard_data.dart';
 import '../features/subscription/data/subscription.dart';
 
 abstract final class MockData {
-  /// 05-Packages «أبنائي». TODO(phase-c): children come from Firestore (AddChild).
-  static const List<ChildProfile> children = [
+  /// 05-Packages «أبنائي» — debug previews only (lib/core/preview_data.dart).
+  static final List<ChildProfile> children = [
     ChildProfile(
       id: 'mock-sara',
       name: 'سارة',
       age: 10,
-      pairingCode: '472918',
+      pairing: PairingInfo(
+        code: '472918',
+        expiresAt: DateTime(2100),
+        status: 'active',
+      ),
       gender: ChildGender.girl,
       avatarId: 'g1',
       isMock: true,
@@ -24,16 +29,18 @@ abstract final class MockData {
       id: 'mock-abdullah',
       name: 'عبدالله',
       age: 12,
-      pairingCode: '308561',
+      pairing: PairingInfo(
+        code: '308561',
+        expiresAt: DateTime(2100),
+        status: 'active',
+      ),
       gender: ChildGender.boy,
       avatarId: 'b1',
       isMock: true,
     ),
   ];
 
-  /// 12-Dashboard stats. The design shows only عبدالله's numbers; the same
-  /// sample is used for every child until real progress exists.
-  /// TODO(phase-c): per-child progress from Firestore (lesson submissions).
+  /// 12-Dashboard stats — the design sample for a child with no progress yet.
   static const ChildStats stats = ChildStats(
     yearProgress: 35,
     month: 2,
@@ -45,7 +52,6 @@ abstract final class MockData {
   );
 
   // ── 13–16 dashboard detail panels (design sample data) ──
-  // TODO(phase-d): from the child app's submissions in Firestore/Storage.
 
   /// 13-DashProjects — completed projects with the child's recording.
   static const List<MockProject> projects = [
@@ -134,27 +140,6 @@ class MockProject {
 
   /// Recording length shown before playback (design value).
   final int seconds;
-}
-
-class ChildStats {
-  const ChildStats({
-    required this.yearProgress,
-    required this.month,
-    required this.week,
-    required this.surahs,
-    required this.ayat,
-    required this.hadith,
-    required this.projects,
-  });
-
-  /// Percent of the yearly plan (0–100) → growth stage.
-  final int yearProgress;
-  final int month;
-  final int week;
-  final int surahs;
-  final int ayat;
-  final int hadith;
-  final int projects;
 }
 
 class SamplePlan {

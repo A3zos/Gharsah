@@ -12,6 +12,7 @@ class Hadith {
   const Hadith._({
     required this.id,
     required this.title,
+    required this.topic,
     required this.isApproved,
     required String? text,
     required String? takhrij,
@@ -37,6 +38,7 @@ class Hadith {
     return Hadith._(
       id: j['id'] as String,
       title: j['title'] as String,
+      topic: j['topic'] as String? ?? j['title'] as String,
       isApproved: approved,
       text: approved ? str('text') : null,
       takhrij: approved ? '${str('takhrij')} · ${str('grading')}' : null,
@@ -52,6 +54,9 @@ class Hadith {
 
   /// Topic title, e.g. «حديث برّ الوالدين» (not hadith text).
   final String title;
+
+  /// Short topic for the parent dashboard, e.g. «برّ الوالدين».
+  final String topic;
   final bool isApproved;
   final String? _text;
   final String? _takhrij;
@@ -67,14 +72,16 @@ class Hadith {
 }
 
 class HadithRepository {
-  HadithRepository(Iterable<Hadith> all) : _byId = {for (final h in all) h.id: h};
+  HadithRepository(Iterable<Hadith> all)
+    : _byId = {for (final h in all) h.id: h};
 
   static const asset = 'assets/data/hadith.json';
 
-  factory HadithRepository.fromJson(Map<String, dynamic> j) => HadithRepository([
-    for (final h in (j['hadith'] as List).cast<Map<String, dynamic>>())
-      Hadith.fromJson(h),
-  ]);
+  factory HadithRepository.fromJson(Map<String, dynamic> j) =>
+      HadithRepository([
+        for (final h in (j['hadith'] as List).cast<Map<String, dynamic>>())
+          Hadith.fromJson(h),
+      ]);
 
   static Future<HadithRepository> load([AssetBundle? bundle]) async =>
       HadithRepository.fromJson(

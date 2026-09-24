@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../../../core/mock_data.dart';
 import '../../auth/data/auth_failure.dart';
 import '../../auth/data/pairing_repository.dart';
 import 'child_profile.dart';
@@ -10,15 +9,13 @@ abstract interface class ChildrenRepository {
   /// The parent's children, oldest first. Emits an empty list when signed out.
   Stream<List<ChildProfile>> watchChildren();
 
-  /// Saves a new child with a freshly issued pairing code.
+  /// Saves a new child, then asks the server for its pairing code.
   /// Throws [AuthFailure] with an Arabic message.
   Future<ChildProfile> addChild(ChildDraft draft);
-}
 
-/// Real children when the parent has any; otherwise the design's sample
-/// children (product-owner decision). TODO(phase-c): drop the fallback.
-List<ChildProfile> childrenOrSample(List<ChildProfile>? real) =>
-    (real == null || real.isEmpty) ? MockData.children : real;
+  /// One child, live (frame 11 follows server-side code changes).
+  Stream<ChildProfile?> watchChild(String childId);
+}
 
 class FirestoreChildrenRepository implements ChildrenRepository {
   FirestoreChildrenRepository(
@@ -58,24 +55,39 @@ class FirestoreChildrenRepository implements ChildrenRepository {
     if (col == null || uid == null) {
       throw AuthFailure.fromCode('permission-denied');
     }
-    // TODO(phase-c): require an active subscription and a verified email first.
+    // TODO(phase-c): require a verified email first (CLAUDE.md §11).
     final ref = col.doc();
     try {
-      final code = await _pairing.issueCode(ref.id);
-      await ref.set(
-        ChildProfile.newDoc(ownerUid: uid, draft: draft, pairingCode: code),
-      );
+      await ref.set(ChildProfile.newDoc(ownerUid: uid, draft: draft));
+    } on FirebaseException catch (e) {
+      throw firestoreFailure(e);
+    }
+    try {
+      // The server checks the subscription and ownership, then issues the code.
+      final pairing = await _pairing.issueCode(ref.id);
       return ChildProfile(
         id: ref.id,
         name: draft.name.trim(),
         age: draft.age,
         gender: draft.gender,
         avatarId: draft.avatarId!,
-        pairingCode: code,
+        pairing: pairing,
         schedule: draft.schedule,
       );
-    } on FirebaseException catch (e) {
-      throw AuthFailure.fromCode(e.code);
+    } on AuthFailure {
+      // No code → don't leave a half-added child behind.
+      await ref.delete().catchError((Object _) {});
+      rethrow;
     }
+  }
+
+  @override
+  Stream<ChildProfile?> watchChild(String childId) {
+    final col = _col;
+    if (col == null) return Stream.value(null);
+    return col
+        .doc(childId)
+        .snapshots()
+        .map((d) => d.exists ? ChildProfile.fromDoc(d.id, d.data()!) : null);
   }
 }

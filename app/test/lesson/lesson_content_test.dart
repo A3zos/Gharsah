@@ -21,12 +21,12 @@ void main() {
         final ids = switch (s) {
           IntroStep(:final lines) => lines,
           SurahDoneStep(:final lines, :final question) => [...lines, question],
-          ProjectAssignStep(:final lines, :final question) => [...lines, question],
-          ProjectReportStep(:final question) => [question],
-          LessonEndStep(:final lines, :final question) => [
+          ProjectAssignStep(:final lines, :final question) => [
             ...lines,
-            ?question,
+            question,
           ],
+          ProjectReportStep(:final question) => [question],
+          LessonEndStep(:final lines, :final question) => [...lines, ?question],
           _ => const <String>[],
         };
         for (final id in ids) {
@@ -43,21 +43,35 @@ void main() {
   });
 
   test('no line states Makki/Madani or contains Quran/hadith text', () {
-    final all = [...TeacherLineBank.lines.values, ...TeacherLineBank.captions.values];
+    final all = [
+      ...TeacherLineBank.lines.values,
+      ...TeacherLineBank.captions.values,
+    ];
     for (final t in all) {
-      expect(t.contains('مكّية') || t.contains('مكية') || t.contains('مدنية'),
-          isFalse, reason: t);
+      expect(
+        t.contains('مكّية') || t.contains('مكية') || t.contains('مدنية'),
+        isFalse,
+        reason: t,
+      );
       expect(t.contains('﴿') || t.contains('«'), isFalse, reason: t);
     }
   });
 
   test('line bank fills slots and refuses unknown ids / missing slots', () {
     expect(
-      bank.resolve(const TeacherLine('praise.first', {'name': 'سارة', 'ordinal': 'الثانية'})),
+      bank.resolve(
+        const TeacherLine('praise.first', {
+          'name': 'سارة',
+          'ordinal': 'الثانية',
+        }),
+      ),
       'أحسنت يا سارة… ننتقل للآية الثانية.',
     );
     expect(() => bank.resolve(const TeacherLine('nope')), throwsArgumentError);
-    expect(() => bank.resolve(const TeacherLine('praise.first')), throwsArgumentError);
+    expect(
+      () => bank.resolve(const TeacherLine('praise.first')),
+      throwsArgumentError,
+    );
     expect(TeacherLineBank.ayatInWords(4), 'أربع آيات');
     expect(TeacherLineBank.ayatInWords(286), '٢٨٦ آية');
     expect(TeacherLineBank.ordinal(3), 'الثالثة');
@@ -94,7 +108,14 @@ void main() {
       expect(h.displayTakhrij, 'K · G');
     });
 
-    for (final missing in ['text', 'takhrij', 'grading', 'source', 'reviewedBy', 'audio']) {
+    for (final missing in [
+      'text',
+      'takhrij',
+      'grading',
+      'source',
+      'reviewedBy',
+      'audio',
+    ]) {
       test('approved but missing $missing → placeholder, silent', () {
         final h = Hadith.fromJson(entry({missing: null}));
         expect(h.isApproved, isFalse);

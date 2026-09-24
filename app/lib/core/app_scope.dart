@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import 'app_content.dart';
+import '../features/dashboard/data/submissions_repository.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/pairing_repository.dart';
 import '../features/children/data/children_repository.dart';
@@ -9,12 +11,17 @@ import '../features/subscription/data/subscription_repository.dart';
 class AppScope extends InheritedWidget {
   const AppScope({
     super.key,
+    required this.content,
     required this.auth,
     required this.pairing,
     required this.subscriptions,
     required this.children,
+    required this.submissions,
     required super.child,
   });
+
+  final AppContent content;
+  final SubmissionsRepository submissions;
 
   final AuthRepository auth;
   final PairingRepository pairing;
@@ -32,5 +39,7 @@ class AppScope extends InheritedWidget {
       auth != oldWidget.auth ||
       pairing != oldWidget.pairing ||
       subscriptions != oldWidget.subscriptions ||
-      children != oldWidget.children;
+      children != oldWidget.children ||
+      submissions != oldWidget.submissions ||
+      content != oldWidget.content;
 }

@@ -48,7 +48,10 @@ class TeacherLine {
       other is TeacherLine && other.id == id && _mapEq(other.slots, slots);
 
   @override
-  int get hashCode => Object.hash(id, Object.hashAllUnordered(slots.entries.map((e) => '${e.key}=${e.value}')));
+  int get hashCode => Object.hash(
+    id,
+    Object.hashAllUnordered(slots.entries.map((e) => '${e.key}=${e.value}')),
+  );
 
   static bool _mapEq(Map<String, String> a, Map<String, String> b) =>
       a.length == b.length && a.entries.every((e) => b[e.key] == e.value);

@@ -9,10 +9,9 @@ import 'audio_cache_store.dart';
 class PlatformAudioCacheStore implements AudioCacheStore {
   Directory? _dir;
 
-  Future<Directory> get _root async =>
-      _dir ??= await Directory(
-        '${(await getApplicationSupportDirectory()).path}/quran_audio',
-      ).create(recursive: true);
+  Future<Directory> get _root async => _dir ??= await Directory(
+    '${(await getApplicationSupportDirectory()).path}/quran_audio',
+  ).create(recursive: true);
 
   @override
   Future<Uint8List?> read(String name) async {

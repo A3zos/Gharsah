@@ -204,13 +204,12 @@ LessonContent realContent({HadithRepository? hadith}) {
     text: QuranTextRepository.fromJson(readJson(QuranTextRepository.asset)),
     audio: QuranAudioRepository(
       meta: meta,
-      manifest: RecitationManifest.fromJson(
-        readJson(RecitationManifest.asset),
-      ),
+      manifest: RecitationManifest.fromJson(readJson(RecitationManifest.asset)),
       cache: MemoryAudioCacheStore(),
       fetch: (_) async => throw const SocketException('offline'),
     ),
-    hadith: hadith ?? HadithRepository.fromJson(readJson(HadithRepository.asset)),
+    hadith:
+        hadith ?? HadithRepository.fromJson(readJson(HadithRepository.asset)),
     projects: ProjectRepository.fromJson(readJson(ProjectRepository.asset)),
   );
 }
