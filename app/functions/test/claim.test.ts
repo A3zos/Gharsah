@@ -120,4 +120,62 @@ describe('claimPairingCode', () => {
     await issueCode(db, 'alice', 'c1', { revoke: true, now: NOW });
     assert.strictEqual((await db.doc('childSessions/dev1').get()).exists, false);
   });
+
+  describe('demo code (isDemo: true) — server-side exception only', () => {
+    async function seedDemo() {
+      await seedChild('demo', 'd1', 'عبدالله');
+      const old = (await db.doc('parents/demo/children/d1').get()).get('pairing.code');
+      await db.doc(`pairingCodes/${old}`).delete();
+      await db.doc('pairingCodes/472918').set({
+        parentUid: 'demo', childId: 'd1', status: 'active', isDemo: true,
+        createdAt: Timestamp.fromDate(NOW), expiresAt: Timestamp.fromDate(new Date('2100-01-01')),
+      });
+    }
+
+    it('several devices can claim it and all stay linked', async () => {
+      await seedDemo();
+      await claimCode(db, 'devA', '472918', NOW);
+      await claimCode(db, 'devB', '472918', NOW);
+      assert.strictEqual((await db.doc('childSessions/devA').get()).exists, true);
+      assert.strictEqual((await db.doc('childSessions/devB').get()).exists, true);
+      assert.strictEqual((await db.doc('pairingCodes/472918').get()).get('status'), 'active');
+    });
+
+    it('never expires', async () => {
+      await seedDemo();
+      await claimCode(db, 'devA', '472918', new Date('2099-06-01'));
+    });
+
+    it('is still rate-limited per device', async () => {
+      await seedDemo();
+      for (let i = 0; i < MAX_ATTEMPTS; i++) {
+        await rejects(claimCode(db, 'devZ', '000001', NOW), 'not-found');
+      }
+      await rejects(claimCode(db, 'devZ', '472918', NOW), 'resource-exhausted');
+    });
+
+    it('revoking the demo child unlinks every device', async () => {
+      await seedDemo();
+      await claimCode(db, 'devA', '472918', NOW);
+      await claimCode(db, 'devB', '472918', NOW);
+      await issueCode(db, 'demo', 'd1', { revoke: true, now: NOW });
+      assert.strictEqual((await db.collection('childSessions').get()).size, 0);
+    });
+
+    it('isDemo must be exactly true — a normal code stays one-time + 24 h', async () => {
+      const code = await seedChild('alice', 'c1');
+      await db.doc(`pairingCodes/${code}`).update({ isDemo: 'true' }); // not the boolean
+      await claimCode(db, 'dev1', code, NOW);
+      await rejects(claimCode(db, 'dev2', code, NOW), 'not-found');
+    });
+
+    it('a normal claim ends every other session of that child', async () => {
+      const code = await seedChild('alice', 'c1');
+      await db.doc('childSessions/old1').set({ parentUid: 'alice', childId: 'c1' });
+      await db.doc('childSessions/old2').set({ parentUid: 'alice', childId: 'c1' });
+      await claimCode(db, 'dev1', code, NOW);
+      const left = (await db.collection('childSessions').get()).docs.map((d) => d.id);
+      assert.deepStrictEqual(left, ['dev1']);
+    });
+  });
 });

@@ -62,7 +62,15 @@ export async function issueCode(
   const subRef = db.doc(paths.sub(parentUid));
 
   return db.runTransaction(async (tx: Transaction) => {
-    const [child, sub] = await Promise.all([tx.get(childRef), tx.get(subRef)]);
+    const [child, sub, sessions] = await Promise.all([
+      tx.get(childRef),
+      tx.get(subRef),
+      tx.get(
+        db.collection('childSessions')
+          .where('parentUid', '==', parentUid)
+          .where('childId', '==', childId),
+      ),
+    ]);
     if (!child.exists) throw new HttpsError('not-found', 'child-not-found');
     const s = sub.data();
     const subActive =
@@ -114,9 +122,9 @@ export async function issueCode(
     const childUpdate: Record<string, unknown> = {
       pairing: { code, expiresAt, status: 'active' },
     };
-    const linked = child.get('linkedDeviceUid') as string | undefined;
-    if (opts.revoke && linked) {
-      tx.delete(db.doc(paths.session(linked)));
+    if (opts.revoke) {
+      // Every device linked to this child is unlinked.
+      for (const s of sessions.docs) tx.delete(s.ref);
       childUpdate.linkedDeviceUid = FieldValue.delete();
     }
     tx.set(db.doc(paths.code(code)), {

@@ -23,6 +23,9 @@ const env = await initializeTestEnvironment({
 
 await env.withSecurityRulesDisabled(async (c) => {
   await setDoc(doc(c.firestore(), 'parents/alice/children/kid1'), { name: 'سارة', ownerUid: 'alice', linkedDeviceUid: 'dev1' });
+  await setDoc(doc(c.firestore(), 'childSessions/dev1'), { parentUid: 'alice', childId: 'kid1' });
+  // Revoked device: still named on the child, but its session is gone.
+  await setDoc(doc(c.firestore(), 'parents/alice/children/kid3'), { name: 'ليان', ownerUid: 'alice', linkedDeviceUid: 'dev2' });
   await setDoc(doc(c.firestore(), 'parents/alice/children/kid2'), { name: 'يوسف', ownerUid: 'alice' });
 });
 
@@ -50,6 +53,7 @@ await t('linked device uploads its report (m4a)', assertSucceeds(uploadBytes(rec
 await t('linked device uploads a web report (wav)', assertSucceeds(uploadBytes(rec(dev1, 'recordings/alice/kid1/s2.wav'), audio(), wav)));
 await t('cannot overwrite an existing recording', assertFails(uploadBytes(rec(dev1), audio(), m4a)));
 await t('other device cannot upload for the child', assertFails(uploadBytes(rec(dev2, 'recordings/alice/kid1/s3.m4a'), audio(), m4a)));
+await t('revoked device (no session) cannot upload', assertFails(uploadBytes(rec(dev2, 'recordings/alice/kid3/s12.m4a'), audio(), m4a)));
 await t('device cannot upload for an unlinked child', assertFails(uploadBytes(rec(dev1, 'recordings/alice/kid2/s4.m4a'), audio(), m4a)));
 await t('device cannot upload to another parent', assertFails(uploadBytes(rec(dev1, 'recordings/bob/kid1/s5.m4a'), audio(), m4a)));
 await t('parent cannot upload a report', assertFails(uploadBytes(rec(alice, 'recordings/alice/kid1/s6.m4a'), audio(), m4a)));

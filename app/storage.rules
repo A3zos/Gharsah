@@ -16,12 +16,18 @@ service firebase.storage {
       function childPath() {
         return /databases/(default)/documents/parents/$(parentUid)/children/$(childId);
       }
-      // The anonymous device the server linked to this child (claimPairingCode).
+      function sessionPath() {
+        return /databases/(default)/documents/childSessions/$(request.auth.uid);
+      }
+      // The anonymous device the server linked to this child: its session doc
+      // (written only by claimPairingCode) names exactly this child.
       function isLinkedDevice() {
         return signedIn()
           && request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'anonymous'
           && firestore.exists(childPath())
-          && firestore.get(childPath()).data.get('linkedDeviceUid', '') == request.auth.uid;
+          && firestore.exists(sessionPath())
+          && firestore.get(sessionPath()).data.parentUid == parentUid
+          && firestore.get(sessionPath()).data.childId == childId;
       }
       function validAudio() {
         return (file.matches('^[A-Za-z0-9_-]{1,64}[.]m4a$') && request.resource.contentType == 'audio/mp4')

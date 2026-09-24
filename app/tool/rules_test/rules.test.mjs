@@ -144,7 +144,7 @@ await t('child: no parent doc → denied', assertFails(setDoc(kidRef(carol, 'car
 // ── server-only collections: default deny for every client ──
 await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(ctx.firestore(), 'pairingCodes/123456'), { parentUid: 'alice', childId: 'kid1', status: 'active' });
-  await setDoc(doc(ctx.firestore(), 'childSessions/dev1'), { parentUid: 'alice', childId: 'kid1' });
+  await setDoc(doc(ctx.firestore(), 'childSessions/devS'), { parentUid: 'alice', childId: 'kid1' });
 });
 const device = env.authenticatedContext('dev1', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
 for (const [who, db] of [['parent', alice], ['anonymous device', device], ['signed-out', anon]]) {
@@ -160,6 +160,8 @@ await t('child: anonymous device cannot read a child (not linked yet)', assertFa
 await env.withSecurityRulesDisabled(async (ctx) => {
   const f = ctx.firestore();
   await setDoc(doc(f, 'parents/alice/children/kid9'), { ...child(), createdAt: Timestamp.now(), linkedDeviceUid: 'dev1' });
+  // The server's claimPairingCode writes the device session.
+  await setDoc(doc(f, 'childSessions/dev1'), { parentUid: 'alice', childId: 'kid9' });
 });
 const device2 = env.authenticatedContext('dev2', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
 const anonAlice = env.authenticatedContext('alice', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
@@ -177,6 +179,30 @@ await t('device: cannot list sessions', assertFails(getDocs(collection(device, '
 await t('parent: cannot read a device session', assertFails(getDoc(doc(alice, 'childSessions/dev1'))));
 await t('anonymous user with a parent uid is not the owner', assertFails(getDoc(doc(anonAlice, 'parents/alice'))));
 await t('anonymous user cannot create a child', assertFails(setDoc(kidRef(anonAlice, 'alice', 'k2'), child())));
+
+// ── device authorization comes from the server-written session only ──
+const dev3 = env.authenticatedContext('dev3', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
+const devX = env.authenticatedContext('devX', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
+await env.withSecurityRulesDisabled(async (c) => {
+  const f = c.firestore();
+  // A second device on the same (demo) child — sessions are only ever written by the Function.
+  await setDoc(doc(f, 'childSessions/dev3'), { parentUid: 'alice', childId: 'kid9' });
+  // A child whose linkedDeviceUid names devX, but devX has no session (revoked).
+  await setDoc(doc(f, 'parents/alice/children/kid8'), { ...child(), createdAt: Timestamp.now(), linkedDeviceUid: 'devX' });
+});
+await t('session: a second session on the same child can read it', assertSucceeds(getDoc(kidRef(dev3, 'alice', 'kid9'))));
+await t('session: linkedDeviceUid alone (no session) is not enough', assertFails(getDoc(kidRef(devX, 'alice', 'kid8'))));
+await t('session: a session for kid9 does not open kid8', assertFails(getDoc(kidRef(device, 'alice', 'kid8'))));
+await t('session: device cannot write a session for itself', assertFails(setDoc(doc(devX, 'childSessions/devX'), { parentUid: 'alice', childId: 'kid8' })));
+
+// ── parents/{uid}: server fields (e.g. isDemo) stay locked; name still editable ──
+await env.withSecurityRulesDisabled(async (c) => {
+  await updateDoc(doc(c.firestore(), 'parents/alice'), { isDemo: true });
+});
+await t('parent: can edit name with a server field present', assertSucceeds(updateDoc(doc(alice, 'parents/alice'), { name: 'Alice C' })));
+await t('parent: cannot change a server field', assertFails(updateDoc(doc(alice, 'parents/alice'), { isDemo: false })));
+await t('parent: cannot add a new field', assertFails(updateDoc(doc(alice, 'parents/alice'), { admin: true })));
+await t('parent: cannot blank the name', assertFails(updateDoc(doc(alice, 'parents/alice'), { name: '' })));
 
 // ── progress/{lessonId} (child device checkpoints) ──
 const progRef = (db, id = 'm01-w03-ikhlas') => doc(db, `parents/alice/children/kid9/progress/${id}`);

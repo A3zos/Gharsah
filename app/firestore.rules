@@ -10,6 +10,15 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid
         && request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'anonymous';
     }
+    // A child device linked (by the claimPairingCode Function) to
+    // parents/{parentUid}/children/{childId}: its server-written session doc
+    // childSessions/{deviceUid} names exactly that child.
+    function hasSession(parentUid, childId) {
+      return isDevice()
+        && exists(/databases/$(database)/documents/childSessions/$(request.auth.uid))
+        && get(/databases/$(database)/documents/childSessions/$(request.auth.uid)).data.parentUid == parentUid
+        && get(/databases/$(database)/documents/childSessions/$(request.auth.uid)).data.childId == childId;
+    }
     function isDevice() {
       return signedIn() && request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'anonymous';
     }
@@ -27,12 +36,11 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.role == 'parent';
 
-      // name/email may change; role and createdAt are fixed.
+      // Only name/email may change; role, createdAt and any server-written
+      // field (e.g. isDemo) are fixed.
       allow update: if isOwner(uid)
-        && request.resource.data.keys().hasOnly(['name', 'email', 'createdAt', 'role'])
-        && validName(request.resource.data)
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.createdAt == resource.data.createdAt;
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'email'])
+        && validName(request.resource.data);
 
       allow delete: if isOwner(uid);
 
@@ -71,9 +79,9 @@ service cloud.firestore {
         }
 
         allow read: if isOwner(uid);
-        // The child's own linked device (set by claimPairingCode) may read
-        // this one document — never list, never write.
-        allow get: if isDevice() && resource.data.get('linkedDeviceUid', '') == request.auth.uid;
+        // The child's own linked device (session written by claimPairingCode)
+        // may read this one document — never list, never write.
+        allow get: if hasSession(uid, childId);
         allow create: if isOwner(uid)
           && exists(/databases/$(database)/documents/parents/$(uid))
           && ch().keys().hasOnly(['name', 'age', 'gender', 'avatar', 'schedule', 'ownerUid', 'createdAt'])
@@ -88,13 +96,9 @@ service cloud.firestore {
           && validProfile();
         allow delete: if isOwner(uid);
 
-        // The child's linked device (claimPairingCode) — checked against the
-        // parent's child doc on every write.
-        function linkedDevice() {
-          return isDevice()
-            && get(/databases/$(database)/documents/parents/$(uid)/children/$(childId))
-                 .data.get('linkedDeviceUid', '') == request.auth.uid;
-        }
+        // The child's linked device — checked against its server-written
+        // session on every read/write.
+        function linkedDevice() { return hasSession(uid, childId); }
 
         // progress/{lessonId} — lesson checkpoints written by the child device
         // (LessonAgent). Stats are derived from these by a Cloud Function, so

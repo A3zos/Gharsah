@@ -108,5 +108,10 @@ export async function deleteChildData(
     const c = await db.doc(paths.code(code)).get();
     if (c.get('childId') === childId && c.get('parentUid') === parentUid) await c.ref.delete();
   }
-  if (child.linkedDeviceUid) await db.doc(paths.session(child.linkedDeviceUid)).delete();
+  const sessions = await db
+    .collection('childSessions')
+    .where('parentUid', '==', parentUid)
+    .where('childId', '==', childId)
+    .get();
+  for (const s of sessions.docs) await s.ref.delete();
 }

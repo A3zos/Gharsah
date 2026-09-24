@@ -52,19 +52,29 @@ export async function claimCode(
     const codeRef = db.doc(paths.code(code));
     const snap = await tx.get(codeRef);
     const d = snap.data();
-    if (
-      !d ||
-      d.status !== 'active' ||
-      !(d.expiresAt instanceof Timestamp) ||
-      d.expiresAt.toMillis() <= now.getTime()
-    ) {
-      return null;
-    }
+    // DEMO EXCEPTION (server-side only): a code with isDemo === true never
+    // expires and may be claimed by many devices. Every other code is
+    // one-time and valid 24 h. Clients can never create or edit codes.
+    const demo = d?.isDemo === true;
+    const usable =
+      !!d &&
+      d.status === 'active' &&
+      (demo ||
+        (d.expiresAt instanceof Timestamp && d.expiresAt.toMillis() > now.getTime()));
+    if (!usable) return null;
     const parentUid = d.parentUid as string;
     const childId = d.childId as string;
     const childRef = db.doc(paths.child(parentUid, childId));
     const sessionRef = db.doc(paths.session(deviceUid));
-    const [child, mySession] = await Promise.all([tx.get(childRef), tx.get(sessionRef)]);
+    const [child, mySession, childSessions] = await Promise.all([
+      tx.get(childRef),
+      tx.get(sessionRef),
+      tx.get(
+        db.collection('childSessions')
+          .where('parentUid', '==', parentUid)
+          .where('childId', '==', childId),
+      ),
+    ]);
     if (!child.exists) return null;
 
     // All reads before any write.
@@ -75,10 +85,12 @@ export async function claimCode(
     const oldRef = switching ? db.doc(paths.child(oldParent!, oldChild!)) : null;
     const old = oldRef ? await tx.get(oldRef) : null;
 
-    // Another device linked before → its session ends (one device per child).
-    const previous = child.get('linkedDeviceUid') as string | undefined;
-    if (previous && previous !== deviceUid) {
-      tx.delete(db.doc(paths.session(previous)));
+    // One device per child: any other device's session for this child ends
+    // (not for the demo code, which several devices may share).
+    if (!demo) {
+      for (const other of childSessions.docs) {
+        if (other.id !== deviceUid) tx.delete(other.ref);
+      }
     }
     // This device was linked to a different child before → unlink that one.
     if (oldRef && old?.exists && old.get('linkedDeviceUid') === deviceUid) {
@@ -86,11 +98,13 @@ export async function claimCode(
     }
 
     const at = Timestamp.fromDate(now);
-    tx.update(codeRef, { status: 'claimed', claimedBy: deviceUid, claimedAt: at });
-    tx.update(childRef, {
-      linkedDeviceUid: deviceUid,
-      'pairing.status': 'claimed',
-    });
+    if (demo) {
+      tx.update(codeRef, { lastClaimedAt: at });
+      tx.update(childRef, { linkedDeviceUid: deviceUid });
+    } else {
+      tx.update(codeRef, { status: 'claimed', claimedBy: deviceUid, claimedAt: at });
+      tx.update(childRef, { linkedDeviceUid: deviceUid, 'pairing.status': 'claimed' });
+    }
     tx.set(sessionRef, { parentUid, childId, linkedAt: at });
     return {
       parentUid,
