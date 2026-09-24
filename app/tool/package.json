@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "Dev tools. seed_demo.ts / remove_demo.ts run with Node 24 (native TypeScript) and use app/functions/node_modules."
+}

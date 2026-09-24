@@ -232,6 +232,10 @@ The HTML is a mockup, not code to port. Mockup data and the hadith text are plac
       expired / claimed pairing code + «إصدار رمز جديد» confirm, delete recording, no-children
       dashboard, sample-data note, too-many-attempts / offline on the child code tab, autoplay-blocked
       fallback play.
+- [ ] **Remove or rotate the demo account before public launch.** `node tool/remove_demo.ts` deletes
+      it (auth user, docs, recordings, isDemo codes); `node tool/seed_demo.ts` (re)creates it. The
+      demo code's multi-device / no-expiry exception exists only for `isDemo: true` codes, in
+      `claimPairingCode`.
 - [ ] **App Check** (Play Integrity) on the callable Functions (`claimPairingCode` especially).
 - [ ] Every rules change: extend `tool/rules_test/*.mjs` (allow + deny) and run them before deploying —
       never loosen a rule.
