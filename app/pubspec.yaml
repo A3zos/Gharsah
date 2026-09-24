@@ -44,6 +44,8 @@ dependencies:
   shared_preferences: ^2.5.5
   audioplayers: ^6.8.1
   share_plus: ^13.3.0
+  crypto: ^3.0.7
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:
@@ -73,6 +75,9 @@ flutter:
 
   assets:
     - assets/data/splash_ayat.json
+    - assets/data/quran_meta.json
+    - assets/data/quran_text.json
+    - assets/audio/quran/
     # TODO(phase-d): placeholder only — real recordings stream from Firebase Storage.
     - assets/audio/placeholder_recording.wav
 
