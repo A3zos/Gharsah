@@ -1,19 +1,19 @@
-"""Downloads the reciter audio for the bundled surahs into assets/audio/quran/.
+"""Downloads the reciter audio for the bundled surahs into ../content/audio/quran/ (then run tool/sync_content.dart).
 
 Audio ONLY comes from the API — Quran text is the Tanzil asset, never fetched.
 Source: Mishary Alafasy, Hafs 'an 'Asim, 128 kbps, islamic.network CDN, per ayah,
-addressed by the global ayah number computed from assets/data/quran_meta.json.
+addressed by the global ayah number computed from ../content/quran/quran_meta.json.
 
   python tool/build_quran_audio.py            (run from app/)
 
-Writes assets/audio/quran/SSSAAA.mp3 + manifest.json (sha256 + durationMs per file).
+Writes ../content/audio/quran/SSSAAA.mp3 + manifest.json (sha256 + durationMs per file).
 The app's QuranAudioRepository verifies bundled files against the manifest and
 uses the same URL pattern + sha256 check for surahs that aren't bundled.
 """
 import hashlib, json, os, struct, sys, time, urllib.request
 
-META = 'assets/data/quran_meta.json'
-OUT = 'assets/audio/quran'
+META = '../content/quran/quran_meta.json'
+OUT = '../content/audio/quran'
 # Keep in sync with tool/build_quran_text.py.
 SURAHS = [1, 108, 111, 112, 113, 114]
 URL = 'https://cdn.islamic.network/quran/audio/128/ar.alafasy/{n}.mp3'

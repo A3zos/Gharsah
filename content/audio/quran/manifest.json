@@ -1,0 +1,280 @@
+{
+ "reciter": "Mishary Rashid Alafasy",
+ "reciterId": "ar.alafasy",
+ "riwaya": "Hafs an Asim",
+ "bitrateKbps": 128,
+ "source": "islamic.network CDN (AlQuran Cloud)",
+ "urlPattern": "https://cdn.islamic.network/quran/audio/128/ar.alafasy/{global}.mp3",
+ "files": [
+  {
+   "surah": 1,
+   "ayah": 1,
+   "global": 1,
+   "file": "001001.mp3",
+   "sha256": "c0d5ba887523e64b5cf7db8f26a6ddd3936b1ac9286f133e258f0dd7f6b7353e",
+   "bytes": 146830,
+   "durationMs": 6113
+  },
+  {
+   "surah": 1,
+   "ayah": 2,
+   "global": 2,
+   "file": "001002.mp3",
+   "sha256": "edcb258eb1a5cfe11a1a382db4f743953684678335e0e0167c5081b8da6b60d7",
+   "bytes": 89988,
+   "durationMs": 5616
+  },
+  {
+   "surah": 1,
+   "ayah": 3,
+   "global": 3,
+   "file": "001003.mp3",
+   "sha256": "7b817a608500519bba4e36529fab902cc9c9cc244ed8ae73c944472e14370ad1",
+   "bytes": 74523,
+   "durationMs": 4650
+  },
+  {
+   "surah": 1,
+   "ayah": 4,
+   "global": 4,
+   "file": "001004.mp3",
+   "sha256": "118fa4b7c3cbbcd04b4f4e3d5384eac9c20636c62b5bd2f404830a68e2f6ce2c",
+   "bytes": 74941,
+   "durationMs": 4676
+  },
+  {
+   "surah": 1,
+   "ayah": 5,
+   "global": 5,
+   "file": "001005.mp3",
+   "sha256": "aa2d72e19bf4a41c6e26e13048890c3477e3e25329ab0d2705a8a4b89ee8593d",
+   "bytes": 107960,
+   "durationMs": 6740
+  },
+  {
+   "surah": 1,
+   "ayah": 6,
+   "global": 6,
+   "file": "001006.mp3",
+   "sha256": "ea5530d4b44c31f37557cd3af99c83d199fa487fa9de028e7618814f52d843b0",
+   "bytes": 89988,
+   "durationMs": 5616
+  },
+  {
+   "surah": 1,
+   "ayah": 7,
+   "global": 7,
+   "file": "001007.mp3",
+   "sha256": "8155f8b1e9255dcecb50e15d4736e1b6ca7bd96c7447f7734fa19a0e97803d10",
+   "bytes": 212450,
+   "durationMs": 13270
+  },
+  {
+   "surah": 108,
+   "ayah": 1,
+   "global": 6205,
+   "file": "108001.mp3",
+   "sha256": "f129eb1e731a7ce934c1478374243743731879776af1bf0771bf6be71056a27b",
+   "bytes": 107960,
+   "durationMs": 6740
+  },
+  {
+   "surah": 108,
+   "ayah": 2,
+   "global": 6206,
+   "file": "108002.mp3",
+   "sha256": "c353d115d17527b3486d8bc9a5f0be92e69db965537dbbcb7dc9ca5ff76d1065",
+   "bytes": 57387,
+   "durationMs": 3579
+  },
+  {
+   "surah": 108,
+   "ayah": 3,
+   "global": 6207,
+   "file": "108003.mp3",
+   "sha256": "6d08ad1ae79ad1066a27e4a52e14b47bdf59bdcf1718fd70caa233d43d4cc097",
+   "bytes": 84554,
+   "durationMs": 5277
+  },
+  {
+   "surah": 111,
+   "ayah": 1,
+   "global": 6217,
+   "file": "111001.mp3",
+   "sha256": "5d4c66b517fe052d7e968c0ef993a4d2893b899453f5d1af71597e2d41ecf855",
+   "bytes": 118827,
+   "durationMs": 7419
+  },
+  {
+   "surah": 111,
+   "ayah": 2,
+   "global": 6218,
+   "file": "111002.mp3",
+   "sha256": "dc9011bec9973a7cf70198af2ece090b467cd5feea30cd4bba9e74e3aca06ba3",
+   "bytes": 115065,
+   "durationMs": 7184
+  },
+  {
+   "surah": 111,
+   "ayah": 3,
+   "global": 6219,
+   "file": "111003.mp3",
+   "sha256": "92cc204b073f24c3b697aceb7e3d55892b6531681d4840cd53fc820e0f6e21c0",
+   "bytes": 83300,
+   "durationMs": 5198
+  },
+  {
+   "surah": 111,
+   "ayah": 4,
+   "global": 6220,
+   "file": "111004.mp3",
+   "sha256": "b3e6ef0033eb368e0de22279dd77dabe8c0e81ef4b0c87aa0dac461f898e6ec7",
+   "bytes": 89988,
+   "durationMs": 5616
+  },
+  {
+   "surah": 111,
+   "ayah": 5,
+   "global": 6221,
+   "file": "111005.mp3",
+   "sha256": "105f357f63c6c2d011e708b780eb97256408b2d7633c416ad97b4d1dab40acf0",
+   "bytes": 103780,
+   "durationMs": 6478
+  },
+  {
+   "surah": 112,
+   "ayah": 1,
+   "global": 6222,
+   "file": "112001.mp3",
+   "sha256": "8b7bca4eda670a680e033892ebcbbb7578d3c8b21ed89015a292360998e4f258",
+   "bytes": 48192,
+   "durationMs": 3004
+  },
+  {
+   "surah": 112,
+   "ayah": 2,
+   "global": 6223,
+   "file": "112002.mp3",
+   "sha256": "fb84915a29ea0f3b73fc45108d3ec9fd8105e4a6eee0476d1ab12362d55b0b30",
+   "bytes": 41087,
+   "durationMs": 2560
+  },
+  {
+   "surah": 112,
+   "ayah": 3,
+   "global": 6224,
+   "file": "112003.mp3",
+   "sha256": "62f55e16199453be48a634b94fba2b761f17ee1715da20e60f071d1e14dbda00",
+   "bytes": 48192,
+   "durationMs": 3004
+  },
+  {
+   "surah": 112,
+   "ayah": 4,
+   "global": 6225,
+   "file": "112004.mp3",
+   "sha256": "ca45f73f9799811da6d34b00856db5afc8f947574c799bf97fdffffeafd6801b",
+   "bytes": 78285,
+   "durationMs": 4885
+  },
+  {
+   "surah": 113,
+   "ayah": 1,
+   "global": 6226,
+   "file": "113001.mp3",
+   "sha256": "9cd0e982d6220a92f16f581fa405e4874c55a4479296053f2124773bfe8a9e34",
+   "bytes": 56133,
+   "durationMs": 3500
+  },
+  {
+   "surah": 113,
+   "ayah": 2,
+   "global": 6227,
+   "file": "113002.mp3",
+   "sha256": "65c7347c9fcbc6d54bd08d8d14cea899d5e5f2abdb8573c7b5bcb637b2aad0f8",
+   "bytes": 58641,
+   "durationMs": 3657
+  },
+  {
+   "surah": 113,
+   "ayah": 3,
+   "global": 6228,
+   "file": "113003.mp3",
+   "sha256": "9efce4382801c53695652a84f05af176121af91260946ff170059c4d23fa3a5d",
+   "bytes": 81211,
+   "durationMs": 5068
+  },
+  {
+   "surah": 113,
+   "ayah": 4,
+   "global": 6229,
+   "file": "113004.mp3",
+   "sha256": "fdfceebd12031932a78055894f4d30dd654feb0c498659491d5879141711a33e",
+   "bytes": 96675,
+   "durationMs": 6034
+  },
+  {
+   "surah": 113,
+   "ayah": 5,
+   "global": 6230,
+   "file": "113005.mp3",
+   "sha256": "d6fbd00f5103e627c06ac503f3b45add9c5eff5c27c705ec5f15a5cc831fb2b7",
+   "bytes": 91242,
+   "durationMs": 5695
+  },
+  {
+   "surah": 114,
+   "ayah": 1,
+   "global": 6231,
+   "file": "114001.mp3",
+   "sha256": "814cca1d20a8490bc630da6de78051d255cf6fe5f5bb69e13ee2775f33f0a91b",
+   "bytes": 98347,
+   "durationMs": 6139
+  },
+  {
+   "surah": 114,
+   "ayah": 2,
+   "global": 6232,
+   "file": "114002.mp3",
+   "sha256": "ae28f659d7509350bac3821b4edd3fcc17cdfdb74951ea8ac941acacf1d7e025",
+   "bytes": 84972,
+   "durationMs": 5303
+  },
+  {
+   "surah": 114,
+   "ayah": 3,
+   "global": 6233,
+   "file": "114003.mp3",
+   "sha256": "159d3de04990e4563f66e43b0a40af68cd9ef46b64f6de50287c42b68eee9718",
+   "bytes": 86226,
+   "durationMs": 5381
+  },
+  {
+   "surah": 114,
+   "ayah": 4,
+   "global": 6234,
+   "file": "114004.mp3",
+   "sha256": "e257ca07b7a067db1f558f32dddc6148411febd52ede2d14ce3e0d0c9c4eeb1a",
+   "bytes": 128440,
+   "durationMs": 8020
+  },
+  {
+   "surah": 114,
+   "ayah": 5,
+   "global": 6235,
+   "file": "114005.mp3",
+   "sha256": "8a4a940bac74b5c97a4748b3b25f7939dcf8b846bd59b68dbc7239d09675979a",
+   "bytes": 127186,
+   "durationMs": 7941
+  },
+  {
+   "surah": 114,
+   "ayah": 6,
+   "global": 6236,
+   "file": "114006.mp3",
+   "sha256": "fc9430b5eb4b40eb96fa8c99ea1e3b44daae4030f2106d3fcfa603493b2ea77a",
+   "bytes": 132620,
+   "durationMs": 8281
+  }
+ ]
+}

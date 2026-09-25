@@ -211,7 +211,7 @@ The HTML is a mockup, not code to port. Mockup data and the hadith text are plac
 - [ ] **Require email verification** before subscribing or adding a child (Phase C). Login is allowed
       while unverified, with a resend banner on the parent home.
 - [ ] **Tanzil attribution (CC BY 3.0).** Quran text comes from the Tanzil Project
-      (`assets/data/splash_ayat.json`). Credit «نص القرآن: مشروع تنزيل — tanzil.net» with a link in a
+      (`content/quran/splash_ayat.json`). Credit «نص القرآن: مشروع تنزيل — tanzil.net» with a link in a
       visible place (e.g. an «عن التطبيق» screen or the terms page) before release.
 - [ ] **Reciter audio licence.** Confirm the reciter recordings' usage terms (Mishary Alafasy via
       Al Quran Cloud / islamic.network) allow use in a paid app before release.
@@ -225,7 +225,7 @@ The HTML is a mockup, not code to port. Mockup data and the hadith text are plac
 - [ ] **Replace the INTERIM AI teacher** (`lib/features/lesson/ai/interim/`) with the AI developer's
       module behind `AiTeacher`; review the teacher-line bank (lines marked `// REVIEW`).
 - [ ] **Hadith:** add a vetted hadith (text + takhrij + grading + source + reviewer + audio) and set
-      `approved: true` in `assets/data/hadith.json` — it then displays and plays with no code change.
+      `approved: true` in `content/hadith/hadith.json` (then sync) — it then displays and plays with no code change.
 - [ ] **Real lesson plan:** replace the interim `m01-w03-day2` script with the yearly plan.
 - [ ] **Designs for the TODO(design) states** (grep `TODO(design)`): mic permission denied, offline /
       audio unavailable, report save failed, «done for today» hero, «ملفّي», the 3 shortcuts,
@@ -271,9 +271,9 @@ exists; revoked → back to the child code tab.
 ## 13. The live lesson — `LessonAgent` (lib/features/lesson/agent/)
 
 The single brain of frames 18–23; screens only render `LessonState` and forward taps as commands.
-- Script: ai/CONTRACT.md format in `assets/lessons/*.json` (`m01-w03-ikhlas`; interim `m01-w03-day2`).
-  Quran by surah:ayah (verified Tanzil text `assets/data/quran_text.json`, Alafasy audio bundled in
-  `assets/audio/quran/` + manifest; other surahs downloaded once, sha256-cached, never streamed).
+- Script: ai/CONTRACT.md format in `content/lessons/*.json` (`m01-w03-ikhlas`; interim `m01-w03-day2`).
+  Quran by surah:ayah (verified Tanzil text `content/quran/quran_text.json`, Alafasy audio in
+  `content/audio/quran/` + manifest, mirrored to `app/assets/`; other surahs downloaded once, sha256-cached, never streamed).
 - Flow: intro → per ayah (recitation autoplays → «الآن ردّد» → 3 presence-counted repeats → praise) →
   surah done → hadith (placeholder, silent until approved) → project → end; next day the report first.
 - Rules enforced: teacher silent while the reciter plays; mic deaf during reciter/teacher speech

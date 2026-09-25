@@ -1,0 +1,12 @@
+{
+  "_comment": "content/ is the single source of truth. app/tool/sync_content.dart mirrors each entry into app/assets/ (committed); app/test/content_drift_test.dart fails if they differ. Paths: 'from' is relative to content/, 'to' relative to app/. A trailing slash means a whole directory.",
+  "entries": [
+    { "from": "quran/quran_text.json", "to": "assets/data/quran_text.json" },
+    { "from": "quran/quran_meta.json", "to": "assets/data/quran_meta.json" },
+    { "from": "quran/splash_ayat.json", "to": "assets/data/splash_ayat.json" },
+    { "from": "hadith/hadith.json", "to": "assets/data/hadith.json" },
+    { "from": "projects/projects.json", "to": "assets/data/projects.json" },
+    { "from": "lessons/", "to": "assets/lessons/" },
+    { "from": "audio/quran/", "to": "assets/audio/quran/" }
+  ]
+}

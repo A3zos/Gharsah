@@ -1,11 +1,12 @@
-"""Rebuilds assets/data/quran_text.json — the verified Tanzil text of the lesson surahs.
+"""Rebuilds ../content/quran/quran_text.json — the verified Tanzil text of the lesson surahs.
 
 Nothing is typed by hand: every text is taken verbatim from the downloaded Tanzil
 file (only the basmala prefix Tanzil puts on ayah 1 of surahs other than 1 and 9
 is removed — it is not part of the ayah in Hafs numbering).
 
   1. Download quran-uthmani.txt as described in tool/build_splash_ayat.py.
-  2. python tool/build_quran_text.py path/to/quran-uthmani.txt assets/data/quran_text.json
+  2. python tool/build_quran_text.py path/to/quran-uthmani.txt ../content/quran/quran_text.json
+  3. dart run tool/sync_content.dart   (mirror content/ into app/assets/)
 """
 import hashlib, json, sys
 

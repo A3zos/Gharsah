@@ -13,4 +13,5 @@ flutter analyze
 - Firebase config: `firebase.json`, `firestore.rules` (deploy: `firebase deploy --only firestore:rules --project nibras-59284`).
 - Rules tests: `tool/rules_test/` (Firestore emulator).
 - Design comparison tooling: `tool/design_compare/` — design PNGs live in `../design/screens/`.
-- Verified Quran text: `assets/data/splash_ayat.json` (Tanzil, CC BY 3.0) — never edit by hand.
+- Verified content lives in `../content/` (shared with web/); `assets/{data,lessons,audio/quran}` is a
+  committed mirror — edit `../content/` and run `dart run tool/sync_content.dart`, never edit by hand.

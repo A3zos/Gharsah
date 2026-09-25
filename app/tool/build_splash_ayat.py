@@ -1,4 +1,4 @@
-"""Rebuilds assets/data/splash_ayat.json from the Tanzil Project's verified text.
+"""Rebuilds ../content/quran/splash_ayat.json from the Tanzil Project's verified text.
 
 Nothing is typed by hand: every saved text is asserted to be a verbatim substring
 of the downloaded Tanzil ayah.
@@ -7,7 +7,8 @@ of the downloaded Tanzil ayah.
      - https://tanzil.net/pub/download/index.php?marks=true&sajdah=true&rub=false&alef=false&quranType=uthmani&outType=txt-2&agree=true
        -> quran-uthmani.txt   (format: sura|aya|text)
      - https://tanzil.net/res/text/metadata/quran-data.js -> quran-data.js
-  2. python tool/build_splash_ayat.py build/tanzil assets/data/splash_ayat.json
+  2. python tool/build_splash_ayat.py build/tanzil ../content/quran/splash_ayat.json
+  3. dart run tool/sync_content.dart   (mirror content/ into app/assets/)
 """
 import json, re, sys, hashlib
 S = sys.argv[1]; OUT = sys.argv[2]

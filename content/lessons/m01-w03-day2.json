@@ -1,0 +1,21 @@
+{
+  "contractVersion": "0.1",
+  "lessonId": "m01-w03-day2",
+  "title": "تقرير المشروع + حديث اليوم",
+  "value": "برّ الوالدين",
+  "_note": "INTERIM — product-owner approved placeholder for the next-day lesson (2026-09-24). Real content comes from the yearly learning plan. Hadith is the unapproved placeholder id.",
+  "interim": true,
+  "steps": [
+    {
+      "type": "project_report",
+      "projectId": "birr-3-acts",
+      "question": "report.ask"
+    },
+    {
+      "type": "hadith_loop",
+      "hadithId": "PLACEHOLDER-birr-alwalidayn",
+      "repeats": 3
+    },
+    { "type": "lesson_end", "lines": ["end.praise"] }
+  ]
+}

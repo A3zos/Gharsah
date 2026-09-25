@@ -1,11 +1,12 @@
-"""Rebuilds assets/data/quran_meta.json (surah names + ayah counts) from Tanzil metadata.
+"""Rebuilds ../content/quran/quran_meta.json (surah names + ayah counts) from Tanzil metadata.
 
 Used by the app to turn surah:ayah into the global ayah number (1..6236) for the
 reciter audio. Nothing is typed by hand. Deliberately does NOT copy the
 Meccan/Medinan column (scholars differ for some surahs — see ai/GUARDRAILS.md §4).
 
   1. Download https://tanzil.net/res/text/metadata/quran-data.js (CC BY 3.0)
-  2. python tool/build_quran_meta.py path/to/quran-data.js assets/data/quran_meta.json
+  2. python tool/build_quran_meta.py path/to/quran-data.js ../content/quran/quran_meta.json
+  3. dart run tool/sync_content.dart   (mirror content/ into app/assets/)
 """
 import hashlib, json, re, sys
 
