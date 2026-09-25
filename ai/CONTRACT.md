@@ -1,3 +1,15 @@
+> ## ⚠️ ملاحظة مهمة قبل القراءة (أُضيفت لاحقًا)
+>
+> ما هو موصوف في هذا الملف (`Draft v0.1`) هو **تصميم مقترح لم يُبنَ فعليًا**. السيرفر الحقيقي المبني والعامل الآن (`manara-backend`, فرع `dev-v2`) يستخدم **معمارية مختلفة جوهريًا**: محادثة عبر HTTP مع سيرفر مركزي (وليس معالجة على الجهاز)، آلة حالات محددة (stages) بدل خطوات JSON بالشكل الموصوف هنا، وكلام معلّم مُولَّد جزئيًا بذكاء اصطناعي توليدي حر بدل "بنك جمل" ثابت (§5 تحت).
+>
+> **التوثيق الدقيق لما هو مبني فعليًا الآن موجود في [`ai/API.md`](./API.md)** — هذا هو ما يجب أن يربط به تطبيق فلاتر عمليًا اليوم.
+>
+> `ai/API.md` يشرح أيضًا في قسمه الأخير تعارضًا مهمًا بين ما هو مبني فعليًا وبين `ai/GUARDRAILS.md` (خصوصًا حول تقييم التلاوة المباشر وتخزين صوت الأطفال) يحتاج قرار صاحب المنتج قبل أي إطلاق عام.
+>
+> النص الأصلي أدناه لم يُعدَّل، ويبقى كمرجع تصميمي مستقبلي محتمل إذا قرر الفريق التحول للمعمارية على الجهاز لاحقًا.
+
+---
+
 # اتفاقية الربط بين التطبيق والمعلّم الذكي · App ↔ AI Teacher Contract
 
 > **Draft v0.1 — to be agreed with the AI developer.** Nothing here is final; change it together, then bump the version.
@@ -20,17 +32,17 @@
 The app plays the Quran recitation itself; the AI module never loads, synthesises or reads an ayah.
 
 - **Reciter:** Mishary Rashid Alafasy (`ar.alafasy`), Hafs ʿan ʿĀṣim, 128 kbps MP3, per ayah, via
-  Al Quran Cloud / islamic.network (`https://cdn.islamic.network/quran/audio/128/ar.alafasy/{globalAyahNumber}.mp3`).
-  Audio only — Quran **text** always comes from the verified Tanzil asset, never from this API.
+Al Quran Cloud / islamic.network (`https://cdn.islamic.network/quran/audio/128/ar.alafasy/{globalAyahNumber}.mp3`).
+Audio only — Quran **text** always comes from the verified Tanzil asset, never from this API.
 - **Lookup:** `QuranAudioRepository.audioFor(surah, ayah)` in the app. Bundled files live in
-  `app/assets/audio/quran/SSSAAA.mp3` (e.g. `112001.mp3`) and are described by
-  `app/assets/audio/quran/manifest.json` (reciter, edition, riwaya, bitrate, source pattern, download date,
-  and per file: `surah`, `ayah`, `globalNumber`, `sha256`, `durationMs`). Ayat that aren't bundled are
-  downloaded once, sha256-verified, cached on the device and played from the cache — never streamed
-  mid-lesson.
+`app/assets/audio/quran/SSSAAA.mp3` (e.g. `112001.mp3`) and are described by
+`app/assets/audio/quran/manifest.json` (reciter, edition, riwaya, bitrate, source pattern, download date,
+and per file: `surah`, `ayah`, `globalNumber`, `sha256`, `durationMs`). Ayat that aren't bundled are
+downloaded once, sha256-verified, cached on the device and played from the cache — never streamed
+mid-lesson.
 - **What the AI does:** references ayat by `{"surah": n, "ayah": n}` only, and reacts to the app's
-  `recitation_started` / `recitation_finished` events (§3) around app playback — e.g. stays silent while
-  the reciter plays, then says «الآن ردّد». Teacher TTS must never read an ayah.
+`recitation_started` / `recitation_finished` events (§3) around app playback — e.g. stays silent while
+the reciter plays, then says «الآن ردّد». Teacher TTS must never read an ayah.
 
 ## 2. Lesson script (JSON)
 
@@ -39,11 +51,11 @@ A lesson is an ordered list of **steps**. The app renders each step; the AI driv
 
 ```jsonc
 {
-  "contractVersion": "0.1",
-  "lessonId": "m01-w03-ikhlas",
-  "title": "سورة الإخلاص + حديث برّ الوالدين",
-  "value": "برّ الوالدين",
-  "steps": [ /* see step types below */ ]
+"contractVersion": "0.1",
+"lessonId": "m01-w03-ikhlas",
+"title": "سورة الإخلاص + حديث برّ الوالدين",
+"value": "برّ الوالدين",
+"steps": [ /* see step types below */ ]
 }
 ```
 
