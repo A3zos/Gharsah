@@ -132,9 +132,8 @@ class _SplashScreenState extends State<SplashScreen>
                               child: AppIcon.logo(size: AppSizes.logoSplash),
                             ),
                           ),
-                          // Design gap is 36. Flutter sets Amiri's glyphs ~9px higher in
-                          // their 2.05 line box than Chrome does; +9 matches the frame.
-                          const SizedBox(height: 36 + 9),
+                          // Design gap is 36 (see the ayah → reference gap below).
+                          const SizedBox(height: 36),
                           if (ayah != null)
                             FadeTransition(
                               opacity: _ayah,
@@ -213,7 +212,9 @@ class _AyahBlock extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
+          // 24 + 9: Flutter's 2.05 line box for Amiri Quran ends ~9px higher
+          // than Chrome's; this keeps the reference where the frame has it.
+          const SizedBox(height: 24 + 9),
           Text(ayah.reference, style: AppTextStyles.ayahRef),
         ],
       ),

@@ -8,9 +8,12 @@ import '../features/children/data/children_repository.dart';
 import '../features/dashboard/data/submissions_repository.dart';
 import '../features/lesson/agent/lesson_state.dart';
 import '../features/lesson/screens/lesson_view.dart';
+import '../features/quran/data/quran_ref.dart';
 import '../features/student/data/leaderboard.dart';
 import '../features/student/screens/student_home_view.dart';
 import 'app_content.dart';
+import 'arabic_digits.dart';
+import 'debug_preview.dart';
 import 'mock_data.dart';
 
 // Debug design-comparison previews only (`?screen=…` on a debug/profile web
@@ -179,6 +182,9 @@ Widget? previewLesson(String frame, AppContent content) {
       lineIndex: 1,
       elapsed: Duration(minutes: 9, seconds: 47),
     ),
+    // Ayah loop, Al-Ikhlas ayah N (?screen=lesson-ayah&ayah=N): the verified
+    // Tanzil text from content, as the agent shows it.
+    'ayah' => _ayahPreview(content, DebugPreview.intParam('ayah') ?? 1),
     _ => null,
   };
   if (s == null) return null;
@@ -187,5 +193,22 @@ Widget? previewLesson(String frame, AppContent content) {
     plan: plan,
     glance: glance,
     actions: const NoLessonActions(),
+  );
+}
+
+LessonState _ayahPreview(AppContent content, int ayah) {
+  final r = QuranRef(112, ayah.clamp(1, 4));
+  final surah = content.meta.surahName(r.surah);
+  return LessonState(
+    screen: LessonScreen.ayah,
+    beat: LessonBeat.awaitMic,
+    caption: 'الآن ردّد بصوتك… ثلاث مرات.',
+    captionId: 'ayah.repeat_now',
+    ayahRef: r,
+    ayahText: content.text.text(r),
+    ayahReference: 'سورة $surah · الآية ${r.ayah.arabicDigits}',
+    surahName: surah,
+    surahAyahCount: content.meta.ayahCount(r.surah),
+    elapsed: const Duration(minutes: 1, seconds: 40),
   );
 }

@@ -1,291 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Design tokens for غَرْسة — the single source of truth (CLAUDE.md §4).
-/// Values come from the approved design in `design/html`. No screen may
-/// hardcode a color, size, radius or shadow; add a token here instead.
-abstract final class AppColors {
-  // Surfaces
-  static const Color background = Color(0xFFFBF6EC); // cream
-  static const Color surface = Color(0xFFFFFFFF);
+import 'app_tokens.g.dart';
 
-  // Greens
-  static const Color primary = Color(0xFF2FA98C);
-  // brand / buttons / CTA text-on-light
-  static const Color deepGreen = Color(0xFF1B7F69);
-  static const Color darkerGreen = Color(0xFF14624F);
-  static const Color greenTint = Color(0xFFEAF6F2);
-  static const Color softGreen = Color(0xFF7ACBB6);
-
-  // Gold
-  static const Color gold = Color(0xFFF4B740);
-  static const Color seedGold = Color(0xFFD99F23); // seed core
-  static const Color goldTint = Color(0xFFFDF1DA);
-  static const Color onGold = Color(0xFF4A3206);
-  static const Color warningText = Color(0xFF7A5209);
-  static const Color ayahBracket = Color(0xFF9C6B12);
-
-  // Berry (errors)
-  static const Color berry = Color(0xFFE86A92);
-  static const Color berryDeep = Color(0xFFA8365C);
-  static const Color berryTint = Color(0xFFFDE9EF);
-  static const Color errorText = Color(0xFF8E2B4D);
-
-  // Sky
-  static const Color sky = Color(0xFF4EA9E8);
-  static const Color skyTint = Color(0xFFE7F2FC);
-
-  // Text
-  static const Color textDark = Color(0xFF1F3D37);
-  static const Color textMuted = Color(0xFF5C716C);
-  static const Color placeholder = Color(0xFF8A9A95);
-
-  // Borders
-  static const Color border = Color(0xFFEFE7D6);
-  static const Color borderStrong = Color(0xFFE4DCC8);
-  // also the segmented-tab track
-  static const Color borderSoft = Color(0xFFF4F0E4);
-  static const Color inputBorder = Color(0xFFE7DECB);
-
-  // Text on the deep-green hero card (05-Packages).
-  static const Color onDeepGreenMuted = Color(0xFFE6F4EF);
-  // Dark play glyph in the Google Play note (05-Packages).
-  static const Color playGlyph = Color(0xFF3B4A47);
-
-  // Avatar illustration (05-Packages child cards).
-  static const Color avatarSkinLight = Color(0xFFF2C9A0);
-  static const Color avatarSkinTan = Color(0xFFE0A97C);
-  static const Color avatarFeatures = Color(0xFF3B2A24);
-  static const Color avatarCap = Color(0xFFF7F2E6);
-  static const Color avatarSkinMid = Color(0xFFC98A5E);
-  static const Color avatarSkinDeep = Color(0xFF8D5A3B);
-  static const Color avatarCream = Color(0xFFD8CDB4);
-
-  // 12-Dashboard
-  static const Color textFaint = Color(
-    0xFF9BA9A5,
-  ); // chevrons, unreached stages
-  static const Color skyDeep = Color(0xFF2B6FA0); // ayat icon
-  static const Color goldDeep = Color(0xFFB57A10); // projects icon
-  static const Color goldMid = Color(0xFFE0A82A); // projects icon
-  static const Color seedDots = Color(0xFFCFE3DC); // seed-stage sparkles
-  static const Color stageOffStem = Color(0xFFCBBFA6);
-  static const Color stageOffLeaf = Color(0xFFDCE6E2);
-  static const Color stageOffLeafLight = Color(0xFFE8EDEA);
-
-  // 08–11 / 13–16
-  static const Color mintBorder = Color(
-    0xFFCFE3DC,
-  ); // open custom-time box, green code cells
-  static const Color goldBorder = Color(
-    0xFFEFD9A8,
-  ); // gold code cells, in-progress items
-
-  // 17–23 child app & live lesson
-  static const Color berryBorder = Color(0xFFF6D3DF); // «مباشر» pill, end call
-  static const Color skyText = Color(0xFF24638F); // «٤ آيات قصيرة» chip
-  static const Color voiceBarOff = Color(0xFFC9DED7); // quiet voice bars
-  static const Color hadithDash = Color(
-    0xFFD8CDB4,
-  ); // placeholder hadith border
-  static const Color hadithPlaceholderBg = Color(0xFFFDF6E6);
-  static const Color medalSilver = Color(0xFFC9CFCB);
-  static const Color medalSilverText = Color(0xFF2C3733);
-  static const Color leafLight = Color(0xFF9BD9C8); // hero sprout, tree canopy
-  // TeacherCharacter art (frames 18–23)
-  static const Color teacherSkin = Color(0xFFE8B98C);
-  static const Color teacherNeck = Color(0xFFD9A273);
-  static const Color teacherBeard = Color(0xFF6B5646);
-  static const Color teacherShade = Color(0xFFF1EFE6);
-  static const Color teacherCollar = Color(0xFFDDE2DA);
-  static const Color teacherCapBand = Color(0xFFF4F2EA);
-  static const Color teacherCapLine = Color(0xFFE4E0D4);
-  static const Color teacherEye = Color(0xFF2A211C);
-  static const Color teacherMouth = Color(0xFF7A3B2E);
-  static Color glowSpeaking = primary.withValues(alpha: 0.20);
-  static Color glowListening = gold.withValues(alpha: 0.26);
-  static Color micPulse = gold.withValues(alpha: 0.34);
-  static Color micPromptPulse = gold.withValues(alpha: 0.30);
-  static Color goPulse = primary.withValues(alpha: 0.34);
-  static Color heroChip = surface.withValues(alpha: 0.16);
-  static Color blobGreen09 = primary.withValues(alpha: 0.09);
-  static Color blobGreen10 = primary.withValues(alpha: 0.10);
-  static Color blobGold14 = gold.withValues(alpha: 0.14);
-
-  // Google Play system sheet (06-PlayConfirm) — Google's own greys, not brand.
-  static const Color playSurface = Color(0xFFF8F9FA);
-  static const Color playChip = Color(0xFFF1F3F4);
-  static const Color playDivider = Color(0xFFE8EAED);
-  static const Color playOutline = Color(0xFFDADCE0);
-  static const Color playTextStrong = Color(0xFF202124);
-  static const Color playText = Color(0xFF3C4043);
-  static const Color playTextMuted = Color(0xFF5F6368);
-  static const Color scrim = Color(0x8C172925); // rgba(23,41,37,.55)
-
-  // Decorative background blobs (design uses translucent brand colors).
-  static Color blobGreen = primary.withValues(alpha: 0.07);
-  static Color blobGreenStrong = primary.withValues(alpha: 0.08);
-  static Color blobGold = gold.withValues(alpha: 0.11);
-  static Color blobGoldStrong = gold.withValues(alpha: 0.12);
-  static Color blobSky = sky.withValues(alpha: 0.08);
-  static Color blobGreenFaint = primary.withValues(alpha: 0.06);
-  static Color blobGoldFaint = gold.withValues(alpha: 0.08);
-  static Color heroCircle = surface.withValues(alpha: 0.07);
-  static Color heroTrack = surface.withValues(alpha: 0.22);
-}
-
-abstract final class AppRadii {
-  static const double chip = 14;
-  static const double iconBox = 18;
-  static const double row = 18;
-  static const double input = 20; // text fields + auth buttons (03/04 frames)
-  static const double inputCompact = 19; // signup fields (04 frame)
-  static const double cta = 22;
-  static const double smallCard = 24;
-  static const double card = 28;
-  static const double heroCard = 30;
-  static const double pill = 999;
-
-  static const double backButton = 16;
-  static const double tabTrack = 20;
-  static const double tab = 16;
-  static const double codeCell = 17;
-  static const double eyeButton = 14;
-  static const double note = 18;
-  static const double timelineCard = 26;
-
-  // 05-Packages
-  static const double headerButton = 15; // settings / «الإنجازات»
-  static const double planCard = 26;
-  static const double childCard = 24;
-  static const double renewButton = 18;
-  static const double subscribeButton = 17;
-  static const double monthlyButton = 16;
-  static const double infoNote = 20;
-  static const double noteIconBox = 11;
-  static const double progress = 6;
-
-  // 07-AddChild
-  static const double stepPill = 13;
-  static const double ageChip = 18;
-  static const double genderCard = 24;
-
-  // 08–11 add-child flow
-  static const double timeCard = 22;
-  static const double smallButton = 15;
-  static const double toggle = 18;
-  static const double dayRow = 16;
-  static const double timePill = 14;
-  static const double pairingCell = 16;
-  static const double actionButton = 18;
-  static const double noteCard = 20;
-
-  // 13–16 dashboard detail panels
-  static const double detailPanel = 26;
-  static const double projectCard = 20;
-  static const double player = 18;
-  static const double listRow = 16;
-  static const double hideButton = 14;
-  static const double summaryCard = 22;
-  static const double miniBar = 5;
-
-  // 12-Dashboard
-  static const double childChip = 16;
-  static const double statCard = 24;
-  static const double statIcon = 14;
-
-  // 06-PlayConfirm
-  static const double sheet = 30;
-  static const double playChip = 9;
-  static const double playAppIcon = 15;
-  static const double playPanel = 16;
-  static const double playButton = 26;
-}
-
-/// 17–23 child app & live lesson radii (design values).
-abstract final class LessonRadii {
-  static const double planRow = 20;
-  static const double planIcon = 13;
-  static const double ayahCard = 32;
-  static const double hadithDash = 18;
-  static const double projectCard = 28;
-  static const double stepRow = 18;
-  static const double statCard = 22;
-  static const double doneCard = 26;
-  static const double streakDay = 12;
-  static const double reRecord = 16;
-  static const double homeCard = 28;
-  static const double leaderRow = 18;
-  static const double leaderNote = 16;
-  static const double heroChip = 14;
-  static const double shortcut = 24;
-  static const double shortcutIcon = 18;
-  static const double profileButton = 15;
-}
-
-abstract final class AppShadows {
-  static const List<BoxShadow> card = [
-    BoxShadow(color: Color(0x0F1F3D37), offset: Offset(0, 10), blurRadius: 26),
-  ];
-  static const List<BoxShadow> soft = [
-    BoxShadow(color: Color(0x0A1F3D37), offset: Offset(0, 8), blurRadius: 18),
-  ];
-  static const List<BoxShadow> hero = [
-    BoxShadow(color: Color(0x421B7F69), offset: Offset(0, 16), blurRadius: 32),
-  ];
-  static const List<BoxShadow> planCard = [
-    BoxShadow(color: Color(0x0F1F3D37), offset: Offset(0, 10), blurRadius: 24),
-  ];
-  static const List<BoxShadow> childCard = [
-    BoxShadow(color: Color(0x0D1F3D37), offset: Offset(0, 8), blurRadius: 20),
-  ];
-  static const List<BoxShadow> greenButton = [
-    BoxShadow(color: Color(0x381B7F69), offset: Offset(0, 10), blurRadius: 22),
-  ];
-  static const List<BoxShadow> sheet = [
-    BoxShadow(color: Color(0x2E172925), offset: Offset(0, -12), blurRadius: 40),
-  ];
-  static const List<BoxShadow> pairingCard = [
-    BoxShadow(color: Color(0x121F3D37), offset: Offset(0, 12), blurRadius: 30),
-  ];
-  static const List<BoxShadow> tab = [
-    BoxShadow(color: Color(0x141F3D37), offset: Offset(0, 4), blurRadius: 12),
-  ];
-}
-
-/// 17–23 shadows (design values).
-abstract final class LessonShadows {
-  static const List<BoxShadow> ayahCard = [
-    BoxShadow(color: Color(0x0F1F3D37), offset: Offset(0, 14), blurRadius: 30),
-  ];
-  static const List<BoxShadow> micLive = [
-    BoxShadow(color: Color(0x66F4B740), offset: Offset(0, 14), blurRadius: 30),
-  ];
-  static const List<BoxShadow> micClosed = [
-    BoxShadow(color: Color(0x141F3D37), offset: Offset(0, 10), blurRadius: 22),
-  ];
-  static const List<BoxShadow> micIdle = [
-    BoxShadow(color: Color(0x0F1F3D37), offset: Offset(0, 10), blurRadius: 22),
-  ];
-  static const List<BoxShadow> goNext = [
-    BoxShadow(color: Color(0x521B7F69), offset: Offset(0, 14), blurRadius: 30),
-  ];
-  static const List<BoxShadow> statCard = [
-    BoxShadow(color: Color(0x0D1F3D37), offset: Offset(0, 8), blurRadius: 20),
-  ];
-  static const List<BoxShadow> stepRow = [
-    BoxShadow(color: Color(0x0A1F3D37), offset: Offset(0, 6), blurRadius: 16),
-  ];
-  static const List<BoxShadow> reportCard = [
-    BoxShadow(color: Color(0x0F1F3D37), offset: Offset(0, 12), blurRadius: 28),
-  ];
-  static const List<BoxShadow> doneCard = [
-    BoxShadow(color: Color(0x0D1F3D37), offset: Offset(0, 10), blurRadius: 24),
-  ];
-  static const List<BoxShadow> homeButton = [
-    BoxShadow(color: Color(0x421B7F69), offset: Offset(0, 12), blurRadius: 24),
-  ];
-}
+// Colors, radii, shadows and font families are generated from the shared
+// tokens/design-tokens.json (also used by web/). Sizes and text styles below.
+export 'app_tokens.g.dart';
 
 /// 17–23 sizes (design values).
 abstract final class LessonSizes {
@@ -434,7 +154,9 @@ abstract final class AppSizes {
   static const double iconLg = 22;
 }
 
-/// Font families. Body = Cairo, headings/brand = Baloo Bhaijaan 2, Quran = Amiri.
+/// Font families (from [AppFontFamilies]): body = Cairo, headings/brand =
+/// Baloo Bhaijaan 2, Quran ayat = Amiri Quran (Uthmani: ٱ, dotless ى, small
+/// waqf marks), hadith / classical text = Amiri.
 /// Line-height is distributed evenly above/below the glyphs, as in CSS, so
 /// spacing matches the HTML design. Styles with no `height` use the font's
 /// natural line height, like CSS `line-height: normal` in the mockups.
@@ -442,15 +164,27 @@ abstract final class AppFonts {
   /// CSS `line-height: normal` for each family (hhea metrics: Cairo 1874/1000,
   /// Baloo Bhaijaan 2 1712/1000). Applied when a style sets no height, so text
   /// boxes match the Chrome-rendered design exactly.
-  static const double cairoNormal = 1.874;
-  static const double balooNormal = 1.712;
+  static const double cairoNormal = AppFontFamilies.bodyNormalLineHeight;
+  static const double balooNormal = AppFontFamilies.headingNormalLineHeight;
 
-  static TextStyle heading(TextStyle style) =>
-      GoogleFonts.balooBhaijaan2(textStyle: _css(style, balooNormal));
-  static TextStyle body(TextStyle style) =>
-      GoogleFonts.cairo(textStyle: _css(style, cairoNormal));
+  static TextStyle heading(TextStyle style) => GoogleFonts.getFont(
+    AppFontFamilies.heading,
+    textStyle: _css(style, balooNormal),
+  );
+  static TextStyle body(TextStyle style) => GoogleFonts.getFont(
+    AppFontFamilies.body,
+    textStyle: _css(style, cairoNormal),
+  );
+
+  /// Quran ayah text (and its ﴿ ﴾ brackets) only.
   static TextStyle ayah(TextStyle style) =>
-      GoogleFonts.amiri(textStyle: _css(style, null));
+      GoogleFonts.getFont(AppFontFamilies.ayah, textStyle: _css(style, null));
+
+  /// Hadith and other classical Arabic text — never an ayah.
+  static TextStyle classical(TextStyle style) => GoogleFonts.getFont(
+    AppFontFamilies.classical,
+    textStyle: _css(style, null),
+  );
 
   static TextStyle _css(TextStyle s, double? normal) => s.copyWith(
     leadingDistribution: TextLeadingDistribution.even,
@@ -986,7 +720,7 @@ abstract final class AppTheme {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.background,
       textTheme: textTheme,
-      fontFamily: GoogleFonts.cairo().fontFamily,
+      fontFamily: GoogleFonts.getFont(AppFontFamilies.body).fontFamily,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.textDark,
@@ -1123,7 +857,7 @@ abstract final class LessonText {
       _b(12.5, FontWeight.w800, AppColors.berryDeep);
   static TextStyle get hadithPlaceholder =>
       _b(15, FontWeight.w700, AppColors.warningText, 1.85);
-  static TextStyle get hadithText => AppFonts.ayah(
+  static TextStyle get hadithText => AppFonts.classical(
     const TextStyle(fontSize: 24, height: 1.9, color: AppColors.textDark),
   );
   static TextStyle get takhrij => _b(13, FontWeight.w700, AppColors.textFaint);

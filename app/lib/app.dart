@@ -15,6 +15,7 @@ import 'features/student/screens/child_gate.dart';
 import 'features/student/screens/student_home_screen.dart';
 import 'features/dashboard/widgets/detail_panels.dart';
 import 'core/auth_gate.dart';
+import 'core/debug_font_check.dart';
 import 'core/debug_preview.dart';
 import 'core/preview_data.dart';
 import 'features/auth/data/auth_repository.dart';
@@ -130,7 +131,10 @@ class GharsahApp extends StatelessWidget {
       case 'lesson-21':
       case 'lesson-22':
       case 'lesson-23':
+      case 'lesson-ayah':
         return previewLesson(DebugPreview.screen!.substring(7), content)!;
+      case 'font-check':
+        return DebugFontCheck(content: content);
       case 'splash':
         return SplashScreen(
           onDone: () {},

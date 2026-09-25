@@ -87,6 +87,10 @@ flutter:
     - assets/data/hadith.json
     - assets/data/projects.json
     - assets/lessons/
+    # Bundled so Quran text never renders in a fallback font (first launch / offline).
+    # google_fonts uses it instead of fetching. AmiriQuran-Regular.ttf = the exact file
+    # google_fonts pins (sha256 00d590a2…09bc); OFL 1.1 licence alongside.
+    - assets/google_fonts/
     # TODO(phase-d): placeholder only — real recordings stream from Firebase Storage.
     - assets/audio/placeholder_recording.wav
 

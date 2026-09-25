@@ -415,7 +415,7 @@ class VoiceBars extends StatelessWidget {
 
 // ── Ayah card ───────────────────────────────────────────────────────────────
 
-/// ﴿ ayah ﴾ in Amiri with gold brackets + reference. The verified Tanzil text
+/// ﴿ ayah ﴾ in Amiri Quran with gold brackets + reference. The verified Tanzil text
 /// is shown exactly as given. No visible play button — the card itself is the
 /// silent replay; [onPlayFallback] shows the small play control only when the
 /// platform blocked autoplay.
