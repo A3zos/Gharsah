@@ -13,7 +13,7 @@ test('landing is prerendered RTL Arabic with the design tokens', async ({ page }
 test('guards: parent and child areas redirect when signed out', async ({ page }) => {
   // The first guarded page loads the Firebase chunk before it can redirect.
   await page.goto('/parent/dashboard');
-  await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
+  await expect(page).toHaveURL(/\/login\?tab=parent$/, { timeout: 15_000 });
   await page.goto('/child/home');
   await expect(page).toHaveURL(/\/login\?tab=child$/, { timeout: 15_000 });
 });

@@ -15,9 +15,17 @@ export default defineConfig({
     locale: 'ar',
     trace: 'retain-on-failure',
   },
+  // The three layouts: phone frames (390), tablet (768), desktop web frames (1280).
   projects: [
-    { name: 'mobile-chrome', use: { ...devices['Pixel 7'] } },
-    { name: 'desktop-chrome', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'mobile-390',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, hasTouch: true },
+    },
+    {
+      name: 'tablet-768',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 768, height: 1024 }, hasTouch: true },
+    },
+    { name: 'desktop-1280', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
   ],
   webServer: {
     command: `npm run preview -- --port ${PORT} --strictPort`,

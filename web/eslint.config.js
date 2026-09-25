@@ -49,7 +49,7 @@ export default tseslint.config(
   {
     // The lesson agent is framework-free: no React, no DOM, no Firebase.
     files: ['src/lesson/**/*.ts'],
-    ignores: ['src/lesson/browser/**', 'src/lesson/**/*.test.ts'],
+    ignores: ['src/lesson/browser/**', 'src/lesson/web/**', 'src/lesson/**/*.test.ts'],
     rules: {
       'no-restricted-imports': [
         'error',

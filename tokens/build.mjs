@@ -125,13 +125,13 @@ function css() {
     for (const [name, t] of Object.entries(g.tokens)) out.push(`  --color-${kebab(name)}: ${cssColor(t)};`);
   }
   out.push('', '  --radius-*: initial;');
-  for (const [prefix, groups] of [['', tokens.radii.app], ['lesson-', tokens.radii.lesson]]) {
+  for (const [prefix, groups] of [['', tokens.radii.app], ['lesson-', tokens.radii.lesson], ['', tokens.radii.web]]) {
     for (const g of groups) {
       for (const [name, v] of Object.entries(g.tokens)) out.push(`  --radius-${prefix}${kebab(name)}: ${num(radiusValue(v))}px;`);
     }
   }
   out.push('', '  --shadow-*: initial;');
-  for (const [prefix, shadows] of [['', tokens.shadows.app], ['lesson-', tokens.shadows.lesson]]) {
+  for (const [prefix, shadows] of [['', tokens.shadows.app], ['lesson-', tokens.shadows.lesson], ['', tokens.shadows.web]]) {
     for (const [name, layers] of Object.entries(shadows)) out.push(`  --shadow-${prefix}${kebab(name)}: ${cssShadow(layers)};`);
   }
   out.push('', '  --font-*: initial;');
@@ -154,8 +154,10 @@ function ts() {
     colors,
     radii: flatRadii(tokens.radii.app),
     lessonRadii: flatRadii(tokens.radii.lesson),
+    webRadii: flatRadii(tokens.radii.web),
     shadows: shadowMap(tokens.shadows.app),
     lessonShadows: shadowMap(tokens.shadows.lesson),
+    webShadows: shadowMap(tokens.shadows.web),
     fonts: Object.fromEntries(Object.entries(tokens.fonts).map(([r, f]) => [r, f.family])),
   };
   return `// ${HEADER}\nexport const tokens = ${JSON.stringify(data, null, 2)} as const;\n\nexport type ColorToken = keyof typeof tokens.colors;\n`;

@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import './tokens.generated.css';
 @import './fonts.css';
+@import './animations.css';
 
 /* Base document styles (CLAUDE.md §4): cream background, Cairo body text, RTL. */
 @layer base {
@@ -16,6 +17,25 @@
   body {
     min-height: 100dvh;
     background-color: var(--color-background);
+  }
+
+  /* The frames set no body line-height, so each font uses its own "normal". */
+  .font-heading {
+    line-height: var(--line-height-heading-normal);
+  }
+
+  a {
+    color: var(--color-deep-green);
+    text-decoration: underline;
+  }
+
+  a:hover {
+    color: var(--color-darker-green);
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
   }
 
   :focus-visible {
