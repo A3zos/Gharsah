@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>غَرسة — المكالمة: الآيات بالصوت</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&amp;family=Baloo+Bhaijaan+2:wght@400;500;600;700;800&amp;family=Cairo:wght@400;500;700;800&amp;display=swap">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; direction: rtl; font-family: 'Cairo', system-ui, sans-serif; background: #FBF6EC; }
+a { color: #1B7F69; }
+a:hover { color: #14624F; }
+@keyframes gh-bob { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-7px) rotate(1.2deg); } }
+@keyframes gh-lean { 0%, 100% { transform: rotate(-7deg) translateY(0); } 50% { transform: rotate(-7deg) translateY(-3px); } }
+@keyframes gh-glow { 0% { transform: scale(0.94); opacity: 0.5; } 100% { transform: scale(1.32); opacity: 0; } }
+@keyframes gh-wave { 0%, 100% { transform: scaleY(0.22); } 50% { transform: scaleY(1); } }
+@keyframes gh-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes gh-pop { 0% { opacity: 0; transform: scale(0.84); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes gh-swap { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
+@keyframes gh-swap2 { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+<div style="width: 390px; height: 880px; box-sizing: border-box; position: relative; overflow: hidden; background: #FBF6EC; direction: rtl; color: #1F3D37; padding: 24px 20px 26px; display: flex; justify-content: center;">
+  <div style="position: absolute; top: -170px; left: -140px; width: 400px; height: 400px; border-radius: 50%; background: rgba(47, 169, 140, 0.08);"></div>
+
+  <div style="flex-grow: 1; max-width: 520px; display: flex; flex-direction: column; gap: 12px; z-index: 1;">
+
+    <div style="display: flex; align-items: center; gap: 11px; flex-shrink: 0;">
+      <a href="ExitConfirm.dc.html" aria-label="إنهاء المكالمة" style="width: 44px; height: 44px; border-radius: 50%; background: #FDE9EF; border: 1px solid #F6D3DF; display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 6 L18 18 M18 6 L6 18" stroke="#A8365C" stroke-width="2.6" stroke-linecap="round"></path>
+        </svg>
+      </a>
+      <span style="flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span style="display: flex; align-items: center; gap: 6px; background: #FFFFFF; border: 1px solid #F6D3DF; border-radius: 999px; padding: 7px 13px;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: #E86A92; animation: gh-blink 1.4s ease-in-out infinite;"></span>
+          <span style="font-size: 12px; font-weight: 800; color: #A8365C;">مباشر</span>
+        </span>
+        <span style="font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 13.5px; font-weight: 700; color: #5C716C;">{{ timer }}</span>
+      </span>
+      <span style="width: 44px; flex-shrink: 0;"></span>
+    </div>
+
+    <button type="button" onClick="{{ next }}" aria-label="تابع مع المعلّم" style="position: relative; display: flex; align-items: center; justify-content: center; height: 190px; border: 0; background: transparent; padding: 0; cursor: pointer; flex-shrink: 0;">
+      <sc-if value="{{ showGlow }}" hint-placeholder-val="{{ true }}">
+        <span style="position: absolute; width: 182px; height: 182px; border-radius: 50%; background: {{ glowColor }}; animation: gh-glow 2.1s ease-out infinite;"></span>
+      </sc-if>
+      <span style="position: relative; opacity: {{ teacherOpacity }}; animation: {{ teacherAnim }};">
+        <svg width="180" height="180" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+          <path d="M56 194 C56 154 72 134 100 134 C128 134 144 154 144 194 Z" fill="#FFFFFF"></path>
+          <path d="M56 194 C56 164 64 146 78 138 C70 152 66 172 66 194 Z" fill="#F1EFE6"></path>
+          <path d="M88 138 L100 154 L112 138" stroke="#DDE2DA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+          <ellipse cx="100" cy="132" rx="13" ry="11" fill="#D9A273"></ellipse>
+          <ellipse cx="56" cy="94" rx="7" ry="9.5" fill="#E8B98C"></ellipse>
+          <ellipse cx="144" cy="94" rx="7" ry="9.5" fill="#E8B98C"></ellipse>
+          <ellipse cx="100" cy="90" rx="44" ry="46" fill="#E8B98C"></ellipse>
+          <path d="M62 100 C62 138 80 154 100 154 C120 154 138 138 138 100 C130 122 116 128 100 128 C84 128 70 122 62 100 Z" fill="#6B5646"></path>
+          <path d="M56 78 C56 46 76 28 100 28 C124 28 144 46 144 78 C124 68 76 68 56 78 Z" fill="#FFFFFF"></path>
+          <path d="M54 78 C76 67 124 67 146 78 C146 87 141 91 135 90 C114 82 86 82 65 90 C59 91 54 87 54 78 Z" fill="#F4F2EA"></path>
+          <path d="M56 78 C56 46 76 28 100 28 C124 28 144 46 144 78" stroke="#E4E0D4" stroke-width="2" stroke-linecap="round"></path>
+          <path d="M74 82 C78 76 90 76 94 81" stroke="#6B5646" stroke-width="3.4" stroke-linecap="round"></path>
+          <path d="M106 81 C110 76 122 76 126 82" stroke="#6B5646" stroke-width="3.4" stroke-linecap="round"></path>
+          <sc-if value="{{ eyesOpen }}" hint-placeholder-val="{{ true }}">
+            <g>
+              <ellipse cx="84" cy="98" rx="9" ry="{{ eyeR }}" fill="#FFFFFF"></ellipse>
+              <ellipse cx="116" cy="98" rx="9" ry="{{ eyeR }}" fill="#FFFFFF"></ellipse>
+              <circle cx="85" cy="100" r="5" fill="#2A211C"></circle>
+              <circle cx="117" cy="100" r="5" fill="#2A211C"></circle>
+              <circle cx="87" cy="97" r="1.8" fill="#FFFFFF"></circle>
+              <circle cx="119" cy="97" r="1.8" fill="#FFFFFF"></circle>
+            </g>
+          </sc-if>
+          <sc-if value="{{ eyesHappy }}" hint-placeholder-val="{{ true }}">
+            <g>
+              <path d="M75 101 C79 93 89 93 93 101" stroke="#2A211C" stroke-width="4" stroke-linecap="round"></path>
+              <path d="M107 101 C111 93 121 93 125 101" stroke="#2A211C" stroke-width="4" stroke-linecap="round"></path>
+            </g>
+          </sc-if>
+          <ellipse cx="68" cy="112" rx="8" ry="5.5" fill="#E86A92" opacity="0.35"></ellipse>
+          <ellipse cx="132" cy="112" rx="8" ry="5.5" fill="#E86A92" opacity="0.35"></ellipse>
+          <sc-if value="{{ mouthOpen }}" hint-placeholder-val="{{ true }}">
+            <ellipse cx="100" cy="121" rx="9" ry="7" fill="#7A3B2E"></ellipse>
+          </sc-if>
+          <sc-if value="{{ mouthShut }}" hint-placeholder-val="{{ true }}">
+            <path d="M90 118 C94 125 106 125 110 118" stroke="#7A3B2E" stroke-width="3.4" stroke-linecap="round"></path>
+          </sc-if>
+          <ellipse cx="60" cy="170" rx="14" ry="22" fill="#FFFFFF" transform="rotate(14 60 170)"></ellipse>
+          <path d="M46 168 C46 158 52 150 60 148" stroke="#E4E0D4" stroke-width="2" stroke-linecap="round"></path>
+          <g transform="rotate(-9 128 168)">
+            <rect x="104" y="150" width="48" height="36" rx="6" fill="#1B7F69"></rect>
+            <rect x="108" y="154" width="40" height="28" rx="4" fill="#FDF6E6"></rect>
+            <path d="M128 154 V182" stroke="#E4DCC8" stroke-width="2"></path>
+            <path d="M114 162 H124 M132 162 H142 M114 170 H124 M132 170 H142" stroke="#D8CDB4" stroke-width="2" stroke-linecap="round"></path>
+          </g>
+          <circle cx="112" cy="186" r="9" fill="#E8B98C"></circle>
+          <sc-if value="{{ showArcs }}" hint-placeholder-val="{{ true }}">
+            <g>
+              <path d="M168 92 C176 100 176 112 168 120" stroke="#F4B740" stroke-width="4.5" stroke-linecap="round"></path>
+              <path d="M181 82 C192 96 192 118 181 132" stroke="#F4B740" stroke-width="4.5" stroke-linecap="round" opacity="0.5"></path>
+              <path d="M32 92 C24 100 24 112 32 120" stroke="#F4B740" stroke-width="4.5" stroke-linecap="round"></path>
+              <path d="M19 82 C8 96 8 118 19 132" stroke="#F4B740" stroke-width="4.5" stroke-linecap="round" opacity="0.5"></path>
+            </g>
+          </sc-if>
+        </svg>
+      </span>
+    </button>
+
+    <div style="min-height: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+      <p style="margin: 0; text-align: center; font-size: 17px; font-weight: 700; line-height: 1.7; color: {{ captionColor }};">{{ caption }}</p>
+    </div>
+
+    <div style="min-height: 292px; display: flex; flex-direction: column; justify-content: center; flex-shrink: 0;">
+
+      <sc-if value="{{ phase1 }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 9px; animation: gh-swap .4s ease-out both;">
+          <span style="font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 17px; font-weight: 700; line-height: 1.5;">خطة اليوم</span>
+
+          <div style="display: flex; flex-direction: column; gap: 8px; background: {{ p1bg }}; border: {{ p1border }}; border-radius: 20px; padding: 11px 13px; animation: {{ p1anim }};">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="width: 40px; height: 40px; border-radius: 13px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" aria-hidden="true">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                  <path d="M4 5.5 C6.5 4.2 9.5 4.2 12 5.8 C14.5 4.2 17.5 4.2 20 5.5 V18.5 C17.5 17.2 14.5 17.2 12 18.8 C9.5 17.2 6.5 17.2 4 18.5 Z" stroke="#1B7F69" stroke-width="1.9" stroke-linejoin="round"></path>
+                  <path d="M12 5.8 V18.8" stroke="#1B7F69" stroke-width="1.9"></path>
+                </svg>
+              </span>
+              <span style="flex-grow: 1; font-size: 15.5px; font-weight: 700;">سورة الإخلاص</span>
+              <span style="font-size: 12.5px; color: #5C716C; font-weight: 800;">٤ آيات</span>
+            </div>
+            <sc-if value="{{ showFacts }}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; gap: 7px; padding-inline-start: 52px;">
+                <span style="background: #FDF1DA; color: #7A5209; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 6px 12px; animation: gh-pop .4s ease-out both;">مكّية</span>
+                <sc-if value="{{ showCount }}" hint-placeholder-val="{{ true }}">
+                  <span style="background: #E7F2FC; color: #24638F; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 6px 12px; animation: gh-pop .4s ease-out both;">٤ آيات قصيرة</span>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 12px; background: {{ p2bg }}; border: {{ p2border }}; border-radius: 20px; padding: 11px 13px; animation: {{ p2anim }};">
+            <span style="width: 40px; height: 40px; border-radius: 13px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" aria-hidden="true">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                <path d="M7 4 H17 C18.7 4 20 5.3 20 7 V20 H9.5 C8 20 7 18.8 7 17.3 Z" stroke="#A8365C" stroke-width="1.9" stroke-linejoin="round"></path>
+                <path d="M7 4 C5.3 4 4 5.3 4 7 C4 8.2 4.9 9 6 9 H7" stroke="#A8365C" stroke-width="1.9" stroke-linejoin="round"></path>
+              </svg>
+            </span>
+            <span style="flex-grow: 1; font-size: 15.5px; font-weight: 700;">حديث برّ الوالدين</span>
+            <span style="font-size: 12.5px; color: #5C716C; font-weight: 800;">حديث واحد</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 12px; background: {{ p3bg }}; border: {{ p3border }}; border-radius: 20px; padding: 11px 13px; animation: {{ p3anim }};">
+            <span style="width: 40px; height: 40px; border-radius: 13px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" aria-hidden="true">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                <path d="M12 20 C12 15.5 14.8 12.5 19 12 C19 16.5 16.2 19.6 12 20 Z" fill="#B57A10"></path>
+                <path d="M12 20 C12 15.5 9.2 12.5 5 12 C5 16.5 7.8 19.6 12 20 Z" fill="#E0A82A"></path>
+              </svg>
+            </span>
+            <span style="flex-grow: 1; font-size: 15.5px; font-weight: 700;">مشروع الأسبوع</span>
+            <span style="font-size: 12.5px; color: #5C716C; font-weight: 800;">في البيت</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ phase2 }}" hint-placeholder-val="{{ true }}">
+        <button type="button" onClick="{{ replay }}" aria-label="أعد سماع الآية" style="width: 100%; font-family: inherit; color: inherit; cursor: pointer; position: relative; background: #FFFFFF; border: {{ cardBorder }}; border-radius: 32px; padding: 28px 18px 22px; display: flex; flex-direction: column; align-items: center; gap: 14px; box-shadow: 0 14px 30px rgba(31, 61, 55, 0.06); animation: {{ cardAnim }};">
+          <p style="margin: 0; min-height: 108px; display: flex; align-items: center; justify-content: center; font-family: 'Amiri', Georgia, serif; font-size: 31px; line-height: 1.9; text-align: center; color: #1F3D37;"><span><span style="color: #9C6B12; font-size: 35px;">﴿</span> {{ ayahText }} <span style="color: #9C6B12; font-size: 35px;">﴾</span></span></p>
+
+          <span style="font-size: 13px; color: #5C716C; font-weight: 700;">{{ ayahSource }}</span>
+        </button>
+      </sc-if>
+
+    </div>
+
+    <div style="margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; flex-shrink: 0;">
+
+      <sc-if value="{{ micLive }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+          <button type="button" onClick="{{ micTap }}" aria-label="{{ micLiveLabel }}" style="position: relative; width: 118px; height: 118px; border-radius: 50%; border: 0; background: #F4B740; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 14px 30px rgba(244, 183, 64, 0.40);">
+            <span style="position: absolute; width: 118px; height: 118px; border-radius: 50%; background: rgba(244, 183, 64, 0.34); animation: gh-glow 1.5s ease-out infinite;"></span>
+            <svg width="50" height="50" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="position: relative;">
+              <rect x="9" y="3" width="6" height="11" rx="3" fill="#FFFFFF"></rect>
+              <path d="M5.5 11.5 C5.5 15.1 8.4 18 12 18 C15.6 18 18.5 15.1 18.5 11.5 M12 18 V21.2" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"></path>
+            </svg>
+          </button>
+          <div style="height: 18px; display: flex; align-items: center; justify-content: center; gap: 3px;" aria-hidden="true">
+            <sc-for list="{{voiceBars}}" as="v" hint-placeholder-count="21">
+              <span style="width: 3px; height: {{ v.h }}px; border-radius: 2px; background: {{ v.c }}; flex-shrink: 0; animation: {{ v.anim }};"></span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ micClosed }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+          <span style="position: relative; width: 118px; height: 118px; display: flex; align-items: center; justify-content: center;">
+            <sc-if value="{{ micPrompt }}" hint-placeholder-val="{{ true }}">
+              <span style="position: absolute; width: 118px; height: 118px; border-radius: 50%; background: rgba(244, 183, 64, 0.30); animation: gh-glow 1.5s ease-out infinite;"></span>
+            </sc-if>
+            <button type="button" onClick="{{ openMic }}" aria-label="افتح الميكروفون وابدأ الترديد" style="position: relative; width: 118px; height: 118px; border-radius: 50%; border: {{ micBorder }}; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 22px rgba(31, 61, 55, 0.08); opacity: {{ micOpacity }};">
+              <svg width="50" height="50" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="9" y="3" width="6" height="11" rx="3" stroke="{{ micInk }}" stroke-width="2"></rect>
+                <path d="M5.5 11.5 C5.5 15.1 8.4 18 12 18 C15.6 18 18.5 15.1 18.5 11.5 M12 18 V21.2" stroke="{{ micInk }}" stroke-width="2" stroke-linecap="round"></path>
+                <path d="M4.2 19.8 L19.8 4.2" stroke="#A8365C" stroke-width="2.4" stroke-linecap="round"></path>
+              </svg>
+            </button>
+          </span>
+          <span style="height: 18px;"></span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ micIdle }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+          <span style="width: 118px; height: 118px; border-radius: 50%; border: 2px solid #E7DECB; background: #FFFFFF; display: flex; align-items: center; justify-content: center; opacity: 0.45; box-shadow: 0 10px 22px rgba(31, 61, 55, 0.06);" aria-hidden="true">
+            <svg width="50" height="50" viewBox="0 0 24 24" fill="none">
+              <rect x="9" y="3" width="6" height="11" rx="3" stroke="#5C716C" stroke-width="2"></rect>
+              <path d="M5.5 11.5 C5.5 15.1 8.4 18 12 18 C15.6 18 18.5 15.1 18.5 11.5 M12 18 V21.2" stroke="#5C716C" stroke-width="2" stroke-linecap="round"></path>
+              <path d="M4.2 19.8 L19.8 4.2" stroke="#A8365C" stroke-width="2.4" stroke-linecap="round"></path>
+            </svg>
+          </span>
+          <span style="height: 18px;"></span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ finished }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+          <a href="L6SurahDone.dc.html" aria-label="تابع بعد إتمام السورة" style="position: relative; width: 118px; height: 118px; border-radius: 50%; background: #F4B740; display: flex; align-items: center; justify-content: center; text-decoration: none; box-shadow: 0 14px 30px rgba(244, 183, 64, 0.40);">
+            <span style="position: absolute; width: 118px; height: 118px; border-radius: 50%; background: rgba(244, 183, 64, 0.34); animation: gh-glow 1.5s ease-out infinite;"></span>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="position: relative;">
+              <path d="M15 5 L8 12 L15 19" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </a>
+          <span style="height: 18px;"></span>
+        </div>
+      </sc-if>
+
+      <span style="height: 18px; text-align: center; font-size: 12.5px; color: {{ hintColor }}; font-weight: 700;">{{ hint }}</span>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":880}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { beat: 0, ayah: 1, step: 0, rep: 0, nudged: false };
+  }
+  renderVals() {
+    const b = this.state.beat;
+    const a = this.state.ayah;
+    const s = this.state.step;
+    const rep = this.state.rep;
+    const nudged = this.state.nudged;
+
+    const inAyah = b === 7;
+    const complete = b === 8;
+    const playing = inAyah && s === 0;
+    const prompting = inAyah && s === 1;
+    const liveHear = inAyah && s === 2;
+    const liveCount = inAyah && s === 3;
+    const liveNudge = inAyah && s === 4;
+    const praising = inAyah && s === 5;
+    const live = liveHear || liveCount || liveNudge;
+
+    const listening = b === 6 || liveHear;
+    const quiet = playing;
+    const speaking = !listening && !quiet;
+    const happy = praising || complete;
+
+    const AR = ['١', '٢', '٣', '٤'];
+    const TEXTS = [
+      'قُلْ هُوَ اللَّهُ أَحَدٌ',
+      'اللَّهُ الصَّمَدُ',
+      'لَمْ يَلِدْ وَلَمْ يُولَدْ',
+      'وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ'
+    ];
+    const PRAISES = [
+      'أحسنت يا عبدالله… ننتقل للآية الثانية.',
+      'ممتاز! ننتقل للآية الثالثة.',
+      'رائع… بقيت الآية الأخيرة.',
+      'أحسنت! أتممتها كلها.'
+    ];
+    const TIMERS = ['٠٢:٤٦', '٠٣:٢٠', '٠٣:٥٨', '٠٤:٣١'];
+    const COUNTS = ['أحسنت… باقي مرتين.', 'ممتاز… باقي مرة.'];
+
+    const welcomeCaptions = [
+      'مساء الخير عبدالله! أنا معك الآن.',
+      'اليوم نحفظ سورة، ثم حديث، وبعدهما مشروعك في البيت.',
+      'نبدأ بسورة الإخلاص.',
+      'نزلت في مكة… فهي سورة مكّية.',
+      'وهي قصيرة — أربع آيات فقط!',
+      'جاهز نبدأ نحفظ؟',
+      'أسمعك…'
+    ];
+    const welcomeHints = [
+      'اضغط المعلّم ليكمل',
+      'اضغط المعلّم ليكمل',
+      'اضغط المعلّم ليكمل',
+      'اضغط المعلّم ليكمل',
+      'اضغط المعلّم ليكمل',
+      'أجب بصوتك: اضغط الميكروفون',
+      'قل: نعم'
+    ];
+
+    let caption = '';
+    let hint = '';
+    if (complete) { caption = 'أتممت سورة الإخلاص كاملة… أحسنت يا عبدالله!'; hint = 'اضغط لتكمل مع المعلّم'; }
+    else if (inAyah) {
+      if (playing) { caption = 'استمع للآية… وأنا صامت معك'; hint = ''; }
+      else if (prompting) { caption = 'الآن ردّد بصوتك… ثلاث مرات.'; hint = 'اضغط الميكروفون مرة واحدة ويبقى مفتوحًا'; }
+      else if (liveHear) { caption = rep === 0 ? 'أسمعك… ردّد الآية.' : 'أسمعك…'; hint = 'الميكروفون مفتوح — لا تضغط شيئًا'; }
+      else if (liveCount) { caption = COUNTS[rep - 1]; hint = 'الميكروفون ما زال مفتوحًا'; }
+      else if (liveNudge) { caption = 'باقي مرة، هيا…'; hint = 'الميكروفون ما زال مفتوحًا'; }
+      else { caption = PRAISES[a - 1]; hint = ''; }
+    } else { caption = welcomeCaptions[b]; hint = welcomeHints[b]; }
+
+    const card = (lit) => ({
+      bg: lit ? '#EAF6F2' : '#FFFFFF',
+      border: lit ? '2px solid #2FA98C' : '1.5px solid #EFE7D6',
+      anim: lit ? 'gh-pop .45s ease-out both' : 'none'
+    });
+    const c1 = card(b === 1 || b === 2 || b === 3 || b === 4);
+    const c2 = card(b === 1);
+    const c3 = card(b === 1);
+
+
+    const hv = [9, 14, 7, 16, 11, 18, 6, 13, 17, 8, 15, 10, 18, 7, 14, 9, 16, 11, 6, 13, 8];
+    const childTalking = liveHear;
+    const voiceBars = hv.map((h, i) => ({
+      h: childTalking ? h : 4,
+      c: childTalking ? '#1B7F69' : '#C9DED7',
+      anim: childTalking ? ('gh-wave .8s ease-in-out ' + (i * 0.05).toFixed(2) + 's infinite') : 'none'
+    }));
+
+    const here = (st, rp) => this.state.beat === 7 && this.state.ayah === a && this.state.step === st && this.state.rep === rp;
+    const later = (ms, st, rp, fn) => { setTimeout(() => { if (here(st, rp)) { fn(); } }, ms); };
+    const set = (st, rp, nd) => this.setState({ beat: 7, ayah: a, step: st, rep: rp, nudged: nd });
+
+    const countRep = () => {
+      const n = rep + 1;
+      if (n < 3) { this.setState({ beat: 7, ayah: a, step: 3, rep: n, nudged: nudged }); }
+      else { this.setState({ beat: 7, ayah: a, step: 5, rep: 3, nudged: nudged }); }
+    };
+    const goNextAyah = () => {
+      if (a < 4) { this.setState({ beat: 7, ayah: a + 1, step: 0, rep: 0, nudged: false }); }
+      else { this.setState({ beat: 8, ayah: 4, step: 5, rep: 3, nudged: false }); }
+    };
+
+    if (playing) { later(3800, 0, rep, () => set(1, rep, nudged)); }
+    if (liveHear) {
+      if (rep === 2 && !nudged) { later(5000, 2, rep, () => set(4, rep, true)); }
+      else { later(3800, 2, rep, countRep); }
+    }
+    if (liveCount) { later(1600, 3, rep, () => set(2, rep, nudged)); }
+    if (liveNudge) { later(2200, 4, rep, () => set(2, rep, true)); }
+    if (praising) { later(2400, 5, rep, goNextAyah); }
+
+    return {
+      phase1: b < 7,
+      phase2: inAyah || complete,
+      timer: complete ? '٠٥:٠٢' : (inAyah ? TIMERS[a - 1] : '٠٠:٢٤'),
+
+      teacherAnim: listening ? 'gh-lean 2.6s ease-in-out infinite' : (quiet ? 'none' : 'gh-bob 1.7s ease-in-out infinite'),
+      teacherOpacity: quiet ? '0.76' : '1',
+      showGlow: !quiet,
+      glowColor: listening ? 'rgba(244, 183, 64, 0.26)' : 'rgba(47, 169, 140, 0.20)',
+      mouthOpen: speaking,
+      mouthShut: !speaking,
+      showArcs: speaking,
+      eyesOpen: !happy,
+      eyesHappy: happy,
+      eyeR: listening ? 11.5 : 10,
+
+      caption: caption,
+      captionColor: happy ? '#1B7F69' : '#1F3D37',
+      hint: hint,
+      hintColor: (live || prompting || b === 6) ? '#7A5209' : '#5C716C',
+
+      showFacts: b >= 3,
+      showCount: b >= 4,
+      p1bg: c1.bg, p1border: c1.border, p1anim: c1.anim,
+      p2bg: c2.bg, p2border: c2.border, p2anim: c2.anim,
+      p3bg: c3.bg, p3border: c3.border, p3anim: c3.anim,
+
+      ayahText: TEXTS[a - 1],
+      ayahSource: 'سورة الإخلاص · الآية ' + AR[a - 1],
+      cardAnim: (a % 2 === 1 ? 'gh-swap' : 'gh-swap2') + ' .45s ease-out both',
+      cardBorder: playing ? '2px solid #2FA98C' : '1.5px solid #EFE7D6',
+      replay: () => { if (inAyah && !praising) { set(0, rep, nudged); } },
+
+      voiceBars: voiceBars,
+
+      micLive: (b === 6) || live,
+      micLiveLabel: b === 6 ? 'قلت نعم' : 'كتم الميكروفون',
+      micTap: () => {
+        if (b === 6) { this.setState({ beat: 7, ayah: 1, step: 0, rep: 0, nudged: false }); }
+        else { set(1, rep, nudged); }
+      },
+      micClosed: (b < 6) || playing || prompting,
+      micPrompt: prompting,
+      micOpacity: playing ? '0.5' : '1',
+      micBorder: prompting ? '2px solid #F4B740' : '2px solid #E7DECB',
+      micInk: prompting ? '#1F3D37' : '#5C716C',
+      micIdle: praising,
+      finished: complete,
+
+      openMic: () => { if (b < 7) { this.setState({ beat: 6 }); } else { set(2, rep, nudged); } },
+      next: () => {
+        if (b < 5) { this.setState({ beat: b + 1 }); }
+        else if (playing) { set(1, rep, nudged); }
+        else if (liveHear || liveNudge) { countRep(); }
+        else if (liveCount) { set(2, rep, nudged); }
+        else if (praising) { goNextAyah(); }
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

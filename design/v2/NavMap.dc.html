@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>غَرسة — خريطة التنقل</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&amp;family=Baloo+Bhaijaan+2:wght@400;500;600;700;800&amp;family=Cairo:wght@400;500;700;800&amp;display=swap">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; direction: rtl; font-family: 'Cairo', system-ui, sans-serif; background: #FBF6EC; }
+a { color: #1B7F69; }
+a:hover { color: #14624F; }
+@keyframes gh-pop { 0% { opacity: 0; transform: scale(0.84); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes gh-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes gh-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes gh-glow { 0% { transform: scale(0.94); opacity: 0.5; } 100% { transform: scale(1.3); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+<div style="width: 1700px; height: 1900px; box-sizing: border-box; position: relative; overflow: hidden; background: #FBF6EC; direction: rtl; color: #1F3D37;">
+  <div style="padding: 36px 40px 40px; display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: flex-end; gap: 24px;">
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px;">
+        <h1 style="margin: 0; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 38px; font-weight: 700;">خريطة التنقل</h1>
+        <p style="margin: 0; font-size: 15.5px; color: #5C716C;">كل شاشات غَرْسة والمسار بينها · الأرقام تطابق ترقيم الإطارات على اللوحة · اضغط أي بطاقة للانتقال إليها</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #5C716C;"><span style="width: 18px; height: 18px; border-radius: 6px; background: #EAF6F2; border: 1.5px solid #2FA98C;"></span>شاشة جديدة</span>
+        <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #5C716C;"><span style="width: 18px; height: 18px; border-radius: 6px; background: #FFFFFF; border: 1.5px solid #CFE3DC;"></span>شاشة قائمة</span>
+        <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #5C716C;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>الخطوة التالية</span>
+      </div>
+    </div>
+  <div style="background: #FFFFFF; border-radius: 30px; padding: 24px 26px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 12px 26px rgba(31, 61, 55, 0.05);">
+    <div style="display: flex; align-items: center; gap: 13px;">
+      <span style="width: 14px; height: 14px; border-radius: 50%; background: #1B7F69; flex-shrink: 0;" aria-hidden="true"></span>
+      <span style="font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 24px; font-weight: 700; line-height: 1.4;">رحلة وليّ الأمر — الجوال</span>
+      <span style="font-size: 13.5px; color: #5C716C;">١ → ١٣، ثم الإدارة والتفاصيل</span>
+    </div>
+    <div style="display: flex; align-items: stretch; gap: 8px;">
+      <a href="Main.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">١</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">البداية</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">شاشة الافتتاح</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="Auth.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٢</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">اختيار الدور</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">وليّ أمر / طفل</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="Signup.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٤</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">إنشاء حساب</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">أو ٣ تسجيل دخول</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="Packages.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٥</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">الباقات</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">سنوية / شهرية</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="PlayConfirm.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٦</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">تأكيد Google Play</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">شاشة النظام</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="AddChild.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٨</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">إضافة ابن</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">الاسم والعمر</span>
+      </a>
+    </div>
+    <div style="display: flex; align-items: stretch; gap: 8px;">
+      <a href="Schedule.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٩</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">جدول الحصص</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">أو ١٠ جدول مخصّص</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="AvatarPicker.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">١١</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">الصورة الرمزية</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">اختيار شخصية</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="PairingCode.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">١٢</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">رمز الربط</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">يُعطى للطفل</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="Dashboard.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">١٣</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">لوحة التحكم</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">المحطة الرئيسية</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="DashboardMaryam.dc.html" style="width: 196px; flex-shrink: 0; background: #EAF6F2; border: 1.5px solid #2FA98C; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FFFFFF; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٤٣</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">لوحة تحكم مريم</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">تبديل بين الأبناء</span>
+      </a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 9px; background: #FBF6EC; border-radius: 20px; padding: 14px 16px;">
+      <span style="font-size: 12.5px; font-weight: 800; color: #5C716C;">من لوحة التحكم — التفاصيل</span>
+      <div style="display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap;">
+      <a href="DashSurahs.dc.html" style="width: 180px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">١٥</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">السور المنجزة</span>
+        </span>
+      </a>
+      <a href="DashAyat.dc.html" style="width: 180px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">١٧</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">الآيات المحفوظة</span>
+        </span>
+      </a>
+      <a href="DashHadith.dc.html" style="width: 180px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">١٦</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">الأحاديث</span>
+        </span>
+      </a>
+      <a href="DashProjects.dc.html" style="width: 200px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">١٤</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">المشاريع والتسجيلات</span>
+        </span>
+      </a>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 9px; background: #EAF6F2; border-radius: 20px; padding: 14px 16px;">
+      <span style="font-size: 12.5px; font-weight: 800; color: #5C716C;">الشريط السفلي الجديد — الرئيسية / أبنائي / الباقات، والإعدادات من أيقونة الترس</span>
+      <div style="display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap;">
+      <a href="MyChildren.dc.html" style="width: 196px; flex-shrink: 0; background: #EAF6F2; border: 1.5px solid #2FA98C; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FFFFFF; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٣٨</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">أبنائي</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">قائمة الأبناء وإدارتها</span>
+      </a>
+      <a href="Settings.dc.html" style="width: 196px; flex-shrink: 0; background: #EAF6F2; border: 1.5px solid #2FA98C; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FFFFFF; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٣٩</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">الإعدادات</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">الحساب والاشتراك</span>
+      </a>
+      <a href="LegalPage.dc.html" style="width: 196px; flex-shrink: 0; background: #EAF6F2; border: 1.5px solid #2FA98C; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FFFFFF; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٤٢</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">الشروط والخصوصية</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">من الإعدادات</span>
+      </a>
+      <a href="ForgotPass.dc.html" style="width: 196px; flex-shrink: 0; background: #EAF6F2; border: 1.5px solid #2FA98C; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FFFFFF; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٤١</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">نسيت كلمة المرور</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">من شاشة الدخول ٣</span>
+      </a>
+      </div>
+    </div>
+  </div>
+  <div style="background: #FFFFFF; border-radius: 30px; padding: 24px 26px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 12px 26px rgba(31, 61, 55, 0.05);">
+    <div style="display: flex; align-items: center; gap: 13px;">
+      <span style="width: 14px; height: 14px; border-radius: 50%; background: #F4B740; flex-shrink: 0;" aria-hidden="true"></span>
+      <span style="font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 24px; font-weight: 700; line-height: 1.4;">رحلة الطفل — الجوال</span>
+      <span style="font-size: 13.5px; color: #5C716C;">دخول بالرمز → حصة يومية → اليوم التالي</span>
+    </div>
+    <div style="display: flex; align-items: stretch; gap: 8px;">
+      <a href="Login.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٣</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">دخول الطفل</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">برمز الربط فقط</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="StudentHome.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">١٨</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">رئيسية الطفل</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">حصة اليوم</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="L1Intro.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">١٩</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">القرآن — الآيات</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">تلاوة وتكرار ٣×</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="L6SurahDone.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٢٠</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">إتمام السورة</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">لحظة حيّة</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="L7Hadith.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٢١</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">الحديث</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">نفس النمط</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="L8Project.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٢٢</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">المشروع</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">برّ الوالدين</span>
+      </a>
+    </div>
+    <div style="display: flex; align-items: stretch; gap: 8px;">
+      <a href="L10Done.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٢٤</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">إتمام الحصة</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">«بكرة أنتظرك»</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="StudentHomeDay2.dc.html" style="width: 196px; flex-shrink: 0; background: #EAF6F2; border: 1.5px solid #2FA98C; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FFFFFF; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٤٦</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">اليوم الثاني</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">تبدأ بتقرير المشروع</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="L9Record.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٢٣</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">تقرير المشروع</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">تسجيل صوتي</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="L7Hadith.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٢١</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">حديث جديد</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">تستمر الدورة</span>
+      </a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 9px; background: #EAF6F2; border-radius: 20px; padding: 14px 16px;">
+      <span style="font-size: 12.5px; font-weight: 800; color: #5C716C;">الشريط السفلي — الرئيسية / ملفّي، و✕ داخل الحصة</span>
+      <div style="display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap;">
+      <a href="ChildProfile.dc.html" style="width: 196px; flex-shrink: 0; background: #EAF6F2; border: 1.5px solid #2FA98C; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FFFFFF; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٤٤</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">ملفّي</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">المرحلة والأوسمة</span>
+      </a>
+      <a href="ReviewList.dc.html" style="width: 196px; flex-shrink: 0; background: #EAF6F2; border: 1.5px solid #2FA98C; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FFFFFF; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٤٥</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">المراجعة</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">سور / أحاديث / مشاريع</span>
+      </a>
+      <a href="ExitConfirm.dc.html" style="width: 196px; flex-shrink: 0; background: #EAF6F2; border: 1.5px solid #2FA98C; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FFFFFF; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٤٧</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">تأكيد الخروج</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">✕ في ١٩–٢٤ و٣٠ و٣١</span>
+      </a>
+      <a href="ParentalGate.dc.html" style="width: 196px; flex-shrink: 0; background: #EAF6F2; border: 1.5px solid #2FA98C; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FFFFFF; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٤٠</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">بوابة وليّ الأمر</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">قبل الإعدادات</span>
+      </a>
+      </div>
+    </div>
+  </div>
+  <div style="background: #FFFFFF; border-radius: 30px; padding: 24px 26px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 12px 26px rgba(31, 61, 55, 0.05);">
+    <div style="display: flex; align-items: center; gap: 13px;">
+      <span style="width: 14px; height: 14px; border-radius: 50%; background: #4EA9E8; flex-shrink: 0;" aria-hidden="true"></span>
+      <span style="font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 24px; font-weight: 700; line-height: 1.4;">الويب — وليّ الأمر والطفل</span>
+      <span style="font-size: 13.5px; color: #5C716C;">نفس الحساب، نفس البيانات، عرض مختلف</span>
+    </div>
+    <div style="display: flex; align-items: stretch; gap: 8px;">
+      <a href="WebLanding.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٢٥</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">صفحة الهبوط ١٤٤٠</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">أو ٢٦ للجوال</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="Login.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٣</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">تسجيل الدخول</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">نفس حساب الجوال</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="ParentWebDash.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٢٧</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">لوحة التحكم — ويب</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">الرئيسية</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="ParentWebChildren.dc.html" style="width: 196px; flex-shrink: 0; background: #EAF6F2; border: 1.5px solid #2FA98C; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FFFFFF; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٤٨</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">أبنائي — ويب</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">قائمة الأبناء</span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="ParentWebAddChild.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٢٩</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">إضافة ابن — ويب</span>
+        </span>
+      </a>
+      <span style="flex-shrink: 0; display: flex; align-items: center; color: #9BA8A4;" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M15 5 L8 12 L15 19" stroke="#9BA8A4" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+      <a href="ParentWebPlans.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CFE3DC; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #EAF6F2; color: #1B7F69; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٢٨</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">الباقات — ويب</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">عرض فقط</span>
+      </a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 9px; background: #E7F2FC; border-radius: 20px; padding: 14px 16px;">
+      <span style="font-size: 12.5px; font-weight: 800; color: #5C716C;">الحصة في المتصفح · الشراء يتم من التطبيق فقط (٢٥ و٢٨ يعرضان «اشترك من التطبيق»)</span>
+      <div style="display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap;">
+      <a href="LessonDesktop.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CBE2F5; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #E7F2FC; color: #24638F; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٣٠</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">الحصة — كمبيوتر</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">عمود مركزي ١٤٤٠</span>
+      </a>
+      <a href="LessonTablet.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CBE2F5; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #E7F2FC; color: #24638F; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٣١</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">الحصة — تابلت</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">٨٢٠ عمودي</span>
+      </a>
+      <a href="WebLandingMobile.dc.html" style="width: 196px; flex-shrink: 0; background: #FFFFFF; border: 1.5px solid #CBE2F5; border-radius: 18px; padding: 13px 14px; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #E7F2FC; color: #24638F; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800; flex-shrink: 0;">٢٦</span>
+          <span style="font-size: 14.5px; font-weight: 800; line-height: 1.4;">الهبوط — جوال</span>
+        </span>
+        <span style="font-size: 12px; color: #5C716C; line-height: 1.6;">شريط علوي ثابت + للأعلى</span>
+      </a>
+      </div>
+    </div>
+  </div>
+  <div style="background: #FFFFFF; border-radius: 30px; padding: 24px 26px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 12px 26px rgba(31, 61, 55, 0.05);">
+    <div style="display: flex; align-items: center; gap: 13px;">
+      <span style="width: 14px; height: 14px; border-radius: 50%; background: #E86A92; flex-shrink: 0;" aria-hidden="true"></span>
+      <span style="font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 24px; font-weight: 700; line-height: 1.4;">حالات الخطأ والحدود — ومتى تظهر</span>
+      <span style="font-size: 13.5px; color: #5C716C;">كل حالة مربوطة بالشاشة التي تنبع منها</span>
+    </div>
+    <div style="display: flex; gap: 14px;">
+      <a href="SMicDenied.dc.html" style="flex-grow: 1; flex-basis: 0; background: #FFFFFF; border: 1.5px solid #F6D3DF; border-radius: 20px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 9px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FDE9EF; color: #A8365C; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800;">٣٢</span>
+          <span style="font-size: 15px; font-weight: 800;">المايك مرفوض</span>
+        </span>
+        <span style="display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; color: #5C716C; line-height: 1.7;">
+          <span style="color: #A8365C; font-weight: 800; flex-shrink: 0;">متى:</span>عند أول تكرار في شاشة الآيات ١٩ — إن رفض المتصفح أو النظام إذن الميكروفون.
+        </span>
+      </a>
+      <a href="SOffline.dc.html" style="flex-grow: 1; flex-basis: 0; background: #FFFFFF; border: 1.5px solid #F6D3DF; border-radius: 20px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 9px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FDE9EF; color: #A8365C; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800;">٣٣</span>
+          <span style="font-size: 15px; font-weight: 800;">لا يوجد إنترنت</span>
+        </span>
+        <span style="display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; color: #5C716C; line-height: 1.7;">
+          <span style="color: #A8365C; font-weight: 800; flex-shrink: 0;">متى:</span>عند تحميل التلاوة داخل ١٩ أو ٢١ — الحصة تتوقف وتُستكمل من نفس المكان.
+        </span>
+      </a>
+      <a href="SAutoplayBlocked.dc.html" style="flex-grow: 1; flex-basis: 0; background: #FFFFFF; border: 1.5px solid #F6D3DF; border-radius: 20px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 9px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FDE9EF; color: #A8365C; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800;">٣٦</span>
+          <span style="font-size: 15px; font-weight: 800;">التشغيل التلقائي محجوب</span>
+        </span>
+        <span style="display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; color: #5C716C; line-height: 1.7;">
+          <span style="color: #A8365C; font-weight: 800; flex-shrink: 0;">متى:</span>في ٣٠ و٣١ — المتصفح يمنع الصوت قبل أول لمسة من الطفل.
+        </span>
+      </a>
+    </div>
+    <div style="display: flex; gap: 14px;">
+      <a href="SCodeExpired.dc.html" style="flex-grow: 1; flex-basis: 0; background: #FFFFFF; border: 1.5px solid #F6D3DF; border-radius: 20px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 9px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FDE9EF; color: #A8365C; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800;">٣٤</span>
+          <span style="font-size: 15px; font-weight: 800;">الرمز منتهي أو غير صحيح</span>
+        </span>
+        <span style="display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; color: #5C716C; line-height: 1.7;">
+          <span style="color: #A8365C; font-weight: 800; flex-shrink: 0;">متى:</span>في شاشة دخول الطفل ٣ بعد ٦ خانات غير مطابقة أو رمز مضى وقته.
+        </span>
+      </a>
+      <a href="SNewCode.dc.html" style="flex-grow: 1; flex-basis: 0; background: #FFFFFF; border: 1.5px solid #F6D3DF; border-radius: 20px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 9px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FDE9EF; color: #A8365C; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800;">٣٥</span>
+          <span style="font-size: 15px; font-weight: 800;">رمز ربط جديد</span>
+        </span>
+        <span style="display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; color: #5C716C; line-height: 1.7;">
+          <span style="color: #A8365C; font-weight: 800; flex-shrink: 0;">متى:</span>من ١٢ أو من بطاقة الابن في ٣٨ — يُلغي الرمز القديم فورًا.
+        </span>
+      </a>
+      <a href="SSessionEnd.dc.html" style="flex-grow: 1; flex-basis: 0; background: #FFFFFF; border: 1.5px solid #F6D3DF; border-radius: 20px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: #1F3D37;">
+        <span style="display: flex; align-items: center; gap: 9px;">
+          <span style="min-width: 30px; height: 26px; padding: 0 8px; border-radius: 9px; background: #FDE9EF; color: #A8365C; display: flex; align-items: center; justify-content: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 15px; font-weight: 800;">٣٧</span>
+          <span style="font-size: 15px; font-weight: 800;">انتهاء الجلسة</span>
+        </span>
+        <span style="display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; color: #5C716C; line-height: 1.7;">
+          <span style="color: #A8365C; font-weight: 800; flex-shrink: 0;">متى:</span>في الويب ٢٧ بعد خمول طويل — يُعاد وليّ الأمر إلى ٣.
+        </span>
+      </a>
+    </div>
+  </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1700,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

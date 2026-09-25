@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>غَرسة — تسجيل الدخول</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@400;500;600;700;800&amp;family=Cairo:wght@400;500;700;800&amp;display=swap">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; direction: rtl; font-family: 'Cairo', system-ui, sans-serif; background: #FBF6EC; }
+a { color: #1B7F69; }
+a:hover { color: #14624F; }
+input::placeholder { color: #8A9A95; }
+@keyframes gh-tab { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001s !important; } }
+</style>
+</helmet>
+<div style="width: 390px; height: 880px; box-sizing: border-box; position: relative; overflow: hidden; background: #FBF6EC; direction: rtl; color: #1F3D37; padding: 30px 26px 36px; display: flex; justify-content: center;">
+
+  <div style="position: absolute; top: -150px; left: -130px; width: 340px; height: 340px; border-radius: 50%; background: rgba(47, 169, 140, 0.08);"></div>
+
+  <div style="flex-grow: 1; max-width: 440px; display: flex; flex-direction: column; gap: 20px; z-index: 1;">
+
+    <a href="Auth.dc.html" aria-label="رجوع" style="width: 46px; height: 46px; border-radius: 16px; background: #FFFFFF; border: 1px solid #EFE7D6; display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M9 5 L16 12 L9 19" stroke="#1F3D37" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </a>
+
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <h1 style="margin: 0; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 28px; font-weight: 700; line-height: 1.6;">أهلًا بعودتك</h1>
+      <p style="margin: 0; font-size: 14.5px; color: #5C716C; line-height: 1.7;">{{subtitle}}</p>
+    </div>
+
+    <div style="display: flex; gap: 6px; background: #F4F0E4; border-radius: 20px; padding: 5px;" role="tablist">
+      <button type="button" role="tab" aria-selected="{{parentSelected}}" onClick="{{ showParent }}" style="flex-grow: 1; height: 52px; border-radius: 16px; border: 0; background: {{ parentBg }}; color: {{ parentFg }}; box-shadow: {{ parentShadow }}; font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="8" r="4" stroke="{{ parentFg }}" stroke-width="1.9"></circle>
+          <path d="M4.5 20 C4.5 15.8 7.9 13.5 12 13.5 C16.1 13.5 19.5 15.8 19.5 20" stroke="{{ parentFg }}" stroke-width="1.9" stroke-linecap="round"></path>
+        </svg>
+        ولي الأمر
+      </button>
+      <button type="button" role="tab" aria-selected="{{childSelected}}" onClick="{{ showChild }}" style="flex-grow: 1; height: 52px; border-radius: 16px; border: 0; background: {{ childBg }}; color: {{ childFg }}; box-shadow: {{ childShadow }}; font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+        <svg width="19" height="19" viewBox="0 0 76 76" fill="none" aria-hidden="true">
+          <path d="M38 62 V34" stroke="{{ childFg }}" stroke-width="7" stroke-linecap="round"></path>
+          <path d="M38 42 C28 42 22 36 22 27 C32 27 38 33 38 42 Z" fill="{{ childFg }}"></path>
+          <path d="M38 47 C48 47 54 41 54 32 C44 32 38 38 38 47 Z" fill="{{ childFg }}" opacity="0.55"></path>
+        </svg>
+        الطفل
+      </button>
+    </div>
+
+    <sc-if value="{{isParent}}" hint-placeholder-val="{{ true }}">
+      <div style="min-height: 540px; display: flex; flex-direction: column; gap: 18px; animation: gh-tab .28s ease both;">
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label for="login-email" style="font-size: 14px; font-weight: 700; color: #1F3D37;">البريد الإلكتروني</label>
+          <input id="login-email" name="email" type="email" dir="ltr" placeholder="name@example.com" style="width: 100%; height: 58px; border-radius: 20px; border: 1.5px solid #E7DECB; background: #FFFFFF; padding: 0 18px; font-family: 'Cairo', sans-serif; font-size: 16px; color: #1F3D37; text-align: left;">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label for="login-pass" style="font-size: 14px; font-weight: 700; color: #1F3D37;">كلمة المرور</label>
+          <div style="position: relative; display: flex; align-items: center;">
+            <input id="login-pass" name="password" type="{{ passType }}" placeholder="••••••••" style="width: 100%; height: 58px; border-radius: 20px; border: 1.5px solid #E7DECB; background: #FFFFFF; padding: 0 18px 0 58px; font-family: 'Cairo', sans-serif; font-size: 16px; color: #1F3D37;">
+            <button type="button" onClick="{{ toggleEye }}" aria-label="{{ eyeLabel }}" style="position: absolute; left: 8px; width: 44px; height: 44px; border: 0; border-radius: 14px; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M2.5 12 C5 7.5 8.5 5.5 12 5.5 C15.5 5.5 19 7.5 21.5 12 C19 16.5 15.5 18.5 12 18.5 C8.5 18.5 5 16.5 2.5 12 Z" stroke="#5C716C" stroke-width="1.8" stroke-linejoin="round"></path>
+                <circle cx="12" cy="12" r="3.2" stroke="#5C716C" stroke-width="1.8"></circle>
+                <sc-if value="{{ eyeOpen }}" hint-placeholder-val="{{ true }}">
+                  <path d="M4.5 19.5 L19.5 4.5" stroke="#5C716C" stroke-width="1.8" stroke-linecap="round"></path>
+                </sc-if>
+              </svg>
+            </button>
+          </div>
+          <a href="ForgotPass.dc.html" style="align-self: flex-start; font-size: 13.5px; font-weight: 700; padding: 6px 2px;">نسيت كلمة المرور؟</a>
+        </div>
+
+        <div style="display: flex; align-items: flex-start; gap: 10px; background: #EAF6F2; border-radius: 18px; padding: 14px 16px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px;">
+            <path d="M12 3.5 L19.5 6.5 V12 C19.5 16.2 16.4 19.4 12 20.5 C7.6 19.4 4.5 16.2 4.5 12 V6.5 Z" stroke="#1B7F69" stroke-width="1.8" stroke-linejoin="round"></path>
+            <path d="M9 12 L11.2 14.2 L15 10.2" stroke="#1B7F69" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+          <p style="margin: 0; font-size: 12.5px; color: #1F3D37; line-height: 1.75;">حساب وليّ الأمر فقط. لا ينشئ الطفل حسابًا — يدخل برمز الربط.</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 14px; margin-top: auto;">
+          <a href="Packages.dc.html" style="display: flex; align-items: center; justify-content: center; height: 58px; border-radius: 20px; background: #1B7F69; color: #FFFFFF; font-size: 17px; font-weight: 700; text-decoration: none;">تسجيل الدخول</a>
+          <p style="margin: 0; text-align: center; font-size: 14px; color: #5C716C;">ليس لديك حساب؟ <a href="Signup.dc.html" style="font-weight: 700;">إنشاء حساب</a></p>
+        </div>
+
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isChild}}" hint-placeholder-val="{{ true }}">
+      <div style="min-height: 540px; display: flex; flex-direction: column; gap: 18px; animation: gh-tab .28s ease both;">
+
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 6px;">
+          <svg width="96" height="96" viewBox="0 0 76 76" fill="none" aria-hidden="true">
+            <circle cx="38" cy="38" r="36" fill="#EAF6F2"></circle>
+            <path d="M38 60 V34" stroke="#1B7F69" stroke-width="4.5" stroke-linecap="round"></path>
+            <path d="M38 41 C27 41 21 35 21 26 C32 26 38 32 38 41 Z" fill="#2FA98C"></path>
+            <path d="M38 46 C49 46 55 40 55 31 C44 31 38 37 38 46 Z" fill="#7ACBB6"></path>
+            <circle cx="38" cy="62" r="4" fill="#F4B740"></circle>
+          </svg>
+          <p style="margin: 0; text-align: center; font-size: 15px; color: #1F3D37; line-height: 1.8; max-width: 260px;">أدخل الرمز الذي أعطاك إياه والدك.</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <label for="gh-c1" style="font-size: 14px; font-weight: 700; text-align: center;">رمز الدعوة</label>
+          <div style="display: flex; gap: 8px; justify-content: center; direction: ltr;">
+            <input id="gh-c1" type="text" inputmode="numeric" maxlength="1" aria-label="الخانة الأولى من رمز الدعوة" onInput="{{ codeInput }}" style="width: 46px; height: 64px; border-radius: 17px; border: {{ cellBorder }}; background: #FFFFFF; text-align: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 26px; font-weight: 800; color: #1B7F69;">
+            <input id="gh-c2" type="text" inputmode="numeric" maxlength="1" aria-label="الخانة الثانية من رمز الدعوة" onInput="{{ codeInput }}" style="width: 46px; height: 64px; border-radius: 17px; border: {{ cellBorder }}; background: #FFFFFF; text-align: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 26px; font-weight: 800; color: #1B7F69;">
+            <input id="gh-c3" type="text" inputmode="numeric" maxlength="1" aria-label="الخانة الثالثة من رمز الدعوة" onInput="{{ codeInput }}" style="width: 46px; height: 64px; border-radius: 17px; border: {{ cellBorder }}; background: #FFFFFF; text-align: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 26px; font-weight: 800; color: #1B7F69;">
+            <input id="gh-c4" type="text" inputmode="numeric" maxlength="1" aria-label="الخانة الرابعة من رمز الدعوة" onInput="{{ codeInput }}" style="width: 46px; height: 64px; border-radius: 17px; border: {{ cellBorder }}; background: #FFFFFF; text-align: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 26px; font-weight: 800; color: #1B7F69;">
+            <input id="gh-c5" type="text" inputmode="numeric" maxlength="1" aria-label="الخانة الخامسة من رمز الدعوة" onInput="{{ codeInput }}" style="width: 46px; height: 64px; border-radius: 17px; border: {{ cellBorder }}; background: #FFFFFF; text-align: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 26px; font-weight: 800; color: #1B7F69;">
+            <input id="gh-c6" type="text" inputmode="numeric" maxlength="1" aria-label="الخانة السادسة من رمز الدعوة" onInput="{{ codeInput }}" style="width: 46px; height: 64px; border-radius: 17px; border: {{ cellBorder }}; background: #FFFFFF; text-align: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 26px; font-weight: 800; color: #1B7F69;">
+          </div>
+
+          <div style="min-height: 26px; display: flex; align-items: center; justify-content: center; gap: 7px;">
+            <sc-if value="{{ isBad }}" hint-placeholder-val="{{ true }}">
+              <span style="display: flex; align-items: center; gap: 7px; color: #8E2B4D; font-size: 13px; font-weight: 700;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9.5" stroke="#8E2B4D" stroke-width="1.9"></circle>
+                  <path d="M12 7.5 V13" stroke="#8E2B4D" stroke-width="2.2" stroke-linecap="round"></path>
+                  <circle cx="12" cy="16.6" r="1.4" fill="#8E2B4D"></circle>
+                </svg>
+                الرمز غير صحيح أو منتهي
+              </span>
+              <a href="SCodeExpired.dc.html" style="font-size: 13px; font-weight: 800;">ما الحل؟</a>
+            </sc-if>
+            <sc-if value="{{ isShort }}" hint-placeholder-val="{{ true }}">
+              <span style="color: #7A5209; font-size: 13px; font-weight: 700;">أكمل الخانات الستّ.</span>
+            </sc-if>
+            <sc-if value="{{ isOk }}" hint-placeholder-val="{{ true }}">
+              <span style="display: flex; align-items: center; gap: 7px; color: #1B7F69; font-size: 13px; font-weight: 700;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9.5" stroke="#1B7F69" stroke-width="1.9"></circle>
+                  <path d="M7.8 12.4 L10.8 15.4 L16.2 9.4" stroke="#1B7F69" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+                تم التحقق — جارٍ فتح تطبيق الطفل
+              </span>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: flex-start; gap: 10px; background: #FDF1DA; border-radius: 18px; padding: 14px 16px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px;">
+            <circle cx="12" cy="12" r="9.5" stroke="#7A5209" stroke-width="1.8"></circle>
+            <path d="M12 11 V16.5" stroke="#7A5209" stroke-width="2" stroke-linecap="round"></path>
+            <circle cx="12" cy="7.8" r="1.3" fill="#7A5209"></circle>
+          </svg>
+          <p style="margin: 0; font-size: 12.5px; color: #4A3206; line-height: 1.75;">لا تحتاج بريدًا ولا كلمة مرور — الرمز وحده يكفي. انتهت صلاحية رمزك؟ <a href="SCodeExpired.dc.html" style="font-weight: 800;">اطلب رمزًا جديدًا من والدك</a>.</p>
+        </div>
+
+        <div style="margin-top: auto;">
+          <button type="button" onClick="{{ submitCode }}" style="width: 100%; height: 58px; border-radius: 20px; border: 0; background: #1B7F69; color: #FFFFFF; font-family: 'Cairo', sans-serif; font-size: 17px; font-weight: 700; cursor: pointer;">دخول</button>
+        </div>
+
+      </div>
+    </sc-if>
+
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":880}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'parent', status: '', eye: false };
+  }
+  renderVals() {
+    const ids = ['gh-c1', 'gh-c2', 'gh-c3', 'gh-c4', 'gh-c5', 'gh-c6'];
+    const ar = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    const isParent = this.state.tab === 'parent';
+    const norm = (ch) => {
+      const latin = '0123456789'.indexOf(ch);
+      if (latin >= 0) { return ar[latin]; }
+      return ar.indexOf(ch) >= 0 ? ch : '';
+    };
+    return {
+      isParent: isParent,
+      isChild: !isParent,
+      subtitle: isParent ? 'سجّل دخولك لمتابعة تقدّم أبنائك.' : 'ادخل برمز الدعوة الذي أعطاك إياه والدك.',
+      parentSelected: isParent ? 'true' : 'false',
+      childSelected: isParent ? 'false' : 'true',
+      parentBg: isParent ? '#FFFFFF' : 'transparent',
+      parentFg: isParent ? '#1B7F69' : '#5C716C',
+      parentShadow: isParent ? '0 4px 12px rgba(31, 61, 55, 0.08)' : 'none',
+      childBg: isParent ? 'transparent' : '#FFFFFF',
+      childFg: isParent ? '#5C716C' : '#1B7F69',
+      childShadow: isParent ? 'none' : '0 4px 12px rgba(31, 61, 55, 0.08)',
+      showParent: () => this.setState({ tab: 'parent' }),
+      showChild: () => this.setState({ tab: 'child' }),
+      eyeOpen: this.state.eye,
+      passType: this.state.eye ? 'text' : 'password',
+      eyeLabel: this.state.eye ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور',
+      toggleEye: () => this.setState({ eye: !this.state.eye }),
+      isBad: this.state.status === 'bad',
+      isShort: this.state.status === 'short',
+      isOk: this.state.status === 'ok',
+      cellBorder: this.state.status === 'bad' ? '1.5px solid #E86A92' : '1.5px solid #E7DECB',
+      codeInput: (e) => {
+        const v = norm(e.target.value.slice(-1));
+        e.target.value = v;
+        if (v) {
+          const nxt = e.target.nextElementSibling;
+          if (nxt && nxt.focus) { nxt.focus(); }
+        }
+        if (this.state.status) { this.setState({ status: '' }); }
+      },
+      submitCode: () => {
+        let code = '';
+        for (let i = 0; i < ids.length; i++) {
+          const el = document.getElementById(ids[i]);
+          if (el && el.value) { code += el.value; }
+        }
+        if (code.length < ids.length) { this.setState({ status: 'short' }); return; }
+        this.setState({ status: code === '٤٧٢٩١٨' ? 'ok' : 'bad' });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>غَرسة — مراجعة ما حفظه</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&amp;family=Baloo+Bhaijaan+2:wght@400;500;600;700;800&amp;family=Cairo:wght@400;500;700;800&amp;display=swap">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; direction: rtl; font-family: 'Cairo', system-ui, sans-serif; background: #FBF6EC; }
+a { color: #1B7F69; }
+a:hover { color: #14624F; }
+@keyframes gh-pop { 0% { opacity: 0; transform: scale(0.84); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes gh-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes gh-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes gh-glow { 0% { transform: scale(0.94); opacity: 0.5; } 100% { transform: scale(1.3); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #FBF6EC; direction: rtl; color: #1F3D37;">
+  <div style="position: absolute; top: -160px; left: -140px; width: 400px; height: 400px; border-radius: 50%; background: rgba(47, 169, 140, 0.09);"></div>
+  <div style="position: relative; z-index: 1; height: 100%; padding: 26px 20px 26px; display: flex; flex-direction: column; gap: 16px;">
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <a href="StudentHome.dc.html" aria-label="رجوع" style="width: 44px; height: 44px; border-radius: 15px; background: #FFFFFF; border: 1px solid #EFE7D6; display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5 L16 12 L9 19" stroke="#1F3D37" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    </a>
+    <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px;">
+      <h1 style="margin: 0; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 26px; font-weight: 700; line-height: 1.4;">{{ title }}</h1>
+    </span>
+  </div>
+    <div style="background: #FFFFFF; border-radius: 26px; padding: 18px 20px; display: flex; align-items: center; gap: 14px; box-shadow: 0 12px 26px rgba(31, 61, 55, 0.04);">
+      <span style="width: 54px; height: 54px; border-radius: 18px; background: {{ tint }}; display: flex; align-items: center; justify-content: center;" aria-hidden="true">{{ icon }}</span>
+      <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 26px; font-weight: 700; color: {{ ink }};">{{ count }}</span>
+        <span style="font-size: 13.5px; color: #5C716C; font-weight: 700;">{{ countLabel }}</span>
+      </span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 100px;">
+      <sc-for list="{{items}}" as="it" hint-placeholder-count="6">
+        <div style="background: #FFFFFF; border: 1.5px solid #EFE7D6; border-radius: 22px; padding: 16px 18px; display: flex; align-items: center; gap: 14px;">
+          <span style="width: 44px; height: 44px; border-radius: 15px; background: {{ it.bg }}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" aria-hidden="true">{{ it.mark }}</span>
+          <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0;">
+            <span style="font-size: 16px; font-weight: 800; color: {{ it.fg }};">{{ it.name }}</span>
+            <span style="font-size: 12.5px; color: #5C716C;">{{ it.meta }}</span>
+          </span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <div style="position: absolute; right: 0; left: 0; bottom: 0; height: 90px; background: #FFFFFF; border-top: 1px solid #EFE7D6; display: flex; align-items: flex-start; justify-content: space-around; padding: 12px 16px 0; z-index: 3;">
+    <span style="display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 88px; padding: 4px 0; color: #1B7F69;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 11 L12 4.5 L20 11 V19 C20 19.6 19.6 20 19 20 H5 C4.4 20 4 19.6 4 19 Z" stroke="#1B7F69" stroke-width="2.2" stroke-linejoin="round"></path></svg><span style="font-size: 12.5px; font-weight: 800;">الرئيسية</span></span>
+    <a href="ChildProfile.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 88px; padding: 4px 0; text-decoration: none; color: #5C716C;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6" stroke="#5C716C" stroke-width="2.1"></circle><path d="M5 19.5 C5 15.7 8.1 13.6 12 13.6 C15.9 13.6 19 15.7 19 19.5" stroke="#5C716C" stroke-width="2.1" stroke-linecap="round"></path></svg><span style="font-size: 12.5px; font-weight: 700;">ملفّي</span></a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"kind":{"editor":"enum","options":["السور","الأحاديث","المشاريع"],"default":"السور","section":"القائمة"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const kind = this.props.kind || 'السور';
+    const DONE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 L10 17.5 L19 7" stroke="#1B7F69" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+    const NOW = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="6" fill="#F4B740"></circle></svg>';
+    const LOCK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="5" y="10.5" width="14" height="9.5" rx="3" stroke="#9BA8A4" stroke-width="2"></rect><path d="M8.5 10.5 V8 C8.5 6 10 4.5 12 4.5 C14 4.5 15.5 6 15.5 8 V10.5" stroke="#9BA8A4" stroke-width="2" stroke-linecap="round"></path></svg>';
+    const BOOK = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M4 5.5 C6.5 4.2 9.5 4.2 12 5.8 C14.5 4.2 17.5 4.2 20 5.5 V18.5 C17.5 17.2 14.5 17.2 12 18.8 C9.5 17.2 6.5 17.2 4 18.5 Z" stroke="#1B7F69" stroke-width="1.9" stroke-linejoin="round"></path><path d="M12 5.8 V18.8" stroke="#1B7F69" stroke-width="1.9"></path></svg>';
+    const HAD = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4 H17 C18.7 4 20 5.3 20 7 V20 H9.5 C8 20 7 18.8 7 17.3 Z" stroke="#A8365C" stroke-width="1.9" stroke-linejoin="round"></path><path d="M7 4 C5.3 4 4 5.3 4 7 C4 8.2 4.9 9 6 9 H7" stroke="#A8365C" stroke-width="1.9" stroke-linejoin="round"></path></svg>';
+    const PRJ = '<svg width="28" height="28" viewBox="0 0 64 64" fill="none"><path d="M32 38 V18" stroke="#9C6B12" stroke-width="3.4" stroke-linecap="round"></path><path d="M6 38 C6 50 17 58 32 58 C47 58 58 50 58 38 C58 34 54 32 51 34 L40 41 L24 41 L13 34 C10 32 6 34 6 38 Z" fill="#F4B740"></path></svg>';
+    const wrap = (n, m, st) => ({
+      name: n, meta: m,
+      mark: st === 'done' ? DONE : (st === 'now' ? NOW : LOCK),
+      bg: st === 'done' ? '#EAF6F2' : (st === 'now' ? '#FDF1DA' : '#F4F0E4'),
+      fg: st === 'locked' ? '#9BA8A4' : '#1F3D37'
+    });
+    let data, title, count, countLabel, icon, tint, ink;
+    if (kind === 'السور') {
+      title = 'ما حفظته من السور'; count = '٨ سور'; countLabel = 'اكتملت · ٦٤ آية'; icon = BOOK; tint = '#EAF6F2'; ink = '#1B7F69';
+      data = [wrap('سورة الإخلاص', '٤ آيات · اكتملت اليوم', 'done'), wrap('سورة الفلق', '٥ آيات · ١٢ رجب', 'done'), wrap('سورة الناس', '٦ آيات · ٥ رجب', 'done'), wrap('سورة الكوثر', '٣ آيات · ٢٨ جمادى', 'done'), wrap('سورة الماعون', '٧ آيات · ٢٠ جمادى', 'done'), wrap('سورة الفيل', '٥ آيات — التالية', 'locked')];
+    } else if (kind === 'الأحاديث') {
+      title = 'ما حفظته من الأحاديث'; count = '١٢ حديثًا'; countLabel = 'محفوظة'; icon = HAD; tint = '#FDE9EF'; ink = '#A8365C';
+      data = [wrap('برّ الوالدين', 'حديث هذا الأسبوع', 'now'), wrap('الصدقة', '٥ رجب', 'done'), wrap('إفشاء السلام', '٢٨ جمادى الآخرة', 'done'), wrap('إماطة الأذى', '٢٠ جمادى الآخرة', 'done'), wrap('الرفق بالحيوان', '١٣ جمادى الآخرة', 'done'), wrap('حسن الجوار', 'الأسبوع القادم', 'locked')];
+    } else {
+      title = 'مشاريعي'; count = '٩ مشاريع'; countLabel = 'أنجزتها في البيت'; icon = PRJ; tint = '#FDF1DA'; ink = '#7A5209';
+      data = [wrap('برّ الوالدين', 'بانتظار حكايتك غدًا', 'now'), wrap('الصدقة', 'حكيتها في ٦ رجب', 'done'), wrap('إفشاء السلام', 'حكيتها في ٢٩ جمادى', 'done'), wrap('إماطة الأذى', 'حكيتها في ٢١ جمادى', 'done'), wrap('الرفق بالحيوان', 'حكيتها في ١٤ جمادى', 'done'), wrap('حسن الجوار', 'لم يبدأ بعد', 'locked')];
+    }
+    return { title: title, items: data, count: count, countLabel: countLabel, icon: icon, tint: tint, ink: ink };
+  }
+}
+</script>
+</body>
+</html>

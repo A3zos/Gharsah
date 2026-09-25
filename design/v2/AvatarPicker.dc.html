@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>غَرسة — اختيار الشخصية</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@400;500;600;700;800&amp;family=Cairo:wght@400;500;700;800&amp;display=swap">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; direction: rtl; font-family: 'Cairo', system-ui, sans-serif; background: #FBF6EC; }
+a { color: #1B7F69; }
+a:hover { color: #14624F; }
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #FBF6EC; direction: rtl; color: #1F3D37; padding: 30px 20px 30px; display: flex; flex-direction: column; gap: 18px;">
+
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <a href="Schedule.dc.html" aria-label="رجوع إلى الجدول" style="width: 46px; height: 46px; border-radius: 16px; background: #FFFFFF; border: 1px solid #EFE7D6; display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M9 5 L16 12 L9 19" stroke="#1F3D37" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </a>
+    <h1 style="margin: 0; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 24px; font-weight: 700; line-height: 1.5;">اختر شخصية سارة</h1>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 6px;">
+    <span style="display: flex; align-items: center; gap: 7px; height: 38px; padding: 0 12px; border-radius: 13px; background: #F4F0E4; color: #5C716C; font-size: 12.5px; font-weight: 700; flex-shrink: 0;">
+      <span style="width: 21px; height: 21px; border-radius: 50%; background: #2FA98C; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" aria-hidden="true">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 L10 17.5 L19 7" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </span>
+      البيانات
+    </span>
+    <span style="height: 2px; flex-grow: 1; background: #E4DCC8; border-radius: 2px;"></span>
+    <span style="display: flex; align-items: center; gap: 7px; height: 38px; padding: 0 12px; border-radius: 13px; background: #F4F0E4; color: #5C716C; font-size: 12.5px; font-weight: 700; flex-shrink: 0;">
+      <span style="width: 21px; height: 21px; border-radius: 50%; background: #2FA98C; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" aria-hidden="true">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 L10 17.5 L19 7" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </span>
+      الجدول
+    </span>
+    <span style="height: 2px; flex-grow: 1; background: #E4DCC8; border-radius: 2px;"></span>
+    <span style="display: flex; align-items: center; gap: 7px; height: 38px; padding: 0 12px; border-radius: 13px; background: #EAF6F2; color: #1B7F69; font-size: 12.5px; font-weight: 700; flex-shrink: 0;">
+      <span style="width: 21px; height: 21px; border-radius: 50%; background: #1B7F69; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 800; flex-shrink: 0;">٣</span>
+      الشخصية
+    </span>
+  </div>
+
+  <p style="margin: 0; font-size: 13.5px; color: #5C716C; line-height: 1.8;">شخصيات محتشمة ولطيفة — يراها طفلك في تطبيقه مع كل إنجاز.</p>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+    <sc-for list="{{avatars}}" as="av" hint-placeholder-count="9">
+      <button type="button" onClick="{{ av.pick }}" aria-label="{{ av.label }}" style="position: relative; height: 112px; border-radius: 24px; border: {{ av.border }}; background: {{ av.bg }}; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;">
+        <svg width="74" height="74" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+          <sc-if value="{{ av.girl }}" hint-placeholder-val="{{ true }}">
+            <g>
+              <path d="M32 8 C19 8 13 18 13 31 C13 44 19 53 21 58 H43 C45 53 51 44 51 31 C51 18 45 8 32 8 Z" fill="{{ av.cloth }}"></path>
+              <ellipse cx="32" cy="31" rx="11" ry="12.5" fill="{{ av.skin }}"></ellipse>
+              <path d="M21 28 C21 21 25 16 32 16 C39 16 43 21 43 28 Z" fill="{{ av.cloth }}"></path>
+              <circle cx="27.5" cy="32" r="2.3" fill="#3B2A24"></circle>
+              <circle cx="37" cy="32" r="2.3" fill="#3B2A24"></circle>
+              <path d="M28.5 38 C30.5 40 34 40 36.5 38" stroke="#3B2A24" stroke-width="2" stroke-linecap="round"></path>
+            </g>
+          </sc-if>
+          <sc-if value="{{ av.boy }}" hint-placeholder-val="{{ true }}">
+            <g>
+              <path d="M15 58 C15 47 23 41 32 41 C41 41 49 47 49 58 Z" fill="{{ av.cloth }}"></path>
+              <ellipse cx="32" cy="30" rx="11.5" ry="12.5" fill="{{ av.skin }}"></ellipse>
+              <path d="M20 24 C20 16 25 11.5 32 11.5 C39 11.5 44 16 44 24 Z" fill="#F7F2E6"></path>
+              <path d="M20.5 25 H43.5" stroke="#E4DCC8" stroke-width="2" stroke-linecap="round"></path>
+              <circle cx="27.5" cy="31" r="2.3" fill="#3B2A24"></circle>
+              <circle cx="37" cy="31" r="2.3" fill="#3B2A24"></circle>
+              <path d="M28.5 37 C30.5 39 34 39 36.5 37" stroke="#3B2A24" stroke-width="2" stroke-linecap="round"></path>
+            </g>
+          </sc-if>
+        </svg>
+        <sc-if value="{{ av.selected }}" hint-placeholder-val="{{ true }}">
+          <span style="position: absolute; top: 8px; left: 8px; width: 26px; height: 26px; border-radius: 50%; background: #1B7F69; display: flex; align-items: center; justify-content: center;" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 L10 17.5 L19 7" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </span>
+        </sc-if>
+      </button>
+    </sc-for>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 12px; background: #FFFFFF; border-radius: 20px; padding: 14px 16px; box-shadow: 0 8px 20px rgba(31, 61, 55, 0.05);">
+    <svg width="24" height="24" viewBox="0 0 76 76" fill="none" aria-hidden="true">
+      <path d="M38 60 V34" stroke="#1B7F69" stroke-width="6" stroke-linecap="round"></path>
+      <path d="M38 40 C28 40 22 34 22 26 C32 26 38 32 38 40 Z" fill="#2FA98C"></path>
+      <path d="M38 45 C48 45 54 39 54 31 C44 31 38 37 38 45 Z" fill="#7ACBB6"></path>
+    </svg>
+    <p style="margin: 0; font-size: 12.5px; color: #5C716C; line-height: 1.8;">تنمو شجرة الشخصية كلما أتمّ طفلك حفظًا جديدًا.</p>
+  </div>
+
+  <a href="PairingCode.dc.html" style="display: flex; align-items: center; justify-content: center; height: 58px; border-radius: 20px; background: #1B7F69; color: #FFFFFF; font-size: 17px; font-weight: 700; text-decoration: none; margin-top: auto;">حفظ وإنشاء رمز الربط</a>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: 'g1' };
+  }
+  renderVals() {
+    const base = [
+      { id: 'g1', girl: true, label: 'فتاة بحجاب توتي', cloth: '#E86A92', skin: '#F2C9A0' },
+      { id: 'g2', girl: true, label: 'فتاة بحجاب سماوي', cloth: '#4EA9E8', skin: '#E0A97C' },
+      { id: 'g3', girl: true, label: 'فتاة بحجاب أخضر', cloth: '#2FA98C', skin: '#C98A5E' },
+      { id: 'g4', girl: true, label: 'فتاة بحجاب ذهبي', cloth: '#F4B740', skin: '#8D5A3B' },
+      { id: 'g5', girl: true, label: 'فتاة بحجاب كريمي', cloth: '#D8CDB4', skin: '#F2C9A0' },
+      { id: 'b1', girl: false, label: 'فتى بثوب أخضر', cloth: '#2FA98C', skin: '#E0A97C' },
+      { id: 'b2', girl: false, label: 'فتى بثوب سماوي', cloth: '#4EA9E8', skin: '#C98A5E' },
+      { id: 'b3', girl: false, label: 'فتى بثوب ذهبي', cloth: '#F4B740', skin: '#8D5A3B' },
+      { id: 'b4', girl: false, label: 'فتى بثوب كريمي', cloth: '#D8CDB4', skin: '#F2C9A0' }
+    ];
+    const avatars = base.map((a) => {
+      const on = this.state.picked === a.id;
+      return {
+        label: a.label,
+        girl: a.girl,
+        boy: !a.girl,
+        cloth: a.cloth,
+        skin: a.skin,
+        selected: on,
+        border: on ? '2.5px solid #1B7F69' : '1.5px solid #EFE7D6',
+        bg: on ? '#EAF6F2' : '#FFFFFF',
+        pick: () => this.setState({ picked: a.id })
+      };
+    });
+    return { avatars: avatars };
+  }
+}
+</script>
+</body>
+</html>

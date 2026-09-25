@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>غَرسة — انتهت الجلسة</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&amp;family=Baloo+Bhaijaan+2:wght@400;500;600;700;800&amp;family=Cairo:wght@400;500;700;800&amp;display=swap">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; direction: rtl; font-family: 'Cairo', system-ui, sans-serif; background: #FBF6EC; }
+a { color: #1B7F69; }
+a:hover { color: #14624F; }
+@keyframes gh-bob { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-6px) rotate(1deg); } }
+@keyframes gh-pop { 0% { opacity: 0; transform: scale(0.8); } 60% { opacity: 1; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes gh-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes gh-glow { 0% { transform: scale(0.94); opacity: 0.5; } 100% { transform: scale(1.3); opacity: 0; } }
+@keyframes gh-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #FBF6EC; direction: rtl; color: #1F3D37; padding: 26px 20px 28px; display: flex; justify-content: center;">
+  <div style="position: absolute; bottom: -140px; left: -110px; width: 330px; height: 330px; border-radius: 50%; background: rgba(47, 169, 140, 0.10);"></div>
+  <div style="flex-grow: 1; max-width: 520px; display: flex; flex-direction: column; gap: 14px; z-index: 1;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+        <span style="display: flex; align-items: center; gap: 10px;">
+          <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M32 56 V28" stroke="#1B7F69" stroke-width="5" stroke-linecap="round"></path><path d="M32 40 C20 40 12 32 12 20 C24 20 32 28 32 40 Z" fill="#2FA98C"></path><path d="M32 34 C44 34 52 26 52 14 C40 14 32 22 32 34 Z" fill="#7ACBB6"></path></svg>
+          <span style="font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 22px; font-weight: 700; color: #1B7F69;">غَرْسة</span>
+        </span>
+      </div>
+      <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px;">
+        <span style="width: 118px; height: 118px; border-radius: 50%; background: {{ tint }}; display: flex; align-items: center; justify-content: center; animation: gh-pop .5s ease-out both;" aria-hidden="true">{{ icon }}</span>
+        <p style="margin: 0; text-align: center; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 28px; font-weight: 700; color: #1F3D37; line-height: 1.5;">{{ title }}</p>
+        <p style="margin: 0; text-align: center; font-size: 15.5px; line-height: 1.95; color: #5C716C; max-width: 300px;">{{ body }}</p>
+        <sc-if value="{{ showCode }}" hint-placeholder-val="{{ true }}">
+          <span style="background: #F4F0E4; color: #5C716C; font-size: 12.5px; font-weight: 700; border-radius: 999px; padding: 8px 16px;">رمز المشكلة: GH-٥٠٣</span>
+        </sc-if>
+      </div>
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;">
+        <a href="{{ ctaHref }}" style="display: flex; align-items: center; justify-content: center; gap: 10px; height: 64px; border-radius: 22px; background: #1B7F69; color: #FFFFFF; font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 20px; font-weight: 700; text-decoration: none; box-shadow: 0 12px 24px rgba(27, 127, 105, 0.26);">{{ ctaLabel }}</a>
+        <a href="Main.dc.html" style="display: flex; align-items: center; justify-content: center; gap: 9px; height: 56px; border-radius: 20px; background: #FFFFFF; border: 1.5px solid #E7DECB; color: #5C716C; font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 700; text-decoration: none;">العودة للبداية</a>
+      </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"kind":{"editor":"enum","options":["انتهت الجلسة","خطأ عام"],"default":"انتهت الجلسة","section":"الحالة"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const kind = this.props.kind || 'انتهت الجلسة';
+    const ended = kind === 'انتهت الجلسة';
+    const LOCK = '<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><rect x="5" y="10.5" width="14" height="9.5" rx="3" stroke="#1B7F69" stroke-width="2"></rect><path d="M8.5 10.5 V8 C8.5 6 10 4.5 12 4.5 C14 4.5 15.5 6 15.5 8 V10.5" stroke="#1B7F69" stroke-width="2" stroke-linecap="round"></path></svg>';
+    const BAD = '<svg width="52" height="52" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.2" stroke="#A8365C" stroke-width="2"></circle><path d="M12 7.2 V13" stroke="#A8365C" stroke-width="2.3" stroke-linecap="round"></path><circle cx="12" cy="16.5" r="1.5" fill="#A8365C"></circle></svg>';
+    return {
+      tint: ended ? '#EAF6F2' : '#FDE9EF',
+      icon: ended ? LOCK : BAD,
+      title: ended ? 'انتهت الجلسة' : 'حدث خطأ غير متوقّع',
+      body: ended ? 'سجّلنا خروجك للحفاظ على حسابك. ادخل مرة أخرى وتكمل من حيث وقفت.' : 'لم نستطع إتمام العملية. حاول مرة أخرى — وإن تكرّر الأمر أرسل لنا رمز المشكلة.',
+      showCode: !ended,
+      ctaHref: ended ? 'Login.dc.html' : 'StudentHome.dc.html',
+      ctaLabel: ended ? 'سجّل الدخول مرة أخرى' : 'أعد المحاولة'
+    };
+  }
+}
+</script>
+</body>
+</html>

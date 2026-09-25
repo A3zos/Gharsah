@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>غَرسة — الحصة على الكمبيوتر</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&amp;family=Baloo+Bhaijaan+2:wght@400;500;600;700;800&amp;family=Cairo:wght@400;500;700;800&amp;display=swap">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; direction: rtl; font-family: 'Cairo', system-ui, sans-serif; background: #FBF6EC; }
+a { color: #1B7F69; }
+a:hover { color: #14624F; }
+@keyframes gh-bob { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-7px) rotate(1.2deg); } }
+@keyframes gh-glow { 0% { transform: scale(0.94); opacity: 0.5; } 100% { transform: scale(1.32); opacity: 0; } }
+@keyframes gh-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes gh-pop { 0% { opacity: 0; transform: scale(0.84); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes gh-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+<div style="width: 1440px; height: 1024px; box-sizing: border-box; position: relative; overflow: hidden; background: #FBF6EC; direction: rtl; color: #1F3D37; display: flex; align-items: center; justify-content: center;">
+  <div style="position: absolute; top: -180px; right: -140px; width: 540px; height: 540px; border-radius: 50%; background: rgba(47, 169, 140, 0.07);"></div>
+  <div style="position: absolute; bottom: -200px; left: -160px; width: 600px; height: 600px; border-radius: 50%; background: rgba(244, 183, 64, 0.09);"></div>
+  <span style="position: absolute; top: 150px; right: 180px; opacity: 0.22; transform: rotate(-14deg);" aria-hidden="true"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21 V11" stroke="#2FA98C" stroke-width="2" stroke-linecap="round"></path><path d="M12 15 C8 15 5.5 12.5 5.5 8.5 C9.5 8.5 12 11 12 15 Z" fill="#2FA98C"></path><path d="M12 13 C16 13 18.5 10.5 18.5 6.5 C14.5 6.5 12 9 12 13 Z" fill="#7ACBB6"></path></svg></span>
+  <span style="position: absolute; top: 640px; right: 300px; opacity: 0.18; transform: rotate(12deg);" aria-hidden="true"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21 V11" stroke="#2FA98C" stroke-width="2" stroke-linecap="round"></path><path d="M12 15 C8 15 5.5 12.5 5.5 8.5 C9.5 8.5 12 11 12 15 Z" fill="#2FA98C"></path><path d="M12 13 C16 13 18.5 10.5 18.5 6.5 C14.5 6.5 12 9 12 13 Z" fill="#7ACBB6"></path></svg></span>
+  <span style="position: absolute; top: 240px; left: 220px; opacity: 0.20; transform: rotate(18deg);" aria-hidden="true"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21 V11" stroke="#2FA98C" stroke-width="2" stroke-linecap="round"></path><path d="M12 15 C8 15 5.5 12.5 5.5 8.5 C9.5 8.5 12 11 12 15 Z" fill="#2FA98C"></path><path d="M12 13 C16 13 18.5 10.5 18.5 6.5 C14.5 6.5 12 9 12 13 Z" fill="#7ACBB6"></path></svg></span>
+  <span style="position: absolute; top: 700px; left: 330px; opacity: 0.16; transform: rotate(-8deg);" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21 V11" stroke="#2FA98C" stroke-width="2" stroke-linecap="round"></path><path d="M12 15 C8 15 5.5 12.5 5.5 8.5 C9.5 8.5 12 11 12 15 Z" fill="#2FA98C"></path><path d="M12 13 C16 13 18.5 10.5 18.5 6.5 C14.5 6.5 12 9 12 13 Z" fill="#7ACBB6"></path></svg></span>
+  <span style="position: absolute; top: 820px; right: 120px; opacity: 0.14; transform: rotate(6deg);" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21 V11" stroke="#2FA98C" stroke-width="2" stroke-linecap="round"></path><path d="M12 15 C8 15 5.5 12.5 5.5 8.5 C9.5 8.5 12 11 12 15 Z" fill="#2FA98C"></path><path d="M12 13 C16 13 18.5 10.5 18.5 6.5 C14.5 6.5 12 9 12 13 Z" fill="#7ACBB6"></path></svg></span>
+  <div style="position: absolute; top: 0; right: 0; left: 0; height: 74px; display: flex; align-items: center; padding: 0 36px; gap: 10px; z-index: 2;">
+    <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M32 56 V28" stroke="#1B7F69" stroke-width="5" stroke-linecap="round"></path><path d="M32 40 C20 40 12 32 12 20 C24 20 32 28 32 40 Z" fill="#2FA98C"></path><path d="M32 34 C44 34 52 26 52 14 C40 14 32 22 32 34 Z" fill="#7ACBB6"></path></svg>
+    <span style="font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 21px; font-weight: 700; color: #1B7F69;">غَرْسة</span>
+  </div>
+
+  <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 18px;">
+      <div style="width: 560px; background: #FFFFFF; border: 1.5px solid #EFE7D6; border-radius: 40px; padding: 30px 34px 34px; display: flex; flex-direction: column; align-items: center; gap: 14px; box-shadow: 0 30px 70px rgba(31, 61, 55, 0.10);">
+
+        <div style="width: 100%; display: flex; align-items: center; gap: 11px;">
+          <a href="ExitConfirm.dc.html" aria-label="إنهاء المكالمة" style="width: 46px; height: 46px; border-radius: 50%; background: #FDE9EF; border: 1px solid #F6D3DF; display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18" stroke="#A8365C" stroke-width="2.6" stroke-linecap="round"></path></svg>
+          </a>
+          <span style="flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 9px;">
+            <span style="display: flex; align-items: center; gap: 6px; background: #FBF6EC; border: 1px solid #F6D3DF; border-radius: 999px; padding: 8px 14px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #E86A92; animation: gh-blink 1.4s ease-in-out infinite;"></span>
+              <span style="font-size: 12.5px; font-weight: 800; color: #A8365C;">مباشر</span>
+            </span>
+            <span style="font-family: 'Baloo Bhaijaan 2', 'Cairo', sans-serif; font-size: 14px; font-weight: 700; color: #5C716C;">٠٢:٤٦</span>
+          </span>
+          <span style="width: 46px; flex-shrink: 0;"></span>
+        </div>
+
+        <div style="position: relative; display: flex; align-items: center; justify-content: center; height: 210px;">
+          <span style="position: absolute; width: 200px; height: 200px; border-radius: 50%; background: rgba(47, 169, 140, 0.20); animation: gh-glow 2.1s ease-out infinite;"></span>
+          <span style="position: relative; animation: gh-bob 1.7s ease-in-out infinite;"><svg width="198" height="198" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+          <path d="M56 194 C56 154 72 134 100 134 C128 134 144 154 144 194 Z" fill="#FFFFFF"></path>
+          <path d="M56 194 C56 164 64 146 78 138 C70 152 66 172 66 194 Z" fill="#F1EFE6"></path>
+          <path d="M88 138 L100 154 L112 138" stroke="#DDE2DA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+          <ellipse cx="100" cy="132" rx="13" ry="11" fill="#D9A273"></ellipse>
+          <ellipse cx="56" cy="94" rx="7" ry="9.5" fill="#E8B98C"></ellipse>
+          <ellipse cx="144" cy="94" rx="7" ry="9.5" fill="#E8B98C"></ellipse>
+          <ellipse cx="100" cy="90" rx="44" ry="46" fill="#E8B98C"></ellipse>
+          <path d="M62 100 C62 138 80 154 100 154 C120 154 138 138 138 100 C130 122 116 128 100 128 C84 128 70 122 62 100 Z" fill="#6B5646"></path>
+          <path d="M56 78 C56 46 76 28 100 28 C124 28 144 46 144 78 C124 68 76 68 56 78 Z" fill="#FFFFFF"></path>
+          <path d="M54 78 C76 67 124 67 146 78 C146 87 141 91 135 90 C114 82 86 82 65 90 C59 91 54 87 54 78 Z" fill="#F4F2EA"></path>
+          <path d="M56 78 C56 46 76 28 100 28 C124 28 144 46 144 78" stroke="#E4E0D4" stroke-width="2" stroke-linecap="round"></path>
+          <path d="M74 82 C78 76 90 76 94 81" stroke="#6B5646" stroke-width="3.4" stroke-linecap="round"></path>
+          <path d="M106 81 C110 76 122 76 126 82" stroke="#6B5646" stroke-width="3.4" stroke-linecap="round"></path>
+          
+            <g>
+              <ellipse cx="84" cy="98" rx="9" ry="10" fill="#FFFFFF"></ellipse>
+              <ellipse cx="116" cy="98" rx="9" ry="10" fill="#FFFFFF"></ellipse>
+              <circle cx="85" cy="100" r="5" fill="#2A211C"></circle>
+              <circle cx="117" cy="100" r="5" fill="#2A211C"></circle>
+              <circle cx="87" cy="97" r="1.8" fill="#FFFFFF"></circle>
+              <circle cx="119" cy="97" r="1.8" fill="#FFFFFF"></circle>
+            </g>
+          
+          
+          <ellipse cx="68" cy="112" rx="8" ry="5.5" fill="#E86A92" opacity="0.35"></ellipse>
+          <ellipse cx="132" cy="112" rx="8" ry="5.5" fill="#E86A92" opacity="0.35"></ellipse>
+          
+            <ellipse cx="100" cy="121" rx="9" ry="7" fill="#7A3B2E"></ellipse>
+          
+          
+          <ellipse cx="60" cy="170" rx="14" ry="22" fill="#FFFFFF" transform="rotate(14 60 170)"></ellipse>
+          <path d="M46 168 C46 158 52 150 60 148" stroke="#E4E0D4" stroke-width="2" stroke-linecap="round"></path>
+          <g transform="rotate(-9 128 168)">
+            <rect x="104" y="150" width="48" height="36" rx="6" fill="#1B7F69"></rect>
+            <rect x="108" y="154" width="40" height="28" rx="4" fill="#FDF6E6"></rect>
+            <path d="M128 154 V182" stroke="#E4DCC8" stroke-width="2"></path>
+            <path d="M114 162 H124 M132 162 H142 M114 170 H124 M132 170 H142" stroke="#D8CDB4" stroke-width="2" stroke-linecap="round"></path>
+          </g>
+          <circle cx="112" cy="186" r="9" fill="#E8B98C"></circle>
+          
+            <g>
+              <path d="M168 92 C176 100 176 112 168 120" stroke="#F4B740" stroke-width="4.5" stroke-linecap="round"></path>
+              <path d="M181 82 C192 96 192 118 181 132" stroke="#F4B740" stroke-width="4.5" stroke-linecap="round" opacity="0.5"></path>
+              <path d="M32 92 C24 100 24 112 32 120" stroke="#F4B740" stroke-width="4.5" stroke-linecap="round"></path>
+              <path d="M19 82 C8 96 8 118 19 132" stroke="#F4B740" stroke-width="4.5" stroke-linecap="round" opacity="0.5"></path>
+            </g>
+          
+        </svg></span>
+        </div>
+
+        <p style="margin: 0; text-align: center; font-size: 18px; font-weight: 700; line-height: 1.7; color: #1F3D37;">استمع للآية… وأنا صامت معك</p>
+
+        <div style="width: 100%; background: #FBF6EC; border: 2px solid #2FA98C; border-radius: 32px; padding: 30px 22px 24px; display: flex; flex-direction: column; align-items: center; gap: 14px;">
+          <p style="margin: 0; min-height: 112px; display: flex; align-items: center; justify-content: center; font-family: 'Amiri', Georgia, serif; font-size: 34px; line-height: 1.9; text-align: center; color: #1F3D37;"><span><span style="color: #9C6B12; font-size: 38px;">﴿</span> قُلْ هُوَ اللَّهُ أَحَدٌ <span style="color: #9C6B12; font-size: 38px;">﴾</span></span></p>
+          <span style="font-size: 13.5px; color: #5C716C; font-weight: 700;">سورة الإخلاص · الآية ١</span>
+        </div>
+
+        <span style="position: relative; width: 124px; height: 124px; display: flex; align-items: center; justify-content: center; margin-top: 4px;">
+          <span style="position: absolute; width: 124px; height: 124px; border-radius: 50%; background: rgba(244, 183, 64, 0.30); animation: gh-glow 1.5s ease-out infinite;"></span>
+          <span style="position: relative; width: 124px; height: 124px; border-radius: 50%; border: 2px solid #E7DECB; background: #FFFFFF; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 22px rgba(31, 61, 55, 0.08);" aria-hidden="true">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
+              <rect x="9" y="3" width="6" height="11" rx="3" stroke="#5C716C" stroke-width="2"></rect>
+              <path d="M5.5 11.5 C5.5 15.1 8.4 18 12 18 C15.6 18 18.5 15.1 18.5 11.5 M12 18 V21.2" stroke="#5C716C" stroke-width="2" stroke-linecap="round"></path>
+              <path d="M4.2 19.8 L19.8 4.2" stroke="#A8365C" stroke-width="2.4" stroke-linecap="round"></path>
+            </svg>
+          </span>
+        </span>
+        <span style="text-align: center; font-size: 13px; color: #5C716C; font-weight: 700;">الترديد يبدأ بعد التلاوة</span>
+
+      </div>
+    <span style="font-size: 13px; color: #5C716C;">الحصة تبقى بعرض الجوال — التركيز على المعلّم والآية والميكروفون.</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1024}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
