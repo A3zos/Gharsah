@@ -1,0 +1,25 @@
+@import 'tailwindcss';
+@import './tokens.generated.css';
+@import './fonts.css';
+
+/* Base document styles (CLAUDE.md §4): cream background, Cairo body text, RTL. */
+@layer base {
+  html {
+    background-color: var(--color-background);
+    color: var(--color-text-dark);
+    font-family: var(--font-body);
+    line-height: var(--line-height-body-normal);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-background);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}

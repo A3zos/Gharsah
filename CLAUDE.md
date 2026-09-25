@@ -11,6 +11,11 @@ plan. It lives at the repo root so it's always in context. **Plan first, then im
 Gharsah/
 ├── app/      Flutter app + firebase.json + firestore.rules + storage.rules + functions/ (Cloud
 │             Functions, TypeScript) + tool/ (rules tests, emulator wrapper, asset builders, design_compare)
+├── web/      Web app — Vite + React + TypeScript (React Router 8, Tailwind 4), same Firebase project.
+│             src/lesson/ = framework-free TS port of the LessonAgent (+ same tests).
+├── content/  Verified content shared by app/ and web/ (single source of truth): Tanzil Quran text +
+│             meta + splash ayat, Alafasy audio + manifest, hadith (placeholder), projects, lesson scripts.
+├── tokens/   design-tokens.json → generates app/lib/theme/app_tokens.g.dart + web Tailwind theme
 ├── ai/       AI teacher — owned by a separate AI developer. Do NOT write code here unless asked.
 │             The app ↔ AI interface is ai/CONTRACT.md (Draft v0.1); guardrails in ai/GUARDRAILS.md.
 ├── design/   Approved design (screens/*.png, html/*.html, DESIGN_NOTES.md)
@@ -20,6 +25,12 @@ Gharsah/
 
 - **All Flutter commands run from `app/`** (`cd app && flutter run -d chrome`). All code paths in this
   file (`lib/...`, `assets/...`, `tool/...`) are relative to `app/`.
+- **Web commands run from `web/`**: `npm run dev` (live Firebase) / `npm run dev:emu` (emulators), `npm run ci`
+  (tokens check, typecheck, lint, unit tests, build), `npm run e2e` (Playwright). Paths `src/...` are relative to `web/`.
+- **content/ is the source of truth**; `app/assets/{data,lessons,audio/quran}` is a committed mirror. Edit `content/`,
+  then from `app/` run `dart run tool/sync_content.dart` (`flutter test` fails if they differ). Web reads `content/` directly.
+- **Design tokens**: edit `tokens/design-tokens.json`, then `node tokens/build.mjs` (never edit the generated
+  `app_tokens.g.dart` / `web/src/styles/tokens.generated.*`; CI runs `--check`).
 - **Firebase CLI runs from `app/`** too (firebase.json lives there): `firebase deploy --only firestore:rules --project nibras-59284`.
 - Design files are at the repo root: from `app/` they are `../design/...`.
 - When building the lesson screens (frames 17–23), code against the interface in `ai/CONTRACT.md` and use a
@@ -91,7 +102,9 @@ the `TextTheme` an explicit `fontSize` on every style (prevents the `fontSize !=
   Also from the approved auth frames (tokens in `AppColors`): input border `inputBorder #E7DECB`;
   placeholder `placeholder #8A9A95`; error text `errorText #8E2B4D`; warning text `warningText #7A5209`;
   seed core `seedGold #D99F23`.
-- **Fonts:** body **Cairo**; headings/brand **Baloo Bhaijaan 2**; Quran/ayah **Amiri**.
+- **Fonts:** body **Cairo**; headings/brand **Baloo Bhaijaan 2**; Quran ayat **Amiri Quran** (Uthmani: ٱ, dotless ى,
+  small waqf marks — product-owner decision, both apps); hadith/classical text **Amiri**.
+- Colors, radii, shadows and font families live in `tokens/design-tokens.json` (single source for both apps).
 - **Radii:** chips 14, icon-box 18, rows 18, auth buttons & text fields 20 (`AppRadii.input`),
   gold CTA button 22 (`AppRadii.cta`), small card 24, card 28, hero card 30, pills 999.
 - **Shadows:** card `0 10px 26px rgba(31,61,55,0.06)`; soft `0 8px 18px rgba(31,61,55,0.04)`; hero
@@ -205,9 +218,10 @@ The HTML is a mockup, not code to port. Mockup data and the hadith text are plac
 
 ## 11. Pre-release TODO (do not ship without these)
 
-- [ ] **Bundle fonts offline.** `google_fonts` downloads Cairo / Baloo Bhaijaan 2 / Amiri at runtime.
-      Before release: add the .ttf files under `assets/google_fonts/` (declared in pubspec) and set
-      `GoogleFonts.config.allowRuntimeFetching = false` so the app works fully offline.
+- [ ] **Bundle fonts offline.** Amiri Quran (ayat) is already bundled in `assets/google_fonts/` (the exact file
+      google_fonts pins). `google_fonts` still downloads Cairo / Baloo Bhaijaan 2 / Amiri at runtime. Before
+      release: add those .ttf files there too and set `GoogleFonts.config.allowRuntimeFetching = false`.
+      (Web self-hosts all four via @fontsource.)
 - [ ] **Require email verification** before subscribing or adding a child (Phase C). Login is allowed
       while unverified, with a resend banner on the parent home.
 - [ ] **Tanzil attribution (CC BY 3.0).** Quran text comes from the Tanzil Project

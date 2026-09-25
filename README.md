@@ -14,7 +14,10 @@ Gharsah is a Flutter app that helps children aged 8–13 memorize Quran, hadith 
 
 | المجلد | المحتوى | المسؤول |
 |---|---|---|
-| [`app/`](app/) | تطبيق Flutter (أندرويد + ويب) مع إعدادات Firebase وقواعد Firestore | فريق التطبيق |
+| [`app/`](app/) | تطبيق Flutter (أندرويد) مع إعدادات Firebase وقواعد Firestore والدوال | فريق التطبيق |
+| [`web/`](web/) | تطبيق الويب (React + TypeScript) على نفس مشروع Firebase | فريق التطبيق |
+| [`content/`](content/) | المحتوى المحقّق المشترك: نص القرآن (تنزيل)، التلاوات، الأحاديث، المشاريع، سكربتات الحصص | مرجع للجميع |
+| [`tokens/`](tokens/) | ألوان التصميم وزواياه وظلاله — مصدر واحد للتطبيقين | فريق التطبيق |
 | [`ai/`](ai/) | المعلّم الذكي: سكربت الحصة، صوت المعلّم، كشف ترديد الطفل | مطوّر الذكاء الاصطناعي |
 | [`design/`](design/) | التصميم المعتمد: صور الشاشات ومصدرها HTML وملاحظات السلوك | مرجع للجميع |
 | [`docs/`](docs/) | وثيقة المتطلبات (BRD) والوثائق | مرجع للجميع |
@@ -22,10 +25,23 @@ Gharsah is a Flutter app that helps children aged 8–13 memorize Quran, hadith 
 
 ## التشغيل · Run the app
 
+Android (Flutter):
+
 ```bash
 cd app
 flutter pub get
-flutter run -d chrome
+flutter run            # a connected phone or emulator
+```
+
+Web (React) — the live link will be added here after the first approved deploy:
+
+```bash
+cd web
+npm install
+npm run dev            # http://localhost:5173 — live Firebase project
+npm run dev:emu        # same, against the local Firebase emulators
+npm run ci             # tokens check, typecheck, lint, unit tests, production build
+npm run e2e            # Playwright (builds first: npm run build)
 ```
 
 ## الضوابط غير القابلة للتفاوض · Non-negotiables
