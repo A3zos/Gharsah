@@ -19,7 +19,8 @@
     "e2e": "playwright test",
     "tokens": "node ../tokens/build.mjs",
     "tokens:check": "node ../tokens/build.mjs --check",
-    "ci": "npm run tokens:check && npm run typecheck && npm run lint && npm run test && npm run build"
+    "ci": "npm run tokens:check && npm run typecheck && npm run lint && npm run test && npm run build",
+    "e2e:emu": "playwright test -c playwright.emu.config.ts"
   },
   "dependencies": {
     "@fontsource/amiri": "^5.3.0",

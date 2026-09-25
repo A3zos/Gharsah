@@ -108,9 +108,9 @@ export function LandingDesktop() {
                 <Link
                   to={paths.childCode}
                   className={buttonClass(
-                    'quiet',
+                    'plain',
                     'custom',
-                    'h-[64px] gap-[10px] rounded-px-22 px-[30px] font-heading text-[20px] font-bold text-text-dark hover:text-text-dark',
+                    'h-[64px] gap-[10px] rounded-px-22 px-[30px] font-heading text-[20px] font-bold',
                   )}
                 >
                   <CodeIcon size={22} />
@@ -306,9 +306,9 @@ export function LandingDesktop() {
                   <a
                     href="#get-app"
                     className={buttonClass(
-                      'quiet',
+                      'plain',
                       'custom',
-                      'mt-auto h-[62px] gap-[10px] rounded-px-22 font-heading text-[19px] font-bold text-text-dark hover:text-text-dark',
+                      'mt-auto h-[62px] gap-[10px] rounded-px-22 font-heading text-[19px] font-bold',
                     )}
                   >
                     <PlayGlyph color="textDark" />

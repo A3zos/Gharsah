@@ -20,7 +20,14 @@ function Svg({
   children: React.ReactNode;
 }) {
   return (
-    <svg width={size} height={size} viewBox={viewBox} fill="none" aria-hidden="true" className={className}>
+    <svg
+      width={size}
+      height={size}
+      viewBox={viewBox}
+      fill="none"
+      aria-hidden="true"
+      className={className ? `shrink-0 ${className}` : 'shrink-0'}
+    >
       {children}
     </svg>
   );

@@ -6,6 +6,8 @@ const PORT = 4173;
 
 export default defineConfig({
   testDir: './e2e',
+  // Emulator flows run with `npm run e2e:emu` (playwright.emu.config.ts).
+  testIgnore: ['parent.spec.ts', 'child.spec.ts', 'lesson.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

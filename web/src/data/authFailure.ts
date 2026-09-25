@@ -42,6 +42,8 @@ export function authFailure(rawCode: string): AuthFailure {
       return new AuthFailure('هذا الحساب موقوف. تواصل معنا للمساعدة.', 'general', code);
     case 'operation-not-allowed':
       return new AuthFailure('تسجيل الدخول بالبريد غير مفعّل حاليًا.', 'general', code);
+    case 'requires-recent-login':
+      return new AuthFailure('لحماية حسابك: سجّل الخروج ثم ادخل من جديد، ثم أعد المحاولة.', 'general', code);
     case 'permission-denied':
       return new AuthFailure('تعذّر حفظ بيانات الحساب — حاول مرة أخرى.', 'general', code);
     default:

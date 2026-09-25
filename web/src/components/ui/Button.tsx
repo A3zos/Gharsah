@@ -6,7 +6,7 @@ import { cx } from '../../lib/cx';
  * The design's buttons. `variant` sets only colors; `size` sets the box. Frames
  * use many one-off sizes — pass size="custom" and the exact classes then.
  */
-export type ButtonVariant = 'primary' | 'outline' | 'quiet' | 'gold' | 'dark' | 'text';
+export type ButtonVariant = 'primary' | 'outline' | 'quiet' | 'plain' | 'gold' | 'dark' | 'danger' | 'text';
 export type ButtonSize = 'lg' | 'md' | 'custom';
 
 const VARIANT: Record<ButtonVariant, string> = {
@@ -16,10 +16,14 @@ const VARIANT: Record<ButtonVariant, string> = {
   outline: 'bg-surface border-[1.5px] border-deep-green text-deep-green',
   // White with the input border (secondary actions).
   quiet: 'bg-surface border-[1.5px] border-input-border text-text-muted hover:text-text-muted',
+  // Same box as quiet, dark label (landing «دخول الطفل برمز», «اشترك من التطبيق»).
+  plain: 'bg-surface border-[1.5px] border-input-border text-text-dark hover:text-text-dark',
   // Gold CTA («إضافة ابن», «ابدأ الحصة»).
   gold: 'bg-gold text-on-gold hover:text-on-gold',
   // Dark (Google Play badge).
   dark: 'bg-text-dark text-surface hover:text-surface',
+  // Destructive confirm (SNewCode «إصدار رمز جديد»).
+  danger: 'bg-berry-deep text-surface hover:text-surface disabled:opacity-60',
   // Text-only link button.
   text: 'bg-transparent text-deep-green',
 };

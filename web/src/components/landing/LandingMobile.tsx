@@ -123,9 +123,9 @@ export function LandingMobile() {
               <Link
                 to={paths.childCode}
                 className={buttonClass(
-                  'quiet',
+                  'plain',
                   'custom',
-                  'h-[62px] gap-[9px] rounded-px-22 font-heading text-[19px] font-bold text-text-dark hover:text-text-dark',
+                  'h-[62px] gap-[9px] rounded-px-22 font-heading text-[19px] font-bold',
                 )}
               >
                 <CodeIcon size={20} />
@@ -278,9 +278,9 @@ export function LandingMobile() {
             <a
               href="#m-get-app"
               className={buttonClass(
-                'quiet',
+                'plain',
                 'custom',
-                'mt-auto h-[58px] gap-[10px] rounded-px-20 font-heading text-[17px] font-bold text-text-dark hover:text-text-dark',
+                'mt-auto h-[58px] gap-[10px] rounded-px-20 font-heading text-[17px] font-bold',
               )}
             >
               <PlayGlyph color="textDark" />
