@@ -40,13 +40,17 @@ function Art({ stage, on, size }: { stage: Stage; on: boolean; size: number }) {
   );
 }
 
-/** ChildProfile's «مرحلتك» path (52px circles) with the plan progress bar under it. */
-export function GrowthPath({ stage, pct }: { stage: Stage; pct: number }) {
+/**
+ * The stage path with the plan progress bar under it. `size`: ChildProfile's
+ * 52px circles, or the web dashboard's 74px (ParentWebDash).
+ */
+export function GrowthPath({ stage, pct, size = 52 }: { stage: Stage; pct: number; size?: 52 | 74 }) {
   const at = ORDER.indexOf(stage);
+  const big = size === 74;
   return (
     <>
       <ol
-        className="m-0 flex list-none items-start gap-[6px] p-0 [direction:ltr]"
+        className={cx('m-0 flex list-none items-start p-0 [direction:ltr]', big ? 'gap-[10px]' : 'gap-[6px]')}
         aria-label={`مرحلتك: ${LABEL[stage]}`}
       >
         {ORDER.map((s, i) => {
@@ -56,12 +60,13 @@ export function GrowthPath({ stage, pct }: { stage: Stage; pct: number }) {
             <li
               key={s}
               aria-current={current ? 'step' : undefined}
-              className="flex grow basis-0 flex-col items-center gap-[8px]"
+              className={cx('flex grow basis-0 flex-col items-center', big ? 'gap-[10px]' : 'gap-[8px]')}
             >
               <span
                 aria-hidden="true"
                 className={cx(
-                  'flex h-[52px] w-[52px] items-center justify-center rounded-full',
+                  'flex items-center justify-center rounded-full',
+                  big ? 'h-[74px] w-[74px]' : 'h-[52px] w-[52px]',
                   current
                     ? 'border-[2.5px] border-gold bg-gold-tint'
                     : passed
@@ -69,11 +74,11 @@ export function GrowthPath({ stage, pct }: { stage: Stage; pct: number }) {
                       : 'bg-border-soft',
                 )}
               >
-                <Art stage={s} on={i <= at} size={s === 'seed' ? 28 : 30} />
+                <Art stage={s} on={i <= at} size={big ? (s === 'seed' ? 34 : 38) : s === 'seed' ? 28 : 30} />
               </span>
               <span
                 className={cx(
-                  'text-[12.5px] font-extrabold',
+                  big ? 'text-[14px] font-extrabold' : 'text-[12.5px] font-extrabold',
                   current ? 'text-warning-text' : passed ? 'text-deep-green' : 'text-text-subtle',
                 )}
               >
@@ -84,14 +89,17 @@ export function GrowthPath({ stage, pct }: { stage: Stage; pct: number }) {
         })}
       </ol>
       <div
-        className="h-[9px] overflow-hidden rounded-px-5 bg-border [direction:ltr]"
+        className={cx('overflow-hidden rounded-px-5 bg-border [direction:ltr]', big ? 'h-[10px]' : 'h-[9px]')}
         role="progressbar"
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label="من خطة السنة"
       >
-        <span className="block h-[9px] rounded-px-5 bg-primary" style={{ width: `${pct}%` }} />
+        <span
+          className={cx('block rounded-px-5 bg-primary', big ? 'h-[10px]' : 'h-[9px]')}
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </>
   );
