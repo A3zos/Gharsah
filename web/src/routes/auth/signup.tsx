@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { BackButton } from '../../components/ui/BackButton';
+import { HomeBar } from '../../components/ui/HomeBar';
+import { LeaveGuard } from '../../components/ui/LeaveGuard';
+import { useBack } from '../../lib/nav';
 import { Button } from '../../components/ui/Button';
 import { AlertIcon } from '../../components/ui/icons';
 import { Blob, MobilePage } from '../../components/ui/Page';
@@ -15,9 +18,10 @@ export const meta: Route.MetaFunction = () => [{ title: 'إنشاء حساب —
 
 type Field = 'name' | 'email' | 'password' | 'confirm' | 'general';
 
-/** design/v2 Signup — the parent account. */
+/** design/v3 Signup — the parent account. */
 export default function SignupRoute() {
   const navigate = useNavigate();
+  const back = useBack(paths.welcome);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,7 +73,9 @@ export default function SignupRoute() {
         onSubmit={submit}
         className="mx-auto flex w-full max-w-[440px] grow flex-col gap-[18px]"
       >
-        <BackButton to={paths.welcome} />
+        <LeaveGuard when={!busy && !!(name || email || password || confirm)} />
+        <HomeBar />
+        <BackButton onClick={back} />
         <div className="flex flex-col gap-[5px]">
           <h1 className="m-0 font-heading text-[27px] leading-[1.55] font-bold">إنشاء حساب وليّ الأمر</h1>
           <p className="m-0 text-[14px] leading-[1.7] text-text-muted">دقيقة واحدة، ثم نضيف أبناءك.</p>

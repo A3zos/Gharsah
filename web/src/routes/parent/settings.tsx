@@ -3,11 +3,11 @@ import { Link, useNavigate } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { useParentData } from '../../components/parent/ParentData';
+import { useSignOut } from '../../components/parent/SignOut';
 import { DesktopHeader, MobileHeader, ParentPage } from '../../components/parent/ParentShell';
 import { BackButton } from '../../components/ui/BackButton';
 import { C } from '../../components/ui/color';
 import { AlertIcon } from '../../components/ui/icons';
-import { signOut } from '../../data/auth';
 import { updateSchedule } from '../../data/children';
 import { deleteAccount, isSubscribed, PLAN_LABEL, updateParentName } from '../../data/parent';
 import { cx } from '../../lib/cx';
@@ -208,6 +208,7 @@ export default function SettingsRoute() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const sub = subscription && isSubscribed(subscription) ? subscription : null;
+  const signOutFlow = useSignOut();
 
   // «تذكير موعد الحصة» = every child's schedule.reminder (the account has no own flag).
   const reminderOn = !!children?.length && children.every((c) => c.schedule?.reminder !== false);
@@ -302,11 +303,7 @@ export default function SettingsRoute() {
         <Row icon={icons.book} label="مصادر المحتوى" to={`${paths.landing}#sources`} last />
       </Group>
       <Group>
-        <Row
-          icon={icons.logout}
-          label="تسجيل الخروج"
-          onClick={() => void signOut().then(() => navigate(paths.landing, { replace: true }))}
-        />
+        <Row icon={icons.logout} label="تسجيل الخروج" onClick={signOutFlow.ask} />
         <Row icon={icons.trash} label="حذف الحساب" danger onClick={() => void remove()} last />
       </Group>
       {error && (
@@ -315,6 +312,7 @@ export default function SettingsRoute() {
           {error}
         </p>
       )}
+      {signOutFlow.sheet}
       <div className="flex items-start gap-[11px] rounded-px-22 border-[1.5px] border-berry-border bg-berry-tint p-[16px]">
         <AlertIcon size={20} />
         <span className="text-[13px] leading-[1.85] font-bold text-error-text">

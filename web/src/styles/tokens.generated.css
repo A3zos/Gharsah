@@ -106,7 +106,7 @@
   --color-blob-gold-faint: rgb(244 183 64 / 0.08);
   --color-hero-circle: rgb(255 255 255 / 0.07);
   --color-hero-track: rgb(255 255 255 / 0.22);
-  /* Web v2 (design/v2) */
+  /* Web (design/v2–v3) */
   --color-text-subtle: #9BA8A4;
   --color-hadith-note-text: #6B4A08;
   --color-sky-border: #CBE2F5;
@@ -114,6 +114,7 @@
   --color-berry-cell-border: #E8A6BC;
   --color-berry-cell-bg: #FFF7FA;
   --color-divider: #F2EBDC;
+  --color-lesson-scrim: rgb(12 44 37 / 0.62);
 
   --radius-*: initial;
   --radius-chip: 14px;
@@ -252,6 +253,7 @@
   --shadow-dark-16-34-5: 0px 16px 34px 0 rgb(31 61 55 / 0.05);
   --shadow-dark-18-40-14: 0px 18px 40px 0 rgb(31 61 55 / 0.14);
   --shadow-dark-22-44-16: 0px 22px 44px 0 rgb(31 61 55 / 0.16);
+  --shadow-dark-26-52-18: 0px 26px 52px 0 rgb(31 61 55 / 0.18);
   --shadow-dark-30-60-18: 0px 30px 60px 0 rgb(31 61 55 / 0.18);
   --shadow-dark-30-70-10: 0px 30px 70px 0 rgb(31 61 55 / 0.1);
   --shadow-dark-6-16-4: 0px 6px 16px 0 rgb(31 61 55 / 0.04);

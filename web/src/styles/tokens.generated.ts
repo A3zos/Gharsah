@@ -95,7 +95,8 @@ export const tokens = {
     "mapPlaceholder": "#E4E9E4",
     "berryCellBorder": "#E8A6BC",
     "berryCellBg": "#FFF7FA",
-    "divider": "#F2EBDC"
+    "divider": "#F2EBDC",
+    "lessonScrim": "rgb(12 44 37 / 0.62)"
   },
   "radii": {
     "chip": 14,
@@ -242,6 +243,7 @@ export const tokens = {
     "dark-16-34-5": "0px 16px 34px 0 rgb(31 61 55 / 0.05)",
     "dark-18-40-14": "0px 18px 40px 0 rgb(31 61 55 / 0.14)",
     "dark-22-44-16": "0px 22px 44px 0 rgb(31 61 55 / 0.16)",
+    "dark-26-52-18": "0px 26px 52px 0 rgb(31 61 55 / 0.18)",
     "dark-30-60-18": "0px 30px 60px 0 rgb(31 61 55 / 0.18)",
     "dark-30-70-10": "0px 30px 70px 0 rgb(31 61 55 / 0.1)",
     "dark-6-16-4": "0px 6px 16px 0 rgb(31 61 55 / 0.04)",

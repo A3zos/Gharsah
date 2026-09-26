@@ -1,9 +1,8 @@
 // The parent area frame: ≥1024px = the ParentWeb* sidebar layout (276px
 // sidebar + content); below = the phone frames with the bottom bar.
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
-import { signOut } from '../../data/auth';
 import { PLAN_LABEL, isSubscribed } from '../../data/parent';
 import { cx } from '../../lib/cx';
 import { DESKTOP, useMedia } from '../../lib/useMedia';
@@ -12,6 +11,7 @@ import { C, type ColorName } from '../ui/color';
 import { CardIcon, ChildrenIcon, GearIcon, GridIcon, LogoutIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
 import { initialOf, useParentData } from './ParentData';
+import { useSignOut } from './SignOut';
 
 export type ParentTab = 'home' | 'children' | 'plans' | 'settings' | null;
 
@@ -30,7 +30,7 @@ function HomeIcon({ color }: { color: ColorName }) {
 
 function Sidebar({ tab }: { tab: ParentTab }) {
   const { profile, subscription } = useParentData();
-  const navigate = useNavigate();
+  const signOut = useSignOut();
   const items: { key: ParentTab; to: string; label: string; icon: (c: ColorName) => React.ReactNode }[] = [
     { key: 'home', to: paths.parent.dashboard(), label: 'الرئيسية', icon: (c) => <GridIcon color={c} /> },
     { key: 'children', to: paths.parent.children, label: 'أبنائي', icon: (c) => <ChildrenIcon color={c} /> },
@@ -91,13 +91,14 @@ function Sidebar({ tab }: { tab: ParentTab }) {
           <button
             type="button"
             aria-label="تسجيل الخروج"
-            onClick={() => void signOut().then(() => navigate(paths.landing, { replace: true }))}
+            onClick={signOut.ask}
             className="flex h-[36px] w-[36px] items-center justify-center rounded-px-12 border-0 bg-transparent"
           >
             <LogoutIcon />
           </button>
         </div>
       </div>
+      {signOut.sheet}
     </aside>
   );
 }

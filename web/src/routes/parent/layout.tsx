@@ -9,9 +9,9 @@ import { signOut } from '../../data/auth';
 import type { Route } from './+types/layout';
 
 /** Guard: a signed-in parent (email/password), else → /login. */
-export async function clientLoader() {
+export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const { requireParent } = await import('../../firebase/session');
-  const user = await requireParent();
+  const user = await requireParent(request.url);
   return { uid: user.uid, email: user.email ?? '' };
 }
 

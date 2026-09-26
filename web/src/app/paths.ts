@@ -7,6 +7,9 @@ export const paths = {
   login: '/login?tab=parent',
   /** 03 — child tab (pairing code). */
   childCode: '/login?tab=child',
+  /** Login on a tab, returning to `next` (a /parent or /child path) afterwards. */
+  loginTo: (tab: 'parent' | 'child', next?: string) =>
+    `/login?tab=${tab}${next ? `&next=${encodeURIComponent(next)}` : ''}`,
   signup: '/signup',
   forgotPassword: '/forgot-password',
   legal: '/legal',
@@ -20,6 +23,10 @@ export const paths = {
     plans: '/parent/plans',
     children: '/parent/children',
     addChild: '/parent/children/new',
+    /** Add child, remembering where it was opened (its first-step «رجوع» returns there). */
+    addChildFrom: (from: 'children' | 'plans' | 'dashboard') => `/parent/children/new?from=${from}`,
+    editSchedule: (childId: string) =>
+      `/parent/children/new?child=${encodeURIComponent(childId)}&from=children`,
     childCode: (childId: string) => `/parent/children/${encodeURIComponent(childId)}/code`,
     settings: '/parent/settings',
   },

@@ -9,12 +9,14 @@ import { AlertIcon } from '../../components/ui/icons';
 import { Blob, MobilePage } from '../../components/ui/Page';
 import { TextField } from '../../components/ui/TextField';
 import { isValidEmail, sendPasswordReset } from '../../data/auth';
+import { useBack } from '../../lib/nav';
 import type { Route } from './+types/forgot-password';
 
 export const meta: Route.MetaFunction = () => [{ title: 'نسيت كلمة المرور — غَرْسة' }];
 
 /** design/v2 ForgotPass — form, then «أرسلنا رابطًا إلى بريدك». */
 export default function ForgotPasswordRoute() {
+  const back = useBack(paths.login);
   const [email, setEmail] = useState('');
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export default function ForgotPasswordRoute() {
       innerClassName="gap-[16px] px-[20px] py-[26px]"
     >
       <div className="flex items-center gap-[12px]">
-        <BackButton to={paths.login} small />
+        <BackButton onClick={back} small />
         <h1 className="m-0 grow font-heading text-[26px] leading-[1.4] font-bold">نسيت كلمة المرور؟</h1>
       </div>
 

@@ -5,6 +5,7 @@ import { paths } from '../../app/paths';
 import { SCodeExpired } from '../../components/states/SCodeExpired';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button, ButtonLink } from '../../components/ui/Button';
+import { HomeBar } from '../../components/ui/HomeBar';
 import { CODE_LENGTH, CodeInput } from '../../components/ui/CodeInput';
 import { C } from '../../components/ui/color';
 import { AlertIcon, CheckCircleIcon, SproutBadge } from '../../components/ui/icons';
@@ -15,25 +16,35 @@ import { TextField } from '../../components/ui/TextField';
 import { isValidEmail, signIn } from '../../data/auth';
 import { ClaimFailure, claimCode } from '../../data/childSession';
 import { toLatinDigits } from '../../lib/arabicDigits';
+import { safeNext, useBack } from '../../lib/nav';
 import type { Route } from './+types/login';
 
 export const meta: Route.MetaFunction = () => [{ title: 'تسجيل الدخول — غَرْسة' }];
 
 type Tab = 'parent' | 'child';
 
+/** `?tab=` (or `?role=`, from the landing) → which tab is open; none = the welcome choice. */
+function tabOf(params: URLSearchParams): Tab | null {
+  const t = params.get('tab') ?? params.get('role');
+  return t === 'parent' || t === 'child' ? t : null;
+}
+
 /** Already signed in → straight to that area (a parent opening the child tab stays). */
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
-  const tab = new URL(request.url).searchParams.get('tab');
+  const params = new URL(request.url).searchParams;
+  const tab = tabOf(params);
   const { currentUser, requireChildSession } = await import('../../firebase/session');
   const user = await currentUser();
-  if (user && !user.isAnonymous && tab !== 'child') throw redirect(paths.parent.root);
+  if (user && !user.isAnonymous && tab !== 'child') {
+    throw redirect(safeNext(params, 'parent') ?? paths.parent.root);
+  }
   // A browser already linked to a child goes straight to its home.
   if (user?.isAnonymous && tab === 'child') {
     const linked = await requireChildSession().then(
       () => true,
       () => false,
     );
-    if (linked) throw redirect(paths.child.home);
+    if (linked) throw redirect(safeNext(params, 'child') ?? paths.child.home);
   }
   return { childDevice: !!user?.isAnonymous };
 }
@@ -45,14 +56,23 @@ export function HydrateFallback() {
 export default function LoginRoute({ loaderData }: Route.ComponentProps) {
   const [params, setParams] = useSearchParams();
   const childDevice = loaderData?.childDevice ?? false;
-  const tab = params.get('tab');
-  if (tab !== 'parent' && tab !== 'child') return <Welcome />;
+  const tab = tabOf(params);
+  if (!tab) return <Welcome />;
   return (
-    <Login tab={tab} childDevice={childDevice} onTab={(t) => setParams({ tab: t }, { replace: true })} />
+    <Login
+      tab={tab}
+      childDevice={childDevice}
+      onTab={(t) => {
+        const next = new URLSearchParams(params);
+        next.delete('role');
+        next.set('tab', t);
+        setParams(next, { replace: true });
+      }}
+    />
   );
 }
 
-// ── design/v2 Auth — the welcome choice ─────────────────────────────────────
+// ── design/v3 Auth — the welcome choice ─────────────────────────────────────
 
 function Welcome() {
   return (
@@ -60,6 +80,7 @@ function Welcome() {
       decor={<Blob className="-top-[170px] -right-[140px] h-[400px] w-[400px] bg-blob-sky" />}
       innerClassName="items-center gap-[26px] px-[26px] pt-[76px] pb-[40px]"
     >
+      <HomeBar />
       <div className="flex flex-col items-center gap-[8px]">
         <SproutBadge size={66} />
         <h1 className="m-0 font-heading text-[34px] leading-[1.6] font-bold text-deep-green">غَرْسة</h1>
@@ -155,9 +176,10 @@ function GrowthIntro() {
   );
 }
 
-// ── design/v2 Login — two tabs ──────────────────────────────────────────────
+// ── design/v3 Login — two tabs ──────────────────────────────────────────────
 
 function Login({ tab, onTab, childDevice }: { tab: Tab; onTab: (t: Tab) => void; childDevice: boolean }) {
+  const back = useBack(paths.welcome);
   const [expired, setExpired] = useState<string[] | null>(null);
   if (expired) return <SCodeExpired cells={expired} onBack={() => setExpired(null)} />;
   return (
@@ -166,7 +188,8 @@ function Login({ tab, onTab, childDevice }: { tab: Tab; onTab: (t: Tab) => void;
       innerClassName="px-[26px] pt-[30px] pb-[36px]"
     >
       <div className="mx-auto flex w-full max-w-[440px] grow flex-col gap-[20px]">
-        <BackButton to={paths.welcome} />
+        <HomeBar />
+        <BackButton onClick={back} />
         <div className="flex flex-col gap-[6px]">
           <h1 className="m-0 font-heading text-[28px] leading-[1.6] font-bold">أهلًا بعودتك</h1>
           <p className="m-0 text-[14.5px] leading-[1.7] text-text-muted">
@@ -227,6 +250,7 @@ function ChildGlyph({ on }: { on: boolean }) {
 
 function ParentForm({ childDevice }: { childDevice: boolean }) {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<{ field: string; message: string } | null>(null);
@@ -242,7 +266,7 @@ function ParentForm({ childDevice }: { childDevice: boolean }) {
     setError(null);
     try {
       await signIn(email, password);
-      navigate(paths.parent.root, { replace: true });
+      navigate(safeNext(params, 'parent') ?? paths.parent.root, { replace: true });
     } catch (err) {
       const f = err as { field?: string; message: string };
       setError({ field: f.field ?? 'general', message: f.message });
@@ -315,6 +339,7 @@ type CodeStatus = '' | 'short' | 'bad' | 'ok' | 'busy' | 'tooMany' | 'offline' |
 
 function ChildForm({ onExpired }: { onExpired: (cells: string[]) => void }) {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [cells, setCells] = useState<string[]>(() => Array(CODE_LENGTH).fill(''));
   const [status, setStatus] = useState<CodeStatus>('');
 
@@ -325,7 +350,7 @@ function ChildForm({ onExpired }: { onExpired: (cells: string[]) => void }) {
     try {
       await claimCode(toLatinDigits(value.join('')));
       setStatus('ok');
-      navigate(paths.child.home, { replace: true });
+      navigate(safeNext(params, 'child') ?? paths.child.home, { replace: true });
     } catch (e) {
       const err = e instanceof ClaimFailure ? e.error : 'unknown';
       setStatus(

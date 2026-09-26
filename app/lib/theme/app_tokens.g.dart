@@ -127,7 +127,7 @@ abstract final class AppColors {
   static final Color heroCircle = surface.withValues(alpha: 0.07);
   static final Color heroTrack = surface.withValues(alpha: 0.22);
 
-  // Web v2 (design/v2)
+  // Web (design/v2–v3)
   static const Color textSubtle = Color(0xFF9BA8A4); // faint captions / disabled icons (design/v2)
   static const Color hadithNoteText = Color(0xFF6B4A08); // ParentWebDash hadith note
   static const Color skyBorder = Color(0xFFCBE2F5); // sky-tinted card border
@@ -135,6 +135,7 @@ abstract final class AppColors {
   static const Color berryCellBorder = Color(0xFFE8A6BC); // SCodeExpired wrong-code cell border
   static const Color berryCellBg = Color(0xFFFFF7FA); // SCodeExpired wrong-code cell
   static const Color divider = Color(0xFFF2EBDC); // list-row divider (MyChildren, Settings)
+  static const Color lessonScrim = Color(0x9E0C2C25); // ExitConfirm scrim over the live lesson
 }
 
 abstract final class AppRadii {

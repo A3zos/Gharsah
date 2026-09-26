@@ -1,4 +1,4 @@
-/* Design/v2 motion (the frames' @keyframes, verbatim; same-name variants are numbered). */
+/* Design motion (design/v3) (the frames' @keyframes, verbatim; same-name variants are numbered). */
 @keyframes gh-blink {
   0%,
   100% {
@@ -248,6 +248,15 @@
   55% {
     transform: scale(1.06);
     box-shadow: 0 0 0 11px color-mix(in srgb, var(--color-primary) 0%, transparent);
+  }
+}
+@keyframes gh-pulse-2 {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 183, 64, 0.34);
+  }
+  55% {
+    box-shadow: 0 0 0 12px rgba(244, 183, 64, 0);
   }
 }
 @keyframes gh-rise {

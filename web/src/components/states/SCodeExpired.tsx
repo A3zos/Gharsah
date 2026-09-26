@@ -1,11 +1,12 @@
 import { C } from '../ui/color';
 import { AlertIcon } from '../ui/icons';
 import { BackButton } from '../ui/BackButton';
+import { HomeBar } from '../ui/HomeBar';
 import { Button } from '../ui/Button';
 import { Blob, MobilePage } from '../ui/Page';
 
 /**
- * design/v2 SCodeExpired — the child's code was refused (wrong or past its 24 h).
+ * design/v3 SCodeExpired — the child's code was refused (wrong or past its 24 h).
  * Shown from the child tab («ما الحل؟» / «اطلب رمزًا جديدًا»). The server can't
  * say which (both are "not found"), so the copy is the design's expiry help.
  */
@@ -16,6 +17,7 @@ export function SCodeExpired({ cells, onBack }: { cells: string[]; onBack: () =>
       innerClassName="px-[20px] pt-[26px] pb-[28px]"
     >
       <div className="mx-auto flex w-full max-w-[520px] grow flex-col gap-[14px]">
+        <HomeBar />
         <div className="flex shrink-0 items-center gap-[12px]">
           <BackButton onClick={onBack} />
           <h1 className="m-0 font-heading text-[21px] font-bold">دخول الطفل</h1>

@@ -402,7 +402,7 @@
       }
     },
     {
-      "group": "Web v2 (design/v2)",
+      "group": "Web (design/v2–v3)",
       "tokens": {
         "textSubtle": {
           "hex": "#9BA8A4",
@@ -431,6 +431,11 @@
         "divider": {
           "hex": "#F2EBDC",
           "note": "list-row divider (MyChildren, Settings)"
+        },
+        "lessonScrim": {
+          "hex": "#0C2C25",
+          "alpha": 0.62,
+          "note": "ExitConfirm scrim over the live lesson"
         }
       }
     }
@@ -939,6 +944,15 @@
           "x": 0,
           "y": 22,
           "blur": 44
+        }
+      ],
+      "dark-26-52-18": [
+        {
+          "color": "#1F3D37",
+          "alpha": 0.18,
+          "x": 0,
+          "y": 26,
+          "blur": 52
         }
       ],
       "dark-30-60-18": [
