@@ -7,10 +7,11 @@ import { paths } from '../../app/paths';
 import { cx } from '../../lib/cx';
 import { buttonClass } from '../ui/Button';
 import { C } from '../ui/color';
-import { BookIcon, CodeIcon, MicIcon, PersonIcon, PlayGlyph, SproutMark } from '../ui/icons';
+import { BookIcon, CodeIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
-import { PlayBadge } from './LandingDesktop';
-import { DashboardPreview, PhoneMock, SourceIcons } from './shared';
+import { StoreBadges } from '../ui/StoreBadges';
+import { PLANS } from '../../content/plans';
+import { DashboardPreview, PhoneDownloadIcon, PhoneMock, PlanList, SourceIcons } from './shared';
 
 const MENU = [
   ['#m-how', 'كيف تعمل'],
@@ -132,6 +133,7 @@ export function LandingMobile() {
                 دخول الطفل برمز
               </Link>
             </div>
+            <StoreBadges size={50} className="justify-center" />
             <span className="text-center text-[12.5px] text-text-muted">
               بلا إعلانات · بلا بيانات من الطفل
             </span>
@@ -256,6 +258,8 @@ export function LandingMobile() {
             <span className="self-start rounded-pill bg-gold-tint px-[13px] py-[7px] text-[13px] font-bold text-warning-text">
               أقل من ١٠ ريالات في الشهر
             </span>
+            <span className="h-[1px] bg-border" />
+            <PlanList items={PLANS.annual} text="text-[14px]" gap="gap-[10px]" />
             <a
               href="#m-get-app"
               className={buttonClass(
@@ -264,7 +268,7 @@ export function LandingMobile() {
                 'mt-auto h-[58px] gap-[10px] rounded-px-20 font-heading text-[17px] font-bold shadow-lesson-home-button',
               )}
             >
-              <PlayGlyph />
+              <PhoneDownloadIcon />
               اشترك من التطبيق
             </a>
           </div>
@@ -274,7 +278,9 @@ export function LandingMobile() {
               <span className="font-heading text-[48px] leading-[1] font-extrabold text-text-dark">٢٩</span>
               <span className="text-[16px] font-bold text-text-muted">ريال / شهر</span>
             </span>
-            <span className="text-[13px] font-bold text-text-muted">تجربة مرنة · تلغيها متى شئت</span>
+            <span className="text-[13px] font-bold text-text-muted">تجربة مرنة للبداية</span>
+            <span className="h-[1px] bg-border" />
+            <PlanList items={PLANS.monthly} text="text-[14px]" gap="gap-[10px]" />
             <a
               href="#m-get-app"
               className={buttonClass(
@@ -283,10 +289,13 @@ export function LandingMobile() {
                 'mt-auto h-[58px] gap-[10px] rounded-px-20 font-heading text-[17px] font-bold',
               )}
             >
-              <PlayGlyph color="textDark" />
+              <PhoneDownloadIcon color="textDark" />
               اشترك من التطبيق
             </a>
           </div>
+          <p className="m-0 text-center text-[13.5px] leading-[1.8] font-extrabold text-deep-green">
+            يمكنك الترقية من الشهرية إلى السنوية في أي وقت
+          </p>
           <div
             id="m-get-app"
             className="flex flex-col gap-[13px] rounded-px-24 border-[1.5px] border-border bg-surface p-[18px]"
@@ -295,7 +304,7 @@ export function LandingMobile() {
             <span className="text-[13.5px] leading-[1.8] text-text-muted">
               Google Play لا يتيح الشراء من المتصفح — حمّل التطبيق لإكمال الاشتراك.
             </span>
-            <PlayBadge compact href="#m-get-app" />
+            <StoreBadges size={50} className="justify-center" />
           </div>
         </section>
 

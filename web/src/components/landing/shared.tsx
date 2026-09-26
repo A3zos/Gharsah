@@ -10,73 +10,123 @@ import { cx } from '../../lib/cx';
 // Surah Al-Ikhlas 112:1 — the lesson's first ayah, from the verified asset.
 const AYAH = verifiedAyah(112, 1);
 
-/** The phone showing a live lesson (hero). */
+/** The phone showing a live lesson (hero). Desktop = design/v3 WebLandingLaptop; mobile = WebLandingMobile. */
 export function PhoneMock({ desktop }: { desktop?: boolean }) {
+  if (desktop) {
+    return (
+      <div
+        aria-hidden="true"
+        className="flex h-[540px] w-[320px] shrink-0 animate-[gh-float-4_5s_ease-in-out_infinite] flex-col items-center gap-[10px] overflow-hidden rounded-px-40 border-[9px] border-text-dark bg-surface px-[14px] py-[16px] shadow-dark-26-52-18"
+      >
+        <span className="flex shrink-0 items-center gap-[7px] rounded-pill bg-berry-tint px-[13px] py-[7px]">
+          <span className="h-[7px] w-[7px] rounded-full bg-berry" />
+          <span className="text-[14px] font-extrabold text-berry-deep">مباشر</span>
+        </span>
+        <span className="shrink-0">
+          <svg width="104" height="104" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="32" fill={C.greenTint} />
+            <path d="M13 60 C13 47 21 40 32 40 C43 40 51 47 51 60 Z" fill={C.avatarCap} />
+            <ellipse cx="32" cy="29" rx="11.5" ry="13" fill={C.avatarSkinTan} />
+            <path d="M19 24 C19 16 24 11 32 11 C40 11 45 16 45 24 Z" fill={C.surface} />
+            <path d="M19.5 25 H44.5" stroke={C.borderStrong} strokeWidth="2" strokeLinecap="round" />
+            <circle cx="27.5" cy="30" r="2.2" fill={C.avatarFeatures} />
+            <circle cx="37" cy="30" r="2.2" fill={C.avatarFeatures} />
+            <path
+              d="M28.5 36.5 C30.5 38.5 34 38.5 36.5 36.5"
+              stroke={C.avatarFeatures}
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
+        <span className="shrink-0 text-center text-[14px] leading-[1.7] font-bold text-text-muted">
+          استمع للآية… وأنا صامت معك
+        </span>
+        <span className="flex w-full shrink-0 flex-col items-center gap-[7px] rounded-px-20 border-[1.5px] border-border bg-background px-[12px] py-[16px]">
+          <AyahText text={AYAH.text} className="text-[25px] leading-[1.9]" />
+          <span className="text-[14px] font-bold text-text-muted">{AYAH.reference}</span>
+        </span>
+        <span className="mt-auto flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-full bg-gold">
+          <MicIcon size={28} />
+        </span>
+      </div>
+    );
+  }
   return (
     <div
       aria-hidden="true"
-      className={cx(
-        'flex flex-col items-center overflow-hidden bg-surface',
-        desktop
-          ? 'h-[600px] w-[360px] shrink-0 animate-[gh-float-4_5s_ease-in-out_infinite] gap-[12px] rounded-px-44 border-[10px] border-text-dark px-[16px] py-[20px] shadow-dark-30-60-18'
-          : 'w-[290px] gap-[10px] rounded-px-36 border-[8px] border-text-dark px-[13px] py-[16px] shadow-dark-22-44-16',
-      )}
+      className="flex w-[290px] flex-col items-center gap-[10px] overflow-hidden rounded-px-36 border-[8px] border-text-dark bg-surface px-[13px] py-[16px] shadow-dark-22-44-16"
     >
-      <span
-        className={cx(
-          'flex items-center gap-[6px] rounded-pill border border-berry-border bg-surface',
-          desktop ? 'px-[12px] py-[6px]' : 'px-[11px] py-[5px]',
-        )}
-      >
-        <span
-          className={cx(
-            'animate-[gh-blink_1.4s_ease-in-out_infinite] rounded-full bg-berry',
-            desktop ? 'h-[7px] w-[7px]' : 'h-[6px] w-[6px]',
-          )}
-        />
-        <span className={cx('font-extrabold text-berry-deep', desktop ? 'text-[11.5px]' : 'text-[11px]')}>
-          مباشر
-        </span>
+      <span className="flex items-center gap-[6px] rounded-pill border border-berry-border bg-surface px-[11px] py-[5px]">
+        <span className="h-[6px] w-[6px] animate-[gh-blink_1.4s_ease-in-out_infinite] rounded-full bg-berry" />
+        <span className="text-[11px] font-extrabold text-berry-deep">مباشر</span>
       </span>
       <span className="animate-[gh-bob-2_1.9s_ease-in-out_infinite]">
-        <TeacherArt size={desktop ? 150 : 118} detailed={false} arcs="single" />
+        <TeacherArt size={118} detailed={false} arcs="single" />
       </span>
-      <p
-        className={cx(
-          'm-0 text-center font-bold text-text-dark',
-          desktop ? 'text-[14.5px]' : 'text-[13.5px]',
-        )}
-      >
-        استمع للآية… وأنا صامت معك
-      </p>
-      <div
-        className={cx(
-          'flex w-full flex-col items-center border-[1.5px] border-border bg-surface',
-          desktop
-            ? 'gap-[9px] rounded-px-26 px-[14px] py-[18px] shadow-dark-10-22-5'
-            : 'gap-[7px] rounded-px-22 px-[12px] py-[14px]',
-        )}
-      >
-        <AyahText
-          text={AYAH.text}
-          className={desktop ? 'text-[25px] leading-[1.9]' : 'text-[21px] leading-[1.9]'}
-          bracketClassName={desktop ? 'text-[28px]' : 'text-[24px]'}
-        />
-        <span className={cx('font-bold text-text-muted', desktop ? 'text-[11.5px]' : 'text-[11px]')}>
-          {AYAH.reference}
-        </span>
+      <p className="m-0 text-center text-[13.5px] font-bold text-text-dark">استمع للآية… وأنا صامت معك</p>
+      <div className="flex w-full flex-col items-center gap-[7px] rounded-px-22 border-[1.5px] border-border bg-surface px-[12px] py-[14px]">
+        <AyahText text={AYAH.text} className="text-[21px] leading-[1.9]" bracketClassName="text-[24px]" />
+        <span className="text-[11px] font-bold text-text-muted">{AYAH.reference}</span>
       </div>
-      <span
-        className={cx(
-          'flex items-center justify-center rounded-full bg-gold',
-          desktop
-            ? 'mt-[4px] h-[86px] w-[86px] shadow-gold-12-24-40'
-            : 'h-[70px] w-[70px] shadow-gold-10-20-40',
-        )}
-      >
-        <MicIcon size={desktop ? 38 : 32} />
+      <span className="flex h-[70px] w-[70px] items-center justify-center rounded-full bg-gold shadow-gold-10-20-40">
+        <MicIcon size={32} />
       </span>
     </div>
+  );
+}
+
+/** «اشترك من التطبيق» icon: a phone with a download arrow (design/v3 plan buttons). */
+export function PhoneDownloadIcon({
+  color = 'surface',
+  size = 20,
+}: {
+  color?: 'surface' | 'textDark';
+  size?: number;
+}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="6" y="2.5" width="12" height="19" rx="3" stroke={C[color]} strokeWidth="1.9" />
+      <path
+        d="M12 7.5 V14 M9.4 11.6 L12 14.4 L14.6 11.6"
+        stroke={C[color]}
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** A plan's feature list (the 18px ticks, top-aligned for wrapped lines). */
+export function PlanList({
+  items,
+  text = 'text-[15.5px]',
+  gap = 'gap-[12px]',
+}: {
+  items: readonly string[];
+  text?: string;
+  gap?: string;
+}) {
+  return (
+    <ul className={cx('m-0 flex list-none flex-col p-0', gap)}>
+      {items.map((f) => (
+        <li key={f} className={cx('flex items-start gap-[10px] leading-[1.6] text-text-dark', text)}>
+          <span className="mt-[2px] shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M5 12.5 L10 17.5 L19 7"
+                stroke={C.deepGreen}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          {f}
+        </li>
+      ))}
+    </ul>
   );
 }
 

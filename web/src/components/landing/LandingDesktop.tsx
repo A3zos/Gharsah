@@ -3,18 +3,11 @@ import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { buttonClass } from '../ui/Button';
-import {
-  BookIcon,
-  CheckIcon,
-  CodeIcon,
-  ForwardIcon,
-  MicIcon,
-  PersonIcon,
-  PlayGlyph,
-  SproutMark,
-} from '../ui/icons';
+import { BookIcon, CheckIcon, CodeIcon, ForwardIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
-import { DashboardPreview, PhoneMock, SourceIcons } from './shared';
+import { PLANS } from '../../content/plans';
+import { DashboardPreview, PhoneDownloadIcon, PhoneMock, PlanList, SourceIcons } from './shared';
+import { StoreBadges } from '../ui/StoreBadges';
 
 const COL = 'mx-auto w-full max-w-[1200px] px-[24px] min-[1248px]:px-0';
 
@@ -42,8 +35,6 @@ const STEPS = [
   },
 ];
 
-const PLAN_FEATURES = ['حصة يومية كاملة', 'أبناء بلا حدّ', 'لوحة متابعة وتسجيلات المشاريع'];
-
 export function LandingDesktop() {
   return (
     <div className="relative overflow-hidden bg-background text-text-dark">
@@ -68,6 +59,8 @@ export function LandingDesktop() {
                 </a>
               ))}
             </div>
+            {/* Below 1280 the header has no room for the badges; the hero keeps them. */}
+            <StoreBadges size={44} className="hidden xl:flex" />
             <Link
               to={paths.login}
               className="flex h-[48px] items-center justify-center rounded-px-16 border-[1.5px] border-input-border bg-surface px-[24px] text-[15px] font-extrabold text-deep-green no-underline"
@@ -78,46 +71,48 @@ export function LandingDesktop() {
         </header>
 
         <main className="flex w-full flex-col items-center">
-          <section className={`${COL} flex items-center gap-[72px] pt-[76px] pb-[84px]`}>
-            <div className="flex grow flex-col items-start gap-[24px]">
-              <span className="flex items-center gap-[8px] rounded-pill bg-green-tint px-[16px] py-[9px]">
+          {/* design/v3 WebLandingLaptop: header 88 + hero 624 fit a 1366×768 screen. */}
+          <section className={`${COL} flex items-center gap-[56px] pt-[40px] pb-[44px]`}>
+            <div className="flex grow flex-col items-start gap-[16px]">
+              <span className="flex items-center gap-[8px] rounded-pill bg-green-tint px-[15px] py-[8px]">
                 <span className="h-[8px] w-[8px] rounded-full bg-primary" />
-                <span className="text-[13.5px] font-extrabold text-deep-green">
+                <span className="text-[14px] font-extrabold text-deep-green">
                   حصة صوتية حيّة · للأعمار ٨–١٣
                 </span>
               </span>
-              <h1 className="m-0 max-w-[620px] font-heading text-[62px] leading-[1.35] font-bold text-text-dark">
+              <h1 className="m-0 max-w-[600px] font-heading text-[44px] leading-[1.4] font-bold text-text-dark">
                 غَرْسة — نغرس حُبّ القرآن <span className="text-deep-green">… ويكبر معهم</span>
               </h1>
-              <p className="m-0 max-w-[560px] text-[19px] leading-[1.95] text-text-muted">
+              <p className="m-0 max-w-[560px] text-[17px] leading-[1.9] text-text-muted">
                 معلّم صوتي يجلس مع ابنك كل يوم: يحفّظه آية آية، ويعلّمه حديثًا، ويكلّفه بعمل صالح يحكيه بصوته
                 في اليوم التالي. وأنت ترى كل خطوة من لوحتك.
               </p>
-              <div className="flex items-center gap-[14px] pt-[6px]">
+              <div className="flex items-center gap-[12px] pt-[4px]">
                 <Link
                   to={paths.signup}
                   className={buttonClass(
                     'primary',
                     'custom',
-                    'h-[64px] gap-[10px] rounded-px-22 px-[34px] font-heading text-[20px] font-bold shadow-green-14-28-26',
+                    'h-[56px] gap-[10px] rounded-px-18 px-[28px] font-heading text-[18px] font-bold shadow-lesson-home-button',
                   )}
                 >
                   ابدأ كوليّ أمر
-                  <ForwardIcon size={22} />
+                  <ForwardIcon size={20} />
                 </Link>
                 <Link
                   to={paths.childCode}
                   className={buttonClass(
                     'plain',
                     'custom',
-                    'h-[64px] gap-[10px] rounded-px-22 px-[30px] font-heading text-[20px] font-bold',
+                    'h-[56px] gap-[10px] rounded-px-18 px-[24px] font-heading text-[18px] font-bold',
                   )}
                 >
-                  <CodeIcon size={22} />
+                  <CodeIcon size={20} />
                   دخول الطفل برمز
                 </Link>
               </div>
-              <span className="pt-[4px] text-[13.5px] text-text-muted">
+              <StoreBadges size={68} />
+              <span className="text-[14px] text-text-muted">
                 بلا إعلانات · بلا بيانات من الطفل · يعمل على المتصفّح والجوال
               </span>
             </div>
@@ -278,7 +273,8 @@ export function LandingDesktop() {
                   <span className="self-start rounded-pill bg-gold-tint px-[14px] py-[8px] text-[14px] font-bold text-warning-text">
                     أقل من ١٠ ريالات في الشهر
                   </span>
-                  <PlanFeatures />
+                  <div className="h-[1px] bg-border" />
+                  <PlanList items={PLANS.annual} />
                   <a
                     href="#get-app"
                     className={buttonClass(
@@ -287,7 +283,7 @@ export function LandingDesktop() {
                       'mt-auto h-[62px] gap-[10px] rounded-px-22 font-heading text-[19px] font-bold shadow-lesson-home-button',
                     )}
                   >
-                    <PlayGlyph />
+                    <PhoneDownloadIcon />
                     اشترك من التطبيق
                   </a>
                 </div>
@@ -299,10 +295,9 @@ export function LandingDesktop() {
                     </span>
                     <span className="text-[18px] font-bold text-text-muted">ريال / شهر</span>
                   </span>
-                  <span className="py-[8px] text-[14px] font-bold text-text-muted">
-                    تجربة مرنة · تلغيها متى شئت
-                  </span>
-                  <PlanFeatures />
+                  <span className="py-[8px] text-[14px] font-bold text-text-muted">تجربة مرنة للبداية</span>
+                  <div className="h-[1px] bg-border" />
+                  <PlanList items={PLANS.monthly} />
                   <a
                     href="#get-app"
                     className={buttonClass(
@@ -311,11 +306,14 @@ export function LandingDesktop() {
                       'mt-auto h-[62px] gap-[10px] rounded-px-22 font-heading text-[19px] font-bold',
                     )}
                   >
-                    <PlayGlyph color="textDark" />
+                    <PhoneDownloadIcon color="textDark" />
                     اشترك من التطبيق
                   </a>
                 </div>
               </div>
+              <p className="m-0 text-center text-[16px] leading-[1.8] font-extrabold text-deep-green">
+                يمكنك الترقية من الشهرية إلى السنوية في أي وقت
+              </p>
               <div
                 id="get-app"
                 className="flex w-full items-center gap-[24px] rounded-px-28 border-[1.5px] border-border bg-background px-[32px] py-[24px]"
@@ -333,7 +331,7 @@ export function LandingDesktop() {
                     المتصفح للاستعراض والمتابعة فقط.
                   </span>
                 </span>
-                <PlayBadge />
+                <StoreBadges size={72} />
               </div>
               <span className="text-[13.5px] text-text-muted">
                 لا نطلب بيانات بطاقة داخل التطبيق · يمكنك الإلغاء في أي وقت من إعدادات الاشتراكات في Play
@@ -416,41 +414,5 @@ function PrivacyCard({
         <span className="text-[14.5px] leading-[1.9] text-text-muted">{children}</span>
       </span>
     </div>
-  );
-}
-
-function PlanFeatures() {
-  return (
-    <>
-      <div className="h-[1px] bg-border" />
-      <ul className="m-0 flex list-none flex-col gap-[12px] p-0">
-        {PLAN_FEATURES.map((f) => (
-          <li key={f} className="flex items-center gap-[10px] text-[15.5px]">
-            <CheckIcon size={19} />
-            {f}
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
-
-/** «حمّل التطبيق من Google Play». TODO: the Play listing URL once published. */
-export function PlayBadge({ compact, href = '#get-app' }: { compact?: boolean; href?: string }) {
-  return (
-    <a
-      href={href}
-      className={`flex items-center gap-[12px] rounded-px-16 bg-text-dark px-[22px] text-surface no-underline hover:text-surface ${compact ? 'h-[56px]' : 'h-[64px]'}`}
-    >
-      <PlayGlyph size={compact ? 21 : 24} />
-      <span className="flex flex-col gap-[1px] leading-[1.25]">
-        <span className={`text-voice-bar-off ${compact ? 'text-[11px]' : 'text-[12px]'}`}>
-          حمّل التطبيق من
-        </span>
-        <span className={`font-extrabold ${compact ? 'text-[17px]' : 'text-[19px]'}`} dir="ltr">
-          Google Play
-        </span>
-      </span>
-    </a>
   );
 }
