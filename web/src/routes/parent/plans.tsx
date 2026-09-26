@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
 import {
@@ -17,74 +17,48 @@ import { DesktopHeader, ParentPage, SettingsButton } from '../../components/pare
 import { daysLeft, isSubscribed, PLAN_LABEL, remainingFraction, type Subscription } from '../../data/parent';
 import { childrenCount } from '../../data/stats';
 import { toArabicDigits } from '../../lib/arabicDigits';
-import { hijriDate } from '../../lib/dates';
+import { hijriDate, hijriDayMonth } from '../../lib/dates';
+import { StoreBadges } from '../../components/ui/StoreBadges';
+import { PhoneDownloadIcon, PlanList } from '../../components/landing/shared';
+import { MONTHLY_MAX_CHILDREN, PLANS, PRICE } from '../../content/plans';
 import type { Route } from './+types/plans';
 
 export const meta: Route.MetaFunction = () => [{ title: 'الباقات — غَرْسة' }];
 
-const PRICE = { annual: '١١٩', monthly: '٢٩' } as const;
-const FEATURES = ['حصة يومية كاملة', 'أبناء بلا حدّ', 'لوحة متابعة وتسجيلات المشاريع'];
-
 /**
- * design/v2 ParentWebPlans (desktop) / Packages (phone). The web never sells:
+ * design/v3 ParentWebPlans (desktop) / Packages (phone). The web never sells:
  * Google Play Billing lives in the Android app (CLAUDE.md §3), so every buy /
  * renew button says «… من التطبيق» and points to the app download.
  */
 export default function PlansRoute() {
   const { children, subscription } = useParentData();
+  const [params] = useSearchParams();
   const sub = subscription && isSubscribed(subscription) ? subscription : null;
   const count = children?.length ?? 0;
+  // design/v3 PackagesLimit: shown when the add-child flow sent a monthly parent here.
+  const limit = params.get('limit') === '1' && sub?.plan === 'monthly' && count >= MONTHLY_MAX_CHILDREN;
   return (
     <ParentPage
       tab="plans"
-      desktop={<Desktop sub={sub} count={count} />}
-      mobile={<Mobile sub={sub} count={count} />}
+      desktop={<Desktop sub={sub} count={count} limit={limit} />}
+      mobile={<Mobile sub={sub} count={count} limit={limit} />}
       mobileDecor={false}
     />
   );
 }
 
-function PlayBadgeSmall() {
-  return (
-    <a
-      href="#get-app"
-      className="flex h-[54px] shrink-0 items-center gap-[11px] rounded-px-17 bg-text-dark px-[22px] text-surface no-underline hover:text-surface"
-    >
-      <PlayGlyph />
-      <span className="flex flex-col gap-[1px] leading-[1.25]">
-        <span className="text-[11px] text-voice-bar-off">حمّل التطبيق من</span>
-        <span className="text-[16px] font-extrabold" dir="ltr">
-          Google Play
-        </span>
-      </span>
-    </a>
-  );
-}
-
-function Features({ size = 15 }: { size?: number }) {
-  return (
-    <>
-      <div className="h-[1px] bg-border" />
-      <ul className="m-0 flex list-none flex-col gap-[12px] p-0">
-        {FEATURES.map((f) => (
-          <li key={f} className="flex items-center gap-[10px]" style={{ fontSize: size }}>
-            <CheckIcon size={19} />
-            {f}
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
-
-function Desktop({ sub, count }: { sub: Subscription | null; count: number }) {
+function Desktop({ sub, count, limit }: { sub: Subscription | null; count: number; limit: boolean }) {
   return (
     <div className="flex grow flex-col gap-[24px]">
       <DesktopHeader
         title="الباقات"
         subtitle="اشتراك واحد يكفي جميع أبنائك · الدفع والإلغاء عبر Google Play"
       />
-      <div className="flex items-center gap-[18px] rounded-px-24 border-[1.5px] border-gold-border bg-gold-tint px-[24px] py-[18px]">
+      {limit && <LimitBanner href="#get-app" />}
+      <div
+        id="get-app"
+        className="flex scroll-mt-[20px] items-center gap-[18px] rounded-px-24 border-[1.5px] border-gold-border bg-gold-tint px-[24px] py-[18px]"
+      >
         <span
           className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-px-16 bg-surface"
           aria-hidden="true"
@@ -99,7 +73,7 @@ function Desktop({ sub, count }: { sub: Subscription | null; count: number }) {
             الأسعار معروضة للاطلاع. أكمل الاشتراك أو التجديد من التطبيق على جوالك — المتصفح للمتابعة فقط.
           </span>
         </span>
-        <PlayBadgeSmall />
+        <StoreBadges size={56} />
       </div>
       {sub && (
         <div className="flex items-center gap-[20px] rounded-px-28 bg-surface px-[30px] py-[24px] shadow-dark-14-30-5">
@@ -171,10 +145,11 @@ function Desktop({ sub, count }: { sub: Subscription | null; count: number }) {
                 </span>
               ) : (
                 <span className="self-start py-[8px] text-[13.5px] font-bold text-text-muted">
-                  تجربة مرنة · تلغيها متى شئت
+                  تجربة مرنة للبداية
                 </span>
               )}
-              <Features />
+              <div className="h-[1px] bg-border" />
+              <PlanList items={PLANS[plan]} text="text-[15px]" />
               {current ? (
                 <span className="mt-auto flex h-[58px] items-center justify-center rounded-px-20 bg-green-tint font-heading text-[18px] font-bold text-deep-green">
                   باقتك الحالية
@@ -188,7 +163,7 @@ function Desktop({ sub, count }: { sub: Subscription | null; count: number }) {
                     'mt-auto h-[58px] gap-[10px] rounded-px-20 font-heading text-[18px] font-bold',
                   )}
                 >
-                  <PlayGlyph color="textDark" />
+                  <PhoneDownloadIcon color="textDark" />
                   اشترك من التطبيق
                 </a>
               )}
@@ -196,7 +171,10 @@ function Desktop({ sub, count }: { sub: Subscription | null; count: number }) {
           );
         })}
       </div>
-      <div id="get-app" className="flex grow items-end gap-[20px]">
+      <p className="m-0 text-center text-[14.5px] leading-[1.8] font-extrabold text-deep-green">
+        يمكنك الترقية من الشهرية إلى السنوية في أي وقت
+      </p>
+      <div className="flex grow items-end gap-[20px]">
         <Link
           to={paths.parent.children}
           className="flex grow items-center gap-[16px] rounded-px-26 border-[1.5px] border-border bg-surface px-[26px] py-[20px] text-text-dark no-underline hover:text-text-dark"
@@ -235,53 +213,42 @@ function PhoneGlyph() {
   );
 }
 
-function SmallCheck() {
+function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number; limit: boolean }) {
+  const current = sub?.plan;
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="11" fill={C.greenTint} />
-      <path
-        d="M7 12.5 L10.5 16 L17 8.5"
-        stroke={C.deepGreen}
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function Mobile({ sub, count }: { sub: Subscription | null; count: number }) {
-  return (
-    <div className="flex flex-col gap-[22px] pt-[4px]">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-[10px]">
+    <div className="flex flex-col gap-[18px] pt-[4px]">
+      <div className="flex items-center gap-[12px]">
+        <span className="shrink-0">
           <SproutBadge size={40} />
-          <h1 className="m-0 font-heading text-[26px] leading-[1.5] font-bold">الباقات</h1>
-        </div>
+        </span>
+        <h1 className="m-0 grow font-heading text-[26px] leading-[1.5] font-bold">الباقات</h1>
         <SettingsButton />
       </div>
+
+      {limit && <LimitBanner href="#m-get-app" />}
+
       {/* TODO(design): no designed "no subscription yet" hero; the card only shows with an active plan. */}
       {sub && (
-        <div className="relative flex flex-col gap-[16px] overflow-hidden rounded-px-28 bg-deep-green px-[20px] pt-[22px] pb-[20px]">
+        <div className="relative flex flex-col gap-[14px] overflow-hidden rounded-px-28 bg-deep-green px-[20px] pt-[22px] pb-[20px]">
           <div
             aria-hidden="true"
             className="absolute -top-[40px] -left-[30px] h-[150px] w-[150px] rounded-full bg-hero-circle"
           />
-          <div className="flex items-center justify-between">
+          <div className="relative flex items-center justify-between gap-[10px]">
             <span className="font-heading text-[19px] leading-[1.5] font-bold text-surface">
               باقتك الحالية — {PLAN_LABEL[sub.plan]}
             </span>
-            <span className="rounded-pill bg-gold px-[12px] py-[5px] text-[12px] font-extrabold text-on-gold">
+            <span className="rounded-pill bg-gold px-[12px] py-[5px] text-[12px] font-extrabold whitespace-nowrap text-on-gold">
               نشطة
             </span>
           </div>
-          <div className="flex items-baseline gap-[8px]">
-            <span className="font-heading text-[46px] leading-[1.1] font-extrabold text-gold">
+          <div className="relative flex items-baseline gap-[8px]">
+            <span className="font-heading text-[42px] leading-[1.1] font-extrabold text-gold">
               {toArabicDigits(daysLeft(sub))}
             </span>
             <span className="text-[15px] font-medium text-on-deep-green-muted">يومًا متبقية</span>
           </div>
-          <div className="flex flex-col gap-[8px]">
+          <div className="relative flex flex-col gap-[8px]">
             <div className="h-[10px] overflow-hidden rounded-px-6 bg-hero-track">
               <div
                 className="h-full rounded-px-6 bg-gold"
@@ -289,95 +256,85 @@ function Mobile({ sub, count }: { sub: Subscription | null; count: number }) {
               />
             </div>
             <span className="text-[12.5px] text-on-deep-green-muted">
-              تنتهي في {hijriDate(sub.expiresAt)} — ثم تتجدد تلقائيًا عبر Google Play
+              تتجدّد في {hijriDayMonth(sub.expiresAt)} — تلقائيًا عبر Google Play
             </span>
           </div>
+        </div>
+      )}
+
+      <div className="flex items-baseline justify-between gap-[10px]">
+        <h2 className="m-0 font-heading text-[20px] leading-[1.5] font-bold">الباقات</h2>
+        <span className="text-[12.5px] text-text-muted">الدفع عبر Google Play</span>
+      </div>
+
+      <div className="relative flex flex-col gap-[15px] rounded-px-28 border-[2.5px] border-primary bg-surface px-[20px] pt-[26px] pb-[20px] shadow-lesson-done-card">
+        <span className="absolute -top-[13px] right-[22px] rounded-pill bg-primary px-[15px] py-[6px] text-[12px] font-extrabold text-surface">
+          الأفضل قيمة
+        </span>
+        <h3 className="m-0 font-heading text-[22px] leading-[1.4] font-bold">الباقة السنوية</h3>
+        <span className="flex items-baseline gap-[8px]">
+          <span className="font-heading text-[46px] leading-[1] font-extrabold text-deep-green">
+            {PRICE.annual}
+          </span>
+          <span className="text-[15px] font-bold text-text-muted">ريال / سنة</span>
+        </span>
+        <span className="self-start rounded-pill bg-gold-tint px-[13px] py-[7px] text-[13px] font-bold text-warning-text">
+          أقل من ١٠ ريالات في الشهر
+        </span>
+        <span className="h-[1px] bg-border" />
+        <PlanList items={PLANS.annual} text="text-[14.5px]" />
+        {current === 'annual' ? (
+          <CurrentChip />
+        ) : (
           <a
             href="#m-get-app"
             className={buttonClass(
-              'gold',
+              'primary',
               'custom',
-              'h-[52px] gap-[9px] rounded-px-18 text-[16px] font-extrabold',
+              'h-[56px] gap-[9px] rounded-px-19 font-heading text-[18px] font-bold',
             )}
           >
-            <PlayGlyph color="onGold" />
-            جدّد من التطبيق
+            {current === 'monthly' ? 'الترقية للسنوية' : 'اشترك من التطبيق'}
+            <ForwardIcon size={20} />
           </a>
-        </div>
-      )}
-      <div className="flex flex-col gap-[14px]">
-        <div className="flex items-baseline justify-between">
-          <h2 className="m-0 font-heading text-[20px] leading-[1.5] font-bold">
-            {sub ? 'تغيير الباقة' : 'اختر باقة'}
-          </h2>
-          <span className="text-[12.5px] text-text-muted">الدفع عبر Google Play</span>
-        </div>
-        <div className="relative flex flex-col gap-[14px] rounded-px-26 border-[2px] border-primary bg-surface px-[18px] pt-[22px] pb-[18px] shadow-plan-card">
-          <span className="absolute -top-[13px] right-[20px] rounded-pill bg-gold px-[14px] py-[6px] text-[12px] font-extrabold text-on-gold">
-            الأفضل قيمة
-          </span>
-          <div className="flex items-start justify-between gap-[12px]">
-            <div className="flex flex-col gap-[4px]">
-              <span className="font-heading text-[19px] leading-[1.5] font-bold">سنوية</span>
-              <span className="text-[12.5px] text-text-muted">≈ ١٠ ريال شهريًا · وفّر ٦٦٪</span>
-            </div>
-            <div className="flex items-baseline gap-[4px]">
-              <span className="font-heading text-[30px] leading-[1.2] font-extrabold text-deep-green">
-                ١١٩
-              </span>
-              <span className="text-[13px] font-bold text-text-muted">ريال / سنة</span>
-            </div>
-          </div>
-          <div className="flex flex-col gap-[9px]">
-            {['أبناء غير محدودين على الحساب', 'تقارير الإنجازات الكاملة'].map((t) => (
-              <div key={t} className="flex items-center gap-[9px]">
-                <SmallCheck />
-                <span className="text-[13.5px] text-text-dark">{t}</span>
-              </div>
-            ))}
-          </div>
-          {sub?.plan === 'annual' ? (
-            <span className="flex h-[50px] items-center justify-center rounded-px-17 bg-green-tint text-[16px] font-bold text-deep-green">
-              باقتك الحالية
-            </span>
-          ) : (
-            <a
-              href="#m-get-app"
-              className={buttonClass(
-                'primary',
-                'custom',
-                'h-[50px] gap-[9px] rounded-px-17 text-[16px] font-bold',
-              )}
-            >
-              <PlayGlyph />
-              اشترك من التطبيق
-            </a>
-          )}
-        </div>
-        <div className="flex items-center justify-between gap-[12px] rounded-px-26 border-[1.5px] border-border bg-surface p-[18px]">
-          <div className="flex flex-col gap-[4px]">
-            <span className="font-heading text-[18px] leading-[1.5] font-bold">شهرية</span>
-            <div className="flex items-baseline gap-[4px]">
-              <span className="font-heading text-[24px] leading-[1.2] font-extrabold text-text-dark">٢٩</span>
-              <span className="text-[12.5px] font-bold text-text-muted">ريال / شهر</span>
-            </div>
-          </div>
-          {sub?.plan === 'monthly' ? (
-            <span className="flex h-[48px] items-center rounded-px-16 bg-green-tint px-[18px] text-[14px] font-bold text-deep-green">
-              باقتك الحالية
-            </span>
-          ) : (
-            <a
-              href="#m-get-app"
-              className="flex h-[48px] items-center justify-center rounded-px-16 border-[1.5px] border-deep-green bg-surface px-[14px] text-[13.5px] font-bold whitespace-nowrap text-deep-green no-underline"
-            >
-              اشترك من التطبيق
-            </a>
-          )}
-        </div>
+        )}
       </div>
+
+      <div className="relative flex flex-col gap-[15px] rounded-px-28 border-[1.5px] border-border bg-surface px-[20px] pt-[26px] pb-[20px] shadow-lesson-done-card">
+        <h3 className="m-0 font-heading text-[22px] leading-[1.4] font-bold">الباقة الشهرية</h3>
+        <span className="flex items-baseline gap-[8px]">
+          <span className="font-heading text-[46px] leading-[1] font-extrabold text-text-dark">
+            {PRICE.monthly}
+          </span>
+          <span className="text-[15px] font-bold text-text-muted">ريال / شهر</span>
+        </span>
+        <span className="self-start rounded-pill bg-gold-tint px-[13px] py-[7px] text-[13px] font-bold text-warning-text">
+          تجربة مرنة للبداية
+        </span>
+        <span className="h-[1px] bg-border" />
+        <PlanList items={PLANS.monthly} text="text-[14.5px]" />
+        {current === 'monthly' ? (
+          <CurrentChip muted />
+        ) : (
+          <a
+            href="#m-get-app"
+            className={buttonClass(
+              'plain',
+              'custom',
+              'h-[56px] rounded-px-19 font-heading text-[17px] font-bold',
+            )}
+          >
+            {current === 'annual' ? 'التحويل إلى الشهرية' : 'اشترك من التطبيق'}
+          </a>
+        )}
+      </div>
+
+      <p className="m-0 text-center text-[13.5px] leading-[1.8] font-extrabold text-deep-green">
+        يمكنك الترقية من الشهرية إلى السنوية في أي وقت
+      </p>
+
       <Link
-        to={paths.parent.addChild}
+        to={paths.parent.addChildFrom('plans')}
         className={buttonClass('primary', 'lg', 'gap-[10px] shadow-green-button')}
       >
         <PlusIcon size={22} color="surface" />
@@ -395,30 +352,102 @@ function Mobile({ sub, count }: { sub: Subscription | null; count: number }) {
         </span>
         <span className="flex grow flex-col gap-[3px]">
           <span className="text-[16px] font-extrabold">أبنائي</span>
-          <span className="text-[12.5px] text-text-muted">{childrenCount(count)} · رموز الربط والإدارة</span>
+          <span className="text-[12.5px] text-text-muted">
+            {childrenCount(count)} · {count === 1 ? 'رمز الربط والإدارة' : 'رموز الربط والإدارة'}
+          </span>
         </span>
         <ForwardIcon size={20} color="deepGreen" strokeWidth={2.3} />
       </Link>
       <div
         id="m-get-app"
-        className="flex items-start gap-[12px] rounded-px-20 bg-border-soft px-[16px] py-[15px]"
+        className="flex scroll-mt-[20px] flex-col gap-[14px] rounded-px-20 bg-border-soft px-[16px] py-[15px]"
       >
-        <span
-          className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-px-11 border border-border-strong bg-surface"
-          aria-hidden="true"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M6 3.5 L19 12 L6 20.5 Z" fill={C.playGlyph} />
-          </svg>
-        </span>
-        <div className="flex flex-col gap-[4px]">
-          <span className="text-[13.5px] font-bold">الاشتراك يُدار من Google Play</span>
-          <span className="text-[12.5px] leading-[1.7] text-text-muted">
-            الشراء غير متاح في المتصفح — حمّل التطبيق على جوالك لإكمال الاشتراك. لا نطلب بيانات بطاقة، ويمكنك
-            الإلغاء في أي وقت من إعدادات الاشتراكات في Play.
+        <div className="flex items-start gap-[12px]">
+          <span
+            className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-px-11 border border-border-strong bg-surface"
+            aria-hidden="true"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M6 3.5 L19 12 L6 20.5 Z" fill={C.playGlyph} />
+            </svg>
           </span>
+          <div className="flex flex-col gap-[4px]">
+            <span className="text-[13.5px] font-bold">الاشتراك يُدار من Google Play</span>
+            <span className="text-[12.5px] leading-[1.7] text-text-muted">
+              لا نطلب بيانات بطاقة داخل التطبيق. يمكنك الإلغاء في أي وقت من إعدادات الاشتراكات في Play. الشراء
+              والترقية من التطبيق على جوالك — المتصفح للمتابعة فقط.
+            </span>
+          </div>
         </div>
+        <StoreBadges size={50} className="justify-center" />
       </div>
     </div>
+  );
+}
+
+/** design/v3 PackagesLimit — a monthly parent tried to add a second child. */
+function LimitBanner({ href }: { href: string }) {
+  return (
+    <div
+      role="alert"
+      className="flex flex-col gap-[14px] rounded-px-26 border-[1.5px] border-berry-border bg-berry-tint p-[20px]"
+    >
+      <div className="flex items-start gap-[13px]">
+        <span
+          className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-px-16 bg-surface"
+          aria-hidden="true"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="9" cy="8" r="3.4" stroke={C.berryDeep} strokeWidth="2" />
+            <path
+              d="M3 19 C3 15.5 5.7 13.6 9 13.6 C12.3 13.6 15 15.5 15 19"
+              stroke={C.berryDeep}
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            <path
+              d="M18 7.5 V13 M15.2 10.2 H20.8"
+              stroke={C.berryDeep}
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
+        <span className="flex min-w-0 grow flex-col gap-[6px]">
+          <span className="font-heading text-[19px] leading-[1.45] font-bold text-error-text">
+            الباقة الشهرية لابن واحد
+          </span>
+          <span className="text-[14px] leading-[1.8] text-error-text">
+            رقِّ إلى السنوية لتضيف كل أبنائك — بلا حدّ، وعلى نفس الاشتراك.
+          </span>
+        </span>
+      </div>
+      <a
+        href={href}
+        className={buttonClass(
+          'primary',
+          'custom',
+          'h-[56px] gap-[9px] rounded-px-19 font-heading text-[18px] font-bold',
+        )}
+      >
+        الترقية للسنوية
+        <ForwardIcon size={20} />
+      </a>
+    </div>
+  );
+}
+
+function CurrentChip({ muted }: { muted?: boolean }) {
+  return (
+    <span
+      className={
+        muted
+          ? 'flex h-[56px] items-center justify-center gap-[8px] rounded-px-19 bg-border-soft font-heading text-[17px] font-bold text-text-muted'
+          : 'flex h-[56px] items-center justify-center gap-[8px] rounded-px-19 bg-green-tint font-heading text-[17px] font-bold text-deep-green'
+      }
+    >
+      <CheckIcon size={19} color={muted ? 'textMuted' : 'deepGreen'} />
+      باقتك الحالية
+    </span>
   );
 }
