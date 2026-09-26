@@ -28,6 +28,7 @@ export default [
     index('routes/child/index.tsx'),
     route('home', 'routes/child/home.tsx'),
     route('profile', 'routes/child/profile.tsx'),
+    route('review/:kind', 'routes/child/review.tsx'),
     route('lesson/:lessonId', 'routes/child/lesson.tsx'),
   ]),
 

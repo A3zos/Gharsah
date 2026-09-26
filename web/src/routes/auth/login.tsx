@@ -24,21 +24,32 @@ type Tab = 'parent' | 'child';
 /** Already signed in → straight to that area (a parent opening the child tab stays). */
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const tab = new URL(request.url).searchParams.get('tab');
-  const { currentUser } = await import('../../firebase/session');
+  const { currentUser, requireChildSession } = await import('../../firebase/session');
   const user = await currentUser();
   if (user && !user.isAnonymous && tab !== 'child') throw redirect(paths.parent.root);
-  return null;
+  // A browser already linked to a child goes straight to its home.
+  if (user?.isAnonymous && tab === 'child') {
+    const linked = await requireChildSession().then(
+      () => true,
+      () => false,
+    );
+    if (linked) throw redirect(paths.child.home);
+  }
+  return { childDevice: !!user?.isAnonymous };
 }
 
 export function HydrateFallback() {
   return <div className="min-h-dvh bg-background" aria-busy="true" />;
 }
 
-export default function LoginRoute() {
+export default function LoginRoute({ loaderData }: Route.ComponentProps) {
   const [params, setParams] = useSearchParams();
+  const childDevice = loaderData?.childDevice ?? false;
   const tab = params.get('tab');
   if (tab !== 'parent' && tab !== 'child') return <Welcome />;
-  return <Login tab={tab} onTab={(t) => setParams({ tab: t }, { replace: true })} />;
+  return (
+    <Login tab={tab} childDevice={childDevice} onTab={(t) => setParams({ tab: t }, { replace: true })} />
+  );
 }
 
 // ── design/v2 Auth — the welcome choice ─────────────────────────────────────
@@ -146,7 +157,7 @@ function GrowthIntro() {
 
 // ── design/v2 Login — two tabs ──────────────────────────────────────────────
 
-function Login({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
+function Login({ tab, onTab, childDevice }: { tab: Tab; onTab: (t: Tab) => void; childDevice: boolean }) {
   const [expired, setExpired] = useState<string[] | null>(null);
   if (expired) return <SCodeExpired cells={expired} onBack={() => setExpired(null)} />;
   return (
@@ -181,7 +192,7 @@ function Login({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
           aria-labelledby={`login-tab-${tab}`}
           className="flex min-h-[540px] animate-[gh-tab_.28s_ease_both] flex-col gap-[18px]"
         >
-          {tab === 'parent' ? <ParentForm /> : <ChildForm onExpired={setExpired} />}
+          {tab === 'parent' ? <ParentForm childDevice={childDevice} /> : <ChildForm onExpired={setExpired} />}
         </div>
       </div>
     </MobilePage>
@@ -214,7 +225,7 @@ function ChildGlyph({ on }: { on: boolean }) {
   );
 }
 
-function ParentForm() {
+function ParentForm({ childDevice }: { childDevice: boolean }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -272,6 +283,13 @@ function ParentForm() {
         </Link>
       </div>
       <Note tone="green">حساب وليّ الأمر فقط. لا ينشئ الطفل حسابًا — يدخل برمز الربط.</Note>
+      {childDevice && (
+        // Signing in replaces this browser's child session (one identity per browser).
+        <Note tone="gold">
+          هذا المتصفح مربوط بحساب طفل. تسجيل دخولك هنا يفصله، وسيحتاج الطفل رمز ربط جديدًا — الأفضل أن تدخل من
+          جوالك أو متصفح آخر.
+        </Note>
+      )}
       {error?.field === 'general' && (
         <p role="alert" className="m-0 flex items-center gap-[7px] text-[13px] font-bold text-error-text">
           <AlertIcon />

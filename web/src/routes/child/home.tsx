@@ -1,10 +1,410 @@
-import { PendingDesign } from '../../components/PendingDesign';
+import { Link } from 'react-router';
 
+import { paths } from '../../app/paths';
+import { ChildAvatar } from '../../components/child/ChildAvatar';
+import { useChildData } from '../../components/child/ChildData';
+import { ChildPage, PersonGlyph } from '../../components/child/ChildShell';
+import { C } from '../../components/ui/color';
+import { ForwardIcon } from '../../components/ui/icons';
+import { HadithIcon, ProjectIcon, QuranIcon } from '../../components/child/childIcons';
+import { lessonChips, lessonScripts, lessonValue } from '../../content/library';
+import { headline, STAGE_LABEL } from '../../data/stats';
+import {
+  buildBoard,
+  daysUntilReset,
+  lessonStepGroups,
+  pickTodayLesson,
+  type BoardRow,
+} from '../../data/student';
+import { toArabicDigits } from '../../lib/arabicDigits';
+import { cx } from '../../lib/cx';
+import { daysPhrase, plural } from '../../lib/plural';
 import type { Route } from './+types/home';
 
-export const meta: Route.MetaFunction = () => [{ title: 'رئيسية الطفل — غَرْسة' }];
+export const meta: Route.MetaFunction = () => [{ title: 'الرئيسية — غَرْسة' }];
 
-// Phase 4 — mobile frame 17.
-export default function Page() {
-  return <PendingDesign name="رئيسية الطفل" />;
+/** design/v2 StudentHome (+ StudentHomeDay2 when today's lesson starts with the project report). */
+export default function ChildHome() {
+  const { child, progress, board } = useChildData();
+  if (child === undefined || progress === undefined || !child) {
+    return (
+      <ChildPage tab="home">
+        <div aria-busy="true" className="grow" />
+      </ChildPage>
+    );
+  }
+  const h = headline(child);
+  const firstName = child.name.trim().split(/\s+/)[0] ?? child.name;
+  const today = pickTodayLesson(progress);
+  const script = lessonScripts.get(today.lessonId);
+  const groups = script ? lessonStepGroups(script) : [];
+  const done =
+    today.kind === 'doneToday'
+      ? groups.length
+      : today.resume
+        ? Math.min(groups.length, Math.max(0, groups.filter((g) => g < today.resume!.stepIndex).length - 1))
+        : 0;
+  const started = today.kind === 'available' && done > 0;
+  const finished = today.kind === 'doneToday';
+  const reportFirst = script?.steps[0]?.type === 'project_report';
+  const { rows, note } = buildBoard(board, child.leader, `${firstName} — أنت`);
+  const left = daysUntilReset();
+
+  const badge = finished
+    ? 'أكملت حصة اليوم'
+    : started
+      ? 'بدأتها اليوم'
+      : reportFirst
+        ? 'اليوم الثاني'
+        : 'جديدة';
+  const progressText =
+    finished || started
+      ? `أنجزت ${toArabicDigits(done)} من ${toArabicDigits(groups.length)} خطوات`
+      : `${toArabicDigits(groups.length)} خطوات في انتظارك${reportFirst ? ' — تبدأ بتقريرك' : ''}`;
+  const cta = finished ? 'إلى اللقاء غدًا' : started ? 'أكمل الحصة' : 'ابدأ الحصة';
+  const pct = groups.length ? Math.round((done / groups.length) * 100) : 0;
+  const report = script?.steps[0]?.type === 'project_report' ? script.steps[0] : null;
+
+  return (
+    <ChildPage tab="home" className="gap-[18px] pt-[28px]">
+      <header className="flex shrink-0 items-center gap-[13px]">
+        <span className="shrink-0 animate-[gh-pop-7_.5s_ease-out_.05s_both]">
+          <ChildAvatar id={child.avatarId} size={62} />
+        </span>
+        <div className="flex min-w-0 grow flex-col gap-[7px]">
+          <h1 className="m-0 font-heading text-[25px] leading-[1.4] font-bold">مرحبًا {firstName}</h1>
+          <div className="flex flex-wrap gap-[7px]">
+            <span className="flex items-center gap-[6px] rounded-pill bg-green-tint px-[11px] py-[6px] text-[12px] font-extrabold text-deep-green">
+              <svg width="15" height="15" viewBox="0 0 76 76" fill="none" aria-hidden="true">
+                <path d="M38 62 V34" stroke={C.deepGreen} strokeWidth="8" strokeLinecap="round" />
+                <path d="M38 42 C28 42 22 36 22 27 C32 27 38 33 38 42 Z" fill={C.primary} />
+                <path d="M38 47 C48 47 54 41 54 32 C44 32 38 38 38 47 Z" fill={C.softGreen} />
+              </svg>
+              مرحلتك: {STAGE_LABEL[h.stage]}
+            </span>
+            {h.streak > 0 && (
+              <span className="flex items-center gap-[5px] rounded-pill bg-gold-tint px-[11px] py-[6px] text-[12px] font-extrabold text-warning-text">
+                <Flame />
+                {daysPhrase(h.streak)} متتالية
+              </span>
+            )}
+          </div>
+        </div>
+        <Link
+          to={paths.child.profile}
+          aria-label="ملفّي"
+          className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-px-15 border border-border bg-surface no-underline"
+        >
+          <PersonGlyph color="textDark" size={21} strokeWidth={1.9} />
+        </Link>
+      </header>
+
+      <section
+        aria-labelledby="board-title"
+        className="flex shrink-0 animate-[gh-rise_.5s_ease-out_.15s_both] flex-col gap-[12px] rounded-px-28 bg-surface px-[16px] pt-[18px] pb-[16px] shadow-card"
+      >
+        <div className="flex items-center justify-between gap-[10px]">
+          <h2
+            id="board-title"
+            className="m-0 flex items-center gap-[8px] font-heading text-[18px] leading-[1.5] font-bold"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 20 H17 M12 16.5 V20" stroke={C.goldDeep} strokeWidth="2" strokeLinecap="round" />
+              <path d="M7 3.5 H17 V9 C17 12 14.8 14.5 12 14.5 C9.2 14.5 7 12 7 9 Z" fill={C.gold} />
+              <path
+                d="M7 5.5 H4.5 V7 C4.5 8.9 5.6 10.3 7 10.7 M17 5.5 H19.5 V7 C19.5 8.9 18.4 10.3 17 10.7"
+                stroke={C.goldDeep}
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            </svg>
+            المتصدّرون هذا الأسبوع
+          </h2>
+          <span className="rounded-pill bg-border-soft px-[10px] py-[5px] text-[11px] font-extrabold whitespace-nowrap text-text-muted">
+            يتبقّى {left === 1 ? 'يوم' : left === 2 ? 'يومان' : `${toArabicDigits(left)} أيام`}
+          </span>
+        </div>
+        <ol className="m-0 flex list-none flex-col gap-[7px] p-0">
+          {rows.map((r) => (
+            <LeaderRow key={`${r.rank}-${r.me}`} row={r} avatarId={child.avatarId} />
+          ))}
+        </ol>
+        {note && (
+          <div className="flex items-center gap-[10px] rounded-px-16 bg-green-tint px-[13px] py-[11px]">
+            <svg
+              className="shrink-0"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 2.8 L14.3 9.2 L21 9.4 L15.7 13.5 L17.6 20 L12 16.2 L6.4 20 L8.3 13.5 L3 9.4 L9.7 9.2 Z"
+                fill={C.primary}
+              />
+            </svg>
+            <span className="grow text-[13px] leading-[1.7] font-bold">{note}</span>
+          </div>
+        )}
+        <span className="text-center text-[11.5px] text-text-muted">
+          تبدأ المنافسة من جديد كل أسبوع — فرصة جديدة للجميع.
+        </span>
+      </section>
+
+      <section
+        aria-labelledby="today-title"
+        className="relative flex shrink-0 animate-[gh-rise_.5s_ease-out_.3s_both] flex-col gap-[14px] overflow-hidden rounded-px-30 bg-deep-green px-[20px] pt-[22px] pb-[20px] shadow-hero"
+      >
+        <div
+          aria-hidden="true"
+          className="absolute -top-[46px] -left-[36px] h-[160px] w-[160px] rounded-full bg-hero-circle"
+        />
+        <span
+          className="absolute -bottom-[12px] left-[4px] animate-[gh-float-3_3.4s_ease-in-out_infinite]"
+          aria-hidden="true"
+        >
+          <svg width="112" height="112" viewBox="0 0 100 100" fill="none" opacity="0.5">
+            <path d="M50 92 V46" stroke={C.softGreen} strokeWidth="6" strokeLinecap="round" />
+            <path d="M50 64 C34 64 24 55 24 40 C40 40 50 49 50 64 Z" fill={C.softGreen} />
+            <path d="M50 56 C66 56 76 47 76 32 C60 32 50 41 50 56 Z" fill={C.leafLight} />
+          </svg>
+        </span>
+        <div className="relative flex items-center justify-between gap-[10px]">
+          <h2 id="today-title" className="m-0 font-heading text-[24px] leading-[1.4] font-bold text-surface">
+            حصة اليوم
+          </h2>
+          <span className="rounded-pill bg-gold px-[12px] py-[6px] text-[11.5px] font-extrabold whitespace-nowrap text-on-gold">
+            {badge}
+          </span>
+        </div>
+        {report && !finished && (
+          <p className="relative m-0 text-[16px] leading-[1.8] font-bold text-surface">
+            نبدأ بتقرير مشروعك: {lessonValue(today.lessonId)}
+          </p>
+        )}
+        <div className="relative flex flex-wrap gap-[8px]">
+          {script &&
+            lessonChips(script).map((c) => (
+              <span
+                key={c.label}
+                className={cx(
+                  'flex items-center gap-[7px] rounded-px-14 px-[13px] py-[9px] text-[13.5px]',
+                  c.kind === 'report'
+                    ? 'bg-gold font-extrabold text-on-gold'
+                    : 'bg-hero-chip font-bold text-surface',
+                )}
+              >
+                <ChipIcon kind={c.kind} />
+                {c.label}
+              </span>
+            ))}
+        </div>
+        <div className="relative flex flex-col gap-[7px]">
+          <div className="flex items-baseline justify-between">
+            <span className="text-[12.5px] font-bold text-on-deep-green-muted">{progressText}</span>
+            <span className="text-[12.5px] text-on-deep-green-muted">نحو ١٥ دقيقة</span>
+          </div>
+          <div
+            className="h-[10px] overflow-hidden rounded-px-6 bg-hero-track"
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="تقدّم حصة اليوم"
+          >
+            <div className="h-full rounded-px-6 bg-gold" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+        {finished ? (
+          // TODO(design): no designed «done for today» hero; the CTA just says goodbye.
+          <span className="relative flex h-[68px] items-center justify-center gap-[10px] rounded-px-22 bg-gold/60 font-heading text-[22px] font-bold text-on-gold">
+            {cta}
+          </span>
+        ) : (
+          <Link
+            to={paths.child.lesson(today.lessonId)}
+            className="relative flex h-[68px] animate-[gh-breathe_2.8s_ease-in-out_infinite] items-center justify-center gap-[10px] rounded-px-22 bg-gold font-heading text-[22px] font-bold text-on-gold no-underline hover:text-on-gold"
+          >
+            {cta}
+            <ForwardIcon size={24} color="onGold" strokeWidth={2.8} />
+          </Link>
+        )}
+      </section>
+
+      <section
+        aria-labelledby="browse-title"
+        className="flex shrink-0 animate-[gh-rise_.5s_ease-out_.45s_both] flex-col gap-[11px]"
+      >
+        <h2 id="browse-title" className="m-0 font-heading text-[17px] leading-[1.5] font-bold">
+          تصفّح ومراجعة
+        </h2>
+        <div className="grid grid-cols-3 gap-[10px]">
+          <Shortcut to={paths.child.review('quran')} tint="bg-green-tint" icon={<QuranIcon />} title="القرآن">
+            {plural(h.surahs, { one: 'سورة واحدة', two: 'سورتان', few: 'سور', many: 'سورة' })}
+          </Shortcut>
+          <Shortcut
+            to={paths.child.review('hadith')}
+            tint="bg-berry-tint"
+            icon={<HadithIcon />}
+            title="الأحاديث"
+          >
+            {plural(h.hadith, { one: 'حديث واحد', two: 'حديثان', few: 'أحاديث', many: 'حديثًا' })}
+          </Shortcut>
+          <Shortcut
+            to={paths.child.review('projects')}
+            tint="bg-gold-tint"
+            icon={<ProjectIcon />}
+            title="المشاريع"
+          >
+            {`${toArabicDigits(h.projects)} منجزة`}
+          </Shortcut>
+        </div>
+      </section>
+    </ChildPage>
+  );
+}
+
+function LeaderRow({ row, avatarId }: { row: BoardRow; avatarId: string }) {
+  const medal = row.me
+    ? 'bg-deep-green text-surface'
+    : row.rank === 1
+      ? 'bg-gold text-on-gold'
+      : row.rank === 2
+        ? 'bg-medal-silver text-medal-silver-text'
+        : row.rank === 3
+          ? 'bg-avatar-skin-mid text-avatar-features'
+          : 'bg-border-soft text-text-muted';
+  return (
+    <li
+      aria-current={row.me ? 'true' : undefined}
+      className={cx(
+        'flex items-center gap-[10px] rounded-px-18 px-[10px] py-[8px]',
+        row.me ? 'border-[2px] border-deep-green bg-green-tint' : 'border border-border-soft bg-background',
+      )}
+    >
+      <span
+        className={cx(
+          'flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-full font-heading text-[14px] font-extrabold',
+          medal,
+        )}
+      >
+        {toArabicDigits(row.rank)}
+      </span>
+      <span className="shrink-0">
+        {row.me ? (
+          <ChildAvatar id={avatarId} size={38} />
+        ) : (
+          // Other children never show a personal avatar — one generic one.
+          <svg width="38" height="38" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <circle cx="32" cy="32" r="32" fill={C.borderSoft} />
+            <circle cx="32" cy="26" r="10" fill={C.stageOffStem} />
+            <path d="M14 54 C14 43 22 38 32 38 C42 38 50 43 50 54 Z" fill={C.stageOffStem} />
+          </svg>
+        )}
+      </span>
+      <span
+        className={cx(
+          'grow text-[14.5px]',
+          row.me ? 'font-extrabold text-deep-green' : 'font-bold text-text-dark',
+        )}
+      >
+        {row.label}
+      </span>
+      <span
+        className={cx(
+          'font-heading text-[16px] font-extrabold',
+          row.me ? 'text-deep-green' : 'text-text-dark',
+        )}
+      >
+        {toArabicDigits(row.points)}
+      </span>
+    </li>
+  );
+}
+
+function Shortcut({
+  to,
+  tint,
+  icon,
+  title,
+  children,
+}: {
+  to: string;
+  tint: string;
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      to={to}
+      className="flex min-h-[124px] flex-col items-center justify-center gap-[9px] rounded-px-24 border-[1.5px] border-border bg-surface px-[8px] py-[14px] text-text-dark no-underline shadow-soft hover:text-text-dark"
+    >
+      <span
+        className={`flex h-[54px] w-[54px] items-center justify-center rounded-px-18 ${tint}`}
+        aria-hidden="true"
+      >
+        {icon}
+      </span>
+      <span className="text-[14.5px] font-extrabold">{title}</span>
+      <span className="text-[11.5px] font-bold text-text-muted">{children}</span>
+    </Link>
+  );
+}
+
+function Flame() {
+  return (
+    <span className="flex animate-[gh-flicker_1.8s_ease-in-out_infinite]" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <path
+          d="M12 2.5 C13.5 6.5 17.5 7.5 17.5 12.5 C17.5 16.6 15 19.5 12 19.5 C9 19.5 6.5 16.6 6.5 12.5 C6.5 9.5 8.5 8.5 9.5 6.5 C10 9 11 9.5 12 8 C12.5 6 12 4 12 2.5 Z"
+          fill={C.gold}
+        />
+        <path
+          d="M12 11.5 C12.8 13.2 14 14 14 15.8 C14 17.4 13 18.5 12 18.5 C11 18.5 10 17.4 10 15.8 C10 14.6 10.8 13.8 11.2 12.8 C11.5 13.6 11.7 13.8 12 13.2 Z"
+          fill={C.berry}
+        />
+      </svg>
+    </span>
+  );
+}
+
+function ChipIcon({ kind }: { kind: 'surah' | 'hadith' | 'report' }) {
+  if (kind === 'report') {
+    return (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M12 4 V12 L17 14.5"
+          stroke={C.onGold}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="12" cy="12" r="8.6" stroke={C.onGold} strokeWidth="2.2" />
+      </svg>
+    );
+  }
+  if (kind === 'hadith') {
+    return (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M20 12.5 C20 16.4 16.4 19.5 12 19.5 C10.9 19.5 9.9 19.3 8.9 19 L4 20.5 L5.6 16.4 C4.6 15.3 4 14 4 12.5 C4 8.6 7.6 5.5 12 5.5 C16.4 5.5 20 8.6 20 12.5 Z"
+          stroke={C.surface}
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 5.5 C6.5 4.2 9.5 4.2 12 5.8 C14.5 4.2 17.5 4.2 20 5.5 V18.5 C17.5 17.2 14.5 17.2 12 18.8 C9.5 17.2 6.5 17.2 4 18.5 Z"
+        stroke={C.surface}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
