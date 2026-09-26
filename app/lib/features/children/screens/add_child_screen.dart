@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/app_scope.dart';
 import '../../../core/arabic_digits.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/app_icons.dart';
@@ -7,6 +8,8 @@ import '../../../widgets/g_back_button.dart';
 import '../../../widgets/g_text_field.dart';
 import '../../../widgets/info_note.dart';
 import '../../../widgets/screen_frame.dart';
+import '../../subscription/data/subscription.dart';
+import '../../subscription/screens/play_confirm_screen.dart';
 import '../data/child_profile.dart';
 import '../widgets/add_child_stepper.dart';
 import 'schedule_screen.dart';
@@ -31,10 +34,24 @@ class _AddChildScreenState extends State<AddChildScreen> {
   ChildGender _gender = ChildGender.girl; // design default
   bool _submitted = false;
 
+  /// design/v3 PackagesLimit: the monthly plan covers one child. UI-only for
+  /// now — see TODO(child-limit) in firestore.rules and docs/DATA_MODEL.md.
+  static const _monthlyMaxChildren = 1;
+  Stream<Subscription?>? _subscription;
+  Stream<List<ChildProfile>>? _children;
+
   @override
   void initState() {
     super.initState();
     _name.addListener(() => setState(() {}));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final scope = AppScope.of(context);
+    _subscription ??= scope.subscriptions.watchCurrent();
+    _children ??= scope.children.watchChildren();
   }
 
   @override
@@ -65,6 +82,26 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<Subscription?>(
+      stream: _subscription,
+      builder: (context, sub) => StreamBuilder<List<ChildProfile>>(
+        stream: _children,
+        builder: (context, kids) {
+          final s = sub.data;
+          final monthly = s != null &&
+              s.active &&
+              s.expiresAt.isAfter(DateTime.now()) &&
+              s.plan == SubscriptionPlan.monthly;
+          if (monthly && (kids.data?.length ?? 0) >= _monthlyMaxChildren) {
+            return const _MonthlyLimit();
+          }
+          return _form(context);
+        },
+      ),
+    );
+  }
+
+  Widget _form(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return ScreenFrame(
       padding: const EdgeInsets.fromLTRB(
@@ -158,7 +195,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
             const InfoNote(
               tone: InfoNoteTone.greenInfo,
               lineHeight: 1.8,
-              text: 'العمر يحدّد مستوى الحفظ والتمارين المقترحة، ويمكنك تعديله لاحقًا من لوحة التحكم.',
+              text: 'يمكنك تعديل العمر لاحقًا من لوحة التحكم.',
             ),
           ],
         ),
@@ -270,6 +307,71 @@ class _GenderCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// design/v3 PackagesLimit — «الباقة الشهرية لابن واحد» + «الترقية للسنوية».
+class _MonthlyLimit extends StatelessWidget {
+  const _MonthlyLimit();
+
+  @override
+  Widget build(BuildContext context) {
+    return ScreenFrame(
+      padding: const EdgeInsets.fromLTRB(
+        AppSizes.pagePaddingH,
+        30,
+        AppSizes.pagePaddingH,
+        30,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const GBackButton(),
+              const SizedBox(width: 12),
+              Text('إضافة ابن', style: AppTextStyles.pageTitleSmall),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.berryTint,
+              borderRadius: BorderRadius.circular(AppRadii.smallCard),
+              border: Border.all(color: AppColors.berryBorder, width: 1.5),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'الباقة الشهرية لابن واحد',
+                  style: AppTextStyles.pageTitleSmall.copyWith(
+                    fontSize: 19,
+                    color: AppColors.errorText,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'رقِّ إلى السنوية لتضيف كل أبنائك — بلا حدّ، وعلى نفس الاشتراك.',
+                  style: AppTextStyles.caption.copyWith(
+                    fontSize: 14,
+                    height: 1.8,
+                    color: AppColors.errorText,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                FilledButton(
+                  onPressed: () =>
+                      showPlayConfirmSheet(context, SubscriptionPlan.annual),
+                  child: const Text('الترقية للسنوية'),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
