@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { AVATARS, ChildAvatar } from '../../components/child/ChildAvatar';
 import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage } from '../../components/parent/ParentShell';
 import { BackButton } from '../../components/ui/BackButton';
+import { HomeBar } from '../../components/ui/HomeBar';
+import { LeaveGuard } from '../../components/ui/LeaveGuard';
 import { Button, buttonClass } from '../../components/ui/Button';
 import { C } from '../../components/ui/color';
 import { AlertIcon, ForwardIcon } from '../../components/ui/icons';
@@ -16,6 +18,8 @@ import {
   DayPicker,
   daysCountText,
   DurationChips,
+  ReviewDayPicker,
+  ReviewGlyph,
   TimeStepper,
 } from '../../components/ui/SchedulePickers';
 import { Stepper, StepperWide } from '../../components/ui/Stepper';
@@ -30,6 +34,8 @@ import {
   type Gender,
   type WeekDay,
 } from '../../data/children';
+import { MONTHLY_MAX_CHILDREN } from '../../content/plans';
+import { isSubscribed } from '../../data/parent';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
 import { DESKTOP, useMedia } from '../../lib/useMedia';
@@ -38,6 +44,14 @@ import type { Route } from './+types/children-new';
 export const meta: Route.MetaFunction = () => [{ title: 'إضافة ابن — غَرْسة' }];
 
 const STEPS = ['البيانات', 'الجدول', 'الشخصية'];
+/** Each step is a URL (`?step=`) so the browser back button walks the steps. */
+const STEP_KEYS = ['data', 'schedule', 'avatar'] as const;
+/** Where the flow was opened from — «رجوع» on the first step goes back there. */
+const ORIGINS: Record<string, string> = {
+  children: paths.parent.children,
+  plans: paths.parent.plans,
+  dashboard: paths.parent.dashboard(),
+};
 const AGES = [8, 9, 10, 11, 12, 13] as const;
 
 interface Draft {
@@ -49,17 +63,26 @@ interface Draft {
 }
 
 /**
- * design/v2 AddChild → Schedule (→ ScheduleCustom) → AvatarPicker on phones,
+ * design/v3 AddChild → Schedule (→ ScheduleCustom) → AvatarPicker on phones,
  * ParentWebAddChild on desktop. `?child=<id>` edits an existing child's
- * schedule only («تعديل الجدول» in أبنائي).
+ * schedule only («تعديل الجدول» in أبنائي). `?from=children|plans|dashboard`
+ * is where «رجوع» on the first step returns.
  */
 export default function AddChildRoute() {
   const [params] = useSearchParams();
   const editId = params.get('child');
-  const { children } = useParentData();
+  const { children, subscription } = useParentData();
   const editing = editId ? (children?.find((c) => c.id === editId) ?? null) : null;
-  if (editId && children === null) return <ParentPage tab={null} desktop={<div aria-busy="true" />} />;
+  if (children === null || subscription === undefined) {
+    return <ParentPage tab={null} desktop={<div aria-busy="true" />} />;
+  }
   if (editId && !editing) return <ParentPage tab={null} desktop={<NotFound />} />;
+  // design/v3 PackagesLimit: the monthly plan covers one child (UI-only for now,
+  // see TODO(child-limit) in firestore.rules).
+  const monthly = !!subscription && isSubscribed(subscription) && subscription.plan === 'monthly';
+  if (!editId && monthly && children.length >= MONTHLY_MAX_CHILDREN) {
+    return <Navigate to={`${paths.parent.plans}?limit=1`} replace />;
+  }
   return <Flow key={editId ?? 'new'} editing={editing} />;
 }
 
@@ -74,7 +97,15 @@ function NotFound() {
 function Flow({ editing }: { editing: ChildProfile | null }) {
   const navigate = useNavigate();
   const desktop = useMedia(DESKTOP);
-  const [step, setStep] = useState(editing ? 1 : 0);
+  const [params, setParams] = useSearchParams();
+  const origin = ORIGINS[params.get('from') ?? ''] ?? paths.parent.children;
+  const keyIndex = STEP_KEYS.indexOf((params.get('step') ?? 'data') as (typeof STEP_KEYS)[number]);
+  const step = editing ? 1 : Math.max(0, keyIndex);
+  const setStep = (n: number) => {
+    const next = new URLSearchParams(params);
+    next.set('step', STEP_KEYS[n]!);
+    setParams(next);
+  };
   const [custom, setCustom] = useState(() => Object.keys(editing?.schedule?.custom ?? {}).length > 0);
   const [draft, setDraft] = useState<Draft>(() => ({
     name: editing?.name ?? '',
@@ -83,6 +114,8 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     schedule: editing?.schedule ?? DEFAULT_SCHEDULE,
     avatarId: editing?.avatarId ?? 'g1',
   }));
+  const [initial] = useState(() => JSON.stringify(draft));
+  const dirty = JSON.stringify(draft) !== initial;
   const [nameError, setNameError] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -90,17 +123,21 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
   const set = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));
   const setSchedule = (p: Partial<ChildSchedule>) => set({ schedule: { ...draft.schedule, ...p } });
   const toggleDay = (d: WeekDay) => {
-    const days = draft.schedule.days.includes(d)
-      ? draft.schedule.days.filter((x) => x !== d)
-      : [...draft.schedule.days, d];
-    setSchedule({ days });
+    const off = draft.schedule.days.includes(d);
+    const days = off ? draft.schedule.days.filter((x) => x !== d) : [...draft.schedule.days, d];
+    setSchedule({ days, ...(off && d === draft.schedule.reviewDay ? { reviewDay: undefined } : {}) });
   };
   const pickGender = (g: Gender) => {
     const matches = AVATARS.find((a) => a.id === draft.avatarId)?.girl === (g === 'girl');
     set({ gender: g, avatarId: matches ? draft.avatarId : g === 'girl' ? 'g1' : 'b1' });
   };
 
-  const exit = () => navigate(paths.parent.children);
+  const exit = () => navigate(origin);
+  const pickReview = (d: WeekDay) =>
+    setSchedule({
+      reviewDay: d,
+      days: draft.schedule.days.includes(d) ? draft.schedule.days : [...draft.schedule.days, d],
+    });
 
   const next = async () => {
     setError(null);
@@ -143,6 +180,16 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
           : 'التالي — اختيار الشخصية'
         : 'حفظ وإنشاء رمز الربط';
 
+  // A deep link to a later step of a new child starts at the first step.
+  if (!editing && step > 0 && !draft.name.trim()) {
+    const first = new URLSearchParams(params);
+    first.set('step', 'data');
+    return <Navigate to={`?${first}`} replace />;
+  }
+
+  // Leaving with unsaved input asks first; moving between the steps doesn't.
+  const guard = <LeaveGuard when={dirty && !busy} allow={(n, c) => n.pathname === c.pathname} />;
+
   const errorLine = error && (
     <p role="alert" className="m-0 flex items-center gap-[7px] text-[13px] font-bold text-error-text">
       <AlertIcon />
@@ -158,6 +205,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
         tab="children"
         desktop={
           <div className="flex grow flex-col gap-[24px]">
+            {guard}
             <DesktopHeader
               title={editing ? `جدول ${editing.name}` : 'إضافة ابن'}
               subtitle={
@@ -213,7 +261,13 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                 >
                   <h2 className="m-0 font-heading text-[23px] font-bold">جدول التعلّم</h2>
                   <span className="text-[14px] text-text-muted">أيام الحصص</span>
-                  <DayPicker days={draft.schedule.days} onToggle={toggleDay} wide />
+                  <DayPicker
+                    days={draft.schedule.days}
+                    onToggle={toggleDay}
+                    reviewDay={draft.schedule.reviewDay}
+                    wide
+                  />
+                  <ReviewDaySection draft={draft} onPick={pickReview} />
                   <div className="flex flex-col gap-[8px]">
                     <span className="text-[14px] text-text-muted">وقت الحصة</span>
                     <TimeStepper minutes={draft.schedule.time} onChange={(time) => setSchedule({ time })} />
@@ -273,7 +327,8 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
   }
 
   // ── Phones: AddChild / Schedule / ScheduleCustom / AvatarPicker ──
-  const back = () => (step === 0 || editing ? exit() : setStep(step - 1));
+  const back = () =>
+    step === 0 || editing ? exit() : window.history.length > 1 ? navigate(-1) : setStep(step - 1);
   const title = editing
     ? `جدول ${editing.name}`
     : step === 0
@@ -287,6 +342,8 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
       mobileDecor={false}
       desktop={
         <div className="mx-auto flex w-full max-w-[430px] grow flex-col gap-[18px] pt-[4px]">
+          {guard}
+          <HomeBar />
           <div className="flex items-center gap-[12px]">
             <BackButton
               onClick={back}
@@ -306,7 +363,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
               <AgeField value={draft.age} onChange={(age) => set({ age })} />
               <GenderField value={draft.gender} onChange={pickGender} />
               <Note tone="green" icon={<InfoGreen />}>
-                العمر يحدّد مستوى الحفظ والتمارين المقترحة، ويمكنك تعديله لاحقًا من لوحة التحكم.
+                يمكنك تعديل العمر لاحقًا من لوحة التحكم.
               </Note>
             </>
           )}
@@ -323,8 +380,14 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                     {daysCountText(draft.schedule.days.length)}
                   </span>
                 </div>
-                <DayPicker days={draft.schedule.days} onToggle={toggleDay} />
+                <DayPicker
+                  days={draft.schedule.days}
+                  onToggle={toggleDay}
+                  reviewDay={draft.schedule.reviewDay}
+                />
               </div>
+              {/* design/v3: the picker is on Schedule; ScheduleCustom (custom open) shows the gold note instead. */}
+              {!custom && <ReviewDaySection draft={draft} onPick={pickReview} />}
               <div className="flex flex-col gap-[10px]">
                 <div className="flex items-baseline justify-between gap-[10px]">
                   <span className="text-[14px] font-bold">وقت الحصة</span>
@@ -341,6 +404,11 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                   value={draft.schedule.duration}
                   onChange={(duration) => setSchedule({ duration })}
                 />
+                {custom && draft.schedule.reviewDay && (
+                  <p className="m-0 rounded-px-14 bg-gold-tint px-[13px] py-[11px] text-[12.5px] leading-[1.8] text-warning-text">
+                    اليوم الذهبي هو يوم المراجعة الأسبوعية — تُعدّله من شاشة الجدول.
+                  </p>
+                )}
                 <p className="m-0 text-[12.5px] leading-[1.8] text-text-muted">
                   الحصة تنتهي متى أنهى طفلُك دروس اليوم، دون تجاوز هذه المدة.
                 </p>
@@ -401,6 +469,28 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
         </div>
       }
     />
+  );
+}
+
+/** design/v3 Schedule «يوم المراجعة الأسبوعية». */
+function ReviewDaySection({ draft, onPick }: { draft: Draft; onPick: (d: WeekDay) => void }) {
+  const day = WEEK_DAYS.find((d) => d.id === draft.schedule.reviewDay);
+  return (
+    <div className="flex flex-col gap-[11px]">
+      <div className="flex items-baseline justify-between gap-[10px]">
+        <span className="flex items-center gap-[8px] text-[14px] font-bold">
+          <ReviewGlyph />
+          يوم المراجعة الأسبوعية
+        </span>
+        <span className="text-[12.5px] font-bold text-warning-text">
+          {day ? `حصة واحدة · ${day.label}` : 'اختر يومًا'}
+        </span>
+      </div>
+      <ReviewDayPicker value={draft.schedule.reviewDay} onPick={onPick} />
+      <p className="m-0 text-[12.5px] leading-[1.8] text-text-muted">
+        في هذا اليوم تحلّ حصةُ المراجعة محلّ الدرس الجديد — يعيد طفلك ما حفظه من السور والأحاديث.
+      </p>
+    </div>
   );
 }
 
@@ -657,8 +747,17 @@ function CustomTimes({
           يُستخدم الوقت الافتراضي أعلاه لأي يوم لم تغيّره.
         </p>
         {chosen.map((d) => (
-          <div key={d.id} className="flex items-center gap-[10px] rounded-px-16 bg-surface px-[8px] py-[7px]">
-            <span className="grow ps-[8px] text-[14px] font-bold">{d.label}</span>
+          <div
+            key={d.id}
+            className={cx(
+              'flex items-center gap-[10px] rounded-px-16 border-[1.5px] px-[8px] py-[7px]',
+              d.id === schedule.reviewDay ? 'border-gold-border bg-gold-tint' : 'border-surface bg-surface',
+            )}
+          >
+            <span className="grow ps-[8px] text-[14px] font-bold">
+              {d.label}
+              {d.id === schedule.reviewDay && ' · مراجعة'}
+            </span>
             <button
               type="button"
               onClick={() => bump(d.id)}

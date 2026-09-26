@@ -88,7 +88,7 @@ function Desktop({ kids }: { kids: ChildProfile[] | null }) {
         subtitle={`${childrenCount(n)} على اشتراك واحد · اختر ابنًا لعرض متابعته التفصيلية`}
         action={
           <Link
-            to={paths.parent.addChild}
+            to={paths.parent.addChildFrom('children')}
             className={buttonClass(
               'gold',
               'custom',
@@ -193,7 +193,7 @@ function Desktop({ kids }: { kids: ChildProfile[] | null }) {
           );
         })}
         <Link
-          to={paths.parent.addChild}
+          to={paths.parent.addChildFrom('children')}
           className="flex min-h-[200px] flex-col items-center justify-center gap-[12px] rounded-px-30 border-[2px] border-dashed border-input-border bg-transparent text-deep-green no-underline"
         >
           <span
@@ -273,7 +273,7 @@ function Mobile({
         </article>
       ))}
       <Link
-        to={paths.parent.addChild}
+        to={paths.parent.addChildFrom('children')}
         className="flex h-[62px] items-center justify-center gap-[11px] rounded-px-22 border-[1.5px] border-dashed border-input-border bg-transparent font-heading text-[18px] font-bold text-deep-green no-underline"
       >
         <PlusIcon color="deepGreen" />
@@ -316,11 +316,7 @@ function ChildMenu({
       aria-label={`خيارات ${child.name}`}
       className="absolute top-[62px] left-[16px] z-4 flex w-[214px] animate-[gh-pop-2_.3s_ease-out_both] flex-col gap-[2px] rounded-px-20 border-[1.5px] border-border bg-surface p-[7px] shadow-dark-18-40-14"
     >
-      <Link
-        role="menuitem"
-        to={`${paths.parent.addChild}?child=${encodeURIComponent(child.id)}`}
-        className={cx(item, 'text-text-dark')}
-      >
+      <Link role="menuitem" to={paths.parent.editSchedule(child.id)} className={cx(item, 'text-text-dark')}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <rect x="4" y="5.5" width="16" height="14" rx="3" stroke={C.textMuted} strokeWidth="1.9" />
           <path

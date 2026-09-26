@@ -117,6 +117,9 @@ await t('child: bad custom time rejected', assertFails(setDoc(kidRef(alice, 'ali
 await t('child: bad custom day rejected', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ schedule: schedule({ custom: { someday: 60 } }) }))));
 await t('child: duration 90 rejected', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ schedule: schedule({ duration: 90 }) }))));
 await t('child: extra schedule key rejected', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ schedule: { ...schedule(), x: 1 } }))));
+await t('child: reviewDay on a lesson day ok', assertSucceeds(setDoc(kidRef(alice, 'alice', 'kr'), child({ schedule: schedule({ reviewDay: 'wed' }) }))));
+await t('child: reviewDay not a lesson day rejected', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ schedule: schedule({ reviewDay: 'thu' }) }))));
+await t('child: reviewDay not a weekday rejected', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ schedule: schedule({ reviewDay: 7 }) }))));
 // Server-only fields: pairing (Functions), linkedDeviceUid, stats.
 const exp = { code: '123456', expiresAt: days(1), status: 'active' };
 await t('child: client cannot set pairing on create', assertFails(setDoc(kidRef(alice, 'alice', 'k'), child({ pairing: exp }))));

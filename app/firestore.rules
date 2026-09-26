@@ -55,9 +55,16 @@ service cloud.firestore {
           return !(d in sched.custom)
             || (sched.custom[d] is int && sched.custom[d] >= 0 && sched.custom[d] < 1440);
         }
+        // reviewDay (optional, design/v3 Schedule): the weekly review session's
+        // day — a weekday that is also one of the lesson days.
+        function reviewDayOk(sched) {
+          return !('reviewDay' in sched)
+            || (sched.reviewDay is string && sched.reviewDay in sched.days);
+        }
         function validSchedule(sched) {
           return sched is map
-            && sched.keys().hasOnly(['days', 'time', 'custom', 'duration', 'reminder'])
+            && sched.keys().hasOnly(['days', 'time', 'custom', 'duration', 'reminder', 'reviewDay'])
+            && reviewDayOk(sched)
             && sched.keys().hasAll(['days', 'time', 'custom', 'duration', 'reminder'])
             && sched.days is list && sched.days.size() >= 1 && sched.days.size() <= 7
             && sched.days.hasOnly(['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'])
@@ -78,6 +85,12 @@ service cloud.firestore {
             && validSchedule(ch().schedule);
         }
 
+        // TODO(child-limit): the monthly plan covers ONE child (design/v3
+        // PackagesLimit). Today only the web and Flutter add-child flows block a
+        // second child. Enforcement comes later: a server-written
+        // parents/{uid}.childCount (onCreate/onDelete triggers on children,
+        // Admin SDK) and `create` requiring childCount < maxChildren.
+        // See docs/DATA_MODEL.md.
         allow read: if isOwner(uid);
         // The child's own linked device (session written by claimPairingCode)
         // may read this one document — never list, never write.

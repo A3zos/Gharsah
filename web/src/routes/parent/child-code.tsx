@@ -4,7 +4,8 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { paths } from '../../app/paths';
 import { useParentData } from '../../components/parent/ParentData';
 import { ParentPage } from '../../components/parent/ParentShell';
-import { BackButton } from '../../components/ui/BackButton';
+import { HomeBar } from '../../components/ui/HomeBar';
+import { Toast } from '../../components/ui/Toast';
 import { Button, buttonClass } from '../../components/ui/Button';
 import { C } from '../../components/ui/color';
 import { AlertIcon, ForwardIcon } from '../../components/ui/icons';
@@ -89,16 +90,24 @@ function CodeView({ child }: { child: ChildProfile }) {
     try {
       await navigator.clipboard.writeText(code);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 2200);
     } catch {
       setError('تعذّر النسخ — انسخ الرمز يدويًا.');
     }
   };
+  /** Web Share API where available; otherwise copy (with the «تم النسخ» toast). */
   const share = async () => {
     if (!code) return;
     const text = `رمز دخول ${child.name} في غَرْسة: ${code}`;
-    if (navigator.share) await navigator.share({ text }).catch(() => {});
-    else void copy();
+    if (navigator.share) {
+      try {
+        await navigator.share({ text });
+        return;
+      } catch (e) {
+        if ((e as DOMException).name === 'AbortError') return; // the parent closed the share sheet
+      }
+    }
+    await copy();
   };
 
   if (confirmOpen) {
@@ -119,9 +128,8 @@ function CodeView({ child }: { child: ChildProfile }) {
   return (
     <div className="relative flex grow flex-col items-center gap-[20px] px-[4px] pt-[18px] pb-[4px]">
       <Blob className="-top-[196px] -right-[160px] h-[400px] w-[400px] bg-blob-green-strong" />
-      <div className="z-1 flex w-full">
-        <BackButton to={paths.parent.children} small />
-      </div>
+      <HomeBar className="z-1" />
+      <Toast message={copied ? 'تم النسخ' : null} />
       <div className="relative z-1 animate-[gh-pop-4_0.6s_ease_both]">
         <svg width="104" height="104" viewBox="0 0 76 76" fill="none" aria-hidden="true">
           <circle cx="38" cy="38" r="36" fill={C.greenTint} />
@@ -198,7 +206,7 @@ function CodeView({ child }: { child: ChildProfile }) {
                 strokeLinecap="round"
               />
             </svg>
-            <span aria-live="polite">{copied ? 'نُسخ' : 'انسخ'}</span>
+            انسخ
           </button>
           <button
             type="button"
@@ -282,7 +290,7 @@ function CodeView({ child }: { child: ChildProfile }) {
             إصدار رمز جديد
           </button>
           <Link
-            to={paths.parent.addChild}
+            to={paths.parent.addChildFrom('children')}
             className="flex h-[50px] grow basis-0 items-center justify-center rounded-px-18 bg-transparent text-[14.5px] font-extrabold text-deep-green no-underline"
           >
             إضافة ابن آخر

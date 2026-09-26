@@ -43,15 +43,18 @@ export interface ChildSchedule {
   custom: Partial<Record<WeekDay, number>>;
   duration: (typeof DURATIONS)[number];
   reminder: boolean;
+  /** design/v3: the weekly review session's day — one of `days` (optional). */
+  reviewDay?: WeekDay;
 }
 
-/** Design defaults: سبت، أحد، إثنين، أربعاء · ٥:٠٠ مساءً · ٤٥ دقيقة. */
+/** design/v3 defaults: سبت، أحد، إثنين، أربعاء، خميس (مراجعة الخميس) · ٥:٠٠ مساءً · ٤٥ دقيقة. */
 export const DEFAULT_SCHEDULE: ChildSchedule = {
-  days: ['sat', 'sun', 'mon', 'wed'],
+  days: ['sat', 'sun', 'mon', 'wed', 'thu'],
   time: 17 * 60,
   custom: {},
   duration: 45,
   reminder: true,
+  reviewDay: 'thu',
 };
 
 export interface ChildDraft {
@@ -105,6 +108,9 @@ function parseSchedule(m: unknown): ChildSchedule | null {
     custom,
     duration,
     reminder: s.reminder !== false,
+    ...(typeof s.reviewDay === 'string' && days.includes(s.reviewDay as WeekDay)
+      ? { reviewDay: s.reviewDay as WeekDay }
+      : {}),
   };
 }
 
@@ -136,6 +142,8 @@ export function scheduleToMap(s: ChildSchedule) {
     custom: Object.fromEntries(Object.entries(s.custom).filter(([d]) => s.days.includes(d as WeekDay))),
     duration: s.duration,
     reminder: s.reminder,
+    // Only a review day that is still a lesson day (rules: reviewDay ∈ days).
+    ...(s.reviewDay && s.days.includes(s.reviewDay) ? { reviewDay: s.reviewDay } : {}),
   };
 }
 

@@ -29,11 +29,14 @@ export function DayPicker({
   onToggle,
   wide,
   disabled,
+  reviewDay,
 }: {
   days: WeekDay[];
   onToggle: (d: WeekDay) => void;
   wide?: boolean;
   disabled?: boolean;
+  /** design/v3: the review day wears a gold ring. */
+  reviewDay?: WeekDay;
 }) {
   return (
     <div
@@ -43,12 +46,13 @@ export function DayPicker({
     >
       {WEEK_DAYS.map((d) => {
         const on = days.includes(d.id);
+        const review = d.id === reviewDay;
         return (
           <button
             key={d.id}
             type="button"
             disabled={disabled}
-            aria-label={d.label}
+            aria-label={review ? `${d.label} — يوم المراجعة` : d.label}
             aria-pressed={on}
             onClick={() => onToggle(d.id)}
             className={cx(
@@ -56,8 +60,11 @@ export function DayPicker({
               wide ? 'h-[58px] w-[58px] text-[15px] font-extrabold' : 'h-[46px] w-[46px] gap-[1px]',
               on
                 ? wide
-                  ? 'border-0 bg-primary text-surface'
-                  : 'border-[2px] border-deep-green bg-deep-green text-surface'
+                  ? cx('bg-primary text-surface', review ? 'border-[2.5px] border-gold' : 'border-0')
+                  : cx(
+                      'bg-deep-green text-surface',
+                      review ? 'border-[2.5px] border-gold' : 'border-[2px] border-deep-green',
+                    )
                 : wide
                   ? 'border-[1.5px] border-input-border bg-surface text-text-subtle'
                   : 'border-[1.5px] border-input-border bg-surface text-text-dark',
@@ -81,6 +88,74 @@ export function DayPicker({
                 <span className="text-[10.5px] leading-[1.2] font-bold">{d.short}</span>
               </>
             )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ReviewGlyph({
+  size = 18,
+  color = 'ayahBracket',
+}: {
+  size?: number;
+  color?: 'ayahBracket' | 'onGold';
+}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M20 12 C20 16.4 16.4 20 12 20 C7.6 20 4 16.4 4 12 C4 7.6 7.6 4 12 4 C14.9 4 17.4 5.4 18.9 7.6"
+        stroke={C[color]}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M19.6 4 V8.2 H15.4"
+        stroke={C[color]}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/**
+ * design/v3 Schedule «يوم المراجعة الأسبوعية»: one gold day. Picking a day that
+ * isn't a lesson day adds it to the lesson days (the review replaces that day's lesson).
+ */
+export function ReviewDayPicker({ value, onPick }: { value?: WeekDay; onPick: (d: WeekDay) => void }) {
+  return (
+    <div role="radiogroup" aria-label="يوم المراجعة الأسبوعية" className="flex justify-between gap-[4px]">
+      {WEEK_DAYS.map((d) => {
+        const on = d.id === value;
+        return (
+          <button
+            key={d.id}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            aria-label={`اجعل المراجعة يوم ${d.label}`}
+            onClick={() => onPick(d.id)}
+            className={cx(
+              'flex h-[46px] w-[46px] shrink-0 flex-col items-center justify-center gap-[1px] rounded-full p-0 font-body',
+              on
+                ? 'border-[2.5px] border-gold bg-gold text-on-gold'
+                : 'border-[1.5px] border-input-border bg-surface text-text-muted',
+            )}
+          >
+            {on && (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M20 12 C20 16 16.4 19.5 12 19.5 C7.6 19.5 4 16 4 12 C4 8 7.6 4.5 12 4.5 C14.9 4.5 17.4 5.9 18.9 8.1"
+                  stroke={C.onGold}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+            <span className="text-[10.5px] leading-[1.2] font-bold">{d.short}</span>
           </button>
         );
       })}
