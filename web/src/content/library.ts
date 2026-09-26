@@ -27,6 +27,15 @@ const VALUES = new Map([ikhlas, day2].map((j) => [j.lessonId, (j as { value?: st
 /** The lesson's value («برّ الوالدين»), from the lesson JSON. */
 export const lessonValue = (lessonId: string): string => VALUES.get(lessonId) ?? '';
 
+/** The value («برّ الوالدين») of the lesson that assigns `projectId`. */
+export function projectValue(projectId: string): string {
+  for (const [id, s] of lessonScripts) {
+    if (s.steps.some((st) => st.type === 'project_assign' && st.projectId === projectId))
+      return lessonValue(id);
+  }
+  return '';
+}
+
 /** «سورة الإخلاص» / hadith title chips of a lesson (frame 17 hero). */
 export function lessonChips(s: LessonScript): { label: string; kind: 'surah' | 'hadith' | 'report' }[] {
   const chips: { label: string; kind: 'surah' | 'hadith' | 'report' }[] = [];

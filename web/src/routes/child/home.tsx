@@ -3,11 +3,13 @@ import { Link } from 'react-router';
 import { paths } from '../../app/paths';
 import { ChildAvatar } from '../../components/child/ChildAvatar';
 import { useChildData } from '../../components/child/ChildData';
-import { ChildPage, PersonGlyph } from '../../components/child/ChildShell';
+import { ChildPage, PersonGlyph, ReviewTabGlyph } from '../../components/child/ChildShell';
 import { C } from '../../components/ui/color';
 import { ForwardIcon } from '../../components/ui/icons';
 import { HadithIcon, ProjectIcon, QuranIcon } from '../../components/child/childIcons';
 import { lessonChips, lessonScripts, lessonValue } from '../../content/library';
+import { reviewItems } from '../../content/review';
+import { WEEK_DAYS } from '../../data/children';
 import { headline, STAGE_LABEL } from '../../data/stats';
 import {
   buildBoard,
@@ -23,7 +25,7 @@ import type { Route } from './+types/home';
 
 export const meta: Route.MetaFunction = () => [{ title: 'الرئيسية — غَرْسة' }];
 
-/** design/v2 StudentHome (+ StudentHomeDay2 when today's lesson starts with the project report). */
+/** design/v3 StudentHome (+ StudentHomeDay2 when today's lesson starts with the project report). */
 export default function ChildHome() {
   const { child, progress, board } = useChildData();
   if (child === undefined || progress === undefined || !child) {
@@ -49,6 +51,10 @@ export default function ChildHome() {
   const reportFirst = script?.steps[0]?.type === 'project_report';
   const { rows, note } = buildBoard(board, child.leader, `${firstName} — أنت`);
   const left = daysUntilReset();
+  const reviewDay = WEEK_DAYS.find((d) => d.id === child.schedule?.reviewDay)?.label;
+  const reviewLine = reviewItems(child, progress)
+    .map((i) => i.label)
+    .join(' · ');
 
   const badge = finished
     ? 'أكملت حصة اليوم'
@@ -232,6 +238,25 @@ export default function ChildHome() {
         )}
       </section>
 
+      <Link
+        to={paths.child.weeklyReview}
+        className="flex shrink-0 items-center gap-[13px] rounded-px-26 border-[1.5px] border-gold-border bg-gold-tint px-[18px] py-[16px] text-on-gold no-underline hover:text-on-gold"
+      >
+        <span
+          className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-px-17 bg-surface"
+          aria-hidden="true"
+        >
+          <ReviewTabGlyph color="ayahBracket" size={24} strokeWidth={2} />
+        </span>
+        <span className="flex min-w-0 grow flex-col gap-[4px]">
+          <span className="text-[15.5px] font-extrabold">
+            {reviewDay ? `مراجعة هذا الأسبوع — ${reviewDay}` : 'مراجعة هذا الأسبوع'}
+          </span>
+          {reviewLine && <span className="text-[12.5px] text-warning-text">{reviewLine}</span>}
+        </span>
+        <ForwardIcon size={20} color="ayahBracket" strokeWidth={2.3} />
+      </Link>
+
       <section
         aria-labelledby="browse-title"
         className="flex shrink-0 animate-[gh-rise_.5s_ease-out_.45s_both] flex-col gap-[11px]"
@@ -259,6 +284,31 @@ export default function ChildHome() {
           >
             {`${toArabicDigits(h.projects)} منجزة`}
           </Shortcut>
+          <div className="col-span-3 flex items-center gap-[12px] rounded-px-22 border-[1.5px] border-dashed border-border-strong px-[16px] py-[14px]">
+            <span
+              className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-px-14 bg-border-soft"
+              aria-hidden="true"
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+                <rect x="5" y="10.5" width="14" height="9.5" rx="3" stroke={C.textSubtle} strokeWidth="2" />
+                <path
+                  d="M8.5 10.5 V8 C8.5 6 10 4.5 12 4.5 C14 4.5 15.5 6 15.5 8 V10.5"
+                  stroke={C.textSubtle}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+            <span className="flex grow flex-col gap-[3px]">
+              <span className="text-[14.5px] font-extrabold text-text-subtle">بقية خطة السنة</span>
+              <span className="text-[12px] text-text-subtle">
+                ٣ سور و٣ أحاديث متاحة الآن — والبقية تُفتح في التحديث القادم
+              </span>
+            </span>
+            <span className="rounded-pill bg-border-soft px-[11px] py-[6px] text-[11.5px] font-extrabold whitespace-nowrap text-text-muted">
+              قريبًا
+            </span>
+          </div>
         </div>
       </section>
     </ChildPage>

@@ -19,6 +19,35 @@ export function HomeGlyph({ color, strokeWidth = 2.3 }: { color: ColorName; stro
   );
 }
 
+export function ReviewTabGlyph({
+  color,
+  size = 26,
+  strokeWidth = 2.1,
+}: {
+  color: ColorName;
+  size?: number;
+  strokeWidth?: number;
+}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M20 12 C20 16.4 16.4 20 12 20 C7.6 20 4 16.4 4 12 C4 7.6 7.6 4 12 4 C14.9 4 17.4 5.4 18.9 7.6"
+        stroke={C[color]}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+      />
+      <path
+        d="M19.6 4 V8.2 H15.4"
+        stroke={C[color]}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M12 8.6 V12 L14.6 13.6" stroke={C[color]} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function PersonGlyph({
   color,
   size = 26,
@@ -47,7 +76,7 @@ export function ChildPage({
   blob = 'home',
   className,
 }: {
-  tab: 'home' | 'profile';
+  tab: 'home' | 'review' | 'profile';
   children: React.ReactNode;
   blob?: 'home' | 'page';
   className?: string;
@@ -69,15 +98,21 @@ export function ChildPage({
       >
         {children}
       </main>
+      {/* design/v3: الرئيسية / المراجعة / ملفّي, at the parent bar's sizes. */}
       <BottomNav
-        child
         label="تطبيق الطفل"
         items={[
           {
             to: paths.child.home,
             label: 'الرئيسية',
             active: tab === 'home',
-            icon: (c) => <HomeGlyph color={c} />,
+            icon: (c) => <HomeGlyph color={c} strokeWidth={2.2} />,
+          },
+          {
+            to: paths.child.weeklyReview,
+            label: 'المراجعة',
+            active: tab === 'review',
+            icon: (c) => <ReviewTabGlyph color={c} />,
           },
           {
             to: paths.child.profile,

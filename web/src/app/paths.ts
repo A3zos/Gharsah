@@ -35,6 +35,7 @@ export const paths = {
     root: '/child',
     home: '/child/home',
     profile: '/child/profile',
+    weeklyReview: '/child/weekly-review',
     review: (kind: 'quran' | 'hadith' | 'projects') => `/child/review/${kind}`,
     lesson: (lessonId: string) => `/child/lesson/${encodeURIComponent(lessonId)}`,
   },
