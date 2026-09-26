@@ -577,6 +577,8 @@ export class LessonAgent {
       },
     );
     await this.teacher.stopSpeaking(); // the teacher is silent while the reciter plays
+    // The call may have moved on (ended, disposed, another step) while the teacher stopped.
+    if (g !== this.gen || this.disposed) return;
     let audio: RecitationAudio;
     try {
       audio = isHadith

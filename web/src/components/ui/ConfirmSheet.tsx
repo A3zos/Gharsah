@@ -17,6 +17,7 @@ export function ConfirmSheet({
   busy,
   onConfirm,
   onCancel,
+  onDismiss = onCancel,
   children,
   footnote,
 }: {
@@ -30,6 +31,8 @@ export function ConfirmSheet({
   busy?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Escape / scrim tap (defaults to onCancel; ExitConfirm dismisses to «أكمل الحصة»). */
+  onDismiss?: () => void;
   children?: React.ReactNode;
   footnote?: string;
 }) {
@@ -43,7 +46,7 @@ export function ConfirmSheet({
     lastFocus.current = document.activeElement as HTMLElement | null;
     sheet.current?.querySelector<HTMLElement>('button')?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
+      if (e.key === 'Escape') onDismiss();
       if (e.key !== 'Tab' || !sheet.current) return;
       const f = [...sheet.current.querySelectorAll<HTMLElement>('button, a[href]')];
       if (!f.length) return;
@@ -62,16 +65,16 @@ export function ConfirmSheet({
       document.removeEventListener('keydown', onKey);
       lastFocus.current?.focus?.();
     };
-  }, [open, onCancel]);
+  }, [open, onDismiss]);
 
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" role="presentation">
       <button
         type="button"
-        aria-label={cancelLabel}
+        aria-hidden="true"
         tabIndex={-1}
-        onClick={onCancel}
+        onClick={onDismiss}
         className="absolute inset-0 animate-[gh-fade_.3s_ease-out_both] border-0 bg-lesson-scrim"
       />
       <div

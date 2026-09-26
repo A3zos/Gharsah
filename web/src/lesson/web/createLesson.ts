@@ -1,0 +1,133 @@
+// Wires a LessonAgent for the browser: verified local content, the reciter audio
+// (bundled, or downloaded once + sha256-checked into Cache Storage), the interim
+// speech teacher, the WAV project recorder and the Firestore progress sink.
+import manifestJson from '@content/audio/quran/manifest.json';
+import textJson from '@content/quran/quran_text.json';
+
+import { hadithRepo, projectRepo, quranMeta } from '../../content/library';
+import type { ChildRef } from '../../data/student';
+import { LessonAgent, type LessonContent } from '../agent';
+import { QuranAudioRepository, RecitationManifest, type AudioCacheStore } from '../audioRepository';
+import { QuranText } from '../quran';
+import type { LessonScript } from '../script';
+import type { LessonProgress } from '../state';
+import { LessonMicrophone } from './microphone';
+import { FirestoreProgressSink } from './progressSink';
+import { HtmlRecitationPlayer } from './recitationPlayer';
+import { WavProjectRecorder } from './recorder';
+import { SpeechTeacher } from './speechTeacher';
+
+const CACHE_NAME = 'gharsah-quran-audio-v1';
+const cacheKey = (name: string) => `/__quran-audio-cache/${name}`;
+
+/** Downloaded reciter audio in Cache Storage; players get object URLs. */
+export class CacheStorageAudioStore implements AudioCacheStore {
+  private readonly urls = new Map<string, string>();
+
+  private open(): Promise<Cache> {
+    if (typeof caches === 'undefined') return Promise.reject(new Error('Cache Storage unavailable'));
+    return caches.open(CACHE_NAME);
+  }
+
+  async read(name: string): Promise<Uint8Array | null> {
+    const hit = await (await this.open()).match(cacheKey(name));
+    return hit ? new Uint8Array(await hit.arrayBuffer()) : null;
+  }
+
+  async write(name: string, bytes: Uint8Array): Promise<void> {
+    await (await this.open()).put(cacheKey(name), new Response(bytes.slice().buffer));
+    this.revoke(name);
+  }
+
+  async delete(name: string): Promise<void> {
+    await (await this.open()).delete(cacheKey(name));
+    this.revoke(name);
+  }
+
+  async pathFor(name: string): Promise<string> {
+    const known = this.urls.get(name);
+    if (known) return known;
+    const bytes = await this.read(name);
+    if (!bytes) throw new Error(`Not cached: ${name}`);
+    const url = URL.createObjectURL(new Blob([bytes.slice().buffer], { type: 'audio/mpeg' }));
+    this.urls.set(name, url);
+    return url;
+  }
+
+  dispose(): void {
+    for (const name of [...this.urls.keys()]) this.revoke(name);
+  }
+
+  private revoke(name: string): void {
+    const url = this.urls.get(name);
+    if (url) URL.revokeObjectURL(url);
+    this.urls.delete(name);
+  }
+}
+
+export async function browserSha256(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', bytes.slice().buffer);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function fetchBytes(url: string): Promise<Uint8Array> {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return new Uint8Array(await r.arrayBuffer());
+}
+
+export interface WebLesson {
+  agent: LessonAgent;
+  /** Where the lesson resumes from (pass to agent.start). */
+  progressFrom: LessonProgress | undefined;
+  dispose(): Promise<void>;
+}
+
+export function createWebLesson(o: {
+  script: LessonScript;
+  session: ChildRef;
+  childFirstName: string;
+  progressFrom?: LessonProgress;
+}): WebLesson {
+  const cache = new CacheStorageAudioStore();
+  const content: LessonContent = {
+    meta: quranMeta,
+    text: QuranText.fromJson(textJson),
+    audio: new QuranAudioRepository({
+      meta: quranMeta,
+      manifest: RecitationManifest.fromJson(manifestJson),
+      cache,
+      fetch: fetchBytes,
+      sha256: browserSha256,
+    }),
+    hadith: hadithRepo,
+    projects: projectRepo,
+  };
+  const mic = new LessonMicrophone();
+  const player = new HtmlRecitationPlayer('/');
+  const teacher = new SpeechTeacher(mic);
+  const recorder = new WavProjectRecorder(mic);
+  const agent = new LessonAgent({
+    script: o.script,
+    content,
+    teacher,
+    player,
+    recorder,
+    sink: new FirestoreProgressSink(o.session, o.script.lessonId),
+    childFirstName: o.childFirstName,
+    debugTapCountsRepeat: import.meta.env.DEV,
+  });
+  let disposed = false;
+  return {
+    agent,
+    progressFrom: o.progressFrom,
+    async dispose() {
+      if (disposed) return;
+      disposed = true;
+      await agent.dispose().catch(() => {});
+      await Promise.all([teacher.dispose(), recorder.dispose(), player.dispose()]).catch(() => {});
+      mic.close();
+      cache.dispose();
+    },
+  };
+}
