@@ -95,8 +95,7 @@ async function stubAnonymousSignIn(page: Page, disabled = false) {
 }
 
 const CALLABLE = '**/claimPairingCode';
-const enterCode = (page: Page) =>
-  page.getByLabel('الخانة الأولى من رمز الربط').pressSequentially('123456');
+const enterCode = (page: Page) => page.getByLabel('الخانة الأولى من رمز الربط').pressSequentially('123456');
 
 test('child login: page fits, one back control, «أهلًا يا بطل!», «رمز الربط»', async ({ page }) => {
   await page.goto('/login?role=child');
