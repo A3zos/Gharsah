@@ -7,9 +7,17 @@
 # Logs
 *.log
 
-# Secrets — never commit
+# Secrets — never commit (only the *.example templates are tracked)
 .env
 .env.*
+!.env.example
+# Flutter --dart-define-from-file values
+app/env/*.json
+!app/env/*.example.json
+# Supabase local state
+supabase/.temp/
+supabase/.branches/
+supabase/functions/.env
 *service-account*.json
 *serviceAccount*.json
 *-firebase-adminsdk-*.json
