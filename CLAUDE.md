@@ -82,7 +82,8 @@ content is the top judging criterion.**
    = a clearly-marked placeholder «[نص حديث برّ الوالدين — يُعتمد لاحقًا من مصدر موثّق مع التخريج]»
    until a real vetted source is added. Surah info (مكية/مدنية, ayah count, سبب النزول) from a
    verified source, not free generation.
-2. **Child data privacy (Designed for Families):** parental gate before parent areas; declare audio
+2. **Child data privacy (Designed for Families):** parental gate before parent areas = the parent's
+   email + password login (no separate spelled-number gate; PO decision, review notes B3); declare audio
    + progress in Play Data Safety; prefer on-device processing; store child audio securely and delete
    when no longer needed; child gives no personal data (enters only a code).
 3. **Payment only via Google Play Billing.**
@@ -179,7 +180,7 @@ gold brackets + reference, no visible play button, card tappable as silent fallb
 - **Phase D — student flow** screens (the live lesson), with the verified Quran asset, Arabic TTS,
   and on-device speech-presence counting.
 - **Phase E — polish, error/edge states** (wrong code, no mic permission, offline, autoplay
-  blocked, expired subscription, multiple children), Play Data Safety + parental gate.
+  blocked, expired subscription, multiple children), Play Data Safety + parental gate (the password login).
 
 Build **one screen at a time**, run it, and confirm before moving on.
 

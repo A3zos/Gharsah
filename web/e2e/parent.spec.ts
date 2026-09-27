@@ -2,23 +2,8 @@ import { expect, test } from '@playwright/test';
 
 import { getDoc, loginParent, seedParent } from './emu';
 
-// Web Phase 3 — the parent area on the emulators: gate, «أبنائي», add child →
+// Web Phase 3 — the parent area on the emulators: «أبنائي», add child →
 // server-issued pairing code, new code, settings. Run with `npm run e2e:emu`.
-
-test('parental gate: the number written in words opens the parent area', async ({ page }) => {
-  const p = await seedParent();
-  await loginParent(page, p.email, p.password, { gate: false });
-  await expect(page.getByRole('heading', { name: 'هذه المنطقة لوليّ الأمر' })).toBeVisible();
-  const words = (await page.locator('.font-heading.text-\\[30px\\]').textContent())!.trim();
-  const units = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة'];
-  const tens = ['', '', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
-  const [u, t] = words.split(' و');
-  const n = tens.indexOf(t!) * 10 + units.indexOf(u!);
-  const ar = '٠١٢٣٤٥٦٧٨٩';
-  for (const d of String(n)) await page.getByRole('button', { name: ar[Number(d)], exact: true }).click();
-  await page.getByRole('button', { name: 'تأكيد' }).click();
-  await expect(page.getByRole('heading', { name: 'هذه المنطقة لوليّ الأمر' })).toBeHidden();
-});
 
 test('add a child → the server issues a pairing code → new code revokes it', async ({ page }) => {
   const p = await seedParent();

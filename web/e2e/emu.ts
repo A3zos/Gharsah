@@ -106,12 +106,48 @@ export interface SeedChild {
   extra?: Record<string, unknown>;
 }
 
-/** Signs a parent in through the login form (the parental gate pre-passed for this tab). */
-export async function loginParent(page: Page, email: string, password: string, { gate = true } = {}) {
-  if (gate) await page.addInitScript(() => sessionStorage.setItem('gh.parentGate', '1'));
+/** Signs a parent in through the login form. */
+export async function loginParent(page: Page, email: string, password: string) {
   await page.goto('/login?tab=parent');
   await page.locator('#login-email').fill(email);
   await page.locator('#login-pass').fill(password);
   await page.getByRole('button', { name: 'تسجيل الدخول' }).click();
   await page.waitForURL(/\/parent/);
+}
+
+/** A fresh parent + child, a server pairing code, then the child tab claims it → /child/home. */
+export async function pairChild(page: Page, opts: { reviewDays?: string[] } = {}) {
+  const childId = `c${Date.now()}${Math.floor(Math.random() * 1e4)}`;
+  const { uid } = await seedParent({ children: [{ id: childId, name: 'عبدالله محمد' }] });
+  const code = String(Math.floor(100000 + Math.random() * 899999));
+  const now = Date.now();
+  await setDoc(`pairingCodes/${code}`, {
+    parentUid: uid,
+    childId,
+    createdAt: new Date(now),
+    expiresAt: new Date(now + DAY),
+    status: 'active',
+  });
+  await setDoc(`parents/${uid}/children/${childId}`, {
+    name: 'عبدالله محمد',
+    age: 10,
+    gender: 'boy',
+    avatar: 'b1',
+    schedule: {
+      days: ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'],
+      time: 1020,
+      custom: {},
+      duration: 45,
+      reminder: true,
+      ...(opts.reviewDays ? { reviewDays: opts.reviewDays } : {}),
+    },
+    ownerUid: uid,
+    createdAt: new Date(now - 1000),
+    pairing: { code, expiresAt: new Date(now + DAY), status: 'active' },
+  });
+  await page.goto('/login?role=child');
+  await page.getByLabel('الخانة الأولى من رمز الربط').pressSequentially(code);
+  // Six digits verify on their own (auto-submit) → child home.
+  await page.waitForURL(/\/child\/home/);
+  return { uid, childId };
 }

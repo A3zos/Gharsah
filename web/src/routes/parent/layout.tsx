@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router';
 
 import { paths } from '../../app/paths';
-import { ParentalGate } from '../../components/parent/ParentalGate';
 import { ParentDataProvider } from '../../components/parent/ParentData';
 import { SSessionEnd } from '../../components/states/SSessionEnd';
 import { signOut } from '../../data/auth';
@@ -52,10 +51,10 @@ export default function ParentLayout({ loaderData }: Route.ComponentProps) {
     );
   }
   return (
-    <ParentalGate>
-      <ParentDataProvider uid={loaderData.uid} email={loaderData.email}>
-        <Outlet />
-      </ParentDataProvider>
-    </ParentalGate>
+    // No separate parental gate: the parent area already requires the parent's
+    // email + password (review notes B3; CLAUDE.md §3.2).
+    <ParentDataProvider uid={loaderData.uid} email={loaderData.email}>
+      <Outlet />
+    </ParentDataProvider>
   );
 }

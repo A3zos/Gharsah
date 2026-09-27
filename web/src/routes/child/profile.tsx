@@ -202,8 +202,9 @@ export default function ChildProfileRoute() {
         </ul>
       </section>
 
+      {/* Opens the parent login in this browser (password = the gate). */}
       <Link
-        to={paths.login}
+        to={paths.loginTo('parent')}
         className="mt-auto flex h-[48px] items-center justify-center gap-[9px] self-center rounded-px-16 border-[1.5px] border-input-border bg-transparent px-[20px] text-[14px] font-bold text-text-muted no-underline hover:text-text-muted"
       >
         <Lock color="textMuted" size={18} />
