@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "react-router dev",
     "build": "react-router build",
-    "build:e2e": "react-router build --mode e2e",
+    "build:e2e": "cross-env VITE_SUPABASE_URL=https://e2e-placeholder.supabase.co VITE_SUPABASE_ANON_KEY=e2e-placeholder-anon-key VITE_TRIAL_SUBSCRIBE=1 react-router build",
     "preview": "vite preview --outDir build/client",
     "typecheck": "react-router typegen && tsc --noEmit",
     "lint": "eslint . && prettier --check .",

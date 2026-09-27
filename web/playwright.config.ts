@@ -32,10 +32,10 @@ export default defineConfig({
     { name: 'desktop-1280', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
   ],
   webServer: {
-    // Built with the placeholder .env.e2e (stubbed network), then served like Pages will.
+    // Built with placeholder Supabase values (stubbed network — see build:e2e), then served like Pages will.
     command: `npm run build:e2e && npm run preview -- --port ${PORT} --strictPort`,
     port: PORT,
-    // Always rebuild with .env.e2e: a reused server could be serving a build without it.
+    // Always rebuild for e2e: a reused server could be serving a build without the placeholders.
     reuseExistingServer: false,
     timeout: 240_000,
   },
