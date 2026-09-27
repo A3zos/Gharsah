@@ -1,30 +1,26 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gharsah/features/student/data/child_session.dart';
 
-// Review notes A2 — same mapping as web/src/data/childSession.test.ts.
+// Review notes A2 — same mapping as web/src/data/childSession.test.ts
+// (Supabase edge function codes).
 void main() {
-  test('wrong or expired code', () {
-    expect(claimErrorOf('not-found', 'wrong-code'), ClaimError.wrong);
-    expect(claimErrorOf('invalid-argument', 'bad-code'), ClaimError.wrong);
+  test('a wrong, expired, used or malformed code', () {
+    expect(claimErrorOf('wrong-code'), ClaimError.wrong);
+    expect(claimErrorOf('bad-code'), ClaimError.wrong);
   });
-  test('callable not reachable (not deployed) is unavailable, not wrong', () {
-    expect(claimErrorOf('not-found', 'NOT_FOUND'), ClaimError.unavailable);
-  });
-  test('anonymous auth disabled / internal / unavailable', () {
-    expect(
-      claimErrorOf('admin-restricted-operation', null),
-      ClaimError.unavailable,
-    );
-    expect(claimErrorOf('internal', 'INTERNAL'), ClaimError.unavailable);
-    expect(claimErrorOf('unavailable', null), ClaimError.unavailable);
-  });
-  test('network', () {
-    expect(claimErrorOf('network-request-failed', null), ClaimError.offline);
+  test(
+    'function not reachable / anonymous sign-ins off / internal → unavailable',
+    () {
+      expect(claimErrorOf('unavailable'), ClaimError.unavailable);
+      expect(claimErrorOf('internal'), ClaimError.unavailable);
+      expect(claimErrorOf('unauthenticated'), ClaimError.unavailable);
+    },
+  );
+  test('network problems → offline', () {
+    expect(claimErrorOf('network'), ClaimError.offline);
+    expect(claimErrorOf('internal', online: false), ClaimError.offline);
   });
   test('too many attempts', () {
-    expect(
-      claimErrorOf('resource-exhausted', 'too-many-attempts'),
-      ClaimError.tooManyAttempts,
-    );
+    expect(claimErrorOf('too-many-attempts'), ClaimError.tooManyAttempts);
   });
 }

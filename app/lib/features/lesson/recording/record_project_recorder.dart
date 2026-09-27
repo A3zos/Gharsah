@@ -20,6 +20,11 @@ class RecordProjectRecorder implements ProjectRecorder {
 
   static const minDuration = Duration(seconds: 1);
 
+  /// The project report must fit the 2 MB `recordings` bucket: AAC 64 kbps
+  /// (mobile) and 8 kHz 16-bit WAV (web) both stay under it for 120 s.
+  static const maxDuration = Duration(seconds: 120);
+  static const _webSampleRate = 8000;
+
   final AudioRecorder _rec;
   final _level = StreamController<double>.broadcast();
   StreamSubscription<Amplitude>? _amp;
@@ -35,7 +40,7 @@ class RecordProjectRecorder implements ProjectRecorder {
       final stream = await _rec.startStream(
         const RecordConfig(
           encoder: AudioEncoder.pcm16bits,
-          sampleRate: 16000,
+          sampleRate: _webSampleRate,
           numChannels: 1,
         ),
       );
@@ -86,7 +91,7 @@ class RecordProjectRecorder implements ProjectRecorder {
       _webPcm = null;
       audio = RecordedAudio(
         duration: duration,
-        bytes: pcm16ToWav(_webBytes.takeBytes(), sampleRate: 16000),
+        bytes: pcm16ToWav(_webBytes.takeBytes(), sampleRate: _webSampleRate),
       );
     } else {
       if (path == null) return null;

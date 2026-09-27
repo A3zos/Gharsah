@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gharsah/core/time_format.dart';
 import 'package:gharsah/features/auth/data/pairing_repository.dart';
@@ -9,23 +8,30 @@ import '../lesson/fakes.dart';
 
 void main() {
   final content = realContent();
-  final t = Timestamp.fromDate(DateTime(2026, 1, 1, 12));
+  // Dates arrive as ISO strings from child_stats / Postgres.
+  final when = DateTime(2026, 1, 1, 12);
+  final t = when.toUtc().toIso8601String();
 
   ChildProfile child(Map<String, dynamic>? stats, {DateTime? created}) =>
-      ChildProfile.fromDoc('c1', {
-        'name': 'سارة',
-        'age': 10,
-        'gender': 'girl',
-        'avatar': 'g1',
-        'createdAt': Timestamp.fromDate(created ?? DateTime(2026, 1, 1)),
-        'pairing': {
-          'code': '123456',
-          'expiresAt': Timestamp.fromDate(DateTime(2026, 1, 2)),
-          'status': 'active',
+      ChildProfile.fromRow(
+        {
+          'id': 'c1',
+          'name': 'سارة',
+          'age': 10,
+          'gender': 'girl',
+          'avatar': 'g1',
+          'created_at': (created ?? DateTime(2026, 1, 1))
+              .toUtc()
+              .toIso8601String(),
         },
-        'linkedDeviceUid': 'dev1',
-        'stats': ?stats,
-      });
+        pairing: {
+          'code': '123456',
+          'expiresAt': DateTime(2026, 1, 2).toUtc().toIso8601String(),
+          'status': 'active',
+          'linked': true,
+        },
+        stats: stats,
+      );
 
   DashboardData build(ChildProfile c, [DateTime? now]) =>
       DashboardData.fromChild(
@@ -36,7 +42,7 @@ void main() {
         now: now,
       );
 
-  test('child doc: server pairing + link parsed', () {
+  test('child row: server pairing + link parsed', () {
     final c = child(null);
     expect(c.pairingCode, '123456');
     expect(c.pairing!.isActive(DateTime(2026, 1, 1, 23)), isTrue);
@@ -44,8 +50,8 @@ void main() {
     expect(c.linked, isTrue);
     expect(PairingInfo.fromMap({'code': 1}), isNull);
     expect(
-      ChildProfile.newDoc(
-        ownerUid: 'u',
+      ChildProfile.newRow(
+        parentId: 'u',
         draft: const ChildDraft(
           name: ' سارة ',
           age: 10,
@@ -95,7 +101,7 @@ void main() {
       expect(d.stats.week, 2);
       expect(d.stats.streak, 3);
       expect(d.surahsDone.map((e) => e.name), ['سورة الإخلاص', 'سورة الفاتحة']);
-      expect(d.surahsDone.first.date, formatHijriDayMonth(t.toDate()));
+      expect(d.surahsDone.first.date, formatHijriDayMonth(when));
       expect(d.surahInProgress!.name, 'سورة الفلق');
       expect(d.surahInProgress!.percent, 40);
       expect(d.hadithDone.single.name, 'برّ الوالدين'); // unknown ids dropped
@@ -127,12 +133,34 @@ void main() {
     expect(formatHijriDayMonth(DateTime(2026, 1, 1, 12)), '١٢ رجب');
   });
 
-  test('pairing Function errors become Arabic messages', () {
+  test('pairing function errors become Arabic messages', () {
     expect(
-      pairingFailure('failed-precondition', 'no-active-subscription').message,
+      pairingFailure('no-active-subscription').message,
       'فعّل اشتراكك أولًا لإصدار رمز الربط.',
     );
-    expect(pairingFailure('not-found').message, contains('لم نجد'));
+    expect(pairingFailure('child-not-found').message, contains('لم نجد'));
     expect(pairingFailure('internal').message, contains('الاتصال'));
+  });
+
+  test('a new child row carries review days (1–3, lesson days only)', () {
+    final row = ChildProfile.newRow(
+      parentId: 'u',
+      draft: const ChildDraft(
+        name: 'سارة',
+        age: 10,
+        gender: ChildGender.girl,
+        avatarId: 'g1',
+      ),
+    );
+    expect(row['schedule_days'], [0, 1, 2, 4, 5]);
+    expect(row['review_days'], [5]); // الخميس
+    final s = ChildSchedule.fromRow(row)!;
+    expect(s.reviewDays, {WeekDay.thu});
+    expect(
+      ChildSchedule.initial
+          .copyWith(reviewDays: {WeekDay.tue, WeekDay.sat})
+          .toRow()['review_days'],
+      [0], // الثلاثاء isn't a lesson day
+    );
   });
 }

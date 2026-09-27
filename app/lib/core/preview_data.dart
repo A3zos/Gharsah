@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/widgets.dart';
 
 import '../features/auth/data/pairing_repository.dart';
@@ -52,7 +50,7 @@ class PreviewSubmissionsRepository implements SubmissionsRepository {
       Stream.value(const []);
 
   @override
-  Future<Uint8List> loadAudio(ProjectSubmission s) async => Uint8List(0);
+  Future<String> signedUrl(ProjectSubmission s) async => '';
 
   @override
   Future<void> delete(String childId, ProjectSubmission s) async {}

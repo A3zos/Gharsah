@@ -18,7 +18,7 @@ import '../recording/record_project_recorder.dart';
 import 'lesson_view.dart';
 
 /// Hosts one live lesson (frames 18–23): wires the [LessonAgent] to the
-/// interim AI teacher, the reciter player, the recorder and Firestore, and
+/// interim AI teacher, the reciter player, the recorder and Supabase, and
 /// renders [LessonView]. The screen itself never plays audio or advances.
 class LessonCallScreen extends StatefulWidget {
   const LessonCallScreen({
@@ -78,6 +78,10 @@ class _LessonCallScreenState extends State<LessonCallScreen>
       recorder: _recorder,
       sink: _repo.sinkFor(widget.lessonId),
       childFirstName: widget.session.name,
+      // The report must fit the 2 MB recordings bucket.
+      timings: const LessonTimings(
+        maxRecording: RecordProjectRecorder.maxDuration,
+      ),
       // Debug builds: tapping the teacher counts a repeat (design prototype).
       debugTapCountsRepeat: kDebugMode,
     );

@@ -1,12 +1,13 @@
-// End-to-end test of the parent flow against the LIVE Firebase project.
-// Run (from the repo root, emulator running):
+// End-to-end test of the parent flow against a Supabase project (use the
+// LOCAL stack: `npx supabase start`, email confirmation off in config.toml).
+// Run from app/ (Android emulator running):
 //   flutter drive --driver=test_driver/integration_test.dart \
-//     --target=integration_test/e2e_test.dart -d emulator-5554
-// Creates one real test account gharsah.e2e+<timestamp>@example.com.
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+//     --target=integration_test/e2e_test.dart -d emulator-5554 \
+//     --dart-define-from-file=env/supabase.json
+// Creates one test account gharsah.e2e+<timestamp>@example.com.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gharsah/core/supa.dart';
 import 'package:gharsah/main.dart' as app;
 import 'package:integration_test/integration_test.dart';
 
@@ -86,18 +87,19 @@ void main() {
       'Packages after signup',
       timeout: const Duration(seconds: 45),
     );
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final uid = supa.auth.currentUser!.id;
     debugPrint('E2E account: $email  uid: $uid');
-    final parentDoc = await FirebaseFirestore.instance
-        .doc('parents/$uid')
-        .get();
+    final parent = await supa
+        .from('parents')
+        .select('name, email')
+        .eq('id', uid)
+        .maybeSingle();
     expect(
-      parentDoc.exists,
-      isTrue,
-      reason: 'parents/{uid} should be created at signup',
+      parent,
+      isNotNull,
+      reason: 'parents row should be created at signup',
     );
-    expect(parentDoc.data()!['role'], 'parent');
-    expect(parentDoc.data()!['email'], email);
+    expect(parent!['email'], email);
     await screenshot('packages-after-signup');
 
     // ── Subscribe (mock Play) ──
@@ -113,12 +115,14 @@ void main() {
       'AddChild after purchase',
       timeout: const Duration(seconds: 30),
     );
-    final sub = await FirebaseFirestore.instance
-        .doc('parents/$uid/subscription/current')
-        .get();
-    expect(sub.exists, isTrue, reason: 'subscription/current should be saved');
-    expect(sub.data()!['plan'], 'annual');
-    expect(sub.data()!['provider'], 'mock');
+    final sub = await supa
+        .from('subscriptions')
+        .select('plan, provider')
+        .eq('parent_id', uid)
+        .maybeSingle();
+    expect(sub, isNotNull, reason: 'the subscription should be saved');
+    expect(sub!['plan'], 'annual');
+    expect(sub['provider'], 'mock');
     await tester.enterText(find.byType(TextField).first, childName);
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await screenshot('add-child');
@@ -141,20 +145,21 @@ void main() {
       'PairingCode screen',
       timeout: const Duration(seconds: 30),
     );
-    final kids = await FirebaseFirestore.instance
-        .collection('parents/$uid/children')
-        .get();
-    expect(kids.docs, hasLength(1), reason: 'one child should be saved');
-    final kid = kids.docs.single.data();
+    final kids = await supa.from('children').select().eq('parent_id', uid);
+    expect(kids, hasLength(1), reason: 'one child should be saved');
+    final kid = kids.single;
     expect(kid['name'], childName);
     expect(kid['age'], 10);
     expect(kid['gender'], 'girl');
     expect(kid['avatar'], 'g1');
-    expect((kid['pairing'] as Map)['code'], matches(RegExp(r'^[0-9]{6}$')));
-    expect((kid['schedule'] as Map)['duration'], 45);
-    debugPrint(
-      'E2E child: ${kids.docs.single.id}  code: ${(kid['pairing'] as Map)['code']}',
+    expect(kid['session_duration'], 45);
+    expect(kid['review_days'] as List, isNotEmpty);
+    final pairing = await supa.rpc(
+      'child_pairing',
+      params: {'p_child': kid['id']},
     );
+    expect((pairing as Map)['code'], matches(RegExp(r'^[0-9]{6}$')));
+    debugPrint('E2E child: ${kid['id']}  code: ${pairing['code']}');
     await screenshot('pairing-code');
 
     // ── Back to Packages: the real child replaces the samples ──
@@ -180,7 +185,7 @@ void main() {
     await waitFor(find.text('تسجيل الخروج؟'), 'logout dialog');
     await tapText('تسجيل الخروج');
     await waitFor(find.text('تسجيل دخول'), 'Auth after logout');
-    expect(FirebaseAuth.instance.currentUser, isNull);
+    expect(supa.auth.currentUser, isNull);
     await screenshot('after-logout');
 
     // ── Login with the wrong password → Arabic error ──
@@ -198,7 +203,7 @@ void main() {
     );
     await screenshot('wrong-password');
 
-    // ── Forgot password → reset email accepted by Firebase ──
+    // ── Forgot password → reset email accepted by Supabase Auth ──
     await scrollTo(find.text('نسيت كلمة المرور؟'), 'forgot link');
     await tapText('نسيت كلمة المرور؟');
     await waitFor(find.text('استعادة كلمة المرور'), 'reset sheet');

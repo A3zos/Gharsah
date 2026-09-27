@@ -1,6 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
+import '../../../core/supa.dart';
 import '../../auth/data/auth_failure.dart';
 import '../../auth/data/pairing_repository.dart';
 import 'child_profile.dart';
@@ -17,56 +15,74 @@ abstract interface class ChildrenRepository {
   Stream<ChildProfile?> watchChild(String childId);
 }
 
-class FirestoreChildrenRepository implements ChildrenRepository {
-  FirestoreChildrenRepository(
-    this._pairing, {
-    FirebaseAuth? auth,
-    FirebaseFirestore? db,
-  }) : _auth = auth ?? FirebaseAuth.instance,
-       _db = db ?? FirebaseFirestore.instance;
+const _childColumns =
+    'id, name, age, gender, avatar, schedule_days, schedule_time, schedule_custom, '
+    'session_duration, reminder, review_days, created_at';
+
+/// Supabase `children` (RLS: the parent's own rows) + the `child_pairing` /
+/// `child_stats` RPCs for the server-only values.
+class SupabaseChildrenRepository implements ChildrenRepository {
+  SupabaseChildrenRepository(this._pairing);
 
   final PairingRepository _pairing;
-  final FirebaseAuth _auth;
-  final FirebaseFirestore _db;
 
-  CollectionReference<Map<String, dynamic>>? get _col {
-    final uid = _auth.currentUser?.uid;
-    return uid == null
-        ? null
-        : _db.collection('parents').doc(uid).collection('children');
+  String? get _uid {
+    final u = supa.auth.currentUser;
+    return u == null || u.isAnonymous ? null : u.id;
+  }
+
+  List<Watched> _live(String uid) => [
+    Watched('children', column: 'parent_id', value: uid),
+    Watched('child_sessions', column: 'parent_id', value: uid),
+    const Watched('progress'),
+    const Watched('star_events'),
+    const Watched('submissions'),
+  ];
+
+  Future<ChildProfile> _withServerFields(Map<String, dynamic> r) async {
+    final results = await Future.wait([
+      supa.rpc('child_pairing', params: {'p_child': r['id']}),
+      supa.rpc('child_stats', params: {'c': r['id']}),
+    ]);
+    return ChildProfile.fromRow(r, pairing: results[0], stats: results[1]);
   }
 
   @override
   Stream<List<ChildProfile>> watchChildren() {
-    final col = _col;
-    if (col == null) return Stream.value(const []);
-    return col
-        .orderBy('createdAt')
-        .snapshots()
-        .map(
-          (q) => [for (final d in q.docs) ChildProfile.fromDoc(d.id, d.data())],
-        );
+    final uid = _uid;
+    if (uid == null) return Stream.value(const []);
+    return watchQuery(_live(uid), () async {
+      final rows = await supa
+          .from('children')
+          .select(_childColumns)
+          .eq('parent_id', uid)
+          .order('created_at');
+      return Future.wait([for (final r in rows) _withServerFields(r)]);
+    });
   }
 
   @override
   Future<ChildProfile> addChild(ChildDraft draft) async {
-    final col = _col;
-    final uid = _auth.currentUser?.uid;
-    if (col == null || uid == null) {
-      throw AuthFailure.fromCode('permission-denied');
-    }
+    final uid = _uid;
+    if (uid == null) throw AuthFailure.fromCode('permission-denied');
     // TODO(phase-c): require a verified email first (CLAUDE.md §11).
-    final ref = col.doc();
+    final String id;
     try {
-      await ref.set(ChildProfile.newDoc(ownerUid: uid, draft: draft));
-    } on FirebaseException catch (e) {
-      throw firestoreFailure(e);
+      final row = await supa
+          .from('children')
+          .insert(ChildProfile.newRow(parentId: uid, draft: draft))
+          .select('id')
+          .single();
+      id = '${row['id']}';
+    } on Object catch (e) {
+      // The monthly plan = one child (database trigger) arrives here too.
+      throw authFailureOf(e);
     }
     try {
       // The server checks the subscription and ownership, then issues the code.
-      final pairing = await _pairing.issueCode(ref.id);
+      final pairing = await _pairing.issueCode(id);
       return ChildProfile(
-        id: ref.id,
+        id: id,
         name: draft.name.trim(),
         age: draft.age,
         gender: draft.gender,
@@ -76,18 +92,26 @@ class FirestoreChildrenRepository implements ChildrenRepository {
       );
     } on AuthFailure {
       // No code → don't leave a half-added child behind.
-      await ref.delete().catchError((Object _) {});
+      await supa
+          .from('children')
+          .delete()
+          .eq('id', id)
+          .catchError((Object _) => <Map<String, dynamic>>[]);
       rethrow;
     }
   }
 
   @override
   Stream<ChildProfile?> watchChild(String childId) {
-    final col = _col;
-    if (col == null) return Stream.value(null);
-    return col
-        .doc(childId)
-        .snapshots()
-        .map((d) => d.exists ? ChildProfile.fromDoc(d.id, d.data()!) : null);
+    final uid = _uid;
+    if (uid == null) return Stream.value(null);
+    return watchQuery(_live(uid), () async {
+      final r = await supa
+          .from('children')
+          .select(_childColumns)
+          .eq('id', childId)
+          .maybeSingle();
+      return r == null ? null : _withServerFields(r);
+    });
   }
 }

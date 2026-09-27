@@ -1,5 +1,9 @@
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Web records to memory (bytes), never to a file.
-Future<void> putLocalFile(Reference ref, String path, SettableMetadata meta) =>
-    Future.error(UnsupportedError('No local files on web'));
+Future<String> putLocalFile(
+  StorageFileApi bucket,
+  String path,
+  String localPath,
+  FileOptions options,
+) => Future.error(UnsupportedError('No local files on web'));

@@ -35,6 +35,32 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   late int _time = widget.draft.schedule.time;
   late int _duration = widget.draft.schedule.duration;
 
+  /// Weekly review days: 1–3 of the lesson days (review notes B5).
+  late final Set<WeekDay> _reviewDays = {
+    ...widget.draft.schedule.reviewDays.where(_days.contains),
+  };
+  bool _reviewLimit = false;
+
+  List<WeekDay> get _chosenReview => [
+    for (final d in WeekDay.values)
+      if (_reviewDays.contains(d) && _days.contains(d)) d,
+  ];
+
+  void _toggleReview(WeekDay d) {
+    if (!_days.contains(d)) return;
+    setState(() {
+      if (_reviewDays.contains(d)) {
+        _reviewLimit = false;
+        _reviewDays.remove(d);
+      } else if (_chosenReview.length >= ChildSchedule.maxReviewDays) {
+        _reviewLimit = true;
+      } else {
+        _reviewLimit = false;
+        _reviewDays.add(d);
+      }
+    });
+  }
+
   /// Per-day offsets from the default time, as in the design: tapping a
   /// day's time adds 15 minutes, cycling within two hours.
   final Map<WeekDay, int> _offsets = {};
@@ -57,6 +83,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             e.key: (_time + e.value) % 1440,
       },
       duration: _duration,
+      reviewDays: _chosenReview.toSet(),
     );
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -113,12 +140,25 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       day: d,
                       on: _days.contains(d),
                       onTap: () => setState(() {
-                        _days.contains(d) ? _days.remove(d) : _days.add(d);
+                        if (_days.contains(d)) {
+                          _days.remove(d);
+                          // Not a lesson day any more → not a review day either.
+                          _reviewDays.remove(d);
+                        } else {
+                          _days.add(d);
+                        }
                       }),
                     ),
                 ],
               ),
               const SizedBox(height: 18 - 1),
+              _ReviewDaysSection(
+                chosen: _chosenReview,
+                lessonDays: _days,
+                limit: _reviewLimit,
+                onToggle: _toggleReview,
+              ),
+              const SizedBox(height: 18),
               _header(
                 t,
                 'وقت الحصة',
@@ -190,8 +230,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ],
           ),
           bottom: FilledButton(
-            // At least one lesson day is needed; the design's count line says so.
-            onPressed: _days.isEmpty ? null : _next,
+            // At least one lesson day and one review day (the database requires both).
+            onPressed: _days.isEmpty || _chosenReview.isEmpty ? null : _next,
             child: const Text('التالي — اختيار الشخصية'),
           ),
         ),
@@ -209,6 +249,148 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       Flexible(child: Text(trailing, style: AppTextStyles.caption)),
     ],
   );
+}
+
+/// «أيام المراجعة الأسبوعية» — 1 to 3 of the lesson days (same copy as the web).
+class _ReviewDaysSection extends StatelessWidget {
+  const _ReviewDaysSection({
+    required this.chosen,
+    required this.lessonDays,
+    required this.limit,
+    required this.onToggle,
+  });
+
+  final List<WeekDay> chosen;
+  final Set<WeekDay> lessonDays;
+  final bool limit;
+  final ValueChanged<WeekDay> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text('أيام المراجعة الأسبوعية', style: t.labelLarge),
+            const SizedBox(width: 8),
+            Text('٣ أيام كحد أقصى', style: AppTextStyles.caption),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  chosen.isEmpty
+                      ? 'اختر يومًا'
+                      : 'مراجعة · ${chosen.map((d) => d.label).join('، ')}',
+                  textAlign: TextAlign.end,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.warningText,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            for (final d in WeekDay.values)
+              _ReviewToggle(
+                day: d,
+                on: chosen.contains(d),
+                enabled: lessonDays.contains(d),
+                onTap: () => onToggle(d),
+              ),
+          ],
+        ),
+        if (limit) ...[
+          const SizedBox(height: 8),
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              'تقدر تختار ٣ أيام مراجعة كحد أقصى',
+              style: AppTextStyles.caption.copyWith(color: AppColors.errorText),
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        Text(
+          'في أيام المراجعة تحلّ حصةُ المراجعة محلّ الدرس الجديد — يعيد طفلك ما حفظه من السور والأحاديث.',
+          style: AppTextStyles.caption.copyWith(height: 1.8),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReviewToggle extends StatelessWidget {
+  const _ReviewToggle({
+    required this.day,
+    required this.on,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final WeekDay day;
+  final bool on;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      toggled: on,
+      enabled: enabled,
+      label: enabled
+          ? 'المراجعة يوم ${day.label}'
+          : '${day.label} — ليس يوم حصة',
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled ? onTap : null,
+        child: SizedBox.square(
+          dimension: AppSizes.minTouch,
+          child: Center(
+            child: Opacity(
+              opacity: enabled ? 1 : 0.5,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: AppSizes.dayCircle,
+                height: AppSizes.dayCircle,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: on ? AppColors.gold : AppColors.surface,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: on ? AppColors.gold : AppColors.inputBorder,
+                    width: on
+                        ? AppSizes.selectedBorderWidth
+                        : AppSizes.borderWidth,
+                  ),
+                ),
+                child: Text(
+                  day.short,
+                  style: AppTextStyles.dayShort.copyWith(
+                    color: on
+                        ? AppColors.onGold
+                        : enabled
+                        ? AppColors.textMuted
+                        : AppColors.textSubtle,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _DayToggle extends StatelessWidget {

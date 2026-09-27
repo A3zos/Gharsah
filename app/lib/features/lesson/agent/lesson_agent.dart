@@ -32,7 +32,7 @@ class LessonContent {
   final ProjectRepository projects;
 }
 
-/// Where the lesson's results go (Firestore/Storage in the app, a fake in tests).
+/// Where the lesson's results go (Supabase database/storage in the app, a fake in tests).
 abstract interface class LessonProgressSink {
   /// After every step and when the child leaves the call.
   Future<void> checkpoint(LessonProgress progress);

@@ -1,16 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
-/// The child device's link to one child, returned by `claimPairingCode`.
+import '../../../core/supa.dart';
+
+/// The child device's pairing to one child, returned by `claim-pairing-code`.
 ///
-/// The server is the source of truth (childSessions/{deviceUid}); this device
-/// only caches the verified session so the child needn't re-enter the code.
+/// The server is the source of truth (`child_sessions`); this device only
+/// caches the verified session so the child needn't re-enter the code.
 /// The child never enters personal data — the first name comes from the parent.
 class ChildSession {
   const ChildSession({
@@ -68,18 +68,15 @@ class ChildSession {
 /// Why a code wasn't accepted (review notes A2 — same messages as the web).
 enum ClaimError { wrong, tooManyAttempts, offline, unavailable }
 
-/// Firebase error → what the child sees. The server answers a wrong/expired
-/// code with not-found + message `wrong-code`; a not-found WITHOUT it means the
-/// callable isn't reachable (not deployed). Anonymous sign-in disabled
-/// (admin-restricted-operation) also means the service is off.
-ClaimError claimErrorOf(String code, String? message) {
-  final c = code.replaceFirst(RegExp(r'^[a-z]+/'), '');
-  if (c == 'invalid-argument' ||
-      (c == 'not-found' && (message ?? '').contains('wrong-code'))) {
-    return ClaimError.wrong;
-  }
-  if (c == 'resource-exhausted') return ClaimError.tooManyAttempts;
-  if (c == 'network-request-failed') return ClaimError.offline;
+/// Server/transport code → what the child sees (same rules as the web's
+/// claimErrorOf). `wrong-code`/`bad-code` come from the function for a wrong,
+/// expired or used code; `network` means the request never arrived; anything
+/// else (function not deployed, anonymous sign-ins disabled, internal) means
+/// the service is unavailable.
+ClaimError claimErrorOf(String code, {bool online = true}) {
+  if (code == 'wrong-code' || code == 'bad-code') return ClaimError.wrong;
+  if (code == 'too-many-attempts') return ClaimError.tooManyAttempts;
+  if (!online || code == 'network') return ClaimError.offline;
   return ClaimError.unavailable;
 }
 
@@ -92,7 +89,7 @@ class ClaimFailure implements Exception {
 }
 
 abstract interface class ChildSessionRepository {
-  /// The linked child on this device, or null (listenable for routing).
+  /// The paired child on this device, or null (listenable for routing).
   ValueListenable<ChildSession?> get session;
 
   /// True after the parent revoked this device — the app then opens the
@@ -114,26 +111,16 @@ abstract interface class ChildSessionRepository {
   void debugUseMockChild();
 }
 
-class FirebaseChildSessionRepository implements ChildSessionRepository {
-  FirebaseChildSessionRepository._(
-    this._prefs,
-    this._auth,
-    this._db,
-    this._fn,
-    ChildSession? cached,
-  ) : _session = ValueNotifier(cached);
+class SupabaseChildSessionRepository implements ChildSessionRepository {
+  SupabaseChildSessionRepository._(this._prefs, ChildSession? cached)
+    : _session = ValueNotifier(cached);
 
   static const _key = 'child_session_v1';
 
   /// Restores the cached session if this device is still signed in as the
   /// same anonymous user; otherwise drops it.
-  static Future<FirebaseChildSessionRepository> load({
-    FirebaseAuth? auth,
-    FirebaseFirestore? db,
-    FirebaseFunctions? functions,
-  }) async {
+  static Future<SupabaseChildSessionRepository> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final a = auth ?? FirebaseAuth.instance;
     ChildSession? cached;
     final raw = prefs.getString(_key);
     if (raw != null) {
@@ -142,26 +129,17 @@ class FirebaseChildSessionRepository implements ChildSessionRepository {
       } on Object {
         cached = null;
       }
-      final user = a.currentUser;
+      final user = supa.auth.currentUser;
       if (cached != null &&
-          (user == null || !user.isAnonymous || user.uid != cached.deviceUid)) {
+          (user == null || !user.isAnonymous || user.id != cached.deviceUid)) {
         cached = null;
       }
       if (cached == null) await prefs.remove(_key);
     }
-    return FirebaseChildSessionRepository._(
-      prefs,
-      a,
-      db ?? FirebaseFirestore.instance,
-      functions ?? FirebaseFunctions.instanceFor(region: 'us-central1'),
-      cached,
-    );
+    return SupabaseChildSessionRepository._(prefs, cached);
   }
 
   final SharedPreferences _prefs;
-  final FirebaseAuth _auth;
-  final FirebaseFirestore _db;
-  final FirebaseFunctions _fn;
   final ValueNotifier<ChildSession?> _session;
   bool _revoked = false;
 
@@ -173,18 +151,29 @@ class FirebaseChildSessionRepository implements ChildSessionRepository {
 
   @override
   Future<ChildSession> claim(String code) async {
+    final auth = supa.auth;
     try {
-      var user = _auth.currentUser;
-      if (user == null || !user.isAnonymous) {
-        user = (await _auth.signInAnonymously()).user!;
+      var user = auth.currentUser;
+      // A parent signed in on this device is signed out first: one identity per device.
+      if (user != null && !user.isAnonymous) {
+        await auth.signOut();
+        user = null;
       }
-      final r = await _fn
-          .httpsCallable('claimPairingCode')
-          .call<Map<Object?, Object?>>({'code': code});
-      final d = r.data;
+      if (user == null) {
+        try {
+          user = (await auth.signInAnonymously()).user!;
+        } on AuthException catch (e) {
+          // e.g. anonymous_provider_disabled → the service is off.
+          debugPrint('[claim-pairing-code] auth/${e.code ?? e.statusCode}');
+          throw FunctionCallError(
+            e.statusCode == null ? 'network' : 'unavailable',
+          );
+        }
+      }
+      final d = await callFunction('claim-pairing-code', {'code': code});
       final s = ChildSession(
-        deviceUid: user.uid,
-        parentUid: d['parentUid']! as String,
+        deviceUid: user.id,
+        parentUid: d['parentId']! as String,
         childId: d['childId']! as String,
         name: d['name']! as String,
         avatar: d['avatar']! as String,
@@ -194,31 +183,35 @@ class FirebaseChildSessionRepository implements ChildSessionRepository {
       _revoked = false;
       _session.value = s;
       return s;
-    } on FirebaseFunctionsException catch (e) {
+    } on FunctionCallError catch (e) {
       // The raw code tells "not deployed" / "anonymous auth off" apart.
-      debugPrint('[claimPairingCode] ${e.code} ${e.message}');
-      throw ClaimFailure(claimErrorOf(e.code, e.message));
-    } on FirebaseAuthException catch (e) {
-      debugPrint('[claimPairingCode] auth/${e.code} ${e.message}');
-      throw ClaimFailure(claimErrorOf(e.code, e.message));
+      debugPrint('[claim-pairing-code] ${e.code} ${e.status}');
+      throw ClaimFailure(claimErrorOf(e.code));
+    } on ClaimFailure {
+      rethrow;
+    } on Object catch (e) {
+      debugPrint('[claim-pairing-code] $e');
+      throw ClaimFailure(claimErrorOf('unavailable'));
     }
   }
 
   @override
-  Stream<bool> watchLinked(ChildSession s) => _db
-      .doc('childSessions/${s.deviceUid}')
-      .snapshots(includeMetadataChanges: true)
-      .where((d) => !d.metadata.isFromCache) // only trust the server
-      .map(
-        (d) =>
-            d.exists &&
-            d.data()?['parentUid'] == s.parentUid &&
-            d.data()?['childId'] == s.childId,
-      )
-      .handleError((Object e) {
-        // permission-denied = the session doc is gone (revoked) or the
-        // anonymous user changed; anything else (offline) keeps the session.
-        if (e is FirebaseException && e.code == 'permission-denied') return;
+  Stream<bool> watchLinked(ChildSession s) =>
+      watchQuery(
+        [Watched('child_sessions', column: 'device_uid', value: s.deviceUid)],
+        () async {
+          final r = await supa
+              .from('child_sessions')
+              .select('parent_id, child_id, revoked')
+              .eq('device_uid', s.deviceUid)
+              .maybeSingle();
+          return r != null &&
+              r['revoked'] != true &&
+              r['parent_id'] == s.parentUid &&
+              r['child_id'] == s.childId;
+        },
+      ).handleError((Object e) {
+        // Offline or a transient error keeps the cached session.
         debugPrint('Session check failed: $e');
       });
 
@@ -234,6 +227,6 @@ class FirebaseChildSessionRepository implements ChildSessionRepository {
     _revoked = revoked;
     await _prefs.remove(_key);
     _session.value = null;
-    if (_auth.currentUser?.isAnonymous ?? false) await _auth.signOut();
+    if (supa.auth.currentUser?.isAnonymous ?? false) await supa.auth.signOut();
   }
 }

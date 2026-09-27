@@ -1,6 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../../../core/mock_data.dart';
+import '../../../core/supa.dart';
 import '../../../core/time_format.dart';
 import '../../children/data/child_profile.dart';
 import '../../lesson/data/hadith_repository.dart';
@@ -82,7 +81,7 @@ class DashboardData {
     return (month: days ~/ 30 + 1, week: ((days % 30) ~/ 7 + 1).clamp(1, 4));
   }
 
-  /// Parses `stats` (schema written by functions/src/progress.ts).
+  /// Parses `stats` (the `child_stats` RPC — supabase/migrations/…_server.sql).
   factory DashboardData.fromChild(
     ChildProfile child, {
     required QuranMeta meta,
@@ -94,8 +93,11 @@ class DashboardData {
     if (s == null) return DashboardData.sample(child, now: now);
     int num0(Object? v) => v is num ? v.toInt() : 0;
     int n(String k) => num0(s[k]);
-    String date(Object? t) =>
-        t is Timestamp ? formatHijriDayMonth(t.toDate()) : '';
+    String date(Object? t) {
+      final d = parseDate(t);
+      return d == null ? '' : formatHijriDayMonth(d);
+    }
+
     String surahName(Object? v) {
       final i = num0(v);
       return i >= 1 && i <= 114 ? meta.surahName(i) : '';

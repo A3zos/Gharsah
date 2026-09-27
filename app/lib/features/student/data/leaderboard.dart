@@ -1,7 +1,7 @@
 import '../../../core/arabic_digits.dart';
 
-/// `leaderboard/current` — written only by the scheduled Function. Rows are
-/// rank + points ONLY: other children are never identified.
+/// The weekly board from `get_leaderboard()` (refreshed by pg_cron). Rows are
+/// rank + stars ONLY: other children are never identified.
 class LeaderBoard {
   const LeaderBoard({
     required this.weekKey,
@@ -18,6 +18,32 @@ class LeaderBoard {
           ((r['rank'] as num).toInt(), (r['points'] as num).toInt()),
     ],
   );
+
+  /// From the `get_leaderboard()` RPC: rows are (rank, stars).
+  factory LeaderBoard.fromRpc(Map<dynamic, dynamic> d) => LeaderBoard(
+    weekKey: '${d['weekKey'] ?? ''}',
+    total: (d['total'] as num?)?.toInt() ?? 0,
+    rows: [
+      for (final r in (d['rows'] as List? ?? const []))
+        if (r is Map && r['rank'] is num && r['stars'] is num)
+          ((r['rank'] as num).toInt(), (r['stars'] as num).toInt()),
+    ],
+  );
+
+  /// This child's own standing from the same RPC, in the `leader` shape that
+  /// [buildBoard] reads (points = stars).
+  static Map<String, dynamic>? ownFromRpc(Map<dynamic, dynamic> d) {
+    final own = d['own'];
+    if (own is! Map) return null;
+    return {
+      'weekKey': '${d['weekKey'] ?? ''}',
+      'rank': own['rank'],
+      'points': own['stars'],
+      'total': own['total'],
+      'topPercent': own['topPercent'],
+      'gapToAbove': own['gapToAbove'],
+    };
+  }
 
   final String weekKey;
   final int total;
@@ -51,7 +77,7 @@ class BoardView {
   const BoardView(this.rows, this.note);
   final List<BoardRow> rows;
 
-  /// «أنت ضمن أفضل ٢٠٪ هذا الأسبوع — باقي ١٥ نقطة لتلحق بطالب ٤.» (null when
+  /// «أنت ضمن أفضل ٢٠٪ هذا الأسبوع — باقي ١٥ نجمة لتلحق بطالب ٤.» (null when
   /// the child has no points yet this week).
   final String? note;
 }
@@ -105,7 +131,7 @@ BoardView buildBoard({
     // REVIEW: copy adapted from the design so it names no other child.
     note = myRank == 1 || gap == null
         ? 'أنت في المركز الأول هذا الأسبوع — استمر!'
-        : 'أنت ضمن أفضل ${pct.arabicDigits}٪ هذا الأسبوع — باقي ${gap.arabicDigits} نقطة لتلحق ب${other(myRank - 1)}.';
+        : 'أنت ضمن أفضل ${pct.arabicDigits}٪ هذا الأسبوع — باقي ${gap.arabicDigits} نجمة لتلحق ب${other(myRank - 1)}.';
   }
   return BoardView(rows, note);
 }

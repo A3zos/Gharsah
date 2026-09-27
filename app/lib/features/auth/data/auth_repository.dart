@@ -1,129 +1,106 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/supa.dart';
 import 'app_user.dart';
 import 'auth_failure.dart';
 
-/// The only place that talks to FirebaseAuth. Screens use this, never FirebaseAuth directly.
-/// Every method throws [AuthFailure] (Arabic message) on error.
+/// The only place that talks to Supabase Auth for parents. Screens use this,
+/// never Supabase directly. Every method throws [AuthFailure] (Arabic message).
+/// The `parents` row is created by the database (handle_new_user trigger) from
+/// the sign-up metadata.
 class AuthRepository {
-  AuthRepository({FirebaseAuth? auth, FirebaseFirestore? firestore})
-    : _auth = auth ?? FirebaseAuth.instance,
-      _db = firestore ?? FirebaseFirestore.instance;
-
-  final FirebaseAuth _auth;
-  final FirebaseFirestore _db;
+  GoTrueClient get _auth => supa.auth;
 
   static const int minPasswordLength = 8;
 
-  /// Emits on sign-in, sign-out and profile changes (name, email verification).
-  Stream<AppUser?> userChanges() => _auth.userChanges().map(_toAppUser);
+  /// Emits on sign-in, sign-out and user updates (name, email confirmation).
+  Stream<AppUser?> userChanges() =>
+      _auth.onAuthStateChange.map((s) => _toAppUser(s.session?.user));
 
   AppUser? get currentUser => _toAppUser(_auth.currentUser);
 
-  /// Creates the parent account: Auth user → display name → `parents/{uid}` → verification email.
+  /// Creates the parent account. When the project requires email confirmation
+  /// there is no session yet → [AuthFailure] 'confirm-email'.
   Future<void> signUp({
     required String name,
     required String email,
     required String password,
   }) async {
-    final UserCredential cred;
+    final AuthResponse r;
     try {
-      cred = await _auth.createUserWithEmailAndPassword(
+      r = await _auth.signUp(
         email: email.trim().toLowerCase(),
         password: password,
+        data: {'name': name.trim()},
       );
-    } on FirebaseAuthException catch (e) {
-      throw AuthFailure.fromCode(e.code);
+    } on Object catch (e) {
+      throw authFailureOf(e);
     }
-
-    final user = cred.user!;
-    try {
-      await user.updateDisplayName(name.trim());
-      await _db.collection('parents').doc(user.uid).set({
-        'name': name.trim(),
-        'email': user.email,
-        'createdAt': FieldValue.serverTimestamp(),
-        'role': 'parent',
-      });
-    } on FirebaseException catch (e) {
-      // Roll back so the parent can retry signup with the same email.
-      await _deleteQuietly(user);
-      throw AuthFailure.fromCode(e.code);
+    // An existing confirmed email comes back with no identities.
+    if (r.user != null && (r.user!.identities?.isEmpty ?? false)) {
+      throw AuthFailure.fromCode('user_already_exists');
     }
-
-    try {
-      await _auth.setLanguageCode('ar');
-      await user.sendEmailVerification();
-    } on FirebaseAuthException catch (e) {
-      // Not fatal: the home banner lets the parent resend it.
-      debugPrint('sendEmailVerification failed: ${e.code}');
-    }
-    await user.reload();
+    if (r.session == null) throw AuthFailure.fromCode('confirm-email');
   }
 
   Future<void> signIn({required String email, required String password}) async {
     try {
-      await _auth.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-    } on FirebaseAuthException catch (e) {
-      throw AuthFailure.fromCode(e.code);
+      await _auth.signInWithPassword(email: email.trim(), password: password);
+    } on Object catch (e) {
+      throw authFailureOf(e);
     }
   }
 
+  /// Supabase never reveals whether an email has an account.
   Future<void> sendPasswordReset(String email) async {
     try {
-      await _auth.setLanguageCode('ar');
-      await _auth.sendPasswordResetEmail(email: email.trim());
-    } on FirebaseAuthException catch (e) {
-      // With email-enumeration protection Firebase doesn't reveal unknown emails;
-      // if it does, don't reveal it either.
-      if (e.code == 'user-not-found') return;
-      throw AuthFailure.fromCode(e.code);
+      await _auth.resetPasswordForEmail(email.trim());
+    } on Object catch (e) {
+      throw authFailureOf(e);
     }
   }
 
   Future<void> resendEmailVerification() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+    final email = _auth.currentUser?.email;
+    if (email == null) return;
     try {
-      await _auth.setLanguageCode('ar');
-      await user.sendEmailVerification();
-    } on FirebaseAuthException catch (e) {
-      throw AuthFailure.fromCode(e.code);
+      await _auth.resend(type: OtpType.signup, email: email);
+    } on Object catch (e) {
+      throw authFailureOf(e);
     }
   }
 
-  /// Re-fetches the user so a verification done in the mail app shows up.
+  /// Re-fetches the user so a confirmation done in the mail app shows up.
   Future<void> reloadUser() async {
     try {
-      await _auth.currentUser?.reload();
-    } on FirebaseAuthException catch (e) {
-      throw AuthFailure.fromCode(e.code);
+      await _auth.refreshSession();
+    } on Object catch (e) {
+      debugPrint('refreshSession failed: $e');
+      throw authFailureOf(e);
     }
   }
 
   Future<void> signOut() => _auth.signOut();
 
-  Future<void> _deleteQuietly(User user) async {
+  /// «حذف الحساب»: the delete-account Edge Function removes the auth user; the
+  /// database cascades to children, progress and submissions.
+  Future<void> deleteAccount() async {
     try {
-      await user.delete();
-    } on FirebaseAuthException catch (e) {
-      debugPrint('Rollback delete failed: ${e.code}');
-      await _auth.signOut();
+      await callFunction('delete-account', const {});
+    } on FunctionCallError {
+      throw AuthFailure.fromCode('unavailable');
     }
+    await _auth.signOut();
   }
 
   static AppUser? _toAppUser(User? u) => u == null
       ? null
       : AppUser(
-          uid: u.uid,
+          uid: u.id,
           email: u.email,
-          displayName: u.displayName,
-          emailVerified: u.emailVerified,
+          displayName: u.userMetadata?['name'] as String?,
+          emailVerified: u.emailConfirmedAt != null,
           isAnonymous: u.isAnonymous,
         );
 }

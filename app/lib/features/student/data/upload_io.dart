@@ -1,7 +1,11 @@
 import 'dart:io';
 
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Uploads a local recording file (mobile).
-Future<void> putLocalFile(Reference ref, String path, SettableMetadata meta) =>
-    ref.putFile(File(path), meta);
+Future<String> putLocalFile(
+  StorageFileApi bucket,
+  String path,
+  String localPath,
+  FileOptions options,
+) => bucket.upload(path, File(localPath), fileOptions: options);

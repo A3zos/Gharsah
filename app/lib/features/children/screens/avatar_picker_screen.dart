@@ -12,7 +12,7 @@ import '../widgets/add_child_stepper.dart';
 import 'pairing_code_screen.dart';
 
 /// Frame 10 — «اختر شخصية …»: the nine modest avatars. «حفظ وإنشاء رمز
-/// الربط» saves the child to Firestore and shows its pairing code (11).
+/// الربط» saves the child (Supabase) and shows its pairing code (11).
 class AvatarPickerScreen extends StatefulWidget {
   const AvatarPickerScreen({super.key, required this.draft});
 

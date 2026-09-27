@@ -200,8 +200,9 @@ class _Projects extends StatelessWidget {
                 title: _title(scope, s.projectId),
                 date: 'اكتمل في ${formatHijriDayMonth(s.createdAt)}',
                 duration: s.duration,
-                loadAudio: () async => BytesSource(
-                  await repo.loadAudio(s),
+                // A 10-minute signed URL (private bucket, parent only).
+                loadAudio: () async => UrlSource(
+                  await repo.signedUrl(s),
                   mimeType: s.storagePath.endsWith('.wav')
                       ? 'audio/wav'
                       : 'audio/mp4',
