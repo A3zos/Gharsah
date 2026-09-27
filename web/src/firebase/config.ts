@@ -1,9 +1,9 @@
-// The existing Firebase *web* app of project nibras-59284 (same one the Flutter
-// web build uses — app/lib/firebase_options.dart). These values are public
-// identifiers, not secrets; access is enforced by the security rules and the
-// callable Functions.
+// The existing Firebase *web* app of project nibras-59284 — being replaced by
+// Supabase (docs/supabase-migration.md). The API key is read from the untracked
+// web/.env.local (VITE_FIREBASE_API_KEY) so no key is committed; the emulators
+// accept any value.
 export const firebaseConfig = {
-  apiKey: 'AIzaSyBQ3dnpPzxbzRVVBy_m625GVI2P5SvBi7w',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? 'emulator-only',
   appId: '1:884261098380:web:71a9bf8d51d109370e3ca9',
   messagingSenderId: '884261098380',
   projectId: 'nibras-59284',
