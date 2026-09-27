@@ -5,10 +5,15 @@ import { concat, downsample, encodeWav, REPORT_SAMPLE_RATE } from './wav';
 describe('wav', () => {
   it('downsamples 48 kHz to 12 kHz by averaging', () => {
     const input = new Float32Array([0, 0.4, 0.4, 0.4, 1, 1, 1, 1]);
-    const out = downsample(input, 48000);
+    const out = downsample(input, 48000, 12000);
     expect(out.length).toBe(2);
     expect(out[0]).toBeCloseTo(0.3);
     expect(out[1]).toBeCloseTo(1);
+  });
+
+  it('defaults to the 8 kHz report rate (48 kHz → 6 samples become 1)', () => {
+    expect(REPORT_SAMPLE_RATE).toBe(8000);
+    expect(downsample(new Float32Array(12), 48000).length).toBe(2);
   });
 
   it('keeps audio that is already at or below the target rate', () => {
@@ -36,6 +41,6 @@ describe('wav', () => {
   });
 
   it('keeps three minutes under the 5 MB Storage limit', () => {
-    expect(44 + 3 * 60 * REPORT_SAMPLE_RATE * 2).toBeLessThan(5 * 1024 * 1024);
+    expect(44 + 2 * 60 * REPORT_SAMPLE_RATE * 2).toBeLessThan(2 * 1024 * 1024);
   });
 });

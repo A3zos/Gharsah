@@ -1,90 +1,55 @@
-// The parent account (email/password). Port of
-// app/lib/features/auth/data/auth_repository.dart — the only module that
-// talks to Firebase Auth for parents. Every function throws AuthFailure.
-import {
-  createUserWithEmailAndPassword,
-  deleteUser,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signOut as fbSignOut,
-  updateProfile,
-  type User,
-} from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-
-import { firebase } from '../firebase/app';
-import { AuthFailure, bareCode, toAuthFailure } from './authFailure';
+// The parent account (email/password) on Supabase Auth. The `parents` row is
+// created by the database (handle_new_user trigger) from the sign-up metadata.
+// Every function throws AuthFailure.
+import { supabase } from '../supabase/client';
+import { AuthFailure, toAuthFailure } from './authFailure';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
 export const isValidEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 
-/** Creates the parent: Auth user → display name → parents/{uid} → verification email. */
+const origin = () => (typeof window === 'undefined' ? undefined : window.location.origin);
+
+/**
+ * Creates the parent (the trigger adds `parents`). When the project requires
+ * email confirmation there is no session yet → AuthFailure('confirm-email').
+ */
 export async function signUp(name: string, email: string, password: string): Promise<void> {
-  const { auth, db } = firebase();
-  let user: User;
-  try {
-    user = (await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password)).user;
-  } catch (e) {
-    throw toAuthFailure(e);
-  }
-  try {
-    await updateProfile(user, { displayName: name.trim() });
-    await setDoc(doc(db, 'parents', user.uid), {
-      name: name.trim(),
-      email: user.email,
-      createdAt: serverTimestamp(),
-      role: 'parent',
-    });
-  } catch (e) {
-    // Roll back so the parent can retry with the same email.
-    await deleteUser(user).catch(() => fbSignOut(auth));
-    throw toAuthFailure(e);
-  }
-  try {
-    auth.languageCode = 'ar';
-    await sendEmailVerification(user);
-  } catch (e) {
-    // Not fatal: the parent area offers a resend.
-    console.warn('sendEmailVerification failed', e);
-  }
+  const { data, error } = await supabase().auth.signUp({
+    email: email.trim().toLowerCase(),
+    password,
+    options: { data: { name: name.trim() }, emailRedirectTo: origin() && `${origin()}/login?tab=parent` },
+  });
+  if (error) throw toAuthFailure(error);
+  // An existing confirmed email comes back with no identities (no enumeration error).
+  if (data.user && data.user.identities?.length === 0) throw toAuthFailure({ code: 'user_already_exists' });
+  if (!data.session) throw toAuthFailure({ code: 'confirm-email' });
 }
 
 export async function signIn(email: string, password: string): Promise<void> {
-  try {
-    const user = (await signInWithEmailAndPassword(firebase().auth, email.trim(), password)).user;
-    if (user.isAnonymous) throw new AuthFailure('حدث خطأ غير متوقع — حاول مرة أخرى.');
-  } catch (e) {
-    throw toAuthFailure(e);
-  }
+  const { data, error } = await supabase().auth.signInWithPassword({ email: email.trim(), password });
+  if (error) throw toAuthFailure(error);
+  if (data.user?.is_anonymous) throw new AuthFailure('حدث خطأ غير متوقع — حاول مرة أخرى.');
 }
 
 export async function sendPasswordReset(email: string): Promise<void> {
-  const { auth } = firebase();
-  try {
-    auth.languageCode = 'ar';
-    await sendPasswordResetEmail(auth, email.trim());
-  } catch (e) {
-    // Never reveal whether an email has an account.
-    if (bareCode(String((e as { code?: string }).code ?? '')) === 'user-not-found') return;
-    throw toAuthFailure(e);
-  }
+  const { error } = await supabase().auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: origin() && `${origin()}/login?tab=parent`,
+  });
+  // Supabase never reveals whether an email has an account.
+  if (error) throw toAuthFailure(error);
 }
 
 export async function resendEmailVerification(): Promise<void> {
-  const { auth } = firebase();
-  if (!auth.currentUser) return;
-  try {
-    auth.languageCode = 'ar';
-    await sendEmailVerification(auth.currentUser);
-  } catch (e) {
-    throw toAuthFailure(e);
-  }
+  const { data } = await supabase().auth.getUser();
+  const email = data.user?.email;
+  if (!email) return;
+  const { error } = await supabase().auth.resend({ type: 'signup', email });
+  if (error) throw toAuthFailure(error);
 }
 
 export async function signOut(): Promise<void> {
-  await fbSignOut(firebase().auth);
+  await supabase().auth.signOut();
 }
 
 /** Password strength for the Signup meter (0–3 bars; design shows 2 = «جيدة»). */

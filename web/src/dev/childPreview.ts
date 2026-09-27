@@ -42,7 +42,7 @@ export const previewChild: ChildProfile = {
     custom: {},
     duration: 45,
     reminder: true,
-    reviewDay: 'thu',
+    reviewDays: ['thu'],
   },
 };
 

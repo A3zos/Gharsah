@@ -11,7 +11,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
     const { childPreviewOn, previewSession } = await import('../../dev/childPreview');
     if (childPreviewOn(request.url)) return previewSession;
   }
-  const { requireChildSession } = await import('../../firebase/session');
+  const { requireChildSession } = await import('../../supabase/session');
   return requireChildSession(request.url);
 }
 

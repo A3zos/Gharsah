@@ -33,6 +33,7 @@ import {
   type ChildSchedule,
   type Gender,
   type WeekDay,
+  MAX_REVIEW_DAYS,
 } from '../../data/children';
 import { MONTHLY_MAX_CHILDREN } from '../../content/plans';
 import { isSubscribed } from '../../data/parent';
@@ -125,7 +126,8 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
   const toggleDay = (d: WeekDay) => {
     const off = draft.schedule.days.includes(d);
     const days = off ? draft.schedule.days.filter((x) => x !== d) : [...draft.schedule.days, d];
-    setSchedule({ days, ...(off && d === draft.schedule.reviewDay ? { reviewDay: undefined } : {}) });
+    // A day that stops being a lesson day stops being a review day too.
+    setSchedule({ days, reviewDays: draft.schedule.reviewDays.filter((x) => days.includes(x)) });
   };
   const pickGender = (g: Gender) => {
     const matches = AVATARS.find((a) => a.id === draft.avatarId)?.girl === (g === 'girl');
@@ -133,11 +135,21 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
   };
 
   const exit = () => navigate(origin);
-  const pickReview = (d: WeekDay) =>
-    setSchedule({
-      reviewDay: d,
-      days: draft.schedule.days.includes(d) ? draft.schedule.days : [...draft.schedule.days, d],
-    });
+  // Review days: 1–3 of the lesson days (the database enforces the same rule).
+  const [reviewLimit, setReviewLimit] = useState(false);
+  const toggleReview = (d: WeekDay) => {
+    const cur = draft.schedule.reviewDays;
+    if (!draft.schedule.days.includes(d)) return;
+    if (cur.includes(d)) {
+      setReviewLimit(false);
+      setSchedule({ reviewDays: cur.filter((x) => x !== d) });
+    } else if (cur.length >= MAX_REVIEW_DAYS) {
+      setReviewLimit(true);
+    } else {
+      setReviewLimit(false);
+      setSchedule({ reviewDays: [...cur, d] });
+    }
+  };
 
   const next = async () => {
     setError(null);
@@ -148,6 +160,8 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     }
     if (step === 1) {
       if (!draft.schedule.days.length) return setError('اختر يومًا واحدًا على الأقل.');
+      if (!draft.schedule.reviewDays.some((d) => draft.schedule.days.includes(d)))
+        return setError('اختر يوم مراجعة واحدًا على الأقل من أيام الحصص.');
       if (!custom) setSchedule({ custom: {} });
       if (!editing) return setStep(2);
     }
@@ -264,10 +278,10 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                   <DayPicker
                     days={draft.schedule.days}
                     onToggle={toggleDay}
-                    reviewDay={draft.schedule.reviewDay}
+                    reviewDays={draft.schedule.reviewDays}
                     wide
                   />
-                  <ReviewDaySection draft={draft} onPick={pickReview} />
+                  <ReviewDaySection draft={draft} onToggle={toggleReview} limit={reviewLimit} />
                   <div className="flex flex-col gap-[8px]">
                     <span className="text-[14px] text-text-muted">وقت الحصة</span>
                     <TimeStepper minutes={draft.schedule.time} onChange={(time) => setSchedule({ time })} />
@@ -383,11 +397,11 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                 <DayPicker
                   days={draft.schedule.days}
                   onToggle={toggleDay}
-                  reviewDay={draft.schedule.reviewDay}
+                  reviewDays={draft.schedule.reviewDays}
                 />
               </div>
               {/* design/v3: the picker is on Schedule; ScheduleCustom (custom open) shows the gold note instead. */}
-              {!custom && <ReviewDaySection draft={draft} onPick={pickReview} />}
+              {!custom && <ReviewDaySection draft={draft} onToggle={toggleReview} limit={reviewLimit} />}
               <div className="flex flex-col gap-[10px]">
                 <div className="flex items-baseline justify-between gap-[10px]">
                   <span className="text-[14px] font-bold">وقت الحصة</span>
@@ -404,9 +418,9 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                   value={draft.schedule.duration}
                   onChange={(duration) => setSchedule({ duration })}
                 />
-                {custom && draft.schedule.reviewDay && (
+                {custom && draft.schedule.reviewDays.length > 0 && (
                   <p className="m-0 rounded-px-14 bg-gold-tint px-[13px] py-[11px] text-[12.5px] leading-[1.8] text-warning-text">
-                    اليوم الذهبي هو يوم المراجعة الأسبوعية — تُعدّله من شاشة الجدول.
+                    الأيام الذهبية هي أيام المراجعة الأسبوعية — تُعدّلها من شاشة الجدول.
                   </p>
                 )}
                 <p className="m-0 text-[12.5px] leading-[1.8] text-text-muted">
@@ -472,23 +486,41 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
   );
 }
 
-/** design/v3 Schedule «يوم المراجعة الأسبوعية». */
-function ReviewDaySection({ draft, onPick }: { draft: Draft; onPick: (d: WeekDay) => void }) {
-  const day = WEEK_DAYS.find((d) => d.id === draft.schedule.reviewDay);
+/** design/v3 Schedule «أيام المراجعة الأسبوعية» — 1 to 3 of the lesson days (review notes B5). */
+function ReviewDaySection({
+  draft,
+  onToggle,
+  limit,
+}: {
+  draft: Draft;
+  onToggle: (d: WeekDay) => void;
+  limit: boolean;
+}) {
+  const chosen = WEEK_DAYS.filter((d) => draft.schedule.reviewDays.includes(d.id));
   return (
     <div className="flex flex-col gap-[11px]">
       <div className="flex items-baseline justify-between gap-[10px]">
         <span className="flex items-center gap-[8px] text-[14px] font-bold">
           <ReviewGlyph />
-          يوم المراجعة الأسبوعية
+          أيام المراجعة الأسبوعية
+          <span className="text-[12px] font-bold text-text-muted">٣ أيام كحد أقصى</span>
         </span>
-        <span className="text-[12.5px] font-bold text-warning-text">
-          {day ? `حصة واحدة · ${day.label}` : 'اختر يومًا'}
+        <span className="text-[12.5px] font-bold text-warning-text" aria-live="polite">
+          {chosen.length ? `مراجعة · ${chosen.map((d) => d.label).join('، ')}` : 'اختر يومًا'}
         </span>
       </div>
-      <ReviewDayPicker value={draft.schedule.reviewDay} onPick={onPick} />
+      <ReviewDayPicker
+        value={draft.schedule.reviewDays}
+        lessonDays={draft.schedule.days}
+        onToggle={onToggle}
+      />
+      {limit && (
+        <p role="alert" className="m-0 text-[12.5px] font-bold text-error-text">
+          تقدر تختار ٣ أيام مراجعة كحد أقصى
+        </p>
+      )}
       <p className="m-0 text-[12.5px] leading-[1.8] text-text-muted">
-        في هذا اليوم تحلّ حصةُ المراجعة محلّ الدرس الجديد — يعيد طفلك ما حفظه من السور والأحاديث.
+        في أيام المراجعة تحلّ حصةُ المراجعة محلّ الدرس الجديد — يعيد طفلك ما حفظه من السور والأحاديث.
       </p>
     </div>
   );
@@ -751,12 +783,14 @@ function CustomTimes({
             key={d.id}
             className={cx(
               'flex items-center gap-[10px] rounded-px-16 border-[1.5px] px-[8px] py-[7px]',
-              d.id === schedule.reviewDay ? 'border-gold-border bg-gold-tint' : 'border-surface bg-surface',
+              schedule.reviewDays.includes(d.id)
+                ? 'border-gold-border bg-gold-tint'
+                : 'border-surface bg-surface',
             )}
           >
             <span className="grow ps-[8px] text-[14px] font-bold">
               {d.label}
-              {d.id === schedule.reviewDay && ' · مراجعة'}
+              {schedule.reviewDays.includes(d.id) && ' · مراجعة'}
             </span>
             <button
               type="button"

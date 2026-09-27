@@ -32,20 +32,20 @@ function tabOf(params: URLSearchParams): Tab | null {
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const params = new URL(request.url).searchParams;
   const tab = tabOf(params);
-  const { currentUser, requireChildSession } = await import('../../firebase/session');
+  const { currentUser, requireChildSession } = await import('../../supabase/session');
   const user = await currentUser();
-  if (user && !user.isAnonymous && tab !== 'child') {
+  if (user && !user.is_anonymous && tab !== 'child') {
     throw redirect(safeNext(params, 'parent') ?? paths.parent.root);
   }
   // A browser already linked to a child goes straight to its home.
-  if (user?.isAnonymous && tab === 'child') {
+  if (user?.is_anonymous && tab === 'child') {
     const linked = await requireChildSession().then(
       () => true,
       () => false,
     );
     if (linked) throw redirect(safeNext(params, 'child') ?? paths.child.home);
   }
-  return { childDevice: !!user?.isAnonymous };
+  return { childDevice: !!user?.is_anonymous };
 }
 
 export function HydrateFallback() {

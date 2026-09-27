@@ -9,9 +9,9 @@ import type { Route } from './+types/layout';
 
 /** Guard: a signed-in parent (email/password), else → /login. */
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
-  const { requireParent } = await import('../../firebase/session');
+  const { requireParent } = await import('../../supabase/session');
   const user = await requireParent(request.url);
-  return { uid: user.uid, email: user.email ?? '' };
+  return { uid: user.id, email: user.email ?? '' };
 }
 
 export function HydrateFallback() {

@@ -1,21 +1,7 @@
-// The parent's children (`parents/{uid}/children/{childId}`). Port of
-// app/lib/features/children/data/{child_profile,children_repository}.dart.
-// Server-only fields (pairing, linkedDeviceUid, stats, leader) are read, never written.
-import {
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  Timestamp,
-  updateDoc,
-  type DocumentData,
-} from 'firebase/firestore';
-
-import { firebase } from '../firebase/app';
+// The parent's children (Supabase `children`). Server-only values — pairing
+// (child_pairing RPC), paired device, stats (child_stats RPC) — are read, never written.
+import { supabase } from '../supabase/client';
+import { watch } from '../supabase/live';
 import { toAuthFailure } from './authFailure';
 import { issueCode } from './pairing';
 
@@ -43,9 +29,11 @@ export interface ChildSchedule {
   custom: Partial<Record<WeekDay, number>>;
   duration: (typeof DURATIONS)[number];
   reminder: boolean;
-  /** design/v3: the weekly review session's day — one of `days` (optional). */
-  reviewDay?: WeekDay;
+  /** Weekly review days: 1–3 of the lesson days (review notes B5; the database enforces it). */
+  reviewDays: WeekDay[];
 }
+
+export const MAX_REVIEW_DAYS = 3;
 
 /** design/v3 defaults: سبت، أحد، إثنين، أربعاء، خميس (مراجعة الخميس) · ٥:٠٠ مساءً · ٤٥ دقيقة. */
 export const DEFAULT_SCHEDULE: ChildSchedule = {
@@ -54,7 +42,7 @@ export const DEFAULT_SCHEDULE: ChildSchedule = {
   custom: {},
   duration: 45,
   reminder: true,
-  reviewDay: 'thu',
+  reviewDays: ['thu'],
 };
 
 export interface ChildDraft {
@@ -90,76 +78,133 @@ export interface ChildProfile {
   schedule: ChildSchedule | null;
 }
 
-const asDate = (v: unknown): Date | null => (v instanceof Timestamp ? v.toDate() : null);
+// Days are stored as integers 0 = السبت … 6 = الجمعة (WEEK_DAYS order).
+const dayIndex = (d: WeekDay) => WEEK_DAYS.findIndex((x) => x.id === d);
+const dayOf = (i: unknown): WeekDay | undefined =>
+  typeof i === 'number' ? WEEK_DAYS[i]?.id : typeof i === 'string' ? WEEK_DAYS[Number(i)]?.id : undefined;
+const inWeekOrder = (days: WeekDay[]) => WEEK_DAYS.map((d) => d.id).filter((d) => days.includes(d));
 
-function parseSchedule(m: unknown): ChildSchedule | null {
-  if (!m || typeof m !== 'object') return null;
-  const s = m as Record<string, unknown>;
-  const ids = WEEK_DAYS.map((d) => d.id) as string[];
-  const days = (Array.isArray(s.days) ? s.days : []).filter((d): d is WeekDay => ids.includes(d as string));
+/** The review days that are still lesson days (max 3); never empty while there are lesson days. */
+export function validReviewDays(s: ChildSchedule): WeekDay[] {
+  const r = inWeekOrder(s.reviewDays.filter((d) => s.days.includes(d))).slice(0, MAX_REVIEW_DAYS);
+  if (r.length || !s.days.length) return r;
+  return [inWeekOrder(s.days).at(-1)!];
+}
+
+type Row = Record<string, unknown>;
+
+function scheduleFromRow(r: Row): ChildSchedule | null {
+  if (!Array.isArray(r.schedule_days)) return null;
+  const days = inWeekOrder(r.schedule_days.map(dayOf).filter((d): d is WeekDay => !!d));
   const custom: ChildSchedule['custom'] = {};
-  for (const [k, v] of Object.entries((s.custom as Record<string, unknown>) ?? {})) {
-    if (ids.includes(k) && typeof v === 'number') custom[k as WeekDay] = v;
+  for (const [k, v] of Object.entries((r.schedule_custom as Row) ?? {})) {
+    const d = dayOf(k);
+    if (d && typeof v === 'number') custom[d] = v;
   }
-  const duration = DURATIONS.includes(s.duration as 30) ? (s.duration as ChildSchedule['duration']) : 45;
+  const duration = DURATIONS.includes(r.session_duration as 30)
+    ? (r.session_duration as ChildSchedule['duration'])
+    : 45;
+  const reviewDays = inWeekOrder(
+    (Array.isArray(r.review_days) ? r.review_days : [])
+      .map(dayOf)
+      .filter((d): d is WeekDay => !!d && days.includes(d)),
+  );
   return {
     days,
-    time: typeof s.time === 'number' ? s.time : DEFAULT_SCHEDULE.time,
+    time: typeof r.schedule_time === 'number' ? r.schedule_time : DEFAULT_SCHEDULE.time,
     custom,
     duration,
-    reminder: s.reminder !== false,
-    ...(typeof s.reviewDay === 'string' && days.includes(s.reviewDay as WeekDay)
-      ? { reviewDay: s.reviewDay as WeekDay }
-      : {}),
+    reminder: r.reminder !== false,
+    reviewDays,
   };
 }
 
-export function childFromDoc(id: string, d: DocumentData): ChildProfile {
-  const p = d.pairing as Record<string, unknown> | undefined;
+/** The database form of a schedule (days in week order; custom only for chosen days). */
+export function scheduleToRow(s: ChildSchedule) {
+  const days = inWeekOrder(s.days);
   return {
-    id,
-    name: typeof d.name === 'string' ? d.name : '',
-    age: typeof d.age === 'number' ? d.age : 10,
-    gender: d.gender === 'boy' ? 'boy' : 'girl',
-    avatarId: typeof d.avatar === 'string' ? d.avatar : 'g1',
+    schedule_days: days.map(dayIndex),
+    schedule_time: s.time,
+    schedule_custom: Object.fromEntries(
+      Object.entries(s.custom)
+        .filter(([d]) => days.includes(d as WeekDay))
+        .map(([d, m]) => [String(dayIndex(d as WeekDay)), m]),
+    ),
+    session_duration: s.duration,
+    reminder: s.reminder,
+    review_days: validReviewDays({ ...s, days }).map(dayIndex),
+  };
+}
+
+const date = (v: unknown): Date | null => (typeof v === 'string' ? new Date(v) : null);
+
+export function childFromRow(r: Row, extra: { pairing?: Row | null; stats?: Row | null } = {}): ChildProfile {
+  const p = extra.pairing;
+  return {
+    id: String(r.id),
+    name: typeof r.name === 'string' ? r.name : '',
+    age: typeof r.age === 'number' ? r.age : 10,
+    gender: r.gender === 'boy' ? 'boy' : 'girl',
+    avatarId: typeof r.avatar === 'string' ? r.avatar : 'g1',
     pairing:
       p && typeof p.code === 'string'
-        ? { code: p.code, expiresAt: asDate(p.expiresAt) ?? new Date(), status: String(p.status ?? 'active') }
+        ? { code: p.code, expiresAt: date(p.expiresAt) ?? new Date(), status: String(p.status ?? 'active') }
         : null,
-    linked: typeof d.linkedDeviceUid === 'string',
-    createdAt: asDate(d.createdAt),
-    stats: d.stats && typeof d.stats === 'object' ? (d.stats as Record<string, unknown>) : null,
-    leader: d.leader && typeof d.leader === 'object' ? (d.leader as Record<string, unknown>) : null,
-    schedule: parseSchedule(d.schedule),
+    linked: p?.linked === true,
+    createdAt: date(r.created_at),
+    stats: extra.stats ?? null,
+    leader: null,
+    schedule: scheduleFromRow(r),
   };
 }
 
-/** Firestore form of a schedule (days in week order; custom only for chosen days). */
-export function scheduleToMap(s: ChildSchedule) {
-  return {
-    days: WEEK_DAYS.map((d) => d.id).filter((d) => s.days.includes(d)),
-    time: s.time,
-    custom: Object.fromEntries(Object.entries(s.custom).filter(([d]) => s.days.includes(d as WeekDay))),
-    duration: s.duration,
-    reminder: s.reminder,
-    // Only a review day that is still a lesson day (rules: reviewDay ∈ days).
-    ...(s.reviewDay && s.days.includes(s.reviewDay) ? { reviewDay: s.reviewDay } : {}),
-  };
+export const CHILD_COLUMNS =
+  'id, name, age, gender, avatar, schedule_days, schedule_time, schedule_custom, session_duration, reminder, review_days, created_at';
+
+async function withServerFields(rows: Row[]): Promise<ChildProfile[]> {
+  const db = supabase();
+  return Promise.all(
+    rows.map(async (r) => {
+      const [pairing, stats] = await Promise.all([
+        db.rpc('child_pairing', { p_child: r.id }),
+        db.rpc('child_stats', { c: r.id }),
+      ]);
+      return childFromRow(r, {
+        pairing: (pairing.data as Row | null) ?? null,
+        stats: (stats.data as Row | null) ?? null,
+      });
+    }),
+  );
 }
 
-const childrenCol = (uid: string) => collection(firebase().db, 'parents', uid, 'children');
-
-function uidOrThrow(): string {
-  const uid = firebase().auth.currentUser?.uid;
-  if (!uid) throw toAuthFailure({ code: 'permission-denied' });
-  return uid;
+async function uidOrThrow(): Promise<string> {
+  const { data } = await supabase().auth.getUser();
+  if (!data.user?.id) throw toAuthFailure({ code: 'permission-denied' });
+  return data.user.id;
 }
+
+const liveTables = (uid: string) => [
+  { table: 'children', filter: `parent_id=eq.${uid}` },
+  { table: 'child_sessions', filter: `parent_id=eq.${uid}` },
+  { table: 'progress' },
+  { table: 'star_events' },
+  { table: 'submissions' },
+];
 
 /** The parent's children, oldest first. */
 export function watchChildren(uid: string, next: (c: ChildProfile[]) => void, error?: (e: unknown) => void) {
-  return onSnapshot(
-    query(childrenCol(uid), orderBy('createdAt')),
-    (q) => next(q.docs.map((d) => childFromDoc(d.id, d.data()))),
+  return watch(
+    liveTables(uid),
+    async () => {
+      const { data, error: e } = await supabase()
+        .from('children')
+        .select(CHILD_COLUMNS)
+        .eq('parent_id', uid)
+        .order('created_at');
+      if (e) throw e;
+      return withServerFields(data ?? []);
+    },
+    next,
     error,
   );
 }
@@ -170,54 +215,83 @@ export function watchChild(
   next: (c: ChildProfile | null) => void,
   error?: (e: unknown) => void,
 ) {
-  return onSnapshot(
-    doc(childrenCol(uid), childId),
-    (d) => next(d.exists() ? childFromDoc(d.id, d.data()) : null),
+  return watch(
+    liveTables(uid),
+    async () => {
+      const { data, error: e } = await supabase()
+        .from('children')
+        .select(CHILD_COLUMNS)
+        .eq('id', childId)
+        .maybeSingle();
+      if (e) throw e;
+      return data ? (await withServerFields([data]))[0]! : null;
+    },
+    next,
     error,
   );
 }
 
 /** Saves a new child, then asks the server for its pairing code (removes the child if that fails). */
 export async function addChild(draft: ChildDraft): Promise<{ id: string; pairing: PairingInfo }> {
-  const uid = uidOrThrow();
-  const ref = doc(childrenCol(uid));
-  try {
-    await setDoc(ref, {
+  const uid = await uidOrThrow();
+  const { data, error } = await supabase()
+    .from('children')
+    .insert({
+      parent_id: uid,
       name: draft.name.trim(),
       age: draft.age,
       gender: draft.gender,
       avatar: draft.avatarId,
-      schedule: scheduleToMap(draft.schedule),
-      ownerUid: uid,
-      createdAt: serverTimestamp(),
-    });
-  } catch (e) {
-    throw toAuthFailure(e);
-  }
+      ...scheduleToRow(draft.schedule),
+    })
+    .select('id')
+    .single();
+  if (error) throw toAuthFailure(error);
+  const id = String(data.id);
   try {
-    return { id: ref.id, pairing: await issueCode(ref.id) };
+    return { id, pairing: await issueCode(id) };
   } catch (e) {
-    await deleteDoc(ref).catch(() => {});
+    await supabase().from('children').delete().eq('id', id);
     throw e;
   }
 }
 
 export async function updateSchedule(childId: string, schedule: ChildSchedule): Promise<void> {
-  try {
-    await updateDoc(doc(childrenCol(uidOrThrow()), childId), { schedule: scheduleToMap(schedule) });
-  } catch (e) {
-    throw toAuthFailure(e);
-  }
+  await uidOrThrow();
+  const { error } = await supabase().from('children').update(scheduleToRow(schedule)).eq('id', childId);
+  if (error) throw toAuthFailure(error);
 }
 
-/** Deletes the child; onChildDeleted (server) removes progress, submissions, recordings, code, session. */
+/** Deletes the child; the database cascades progress, stars, submissions, sessions and codes. */
 export async function removeChild(childId: string): Promise<void> {
-  try {
-    await deleteDoc(doc(childrenCol(uidOrThrow()), childId));
-  } catch (e) {
-    throw toAuthFailure(e);
-  }
+  await uidOrThrow();
+  const { error } = await supabase().from('children').delete().eq('id', childId);
+  if (error) throw toAuthFailure(error);
 }
+
+/** The soonest review day from today (Riyadh), and how many days ahead it is (0 = today). */
+export function nextReviewDay(
+  s: ChildSchedule | null,
+  now = new Date(),
+): { day: WeekDay; label: string; inDays: number } | null {
+  if (!s || !s.reviewDays.length) return null;
+  const today = (new Date(now.getTime() + 3 * 3_600_000).getUTCDay() + 1) % 7; // sat = 0 … fri = 6
+  let best: { day: WeekDay; label: string; inDays: number } | null = null;
+  for (const d of s.reviewDays) {
+    const i = WEEK_DAYS.findIndex((x) => x.id === d);
+    const inDays = (i - today + 7) % 7;
+    if (!best || inDays < best.inDays) best = { day: d, label: WEEK_DAYS[i]!.label, inDays };
+  }
+  return best;
+}
+
+/** «الخميس، الأحد» — the review days in week order. */
+export const reviewDayNames = (s: ChildSchedule | null): string =>
+  s
+    ? WEEK_DAYS.filter((d) => s.reviewDays.includes(d.id))
+        .map((d) => d.label)
+        .join('، ')
+    : '';
 
 /** «٥:٠٠ مساءً» */
 export function formatTime(minutes: number): string {

@@ -1,18 +1,21 @@
-import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 
 import { paths } from '../app/paths';
-import { firebase } from '../firebase/app';
+import { supabase } from '../supabase/client';
 
 /**
  * Where «الرئيسية» and the logo go: a signed-in parent → the parent dashboard
  * (never the public landing); anyone else → the landing page.
  */
 export function useHomeTarget(): string {
-  const [parent, setParent] = useState(() => {
-    const u = firebase().auth.currentUser;
-    return !!u && !u.isAnonymous;
-  });
-  useEffect(() => onAuthStateChanged(firebase().auth, (u) => setParent(!!u && !u.isAnonymous)), []);
+  const [parent, setParent] = useState(false);
+  useEffect(() => {
+    const auth = supabase().auth;
+    void auth.getSession().then(({ data }) => setParent(!!data.session && !data.session.user.is_anonymous));
+    const { data } = auth.onAuthStateChange((_e, session) =>
+      setParent(!!session && !session.user.is_anonymous),
+    );
+    return () => data.subscription.unsubscribe();
+  }, []);
   return parent ? paths.parent.dashboard() : paths.landing;
 }

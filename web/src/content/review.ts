@@ -2,7 +2,7 @@
 // for the weekly review screen and cards. Built from the server-written stats.
 import type { ChildProfile } from '../data/children';
 import type { StoredProgress } from '../data/student';
-import { hijriDayMonth } from '../lib/dates';
+import { hijriDayMonth, toDateOrNull } from '../lib/dates';
 import { plural } from '../lib/plural';
 import { hadithRepo, lessonScripts, quranMeta } from './library';
 
@@ -15,10 +15,7 @@ export interface ReviewItem {
 
 const list = (v: unknown): Record<string, unknown>[] =>
   Array.isArray(v) ? v.filter((x): x is Record<string, unknown> => !!x && typeof x === 'object') : [];
-const asDate = (v: unknown): Date | null =>
-  v && typeof (v as { toDate?: () => Date }).toDate === 'function'
-    ? (v as { toDate: () => Date }).toDate()
-    : null;
+const asDate = toDateOrNull;
 const ayat = (n: number) => plural(n, { one: 'آية واحدة', two: 'آيتان', few: 'آيات', many: 'آية' });
 
 export function reviewItems(child: ChildProfile, progress?: Map<string, StoredProgress>): ReviewItem[] {

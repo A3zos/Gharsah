@@ -9,6 +9,8 @@ export default defineConfig({
   // Emulator flows run with `npm run e2e:emu` (playwright.emu.config.ts).
   testIgnore: ['parent.spec.ts', 'child.spec.ts', 'lesson.spec.ts'],
   fullyParallel: true,
+  // More parallel browsers time out on a 16 GB dev machine (see the review-notes report).
+  workers: 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
@@ -30,9 +32,11 @@ export default defineConfig({
     { name: 'desktop-1280', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
   ],
   webServer: {
-    command: `npm run preview -- --port ${PORT} --strictPort`,
+    // Built with the placeholder .env.e2e (stubbed network), then served like Pages will.
+    command: `npm run build:e2e && npm run preview -- --port ${PORT} --strictPort`,
     port: PORT,
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
+    // Always rebuild with .env.e2e: a reused server could be serving a build without it.
+    reuseExistingServer: false,
+    timeout: 240_000,
   },
 });

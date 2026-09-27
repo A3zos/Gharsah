@@ -7,24 +7,21 @@ import { C } from '../../components/ui/color';
 import { CheckIcon, ForwardIcon } from '../../components/ui/icons';
 import { Blob } from '../../components/ui/Page';
 import { reviewItems, type ReviewItem } from '../../content/review';
-import { formatTime, WEEK_DAYS, type ChildProfile } from '../../data/children';
+import { formatTime, nextReviewDay, type ChildProfile } from '../../data/children';
 import { cx } from '../../lib/cx';
 import { daysPhrase, plural } from '../../lib/plural';
 import type { Route } from './+types/weekly-review';
 
 export const meta: Route.MetaFunction = () => [{ title: 'المراجعة — غَرْسة' }];
 
-const JS_DAY: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
-
-/** «بعد يومين — الساعة ٥:٠٠ مساءً» for the child's review day. */
+/** «بعد يومين — الساعة ٥:٠٠ مساءً» for the child's next review day. */
 function whenText(child: ChildProfile, now = new Date()): string | null {
   const s = child.schedule;
-  const day = s?.reviewDay;
-  if (!s || !day) return null;
-  const riyadh = new Date(now.getTime() + 3 * 3_600_000).getUTCDay();
-  const diff = (JS_DAY[day]! - riyadh + 7) % 7;
+  const next = nextReviewDay(s, now);
+  if (!s || !next) return null;
+  const diff = next.inDays;
   const when = diff === 0 ? 'اليوم' : diff === 1 ? 'غدًا' : `بعد ${daysPhrase(diff)}`;
-  return `${when} — الساعة ${formatTime(s.custom[day] ?? s.time)}`;
+  return `${when} — الساعة ${formatTime(s.custom[next.day] ?? s.time)}`;
 }
 
 /**
@@ -41,7 +38,7 @@ export default function WeeklyReviewRoute() {
       </ChildPage>
     );
   }
-  const dayName = WEEK_DAYS.find((d) => d.id === child.schedule?.reviewDay)?.label ?? null;
+  const dayName = nextReviewDay(child.schedule)?.label ?? null;
   const items = reviewItems(child, progress);
   const toReview = items.filter((i) => i.state === 'done');
   const surahs = items.filter((i) => i.kind === 'surah').length;

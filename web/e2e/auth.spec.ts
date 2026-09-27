@@ -51,50 +51,55 @@ test('legal page switches documents', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('الشروط والأحكام');
 });
 
-// ── Review notes A2: child login messages (network stubbed — nothing reaches Firebase) ──
+// ── Review notes A2: child login messages (network stubbed — nothing reaches Supabase) ──
 
 const b64url = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
 const now = Math.floor(Date.now() / 1000);
-const FAKE_ID_TOKEN = `${b64url({ alg: 'none', typ: 'JWT' })}.${b64url({
-  iss: 'https://securetoken.google.com/nibras-59284',
-  aud: 'nibras-59284',
-  sub: 'anon-e2e',
-  user_id: 'anon-e2e',
+const ANON_USER = {
+  id: '00000000-0000-4000-8000-00000000e2e0',
+  aud: 'authenticated',
+  role: 'authenticated',
+  is_anonymous: true,
+  app_metadata: {},
+  user_metadata: {},
+  created_at: new Date().toISOString(),
+};
+const FAKE_JWT = `${b64url({ alg: 'HS256', typ: 'JWT' })}.${b64url({
+  sub: ANON_USER.id,
+  role: 'authenticated',
+  is_anonymous: true,
   iat: now,
   exp: now + 3600,
-  auth_time: now,
-  firebase: { sign_in_provider: 'anonymous', identities: {} },
 })}.sig`;
 
+/** Supabase anonymous sign-in = POST /auth/v1/signup without an email. */
 async function stubAnonymousSignIn(page: Page, disabled = false) {
-  await page.route('**/identitytoolkit.googleapis.com/**/accounts:signUp**', (r) =>
+  await page.route('**/auth/v1/signup**', (r) =>
     disabled
       ? r.fulfill({
-          status: 400,
+          status: 422,
           contentType: 'application/json',
-          body: JSON.stringify({ error: { code: 400, message: 'ADMIN_ONLY_OPERATION', errors: [] } }),
+          body: JSON.stringify({
+            code: 422,
+            error_code: 'anonymous_provider_disabled',
+            msg: 'Anonymous sign-ins are disabled',
+          }),
         })
       : r.fulfill({
           contentType: 'application/json',
           body: JSON.stringify({
-            idToken: FAKE_ID_TOKEN,
-            refreshToken: 'r',
-            expiresIn: '3600',
-            localId: 'anon-e2e',
+            access_token: FAKE_JWT,
+            token_type: 'bearer',
+            expires_in: 3600,
+            expires_at: now + 3600,
+            refresh_token: 'r',
+            user: ANON_USER,
           }),
         }),
   );
-  await page.route('**/identitytoolkit.googleapis.com/**/accounts:lookup**', (r) =>
-    r.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        users: [{ localId: 'anon-e2e', lastLoginAt: String(Date.now()), createdAt: String(Date.now()) }],
-      }),
-    }),
-  );
 }
 
-const CALLABLE = '**/claimPairingCode';
+const CALLABLE = '**/functions/v1/claim-pairing-code';
 const enterCode = (page: Page) => page.getByLabel('الخانة الأولى من رمز الربط').pressSequentially('123456');
 
 test('child login: page fits, one back control, «أهلًا يا بطل!», «رمز الربط»', async ({ page }) => {
@@ -117,7 +122,7 @@ test('child login: wrong or expired code → the specific message', async ({ pag
     r.fulfill({
       status: 404,
       contentType: 'application/json',
-      body: JSON.stringify({ error: { status: 'NOT_FOUND', message: 'wrong-code' } }),
+      body: JSON.stringify({ error: 'wrong-code' }),
     }),
   );
   await page.goto('/login?role=child');
@@ -125,7 +130,7 @@ test('child login: wrong or expired code → the specific message', async ({ pag
   await expect(page.getByText('الرمز غير صحيح أو انتهت صلاحيته. اطلب رمزًا جديدًا من والدك.')).toBeVisible();
 });
 
-test('child login: callable not reachable (not deployed) → «الخدمة غير متاحة الآن…»', async ({ page }) => {
+test('child login: function not reachable (not deployed) → «الخدمة غير متاحة الآن…»', async ({ page }) => {
   await stubAnonymousSignIn(page);
   await page.route(CALLABLE, (r) =>
     r.fulfill({ status: 404, contentType: 'text/html', body: '<h1>Not Found</h1>' }),

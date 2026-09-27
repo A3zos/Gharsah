@@ -1,6 +1,6 @@
 // Wires a LessonAgent for the browser: verified local content, the reciter audio
 // (bundled, or downloaded once + sha256-checked into Cache Storage), the interim
-// speech teacher, the WAV project recorder and the Firestore progress sink.
+// speech teacher, the WAV project recorder and the Supabase progress sink.
 import manifestJson from '@content/audio/quran/manifest.json';
 import textJson from '@content/quran/quran_text.json';
 
@@ -13,9 +13,9 @@ import { QuranText } from '../quran';
 import type { LessonScript } from '../script';
 import type { LessonProgress } from '../state';
 import { LessonMicrophone } from './microphone';
-import { FirestoreProgressSink } from './progressSink';
+import { SupabaseProgressSink } from './progressSink';
 import { HtmlRecitationPlayer } from './recitationPlayer';
-import { WavProjectRecorder } from './recorder';
+import { MAX_REPORT_MS, WavProjectRecorder } from './recorder';
 import { SpeechTeacher } from './speechTeacher';
 
 const CACHE_NAME = 'gharsah-quran-audio-v1';
@@ -89,7 +89,7 @@ export function createWebLesson(o: {
   session: ChildRef;
   childFirstName: string;
   progressFrom?: LessonProgress;
-  /** Replaces the Firestore sink (the DEV-only child preview keeps progress in memory). */
+  /** Replaces the Supabase sink (the DEV-only child preview keeps progress in memory). */
   sink?: LessonProgressSink;
 }): WebLesson {
   const cache = new CacheStorageAudioStore();
@@ -116,7 +116,8 @@ export function createWebLesson(o: {
     teacher,
     player,
     recorder,
-    sink: o.sink ?? new FirestoreProgressSink(o.session, o.script.lessonId),
+    sink: o.sink ?? new SupabaseProgressSink(o.session, o.script),
+    timings: { maxRecordingMs: MAX_REPORT_MS },
     childFirstName: o.childFirstName,
     debugTapCountsRepeat: import.meta.env.DEV,
   });

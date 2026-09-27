@@ -9,7 +9,7 @@ import { ForwardIcon } from '../../components/ui/icons';
 import { HadithIcon, ProjectIcon, QuranIcon } from '../../components/child/childIcons';
 import { lessonChips, lessonScripts, lessonValue } from '../../content/library';
 import { reviewItems } from '../../content/review';
-import { WEEK_DAYS } from '../../data/children';
+import { nextReviewDay } from '../../data/children';
 import { headline, STAGE_LABEL } from '../../data/stats';
 import {
   buildBoard,
@@ -51,7 +51,7 @@ export default function ChildHome() {
   const reportFirst = script?.steps[0]?.type === 'project_report';
   const { rows, note } = buildBoard(board, child.leader, `${firstName} — أنت`);
   const left = daysUntilReset();
-  const reviewDay = WEEK_DAYS.find((d) => d.id === child.schedule?.reviewDay)?.label;
+  const reviewDay = nextReviewDay(child.schedule)?.label;
   const reviewLine = reviewItems(child, progress)
     .map((i) => i.label)
     .join(' · ');

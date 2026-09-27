@@ -8,8 +8,9 @@ import { levelOf, type LessonMicrophone } from './microphone';
 import { concat, downsample, encodeWav, REPORT_SAMPLE_RATE } from './wav';
 
 const MIN_MS = 1000;
-/** Matches the agent's maxRecordingMs and the submissions rule (≤ 180000). */
-const MAX_MS = 180_000;
+/** Matches createWebLesson's maxRecordingMs: 120 s keeps a WAV under the 2 MB bucket limit. */
+export const MAX_REPORT_MS = 120_000;
+const MAX_MS = MAX_REPORT_MS;
 
 export class WavProjectRecorder implements ProjectRecorder {
   private readonly _level = new Emitter<number>();

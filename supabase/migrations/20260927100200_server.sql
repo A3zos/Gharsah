@@ -73,6 +73,19 @@ begin
     'projects', (select count(*) from public.submissions s where s.child_id = c),
     'ayatBySurah', coalesce((select jsonb_object_agg(k, n) from (
                select split_part(r, ':', 1) as k, count(*) as n from unnest(refs) as r group by 1) t), '{}'::jsonb),
+    -- The lowest surah with memorized ayat that isn't complete yet.
+    'surahInProgress', (select jsonb_build_object('surah', t.k::int, 'done', t.n)
+               from (select split_part(r, ':', 1) as k, count(*) as n from unnest(refs) as r group by 1) t
+               where not exists (select 1 from public.star_events e join public.lessons l using (lesson_id)
+                                 where e.child_id = c and e.stage = 'full_twice' and l.kind = 'surah' and l.ref = t.k)
+               order by t.k::int limit 1),
+    -- The most recently practised surah and how many of its ayat that lesson covered.
+    'latestAyat', (select jsonb_build_object('surah', split_part(p.done_refs[cardinality(p.done_refs)], ':', 1)::int,
+                     'count', (select count(*) from unnest(p.done_refs) as r
+                               where split_part(r, ':', 1) = split_part(p.done_refs[cardinality(p.done_refs)], ':', 1)),
+                     'at', p.updated_at)
+               from public.progress p where p.child_id = c and cardinality(p.done_refs) > 0
+               order by p.updated_at desc limit 1),
     'pendingProject', (select p.project_assigned from public.progress p
                where p.child_id = c and p.project_assigned is not null
                  and not exists (select 1 from public.submissions s where s.child_id = c and s.project_id = p.project_assigned)

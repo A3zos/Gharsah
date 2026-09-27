@@ -12,7 +12,7 @@ import type { Headline } from '../../data/stats';
 import type { ProjectSubmission } from '../../data/submissions';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
-import { hijriDayMonth } from '../../lib/dates';
+import { hijriDayMonth, toDateOrNull } from '../../lib/dates';
 import { plural } from '../../lib/plural';
 import { AyahText } from '../ui/AyahText';
 import { C } from '../ui/color';
@@ -37,10 +37,7 @@ const TINT: Record<DashCard, string> = {
 
 const list = (v: unknown): Record<string, unknown>[] =>
   Array.isArray(v) ? v.filter((x): x is Record<string, unknown> => !!x && typeof x === 'object') : [];
-const asDate = (v: unknown): Date | null =>
-  v && typeof (v as { toDate?: () => Date }).toDate === 'function'
-    ? (v as { toDate: () => Date }).toDate()
-    : null;
+const asDate = toDateOrNull;
 const surahOk = (n: unknown): n is number => typeof n === 'number' && n >= 1 && n <= 114;
 
 function Icon({ kind }: { kind: DashCard }) {

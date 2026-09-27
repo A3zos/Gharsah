@@ -20,3 +20,15 @@ export function hijriDayMonth(d: Date): string {
 /** Whole hours until `d` («الرمز ينتهي بعد ٢٣ ساعة»). */
 export const hoursUntil = (d: Date, now = new Date()) =>
   Math.max(0, Math.ceil((d.getTime() - now.getTime()) / 3_600_000));
+
+/** A date from the server: an ISO string (Postgres JSON), a Date, or a legacy `{ toDate() }`. */
+export function toDateOrNull(v: unknown): Date | null {
+  if (v instanceof Date) return v;
+  if (typeof v === 'string') {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (v && typeof (v as { toDate?: () => Date }).toDate === 'function')
+    return (v as { toDate: () => Date }).toDate();
+  return null;
+}

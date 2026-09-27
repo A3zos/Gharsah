@@ -11,7 +11,7 @@ import { projectTitle, Recordings } from '../../components/parent/Recordings';
 import { C } from '../../components/ui/color';
 import { ForwardIcon, PlusIcon } from '../../components/ui/icons';
 import { projectValue } from '../../content/library';
-import type { ChildProfile } from '../../data/children';
+import { reviewDayNames, type ChildProfile } from '../../data/children';
 import { ageLabel, headline, STAGE_LABEL, type Headline } from '../../data/stats';
 import { watchSubmissions, type ProjectSubmission } from '../../data/submissions';
 import { toArabicDigits } from '../../lib/arabicDigits';
@@ -199,17 +199,8 @@ function ReviewIcon({ size = 26 }: { size?: number }) {
  * (product decision): it only tells which day the review is set for.
  */
 function lastReviewLine(child: ChildProfile): string {
-  const day = child.schedule?.reviewDay;
-  const names: Record<string, string> = {
-    sat: 'السبت',
-    sun: 'الأحد',
-    mon: 'الاثنين',
-    tue: 'الثلاثاء',
-    wed: 'الأربعاء',
-    thu: 'الخميس',
-    fri: 'الجمعة',
-  };
-  return day ? `لم تبدأ بعد — يوم المراجعة: ${names[day]}` : 'لم تبدأ بعد — اختر يوم المراجعة من الجدول';
+  const days = reviewDayNames(child.schedule);
+  return days ? `لم تبدأ بعد — أيام المراجعة: ${days}` : 'لم تبدأ بعد — اختر أيام المراجعة من الجدول';
 }
 
 // ── Desktop: ParentWebDash ──

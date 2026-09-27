@@ -11,6 +11,8 @@
 .env
 .env.*
 !.env.example
+# Placeholder values for the stubbed Playwright build (no real keys)
+!web/.env.e2e
 # Flutter --dart-define-from-file values
 app/env/*.json
 !app/env/*.example.json

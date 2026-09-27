@@ -1,14 +1,13 @@
-// The child device's view of its own data. Port of
-// app/lib/features/student/data/{student_repository,leaderboard}.dart.
-// Rules: the device may `get` its own child doc and progress docs, create
-// submissions + upload its recording, and `get` the anonymous leaderboard.
-import { doc, onSnapshot, Timestamp, type DocumentData } from 'firebase/firestore';
-
-import { firebase } from '../firebase/app';
-import { toArabicDigits } from '../lib/arabicDigits';
+// The child device's view of its own data (Supabase). RLS lets a paired device
+// read its own child row, progress and stars, write its own progress and
+// reports, and read the weekly board through get_leaderboard() (others anonymous).
+import { hadithStepIndex, lessonScripts } from '../content/library';
 import type { LessonScript } from '../lesson/script';
 import type { LessonProgress } from '../lesson/state';
-import { childFromDoc, type ChildProfile } from './children';
+import { toArabicDigits } from '../lib/arabicDigits';
+import { supabase } from '../supabase/client';
+import { watch } from '../supabase/live';
+import { CHILD_COLUMNS, childFromRow, type ChildProfile } from './children';
 
 /** The lesson sequence (interim until the yearly plan is delivered). */
 export const LESSON_SEQUENCE = ['m01-w03-ikhlas', 'm01-w03-day2'] as const;
@@ -18,16 +17,52 @@ export interface ChildRef {
   childId: string;
 }
 
-export const childPath = (s: ChildRef) => `parents/${s.parentUid}/children/${s.childId}`;
+type Row = Record<string, unknown>;
+
+/** The board + this child's own standing (in the old `leader` shape the UI reads). */
+async function loadBoard(): Promise<{ board: LeaderBoard | null; own: Row | null }> {
+  const { data, error } = await supabase().rpc('get_leaderboard');
+  if (error || !data) return { board: null, own: null };
+  const d = data as Row;
+  const weekKey = String(d.weekKey ?? '');
+  const rows = (Array.isArray(d.rows) ? (d.rows as Row[]) : [])
+    .filter((r) => typeof r.rank === 'number' && typeof r.stars === 'number')
+    .map((r) => [r.rank as number, r.stars as number] as [number, number]);
+  const own = d.own && typeof d.own === 'object' ? (d.own as Row) : null;
+  return {
+    board: { weekKey, total: typeof d.total === 'number' ? d.total : 0, rows },
+    own: own
+      ? { weekKey, rank: own.rank, points: own.stars, topPercent: own.topPercent, gapToAbove: own.gapToAbove }
+      : null,
+  };
+}
 
 export function watchStudent(
   s: ChildRef,
   next: (c: ChildProfile | null) => void,
   error?: (e: unknown) => void,
 ) {
-  return onSnapshot(
-    doc(firebase().db, childPath(s)),
-    (d) => next(d.exists() ? childFromDoc(d.id, d.data()) : null),
+  return watch(
+    [
+      { table: 'children', filter: `id=eq.${s.childId}` },
+      { table: 'progress', filter: `child_id=eq.${s.childId}` },
+      { table: 'star_events', filter: `child_id=eq.${s.childId}` },
+      { table: 'submissions', filter: `child_id=eq.${s.childId}` },
+    ],
+    async () => {
+      const db = supabase();
+      const { data, error: e } = await db
+        .from('children')
+        .select(CHILD_COLUMNS)
+        .eq('id', s.childId)
+        .maybeSingle();
+      if (e) throw e;
+      if (!data) return null;
+      const [stats, board] = await Promise.all([db.rpc('child_stats', { c: s.childId }), loadBoard()]);
+      const child = childFromRow(data, { stats: (stats.data as Row | null) ?? null });
+      return { ...child, leader: board.own };
+    },
+    next,
     error,
   );
 }
@@ -37,46 +72,60 @@ export interface StoredProgress {
   updatedAt: Date | null;
 }
 
-export function progressFromMap(lessonId: string, d: DocumentData): LessonProgress {
-  const list = (v: unknown) => (Array.isArray(v) ? v : []);
+/** A progress row → the LessonAgent's checkpoint (same meaning as the Firestore one). */
+export function progressFromRow(lessonId: string, r: Row): LessonProgress {
+  const script = lessonScripts.get(lessonId);
+  const stepIndex = typeof r.step_index === 'number' ? r.step_index : 0;
+  const completed = r.stage === 'done';
+  const intro = script?.steps.find((x) => x.type === 'intro');
+  const surahDone = !!intro && (completed || r.stage === 'hadith');
+  const hIdx = script ? hadithStepIndex(script) : -1;
+  const hadithStep = hIdx >= 0 ? script!.steps[hIdx] : undefined;
+  const hadithDone = hadithStep?.type === 'hadith_loop' && (completed || stepIndex > hIdx);
   return {
     lessonId,
-    stepIndex: typeof d.stepIndex === 'number' ? d.stepIndex : 0,
-    doneRefs: new Set(list(d.doneRefs).filter((r): r is string => typeof r === 'string' && r.includes(':'))),
-    surahsCompleted: new Set(list(d.surahsCompleted).filter((s): s is number => typeof s === 'number')),
-    hadithDone: new Set(list(d.hadithDone).filter((h): h is string => typeof h === 'string')),
-    projectAssigned: typeof d.projectAssigned === 'string' ? d.projectAssigned : null,
-    reportedProject: typeof d.reportedProject === 'string' ? d.reportedProject : null,
-    completed: d.completed === true,
+    stepIndex,
+    doneRefs: new Set(
+      (Array.isArray(r.done_refs) ? r.done_refs : []).filter(
+        (x): x is string => typeof x === 'string' && x.includes(':'),
+      ),
+    ),
+    surahsCompleted: new Set(surahDone && intro?.type === 'intro' ? [intro.surah] : []),
+    hadithDone: new Set(hadithDone && hadithStep?.type === 'hadith_loop' ? [hadithStep.hadithId] : []),
+    projectAssigned: typeof r.project_assigned === 'string' ? r.project_assigned : null,
+    reportedProject: typeof r.reported_project === 'string' ? r.reported_project : null,
+    completed,
   };
 }
 
-/** Checkpoints of the lessons in LESSON_SEQUENCE (the device can only get by id). */
+/** Checkpoints of the lessons in LESSON_SEQUENCE. */
 export function watchProgress(
   s: ChildRef,
   next: (m: Map<string, StoredProgress>) => void,
   error?: (e: unknown) => void,
 ) {
-  const latest = new Map<string, StoredProgress>();
-  const seen = new Set<string>();
-  const unsubs = LESSON_SEQUENCE.map((id) =>
-    onSnapshot(
-      doc(firebase().db, `${childPath(s)}/progress/${id}`),
-      (d) => {
-        seen.add(id);
-        if (d.exists()) {
-          const data = d.data();
-          latest.set(id, {
-            progress: progressFromMap(id, data),
-            updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : null,
-          });
-        } else latest.delete(id);
-        if (seen.size === LESSON_SEQUENCE.length) next(new Map(latest));
-      },
-      error,
-    ),
+  return watch(
+    [{ table: 'progress', filter: `child_id=eq.${s.childId}` }],
+    async () => {
+      const { data, error: e } = await supabase()
+        .from('progress')
+        .select('lesson_id, stage, step_index, done_refs, project_assigned, reported_project, updated_at')
+        .eq('child_id', s.childId)
+        .in('lesson_id', [...LESSON_SEQUENCE]);
+      if (e) throw e;
+      return new Map(
+        (data ?? []).map((r) => [
+          String(r.lesson_id),
+          {
+            progress: progressFromRow(String(r.lesson_id), r),
+            updatedAt: typeof r.updated_at === 'string' ? new Date(r.updated_at) : null,
+          },
+        ]),
+      );
+    },
+    next,
+    error,
   );
-  return () => unsubs.forEach((u) => u());
 }
 
 // ── Today's lesson ──────────────────────────────────────────────────────────
@@ -117,31 +166,32 @@ export function lessonStepGroups(s: LessonScript): number[] {
   return starts;
 }
 
-// ── Leaderboard (anonymous) ─────────────────────────────────────────────────
+// ── Leaderboard (anonymous; stars this week) ────────────────────────────────
 
 export interface LeaderBoard {
   weekKey: string;
   total: number;
-  /** (rank, points) only — other children are never identified. */
+  /** (rank, stars) only — other children are never identified. */
   rows: [number, number][];
 }
 
+/** The board refreshes every 30 minutes (pg_cron) — re-read on own stars and every 5 minutes. */
 export function watchLeaderboard(next: (b: LeaderBoard | null) => void) {
-  return onSnapshot(
-    doc(firebase().db, 'leaderboard/current'),
-    (d) => {
-      if (!d.exists()) return next(null);
-      const m = d.data();
-      next({
-        weekKey: typeof m.weekKey === 'string' ? m.weekKey : '',
-        total: typeof m.total === 'number' ? m.total : 0,
-        rows: (Array.isArray(m.rows) ? m.rows : [])
-          .filter((r) => typeof r?.rank === 'number' && typeof r?.points === 'number')
-          .map((r) => [r.rank, r.points] as [number, number]),
+  let stop = false;
+  const load = () =>
+    loadBoard()
+      .then((b) => {
+        if (!stop) next(b.board);
+      })
+      .catch(() => {
+        if (!stop) next(null);
       });
-    },
-    () => next(null),
-  );
+  void load();
+  const t = setInterval(load, 5 * 60_000);
+  return () => {
+    stop = true;
+    clearInterval(t);
+  };
 }
 
 export interface BoardRow {
@@ -183,7 +233,7 @@ export function buildBoard(
     note =
       myRank === 1 || gap === null
         ? 'أنت في المركز الأول هذا الأسبوع — استمر!'
-        : `أنت ضمن أفضل ${toArabicDigits(pct)}٪ هذا الأسبوع — باقي ${toArabicDigits(gap)} نقطة لتلحق ب${other(myRank - 1)}.`;
+        : `أنت ضمن أفضل ${toArabicDigits(pct)}٪ هذا الأسبوع — باقي ${toArabicDigits(gap)} نجمة لتلحق ب${other(myRank - 1)}.`;
   }
   return { rows, note };
 }

@@ -11,7 +11,7 @@ import { headline } from '../../data/stats';
 import type { StoredProgress } from '../../data/student';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
-import { hijriDayMonth } from '../../lib/dates';
+import { hijriDayMonth, toDateOrNull } from '../../lib/dates';
 import { plural } from '../../lib/plural';
 import type { Route } from './+types/review';
 
@@ -24,10 +24,7 @@ interface Item {
   state: 'done' | 'now';
 }
 
-const asDate = (v: unknown): Date | null =>
-  v && typeof (v as { toDate?: () => Date }).toDate === 'function'
-    ? (v as { toDate: () => Date }).toDate()
-    : null;
+const asDate = toDateOrNull;
 const list = (v: unknown): Record<string, unknown>[] =>
   Array.isArray(v) ? v.filter((x): x is Record<string, unknown> => !!x && typeof x === 'object') : [];
 

@@ -1,9 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Full flows against the LOCAL Firebase emulators (never production):
-//   1. from app/: firebase emulators:start --only auth,firestore,functions,storage
-//   2. from web/: npm run e2e:emu
-// The dev server is started with VITE_USE_EMULATORS=1.
+// Full flows against the LOCAL Supabase stack (never the remote project):
+//   1. from the repo root: npx supabase start && npx supabase functions serve
+//   2. export SUPABASE_LOCAL_ANON_KEY / SUPABASE_LOCAL_SERVICE_ROLE_KEY (npx supabase status)
+//   3. from web/: npm run e2e:local
+// The dev server gets the local URL + anon key; the service key is only used by e2e/local.ts to seed.
 const PORT = 5175;
 
 export default defineConfig({
@@ -40,7 +41,12 @@ export default defineConfig({
     { name: 'desktop-1280', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
   ],
   webServer: {
-    command: `npx cross-env VITE_USE_EMULATORS=1 react-router dev --port ${PORT} --strictPort`,
+    command: `react-router dev --port ${PORT} --strictPort`,
+    env: {
+      VITE_SUPABASE_URL: process.env.SUPABASE_LOCAL_URL ?? 'http://127.0.0.1:54321',
+      VITE_SUPABASE_ANON_KEY: process.env.SUPABASE_LOCAL_ANON_KEY ?? '',
+      VITE_TRIAL_SUBSCRIBE: '1',
+    },
     port: PORT,
     reuseExistingServer: true,
     timeout: 120_000,

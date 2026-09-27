@@ -3,7 +3,7 @@
 import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
-import { PLAN_LABEL, isSubscribed } from '../../data/parent';
+import { isSubscribed } from '../../data/parent';
 import { cx } from '../../lib/cx';
 import { DESKTOP, useMedia } from '../../lib/useMedia';
 import { BottomNav } from '../ui/BottomNav';
@@ -82,11 +82,19 @@ function Sidebar({ tab }: { tab: ParentTab }) {
           </span>
           <span className="flex min-w-0 grow flex-col gap-[2px]">
             <span className="truncate text-[14.5px] font-extrabold">{name}</span>
-            <span className="text-[12px] text-text-muted">
-              {subscription && isSubscribed(subscription)
-                ? `خطة ${PLAN_LABEL[subscription.plan]}`
-                : 'بلا اشتراك'}
-            </span>
+            {subscription && isSubscribed(subscription) ? (
+              <span className="text-[12px] text-text-muted">
+                {subscription.plan === 'annual'
+                  ? 'الباقة السنوية'
+                  : subscription.plan === 'monthly'
+                    ? 'الباقة الشهرية'
+                    : 'الباقة التجريبية'}
+              </span>
+            ) : (
+              <Link to={paths.parent.plans} className="text-[12px] font-extrabold text-deep-green">
+                اشترك الآن
+              </Link>
+            )}
           </span>
           <button
             type="button"

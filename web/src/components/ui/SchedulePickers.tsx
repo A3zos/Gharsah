@@ -29,14 +29,14 @@ export function DayPicker({
   onToggle,
   wide,
   disabled,
-  reviewDay,
+  reviewDays = [],
 }: {
   days: WeekDay[];
   onToggle: (d: WeekDay) => void;
   wide?: boolean;
   disabled?: boolean;
-  /** design/v3: the review day wears a gold ring. */
-  reviewDay?: WeekDay;
+  /** design/v3: review days wear a gold ring. */
+  reviewDays?: WeekDay[];
 }) {
   return (
     <div
@@ -46,7 +46,7 @@ export function DayPicker({
     >
       {WEEK_DAYS.map((d) => {
         const on = days.includes(d.id);
-        const review = d.id === reviewDay;
+        const review = reviewDays.includes(d.id);
         return (
           <button
             key={d.id}
@@ -125,24 +125,39 @@ export function ReviewGlyph({
  * design/v3 Schedule «يوم المراجعة الأسبوعية»: one gold day. Picking a day that
  * isn't a lesson day adds it to the lesson days (the review replaces that day's lesson).
  */
-export function ReviewDayPicker({ value, onPick }: { value?: WeekDay; onPick: (d: WeekDay) => void }) {
+/**
+ * Weekly review days (review notes B5): 1–3 of the lesson days. Days that aren't
+ * lesson days are disabled; a 4th pick is refused by the caller (onToggle).
+ */
+export function ReviewDayPicker({
+  value,
+  lessonDays,
+  onToggle,
+}: {
+  value: WeekDay[];
+  lessonDays: WeekDay[];
+  onToggle: (d: WeekDay) => void;
+}) {
   return (
-    <div role="radiogroup" aria-label="يوم المراجعة الأسبوعية" className="flex justify-between gap-[4px]">
+    <div role="group" aria-label="أيام المراجعة الأسبوعية" className="flex justify-between gap-[4px]">
       {WEEK_DAYS.map((d) => {
-        const on = d.id === value;
+        const on = value.includes(d.id);
+        const lesson = lessonDays.includes(d.id);
         return (
           <button
             key={d.id}
             type="button"
-            role="radio"
-            aria-checked={on}
-            aria-label={`اجعل المراجعة يوم ${d.label}`}
-            onClick={() => onPick(d.id)}
+            aria-pressed={on}
+            disabled={!lesson}
+            aria-label={lesson ? `المراجعة يوم ${d.label}` : `${d.label} — ليس يوم حصة`}
+            onClick={() => onToggle(d.id)}
             className={cx(
-              'flex h-[46px] w-[46px] shrink-0 flex-col items-center justify-center gap-[1px] rounded-full p-0 font-body',
+              'flex h-[46px] w-[46px] shrink-0 flex-col items-center justify-center gap-[1px] rounded-full p-0 font-body disabled:cursor-not-allowed',
               on
                 ? 'border-[2.5px] border-gold bg-gold text-on-gold'
-                : 'border-[1.5px] border-input-border bg-surface text-text-muted',
+                : lesson
+                  ? 'border-[1.5px] border-input-border bg-surface text-text-muted'
+                  : 'border-[1.5px] border-dashed border-input-border bg-background text-text-subtle opacity-60',
             )}
           >
             {on && (

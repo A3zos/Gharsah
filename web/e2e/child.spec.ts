@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { pairChild } from './emu';
+import { pairChild } from './local';
 
 // Review notes B3 — no parental gate: «أنا وليّ الأمر» on the child profile opens
 // the parent login (parent tab) in the same browser; the password is the gate.

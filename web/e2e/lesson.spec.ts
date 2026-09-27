@@ -4,7 +4,7 @@
 // only proves the mic opens. Nothing here grades recitation.
 import { expect, test, type Page } from '@playwright/test';
 
-import { getDoc, pairChild } from './emu';
+import { getRow, pairChild } from './local';
 
 const teacher = (p: Page) => p.getByRole('button', { name: 'تابع مع المعلّم' });
 
@@ -28,7 +28,7 @@ async function repeatAyah(page: Page) {
 
 test('child code → home → full lesson L1→L10 → back home', async ({ page }) => {
   test.setTimeout(240_000);
-  const { uid, childId } = await pairChild(page);
+  const { childId } = await pairChild(page);
   await page.getByRole('link', { name: /ابدأ الحصة/ }).click({ force: true }); // the CTA breathes (never "stable")
   await page.waitForURL(/\/child\/lesson\//);
 
@@ -78,11 +78,8 @@ test('child code → home → full lesson L1→L10 → back home', async ({ page
   await page.getByRole('button', { name: 'عودة للرئيسية' }).click();
   await page.waitForURL(/\/child\/home/);
   await expect
-    .poll(async () => {
-      const d = await getDoc(`parents/${uid}/children/${childId}/progress/m01-w03-ikhlas`);
-      return (d?.fields as Record<string, { booleanValue?: boolean }> | undefined)?.completed?.booleanValue;
-    })
-    .toBe(true);
+    .poll(async () => (await getRow('progress', { child_id: childId, lesson_id: 'm01-w03-ikhlas' }))?.stage)
+    .toBe('done');
 });
 
 test('ExitConfirm: ✕ and browser back ask first; «أكمل الحصة» stays, «خروج» saves and resumes later', async ({

@@ -1,4 +1,5 @@
-import { Link, useSearchParams } from 'react-router';
+import { useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
 import {
@@ -14,21 +15,31 @@ import { C } from '../../components/ui/color';
 import { buttonClass } from '../../components/ui/Button';
 import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage, SettingsButton } from '../../components/parent/ParentShell';
-import { daysLeft, isSubscribed, PLAN_LABEL, remainingFraction, type Subscription } from '../../data/parent';
+import {
+  daysLeft,
+  isSubscribed,
+  PLAN_LABEL,
+  remainingFraction,
+  startTrial,
+  trialSubscribeEnabled,
+  type PlanId,
+  type Subscription,
+} from '../../data/parent';
+import { AuthFailure } from '../../data/authFailure';
 import { childrenCount } from '../../data/stats';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { hijriDate, hijriDayMonth } from '../../lib/dates';
-import { StoreBadges } from '../../components/ui/StoreBadges';
-import { PhoneDownloadIcon, PlanList } from '../../components/landing/shared';
+import { PlanList } from '../../components/landing/shared';
 import { MONTHLY_MAX_CHILDREN, PLANS, PRICE } from '../../content/plans';
 import type { Route } from './+types/plans';
 
 export const meta: Route.MetaFunction = () => [{ title: 'الباقات — غَرْسة' }];
 
 /**
- * design/v3 ParentWebPlans (desktop) / Packages (phone). The web never sells:
- * Google Play Billing lives in the Android app (CLAUDE.md §3), so every buy /
- * renew button says «… من التطبيق» and points to the app download.
+ * design/v3 ParentWebPlans (desktop) / Packages (phone). Review notes B6: each
+ * «اشترك» writes a TRIAL subscription (provider 'mock', the database fills the
+ * dates) behind VITE_TRIAL_SUBSCRIBE — switch it off before launch; real
+ * purchases are Google Play Billing in the Android app (CLAUDE.md §3).
  */
 export default function PlansRoute() {
   const { children, subscription } = useParentData();
@@ -50,31 +61,8 @@ export default function PlansRoute() {
 function Desktop({ sub, count, limit }: { sub: Subscription | null; count: number; limit: boolean }) {
   return (
     <div className="flex grow flex-col gap-[24px]">
-      <DesktopHeader
-        title="الباقات"
-        subtitle="اشتراك واحد يكفي جميع أبنائك · الدفع والإلغاء عبر Google Play"
-      />
-      {limit && <LimitBanner href="#get-app" />}
-      <div
-        id="get-app"
-        className="flex scroll-mt-[20px] items-center gap-[18px] rounded-px-24 border-[1.5px] border-gold-border bg-gold-tint px-[24px] py-[18px]"
-      >
-        <span
-          className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-px-16 bg-surface"
-          aria-hidden="true"
-        >
-          <PhoneGlyph />
-        </span>
-        <span className="flex grow flex-col gap-[4px]">
-          <span className="text-[16.5px] font-extrabold text-on-gold">
-            الشراء عبر Google Play غير متاح في المتصفح
-          </span>
-          <span className="text-[14px] leading-[1.7] text-warning-text">
-            الأسعار معروضة للاطلاع. أكمل الاشتراك أو التجديد من التطبيق على جوالك — المتصفح للمتابعة فقط.
-          </span>
-        </span>
-        <StoreBadges size={56} />
-      </div>
+      <DesktopHeader title="الباقات" subtitle="الشهرية لابن واحد، والسنوية لكل أبنائك" />
+      {limit && <LimitBanner />}
       {sub && (
         <div className="flex items-center gap-[20px] rounded-px-28 bg-surface px-[30px] py-[24px] shadow-dark-14-30-5">
           <span
@@ -86,14 +74,18 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
           <span className="flex grow flex-col gap-[5px]">
             <span className="text-[19px] font-extrabold">باقتك الحالية — {PLAN_LABEL[sub.plan]}</span>
             <span className="text-[14px] text-text-muted">
-              تتجدّد في {hijriDate(sub.expiresAt)} · {PRICE[sub.plan]} ريال{' '}
-              {sub.plan === 'annual' ? 'في السنة' : 'في الشهر'}
+              تتجدّد في {hijriDate(sub.expiresAt)} ·{' '}
+              {sub.plan === 'trial'
+                ? 'فترة تجريبية'
+                : `${PRICE[sub.plan]} ريال ${sub.plan === 'annual' ? 'في السنة' : 'في الشهر'}`}
             </span>
           </span>
-          <a href="#get-app" className={buttonClass('gold', 'md', 'gap-[9px] px-[24px]')}>
-            <PlayGlyph color="onGold" />
-            جدّد من التطبيق
-          </a>
+          {sub.plan !== 'trial' && (
+            <SubscribeButton plan={sub.plan} className={buttonClass('gold', 'md', 'gap-[9px] px-[24px]')}>
+              <PlayGlyph color="onGold" />
+              تجديد
+            </SubscribeButton>
+          )}
           <a
             href="https://play.google.com/store/account/subscriptions"
             target="_blank"
@@ -155,17 +147,16 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
                   باقتك الحالية
                 </span>
               ) : (
-                <a
-                  href="#get-app"
+                <SubscribeButton
+                  plan={plan}
                   className={buttonClass(
-                    'plain',
+                    annual ? 'primary' : 'plain',
                     'custom',
                     'mt-auto h-[58px] gap-[10px] rounded-px-20 font-heading text-[18px] font-bold',
                   )}
                 >
-                  <PhoneDownloadIcon color="textDark" />
-                  اشترك من التطبيق
-                </a>
+                  اشترك
+                </SubscribeButton>
               )}
             </div>
           );
@@ -204,15 +195,6 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
   );
 }
 
-function PhoneGlyph() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <rect x="6" y="2.5" width="12" height="19" rx="3" stroke={C.warningText} strokeWidth="1.9" />
-      <path d="M10.5 18.5 H13.5" stroke={C.warningText} strokeWidth="1.9" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number; limit: boolean }) {
   const current = sub?.plan;
   return (
@@ -225,7 +207,7 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
         <SettingsButton />
       </div>
 
-      {limit && <LimitBanner href="#m-get-app" />}
+      {limit && <LimitBanner />}
 
       {/* TODO(design): no designed "no subscription yet" hero; the card only shows with an active plan. */}
       {sub && (
@@ -264,7 +246,7 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
 
       <div className="flex items-baseline justify-between gap-[10px]">
         <h2 className="m-0 font-heading text-[20px] leading-[1.5] font-bold">الباقات</h2>
-        <span className="text-[12.5px] text-text-muted">الدفع عبر Google Play</span>
+        <span className="text-[12.5px] text-text-muted">الشهرية لابن واحد، والسنوية لكل أبنائك</span>
       </div>
 
       <div className="relative flex flex-col gap-[15px] rounded-px-28 border-[2.5px] border-primary bg-surface px-[20px] pt-[26px] pb-[20px] shadow-lesson-done-card">
@@ -286,17 +268,17 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
         {current === 'annual' ? (
           <CurrentChip />
         ) : (
-          <a
-            href="#m-get-app"
+          <SubscribeButton
+            plan="annual"
             className={buttonClass(
               'primary',
               'custom',
               'h-[56px] gap-[9px] rounded-px-19 font-heading text-[18px] font-bold',
             )}
           >
-            {current === 'monthly' ? 'الترقية للسنوية' : 'اشترك من التطبيق'}
+            {current === 'monthly' ? 'الترقية للسنوية' : 'اشترك'}
             <ForwardIcon size={20} />
-          </a>
+          </SubscribeButton>
         )}
       </div>
 
@@ -316,16 +298,16 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
         {current === 'monthly' ? (
           <CurrentChip muted />
         ) : (
-          <a
-            href="#m-get-app"
+          <SubscribeButton
+            plan="monthly"
             className={buttonClass(
               'plain',
               'custom',
               'h-[56px] rounded-px-19 font-heading text-[17px] font-bold',
             )}
           >
-            {current === 'annual' ? 'التحويل إلى الشهرية' : 'اشترك من التطبيق'}
-          </a>
+            {current === 'annual' ? 'التحويل إلى الشهرية' : 'اشترك'}
+          </SubscribeButton>
         )}
       </div>
 
@@ -358,35 +340,12 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
         </span>
         <ForwardIcon size={20} color="deepGreen" strokeWidth={2.3} />
       </Link>
-      <div
-        id="m-get-app"
-        className="flex scroll-mt-[20px] flex-col gap-[14px] rounded-px-20 bg-border-soft px-[16px] py-[15px]"
-      >
-        <div className="flex items-start gap-[12px]">
-          <span
-            className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-px-11 border border-border-strong bg-surface"
-            aria-hidden="true"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M6 3.5 L19 12 L6 20.5 Z" fill={C.playGlyph} />
-            </svg>
-          </span>
-          <div className="flex flex-col gap-[4px]">
-            <span className="text-[13.5px] font-bold">الاشتراك يُدار من Google Play</span>
-            <span className="text-[12.5px] leading-[1.7] text-text-muted">
-              لا نطلب بيانات بطاقة داخل التطبيق. يمكنك الإلغاء في أي وقت من إعدادات الاشتراكات في Play. الشراء
-              والترقية من التطبيق على جوالك — المتصفح للمتابعة فقط.
-            </span>
-          </div>
-        </div>
-        <StoreBadges size={50} className="justify-center" />
-      </div>
     </div>
   );
 }
 
 /** design/v3 PackagesLimit — a monthly parent tried to add a second child. */
-function LimitBanner({ href }: { href: string }) {
+function LimitBanner() {
   return (
     <div
       role="alert"
@@ -422,8 +381,8 @@ function LimitBanner({ href }: { href: string }) {
           </span>
         </span>
       </div>
-      <a
-        href={href}
+      <SubscribeButton
+        plan="annual"
         className={buttonClass(
           'primary',
           'custom',
@@ -432,7 +391,7 @@ function LimitBanner({ href }: { href: string }) {
       >
         الترقية للسنوية
         <ForwardIcon size={20} />
-      </a>
+      </SubscribeButton>
     </div>
   );
 }
@@ -448,6 +407,75 @@ function CurrentChip({ muted }: { muted?: boolean }) {
     >
       <CheckIcon size={19} color={muted ? 'textMuted' : 'deepGreen'} />
       باقتك الحالية
+    </span>
+  );
+}
+
+/**
+ * «اشترك» / «الترقية» / «تجديد»: writes the trial subscription, shows the success
+ * state, then opens the dashboard. Off (VITE_TRIAL_SUBSCRIBE≠1) → a disabled
+ * «قريبًا من التطبيق» (purchases then only through Google Play in the app).
+ */
+function SubscribeButton({
+  plan,
+  className,
+  children,
+}: {
+  plan: PlanId;
+  className: string;
+  children: React.ReactNode;
+}) {
+  const navigate = useNavigate();
+  const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle');
+  const [error, setError] = useState<string | null>(null);
+  if (!trialSubscribeEnabled()) {
+    return (
+      <button type="button" disabled className={className}>
+        قريبًا من التطبيق
+      </button>
+    );
+  }
+  const go = async () => {
+    setError(null);
+    setState('busy');
+    try {
+      await startTrial(plan);
+      setState('done');
+      setTimeout(() => navigate(paths.parent.dashboard()), 1200);
+    } catch (e) {
+      setState('idle');
+      setError(e instanceof AuthFailure ? e.message : 'تعذّر تفعيل الباقة — حاول مرة أخرى.');
+    }
+  };
+  return (
+    <span className="mt-auto flex flex-col gap-[8px]">
+      <button
+        type="button"
+        onClick={() => void go()}
+        disabled={state !== 'idle'}
+        aria-busy={state === 'busy'}
+        className={className}
+      >
+        {state === 'done' ? (
+          <>
+            <CheckIcon size={19} color="surface" />
+            تم تفعيل الباقة
+          </>
+        ) : (
+          children
+        )}
+      </button>
+      {state === 'done' && (
+        <span role="status" className="text-center text-[13px] font-bold text-deep-green">
+          تم تفعيل {PLAN_LABEL[plan] === 'سنوية' ? 'الباقة السنوية' : 'الباقة الشهرية'} — ننتقل إلى لوحة
+          التحكم…
+        </span>
+      )}
+      {error && (
+        <span role="alert" className="text-center text-[13px] font-bold text-error-text">
+          {error}
+        </span>
+      )}
     </span>
   );
 }

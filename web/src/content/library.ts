@@ -22,6 +22,10 @@ export const lessonScripts: ReadonlyMap<string, LessonScript> = new Map(
   }),
 );
 
+/** Index of the lesson's hadith step (-1 when it has none). */
+export const hadithStepIndex = (s: LessonScript): number =>
+  s.steps.findIndex((x) => x.type === 'hadith_loop');
+
 const VALUES = new Map([ikhlas, day2].map((j) => [j.lessonId, (j as { value?: string }).value ?? '']));
 
 /** The lesson's value («برّ الوالدين»), from the lesson JSON. */

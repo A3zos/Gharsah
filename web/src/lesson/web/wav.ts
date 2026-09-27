@@ -1,7 +1,8 @@
 // Pure helpers for the project report: resample the mic's PCM to 12 kHz mono and
 // encode it as 16-bit WAV (3 min ≈ 4.3 MB, under the 5 MB Storage rule).
 
-export const REPORT_SAMPLE_RATE = 12000;
+// 8 kHz mono 16-bit ≈ 16 KB/s: 120 s ≈ 1.9 MB, under the 2 MB `recordings` bucket limit.
+export const REPORT_SAMPLE_RATE = 8000;
 
 /** Box-filter resampling (averages the source samples each output sample covers). */
 export function downsample(input: Float32Array, fromRate: number, toRate = REPORT_SAMPLE_RATE): Float32Array {

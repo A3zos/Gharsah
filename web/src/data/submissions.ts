@@ -1,10 +1,8 @@
 // Project reports the child recorded (frame 22), as the parent sees them.
-// Port of app/lib/features/dashboard/data/submissions_repository.dart: the
-// audio is read through Storage rules (parent only) — never a shareable URL.
-import { collection, deleteDoc, doc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore';
-import { deleteObject, getBytes, ref } from 'firebase/storage';
-
-import { firebase } from '../firebase/app';
+// The audio sits in the PRIVATE bucket `recordings`; the parent plays it through
+// a short-lived signed URL (storage policy: parent reads own children only).
+import { supabase } from '../supabase/client';
+import { watch } from '../supabase/live';
 
 export interface ProjectSubmission {
   id: string;
@@ -15,52 +13,52 @@ export interface ProjectSubmission {
   createdAt: Date;
 }
 
-const MAX_BYTES = 8 * 1024 * 1024;
+const SIGNED_URL_SECONDS = 10 * 60;
 
 export function watchSubmissions(
-  uid: string,
+  _uid: string,
   childId: string,
   next: (s: ProjectSubmission[]) => void,
   error?: (e: unknown) => void,
 ) {
-  return onSnapshot(
-    query(
-      collection(firebase().db, 'parents', uid, 'children', childId, 'submissions'),
-      orderBy('createdAt', 'desc'),
-    ),
-    (q) =>
-      next(
-        q.docs.map((d) => {
-          const v = d.data();
-          return {
-            id: d.id,
-            projectId: String(v.projectId ?? ''),
-            lessonId: String(v.lessonId ?? ''),
-            storagePath: String(v.storagePath ?? ''),
-            durationMs: typeof v.durationMs === 'number' ? v.durationMs : 0,
-            createdAt: v.createdAt instanceof Timestamp ? v.createdAt.toDate() : new Date(),
-          };
-        }),
-      ),
+  return watch(
+    [{ table: 'submissions', filter: `child_id=eq.${childId}` }],
+    async () => {
+      const { data, error: e } = await supabase()
+        .from('submissions')
+        .select('id, project_id, lesson_id, storage_path, duration_ms, created_at')
+        .eq('child_id', childId)
+        .order('created_at', { ascending: false });
+      if (e) throw e;
+      return (data ?? []).map((v) => ({
+        id: String(v.id),
+        projectId: String(v.project_id ?? ''),
+        lessonId: String(v.lesson_id ?? ''),
+        storagePath: String(v.storage_path ?? ''),
+        durationMs: typeof v.duration_ms === 'number' ? v.duration_ms : 0,
+        createdAt: typeof v.created_at === 'string' ? new Date(v.created_at) : new Date(),
+      }));
+    },
+    next,
     error,
   );
 }
 
-/** The recording as an object URL (revoke it when done). */
+/** A signed URL (10 min) the audio element can play. */
 export async function loadRecording(s: ProjectSubmission): Promise<string> {
-  const bytes = await getBytes(ref(firebase().storage, s.storagePath), MAX_BYTES);
-  const type = s.storagePath.endsWith('.wav') ? 'audio/wav' : 'audio/mp4';
-  return URL.createObjectURL(new Blob([bytes], { type }));
+  const { data, error } = await supabase()
+    .storage.from('recordings')
+    .createSignedUrl(s.storagePath, SIGNED_URL_SECONDS);
+  if (error || !data) throw error ?? new Error('no signed url');
+  return data.signedUrl;
 }
 
-/** The parent deletes a recording (audio + record); onSubmissionDeleted recomputes stats. */
-export async function deleteSubmission(uid: string, childId: string, s: ProjectSubmission): Promise<void> {
-  try {
-    await deleteObject(ref(firebase().storage, s.storagePath));
-  } catch (e) {
-    if ((e as { code?: string }).code !== 'storage/object-not-found') throw e;
-  }
-  await deleteDoc(doc(firebase().db, 'parents', uid, 'children', childId, 'submissions', s.id));
+/** The parent deletes a recording (audio + record). */
+export async function deleteSubmission(_uid: string, _childId: string, s: ProjectSubmission): Promise<void> {
+  // The row delete also queues the file for storage-cleanup; removing it now is immediate.
+  await supabase().storage.from('recordings').remove([s.storagePath]);
+  const { error } = await supabase().from('submissions').delete().eq('id', s.id);
+  if (error) throw error;
 }
 
 /** «٠:٤٤» */
