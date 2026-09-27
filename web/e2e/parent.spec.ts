@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { admin, getRow, loginParent, seedParent } from './local';
+import { admin, getRow, loginParent, seedParent, TEST_EMAIL_DOMAIN } from './stack';
 
 // The parent area on the LOCAL Supabase stack: «أبنائي», add child → server-issued
 // pairing code, new code, settings. Run with `npm run e2e:local`.
@@ -56,7 +56,7 @@ test('«أبنائي» lists children with their state; plans never sell on the 
   });
   // عبدالله is paired: a device session written the way claim-pairing-code does it.
   const device = await admin().auth.admin.createUser({
-    email: `d${Date.now()}@test.local`,
+    email: `d${Date.now()}${TEST_EMAIL_DOMAIN}`,
     password: 'x-pass-123456',
   });
   await admin()

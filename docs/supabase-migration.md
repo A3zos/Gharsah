@@ -98,7 +98,7 @@ npx supabase db push --include-seed                        # migrations + supaba
 npx supabase test db --linked                              # pgTAP (rolls back; leaves no data)
 
 # Edge Function secrets (pick a long random CRON_SECRET):
-npx supabase secrets set DEMO_MODE=true CRON_SECRET=<random> ALLOWED_ORIGINS=https://gharsah.pages.dev,http://localhost:5173
+npx supabase secrets set DEMO_MODE=true CRON_SECRET=<random> ALLOWED_ORIGINS=https://gharsah.pages.dev,http://localhost:5173,http://localhost:5175
 npx supabase functions deploy create-pairing-code revoke-pairing-code claim-pairing-code delete-account storage-cleanup
 ```
 

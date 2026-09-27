@@ -4,7 +4,7 @@
 // only proves the mic opens. Nothing here grades recitation.
 import { expect, test, type Page } from '@playwright/test';
 
-import { getRow, pairChild } from './local';
+import { getRow, pairChild } from './stack';
 
 const teacher = (p: Page) => p.getByRole('button', { name: 'تابع مع المعلّم' });
 

@@ -59,7 +59,7 @@ Also in **Authentication → Sign In / Providers**:
   (the web shows «افتح رابط التأكيد…»); OFF matches the earlier behaviour (sign-in allowed while
   unverified).
 
-Edge Function CORS: set the secret `ALLOWED_ORIGINS=https://gharsah.pages.dev,http://localhost:5173`
+Edge Function CORS: set the secret `ALLOWED_ORIGINS=https://gharsah.pages.dev,http://localhost:5173,http://localhost:5175` (5175 = the e2e dev server)
 (comma-separated; `*` if unset).
 
 ## 4. Verify the build locally with production-like env

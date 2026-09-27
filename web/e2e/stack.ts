@@ -1,24 +1,32 @@
-// Helpers for the LOCAL Supabase stack suites (parent/child/lesson) — never the
-// remote project. `npx supabase start` prints the local URL and keys; export them:
-//   SUPABASE_LOCAL_URL=http://127.0.0.1:54321
-//   SUPABASE_LOCAL_ANON_KEY=…            (the local anon key)
-//   SUPABASE_LOCAL_SERVICE_ROLE_KEY=…    (local only — used here to seed, never in the app)
+// Helpers for the full-stack suites (parent/child/lesson) against a real Supabase
+// project: the local stack by default, or the remote one only when explicitly
+// opted in. Keys come from the shell, never from files in git:
+//   SUPABASE_E2E_URL=http://127.0.0.1:54321     (default)
+//   SUPABASE_E2E_ANON_KEY=…
+//   SUPABASE_E2E_SERVICE_ROLE_KEY=…              (seeding only — never used by the app)
+//   E2E_ALLOW_REMOTE=1                           (required for any non-local URL)
+// Every test user is <random>@test.local; `npm run e2e:cleanup` deletes them.
 import type { Page } from '@playwright/test';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const URL_ = process.env.SUPABASE_LOCAL_URL ?? 'http://127.0.0.1:54321';
+const URL_ = process.env.SUPABASE_E2E_URL ?? 'http://127.0.0.1:54321';
+const LOCAL = /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(URL_);
+
+export const TEST_EMAIL_DOMAIN = '@test.local';
 
 function need(name: string): string {
   const v = process.env[name];
-  if (!v) throw new Error(`${name} is not set — run \`npx supabase status\` and export the local keys`);
-  if (!/127\.0\.0\.1|localhost/.test(URL_)) throw new Error('local e2e must target the local stack only');
+  if (!v) throw new Error(`${name} is not set — export the project's keys in this shell (never in a file)`);
+  if (!LOCAL && process.env.E2E_ALLOW_REMOTE !== '1') {
+    throw new Error(`${URL_} is not the local stack — set E2E_ALLOW_REMOTE=1 to run against it on purpose`);
+  }
   return v;
 }
 
 let adminClient: SupabaseClient | undefined;
 /** Service-role client for seeding the LOCAL database. */
 export function admin(): SupabaseClient {
-  adminClient ??= createClient(URL_, need('SUPABASE_LOCAL_SERVICE_ROLE_KEY'), {
+  adminClient ??= createClient(URL_, need('SUPABASE_E2E_SERVICE_ROLE_KEY'), {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   return adminClient;
@@ -40,7 +48,7 @@ export async function seedParent(
   opts: { plan?: 'annual' | 'monthly' | null; children?: SeedChild[] } = {},
 ): Promise<{ uid: string; email: string; password: string; childIds: string[] }> {
   const db = admin();
-  const email = `p${Date.now()}${Math.floor(Math.random() * 1e6)}@test.local`;
+  const email = `p${Date.now()}${Math.floor(Math.random() * 1e6)}${TEST_EMAIL_DOMAIN}`;
   const password = 'test-pass-123';
   const { data, error } = await db.auth.admin.createUser({
     email,
