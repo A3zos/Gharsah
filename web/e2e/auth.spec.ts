@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 // Web Phase 2: landing, auth and legal pages render and link together (no Firebase writes).
 
@@ -66,7 +66,7 @@ const FAKE_ID_TOKEN = `${b64url({ alg: 'none', typ: 'JWT' })}.${b64url({
   firebase: { sign_in_provider: 'anonymous', identities: {} },
 })}.sig`;
 
-async function stubAnonymousSignIn(page: import('@playwright/test').Page, disabled = false) {
+async function stubAnonymousSignIn(page: Page, disabled = false) {
   await page.route('**/identitytoolkit.googleapis.com/**/accounts:signUp**', (r) =>
     disabled
       ? r.fulfill({
@@ -95,7 +95,7 @@ async function stubAnonymousSignIn(page: import('@playwright/test').Page, disabl
 }
 
 const CALLABLE = '**/claimPairingCode';
-const enterCode = (page: import('@playwright/test').Page) =>
+const enterCode = (page: Page) =>
   page.getByLabel('الخانة الأولى من رمز الربط').pressSequentially('123456');
 
 test('child login: page fits, one back control, «أهلًا يا بطل!», «رمز الربط»', async ({ page }) => {

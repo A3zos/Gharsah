@@ -44,7 +44,6 @@ async function pairChild(page: Page) {
 }
 
 const teacher = (p: Page) => p.getByRole('button', { name: 'تابع مع المعلّم' });
-const caption = (p: Page) => p.locator('p[aria-live="polite"]');
 
 /** Taps the teacher until `done` holds (skips lines / counts dev repeats / answers «نعم»). */
 async function tapUntil(page: Page, done: () => Promise<boolean>, max = 40) {
