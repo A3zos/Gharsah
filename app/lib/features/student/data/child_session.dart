@@ -65,9 +65,23 @@ class ChildSession {
   };
 }
 
-/// Why a code wasn't accepted (frame 03 shows «الرمز غير صحيح» for [wrong];
-/// the others have no designed state yet — TODO(design)).
-enum ClaimError { wrong, tooManyAttempts, offline, unknown }
+/// Why a code wasn't accepted (review notes A2 — same messages as the web).
+enum ClaimError { wrong, tooManyAttempts, offline, unavailable }
+
+/// Firebase error → what the child sees. The server answers a wrong/expired
+/// code with not-found + message `wrong-code`; a not-found WITHOUT it means the
+/// callable isn't reachable (not deployed). Anonymous sign-in disabled
+/// (admin-restricted-operation) also means the service is off.
+ClaimError claimErrorOf(String code, String? message) {
+  final c = code.replaceFirst(RegExp(r'^[a-z]+/'), '');
+  if (c == 'invalid-argument' ||
+      (c == 'not-found' && (message ?? '').contains('wrong-code'))) {
+    return ClaimError.wrong;
+  }
+  if (c == 'resource-exhausted') return ClaimError.tooManyAttempts;
+  if (c == 'network-request-failed') return ClaimError.offline;
+  return ClaimError.unavailable;
+}
 
 class ClaimFailure implements Exception {
   const ClaimFailure(this.error);
@@ -181,18 +195,12 @@ class FirebaseChildSessionRepository implements ChildSessionRepository {
       _session.value = s;
       return s;
     } on FirebaseFunctionsException catch (e) {
-      throw ClaimFailure(switch (e.code) {
-        'not-found' || 'invalid-argument' => ClaimError.wrong,
-        'resource-exhausted' => ClaimError.tooManyAttempts,
-        'unavailable' || 'deadline-exceeded' => ClaimError.offline,
-        _ => ClaimError.unknown,
-      });
+      // The raw code tells "not deployed" / "anonymous auth off" apart.
+      debugPrint('[claimPairingCode] ${e.code} ${e.message}');
+      throw ClaimFailure(claimErrorOf(e.code, e.message));
     } on FirebaseAuthException catch (e) {
-      throw ClaimFailure(
-        e.code == 'network-request-failed'
-            ? ClaimError.offline
-            : ClaimError.unknown,
-      );
+      debugPrint('[claimPairingCode] auth/${e.code} ${e.message}');
+      throw ClaimFailure(claimErrorOf(e.code, e.message));
     }
   }
 

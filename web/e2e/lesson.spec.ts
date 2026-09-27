@@ -25,13 +25,19 @@ async function pairChild(page: Page) {
     age: 10,
     gender: 'boy',
     avatar: 'b1',
-    schedule: { days: ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'], time: 1020, custom: {}, duration: 45, reminder: true },
+    schedule: {
+      days: ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'],
+      time: 1020,
+      custom: {},
+      duration: 45,
+      reminder: true,
+    },
     ownerUid: uid,
     createdAt: new Date(now - 1000),
     pairing: { code, expiresAt: new Date(now + DAY), status: 'active' },
   });
   await page.goto('/login?role=child');
-  await page.getByLabel('الخانة الأولى من رمز الدعوة').pressSequentially(code);
+  await page.getByLabel('الخانة الأولى من رمز الربط').pressSequentially(code);
   // Six digits verify on their own (auto-submit) → child home.
   await page.waitForURL(/\/child\/home/);
   return { uid, childId };
@@ -80,7 +86,10 @@ test('child code → home → full lesson L1→L10 → back home', async ({ page
     await tapUntil(
       page,
       async () =>
-        (await page.getByText(new RegExp(`الآية ${'١٢٣٤'[a]}`)).isVisible().catch(() => false)) ||
+        (await page
+          .getByText(new RegExp(`الآية ${'١٢٣٤'[a]}`))
+          .isVisible()
+          .catch(() => false)) ||
         (await page.getByRole('button', { name: 'تابع بعد إتمام السورة' }).isVisible()),
     );
   }
@@ -106,13 +115,17 @@ test('child code → home → full lesson L1→L10 → back home', async ({ page
   await expect(page.getByText('أكملت درس اليوم', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'عودة للرئيسية' }).click();
   await page.waitForURL(/\/child\/home/);
-  await expect.poll(async () => {
-    const d = await getDoc(`parents/${uid}/children/${childId}/progress/m01-w03-ikhlas`);
-    return (d?.fields as Record<string, { booleanValue?: boolean }> | undefined)?.completed?.booleanValue;
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      const d = await getDoc(`parents/${uid}/children/${childId}/progress/m01-w03-ikhlas`);
+      return (d?.fields as Record<string, { booleanValue?: boolean }> | undefined)?.completed?.booleanValue;
+    })
+    .toBe(true);
 });
 
-test('ExitConfirm: ✕ and browser back ask first; «أكمل الحصة» stays, «خروج» saves and resumes later', async ({ page }) => {
+test('ExitConfirm: ✕ and browser back ask first; «أكمل الحصة» stays, «خروج» saves and resumes later', async ({
+  page,
+}) => {
   test.setTimeout(150_000);
   await pairChild(page);
   await page.getByRole('link', { name: /ابدأ الحصة/ }).click({ force: true }); // the CTA breathes (never "stable")

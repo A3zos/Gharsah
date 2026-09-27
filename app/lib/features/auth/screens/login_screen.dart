@@ -68,12 +68,15 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           const GBackButton(),
           const SizedBox(height: 20),
-          Text('أهلًا بعودتك', style: t.headlineLarge),
+          Text(
+            isParent ? 'أهلًا بعودتك' : 'أهلًا يا بطل!',
+            style: t.headlineLarge,
+          ),
           const SizedBox(height: 6),
           Text(
             isParent
                 ? 'سجّل دخولك لمتابعة تقدّم أبنائك.'
-                : 'ادخل برمز الدعوة الذي أعطاك إياه والدك.',
+                : 'أدخل رمز الربط الذي أعطاك إياه والدك.',
             style: AppTextStyles.subtitle,
           ),
           const SizedBox(height: 20),
@@ -362,7 +365,7 @@ class _ChildFormState extends State<_ChildForm> {
         ClaimError.wrong => _CodeStatus.wrong,
         ClaimError.tooManyAttempts => _CodeStatus.tooMany,
         ClaimError.offline => _CodeStatus.offline,
-        ClaimError.unknown => _CodeStatus.failed,
+        ClaimError.unavailable => _CodeStatus.failed,
       };
     }
     if (!mounted) return;
@@ -389,23 +392,8 @@ class _ChildFormState extends State<_ChildForm> {
           children: [
             const SizedBox(height: 6),
             Center(child: AppIcon.logoChild(size: AppSizes.logoChild)),
-            const SizedBox(height: 12),
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 260),
-                child: Text(
-                  'أدخل الرمز الذي أعطاك إياه والدك.',
-                  style: AppTextStyles.childPrompt,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
             const SizedBox(height: 18),
-            Text(
-              'رمز الدعوة',
-              style: t.labelLarge,
-              textAlign: TextAlign.center,
-            ),
+            Text('رمز الربط', style: t.labelLarge, textAlign: TextAlign.center),
             const SizedBox(height: 10),
             CodeInput(
               controller: _code,
@@ -456,7 +444,13 @@ class _ChildFormState extends State<_ChildForm> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[icon, const SizedBox(width: 7)],
-          Text(text, style: base.copyWith(color: color)),
+          Flexible(
+            child: Text(
+              text,
+              style: base.copyWith(color: color),
+              textAlign: TextAlign.center,
+            ),
+          ),
         ],
       ),
     );
@@ -469,11 +463,9 @@ class _ChildFormState extends State<_ChildForm> {
       ),
       _CodeStatus.wrong => row(
         AppIcon.alertCircle(),
-        'الرمز غير صحيح',
+        'الرمز غير صحيح أو انتهت صلاحيته. اطلب رمزًا جديدًا من والدك.',
         AppColors.errorText,
       ),
-      // TODO(design): the three states below have no designed copy yet;
-      // they reuse frame 03's error line style.
       _CodeStatus.tooMany => row(
         AppIcon.alertCircle(),
         'محاولات كثيرة — انتظر قليلًا ثم جرّب',
@@ -481,12 +473,12 @@ class _ChildFormState extends State<_ChildForm> {
       ),
       _CodeStatus.offline => row(
         AppIcon.alertCircle(),
-        'لا يوجد اتصال — تحقّق من الإنترنت',
+        'تحقق من اتصالك بالإنترنت.',
         AppColors.errorText,
       ),
       _CodeStatus.failed => row(
         AppIcon.alertCircle(),
-        'حدث خطأ — حاول مرة أخرى',
+        'الخدمة غير متاحة الآن، حاول بعد قليل.',
         AppColors.errorText,
       ),
       _CodeStatus.verified => row(

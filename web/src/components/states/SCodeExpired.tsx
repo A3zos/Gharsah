@@ -23,7 +23,7 @@ export function SCodeExpired({ cells, onBack }: { cells: string[]; onBack: () =>
           <h1 className="m-0 font-heading text-[21px] font-bold">دخول الطفل</h1>
         </div>
         <div className="flex shrink-0 flex-col items-center gap-[12px] pt-[22px]">
-          <span className="text-[14px] font-bold">رمز الدعوة</span>
+          <span className="text-[14px] font-bold">رمز الربط</span>
           <div className="flex gap-[8px] [direction:ltr]" aria-label="الرمز المُدخل">
             {cells.map((d, i) => (
               <span
@@ -59,7 +59,7 @@ export function SCodeExpired({ cells, onBack }: { cells: string[]; onBack: () =>
             الرمز انتهت مدّته
           </p>
           <p className="m-0 max-w-[290px] text-center text-[14.5px] leading-[1.95] text-text-muted">
-            رموز الدعوة تنتهي بعد ٢٤ ساعة لحماية حسابك. اطلب من وليّ أمرك رمزًا جديدًا من شاشة «رمز الربط».
+            رموز الربط تنتهي بعد ٢٤ ساعة لحماية حسابك. اطلب من وليّ أمرك رمزًا جديدًا من شاشة «رمز الربط».
           </p>
         </div>
         <div className="mt-auto flex shrink-0 flex-col gap-[10px]">

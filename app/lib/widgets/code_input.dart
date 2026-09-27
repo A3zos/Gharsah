@@ -76,7 +76,7 @@ class _CodeInputState extends State<CodeInput> {
     );
 
     return Semantics(
-      label: 'رمز الدعوة، ${widget.length.arabicDigits} أرقام',
+      label: 'رمز الربط، ${widget.length.arabicDigits} أرقام',
       value: text,
       textField: true,
       child: Directionality(

@@ -3,7 +3,6 @@ import { Link, redirect, useNavigate, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { SCodeExpired } from '../../components/states/SCodeExpired';
-import { BackButton } from '../../components/ui/BackButton';
 import { Button, ButtonLink } from '../../components/ui/Button';
 import { HomeBar } from '../../components/ui/HomeBar';
 import { CODE_LENGTH, CodeInput } from '../../components/ui/CodeInput';
@@ -16,7 +15,7 @@ import { TextField } from '../../components/ui/TextField';
 import { isValidEmail, signIn } from '../../data/auth';
 import { ClaimFailure, claimCode } from '../../data/childSession';
 import { toLatinDigits } from '../../lib/arabicDigits';
-import { safeNext, useBack } from '../../lib/nav';
+import { safeNext } from '../../lib/nav';
 import type { Route } from './+types/login';
 
 export const meta: Route.MetaFunction = () => [{ title: 'تسجيل الدخول — غَرْسة' }];
@@ -179,7 +178,6 @@ function GrowthIntro() {
 // ── design/v3 Login — two tabs ──────────────────────────────────────────────
 
 function Login({ tab, onTab, childDevice }: { tab: Tab; onTab: (t: Tab) => void; childDevice: boolean }) {
-  const back = useBack(paths.welcome);
   const [expired, setExpired] = useState<string[] | null>(null);
   if (expired) return <SCodeExpired cells={expired} onBack={() => setExpired(null)} />;
   return (
@@ -187,15 +185,15 @@ function Login({ tab, onTab, childDevice }: { tab: Tab; onTab: (t: Tab) => void;
       decor={<Blob className="-top-[150px] -left-[130px] h-[340px] w-[340px] bg-blob-green-strong" />}
       innerClassName="px-[26px] pt-[30px] pb-[36px]"
     >
-      <div className="mx-auto flex w-full max-w-[440px] grow flex-col gap-[20px]">
-        <HomeBar />
-        <BackButton onClick={back} />
-        <div className="flex flex-col gap-[6px]">
-          <h1 className="m-0 font-heading text-[28px] leading-[1.6] font-bold">أهلًا بعودتك</h1>
+      <div className="mx-auto flex w-full max-w-[440px] grow flex-col gap-[16px]">
+        {/* One back control: «الرئيسية» (history-aware), logo on the right. */}
+        <HomeBar logoFirst />
+        <div className="flex flex-col gap-[4px]">
+          <h1 className="m-0 font-heading text-[28px] leading-[1.5] font-bold">
+            {tab === 'parent' ? 'أهلًا بعودتك' : 'أهلًا يا بطل!'}
+          </h1>
           <p className="m-0 text-[14.5px] leading-[1.7] text-text-muted">
-            {tab === 'parent'
-              ? 'سجّل دخولك لمتابعة تقدّم أبنائك.'
-              : 'ادخل برمز الدعوة الذي أعطاك إياه والدك.'}
+            {tab === 'parent' ? 'سجّل دخولك لمتابعة تقدّم أبنائك.' : 'أدخل رمز الربط الذي أعطاك إياه والدك.'}
           </p>
         </div>
         <SegmentedTabs<Tab>
@@ -213,7 +211,7 @@ function Login({ tab, onTab, childDevice }: { tab: Tab; onTab: (t: Tab) => void;
           role="tabpanel"
           id={`login-panel-${tab}`}
           aria-labelledby={`login-tab-${tab}`}
-          className="flex min-h-[540px] animate-[gh-tab_.28s_ease_both] flex-col gap-[18px]"
+          className="flex grow animate-[gh-tab_.28s_ease_both] flex-col gap-[16px]"
         >
           {tab === 'parent' ? <ParentForm childDevice={childDevice} /> : <ChildForm onExpired={setExpired} />}
         </div>
@@ -335,7 +333,7 @@ function ParentForm({ childDevice }: { childDevice: boolean }) {
   );
 }
 
-type CodeStatus = '' | 'short' | 'bad' | 'ok' | 'busy' | 'tooMany' | 'offline' | 'error';
+type CodeStatus = '' | 'short' | 'bad' | 'ok' | 'busy' | 'tooMany' | 'offline' | 'unavailable';
 
 function ChildForm({ onExpired }: { onExpired: (cells: string[]) => void }) {
   const navigate = useNavigate();
@@ -359,16 +357,8 @@ function ChildForm({ onExpired }: { onExpired: (cells: string[]) => void }) {
       setStatus('ok');
       navigate(safeNext(params, 'child') ?? paths.child.home, { replace: true });
     } catch (e) {
-      const err = e instanceof ClaimFailure ? e.error : 'unknown';
-      setStatus(
-        err === 'wrong'
-          ? 'bad'
-          : err === 'tooManyAttempts'
-            ? 'tooMany'
-            : err === 'offline'
-              ? 'offline'
-              : 'error',
-      );
+      const err = e instanceof ClaimFailure ? e.error : 'unavailable';
+      setStatus(err === 'wrong' ? 'bad' : err === 'tooManyAttempts' ? 'tooMany' : err);
     }
   };
 
@@ -379,20 +369,17 @@ function ChildForm({ onExpired }: { onExpired: (cells: string[]) => void }) {
         e.preventDefault();
         void submit();
       }}
-      className="flex grow flex-col gap-[18px]"
+      className="flex grow flex-col gap-[14px]"
     >
-      <div className="flex flex-col items-center gap-[12px] pt-[6px]">
-        <SproutBadge size={96} />
-        <p className="m-0 max-w-[260px] text-center text-[15px] leading-[1.8]">
-          أدخل الرمز الذي أعطاك إياه والدك.
-        </p>
+      <div className="flex justify-center">
+        <SproutBadge size={84} />
       </div>
       <div className="flex flex-col gap-[10px]">
         <label htmlFor="code-cell-1" className="text-center text-[14px] font-bold">
-          رمز الدعوة
+          رمز الربط
         </label>
         <CodeInput
-          label="رمز الدعوة"
+          label="رمز الربط"
           value={cells}
           invalid={status === 'bad'}
           disabled={status === 'busy' || status === 'ok'}
@@ -411,7 +398,7 @@ function ChildForm({ onExpired }: { onExpired: (cells: string[]) => void }) {
             <>
               <span className="flex items-center gap-[7px] text-[13px] font-bold text-error-text">
                 <AlertIcon />
-                الرمز غير صحيح أو منتهي
+                الرمز غير صحيح أو انتهت صلاحيته. اطلب رمزًا جديدًا من والدك.
               </span>
               <button
                 type="button"
@@ -431,15 +418,14 @@ function ChildForm({ onExpired }: { onExpired: (cells: string[]) => void }) {
               تم التحقق — جارٍ فتح تطبيق الطفل
             </span>
           )}
-          {/* TODO(design): no designed copy for these three; same slot and style as the wrong-code line. */}
-          {(status === 'tooMany' || status === 'offline' || status === 'error') && (
+          {(status === 'tooMany' || status === 'offline' || status === 'unavailable') && (
             <span className="flex items-center gap-[7px] text-[13px] font-bold text-error-text">
               <AlertIcon />
               {status === 'tooMany'
                 ? 'محاولات كثيرة — انتظر قليلًا ثم حاول مجددًا.'
                 : status === 'offline'
-                  ? 'تعذّر الاتصال بالإنترنت — تحقّق من الشبكة.'
-                  : 'حدث خطأ غير متوقع — حاول مرة أخرى.'}
+                  ? 'تحقق من اتصالك بالإنترنت.'
+                  : 'الخدمة غير متاحة الآن، حاول بعد قليل.'}
             </span>
           )}
         </div>

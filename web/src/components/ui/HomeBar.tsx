@@ -9,29 +9,44 @@ import { cx } from '../../lib/cx';
 import { useHomeTarget } from '../../lib/useHomeTarget';
 import { ForwardIcon, SproutMark } from './icons';
 
-export function HomeBar({ className, to }: { className?: string; to?: string }) {
+export function HomeBar({
+  className,
+  to,
+  logoFirst,
+}: {
+  className?: string;
+  to?: string;
+  logoFirst?: boolean;
+}) {
   const home = useHomeTarget();
   const target = to ?? home;
+  const button = (
+    <Link
+      to={target}
+      className="flex h-[44px] shrink-0 items-center justify-center gap-[8px] rounded-px-15 border-[1.5px] border-input-border bg-surface px-[15px] text-[14px] font-extrabold text-deep-green no-underline"
+    >
+      <ForwardIcon size={18} color="deepGreen" strokeWidth={2.4} />
+      الرئيسية
+    </Link>
+  );
+  const logo = (
+    <Link
+      to={target}
+      aria-label="غَرْسة — العودة إلى الصفحة الرئيسية"
+      className="flex shrink-0 items-center gap-[8px] rounded-px-12 px-[6px] py-[4px] no-underline"
+    >
+      <SproutMark size={26} seed={false} />
+      <span className="font-heading text-[19px] font-bold text-deep-green underline decoration-deep-green/35 underline-offset-4">
+        غَرْسة
+      </span>
+    </Link>
+  );
+  // RTL: the first child sits on the right. logoFirst = logo right, «الرئيسية» left (login).
   return (
     <nav aria-label="التنقل" className={cx('flex w-full shrink-0 items-center gap-[12px]', className)}>
-      <Link
-        to={target}
-        className="flex h-[44px] shrink-0 items-center justify-center gap-[8px] rounded-px-15 border-[1.5px] border-input-border bg-surface px-[15px] text-[14px] font-extrabold text-deep-green no-underline"
-      >
-        <ForwardIcon size={18} color="deepGreen" strokeWidth={2.4} />
-        الرئيسية
-      </Link>
+      {logoFirst ? logo : button}
       <span className="grow" />
-      <Link
-        to={target}
-        aria-label="غَرْسة — العودة إلى الصفحة الرئيسية"
-        className="flex shrink-0 items-center gap-[8px] rounded-px-12 px-[6px] py-[4px] no-underline"
-      >
-        <SproutMark size={26} seed={false} />
-        <span className="font-heading text-[19px] font-bold text-deep-green underline decoration-deep-green/35 underline-offset-4">
-          غَرْسة
-        </span>
-      </Link>
+      {logoFirst ? button : logo}
     </nav>
   );
 }
