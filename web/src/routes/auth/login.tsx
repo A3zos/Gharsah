@@ -347,6 +347,13 @@ function ChildForm({ onExpired }: { onExpired: (cells: string[]) => void }) {
     if (status === 'busy' || status === 'ok') return;
     if (value.some((c) => !c)) return setStatus('short');
     setStatus('busy');
+    // DEV-only: 000000 opens the sample-child preview (src/dev/childPreview.ts) —
+    // no server, no Firebase. Production builds never take this branch.
+    if (import.meta.env.DEV && toLatinDigits(value.join('')) === '000000') {
+      setStatus('ok');
+      navigate(`${paths.child.home}?preview=1`, { replace: true });
+      return;
+    }
     try {
       await claimCode(toLatinDigits(value.join('')));
       setStatus('ok');
