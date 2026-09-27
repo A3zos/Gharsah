@@ -38,7 +38,7 @@ export function LandingMobile() {
       <span id="m-top" aria-hidden="true" />
       <div className="relative z-1 flex flex-col">
         <header className="sticky top-0 z-30">
-          <div className="flex h-[72px] items-center gap-[10px] border-b border-b-border bg-background/96 px-[20px]">
+          <div className="flex h-[72px] items-center gap-[8px] border-b border-b-border bg-background/96 px-[16px]">
             <button
               type="button"
               onClick={() => setMenu((m) => !m)}
@@ -66,12 +66,21 @@ export function LandingMobile() {
               </svg>
             </button>
             <SproutMark size={30} seed={false} />
-            <span className="grow font-heading text-[22px] font-bold text-deep-green">غَرْسة</span>
+            <span className="min-w-0 grow font-heading text-[22px] font-bold text-deep-green">
+              {/* Narrow phones: the mark alone, so both auth buttons fit. */}
+              <span className="max-[379px]:sr-only">غَرْسة</span>
+            </span>
             <Link
               to={paths.login}
-              className="flex h-[40px] items-center justify-center rounded-px-14 border-[1.5px] border-input-border bg-surface px-[16px] text-[13.5px] font-extrabold text-deep-green no-underline"
+              className="flex h-[40px] items-center justify-center rounded-px-14 border-[1.5px] border-input-border bg-surface px-[10px] text-[13px] font-extrabold whitespace-nowrap text-deep-green no-underline"
             >
-              دخول
+              تسجيل الدخول
+            </Link>
+            <Link
+              to={paths.signup}
+              className="flex h-[40px] items-center justify-center rounded-px-14 bg-deep-green px-[10px] text-[13px] font-extrabold whitespace-nowrap text-surface no-underline hover:text-surface"
+            >
+              إنشاء حساب
             </Link>
           </div>
           {menu && (

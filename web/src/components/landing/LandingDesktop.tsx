@@ -67,6 +67,12 @@ export function LandingDesktop() {
             >
               تسجيل الدخول
             </Link>
+            <Link
+              to={paths.signup}
+              className="flex h-[48px] items-center justify-center rounded-px-16 bg-deep-green px-[24px] text-[15px] font-extrabold text-surface no-underline hover:text-surface"
+            >
+              إنشاء حساب
+            </Link>
           </nav>
         </header>
 
