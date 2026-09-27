@@ -37,6 +37,20 @@ export function ChildDataProvider({
   const [board, setBoard] = useState<LeaderBoard | null>(null);
 
   useEffect(() => {
+    if (import.meta.env.DEV && session.childId === 'preview') {
+      // DEV-only preview (src/dev/childPreview.ts): sample data, no Firebase.
+      let stop = () => {};
+      let live = true;
+      void import('../../dev/childPreview').then((m) => {
+        if (!live) return;
+        setChild(m.previewChild);
+        stop = m.watchPreviewProgress(setProgress);
+      });
+      return () => {
+        live = false;
+        stop();
+      };
+    }
     // permission-denied = the parent revoked this device (or removed the child).
     const revoked = (e: unknown) => {
       if ((e as { code?: string }).code === 'permission-denied') navigate(paths.childCode, { replace: true });

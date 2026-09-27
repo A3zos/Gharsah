@@ -8,6 +8,7 @@ import { hadithRepo, projectRepo, quranMeta } from '../../content/library';
 import type { ChildRef } from '../../data/student';
 import { LessonAgent, type LessonContent } from '../agent';
 import { QuranAudioRepository, RecitationManifest, type AudioCacheStore } from '../audioRepository';
+import type { LessonProgressSink } from '../ports';
 import { QuranText } from '../quran';
 import type { LessonScript } from '../script';
 import type { LessonProgress } from '../state';
@@ -88,6 +89,8 @@ export function createWebLesson(o: {
   session: ChildRef;
   childFirstName: string;
   progressFrom?: LessonProgress;
+  /** Replaces the Firestore sink (the DEV-only child preview keeps progress in memory). */
+  sink?: LessonProgressSink;
 }): WebLesson {
   const cache = new CacheStorageAudioStore();
   const content: LessonContent = {
@@ -113,7 +116,7 @@ export function createWebLesson(o: {
     teacher,
     player,
     recorder,
-    sink: new FirestoreProgressSink(o.session, o.script.lessonId),
+    sink: o.sink ?? new FirestoreProgressSink(o.session, o.script.lessonId),
     childFirstName: o.childFirstName,
     debugTapCountsRepeat: import.meta.env.DEV,
   });

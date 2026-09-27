@@ -6,6 +6,11 @@ import type { Route } from './+types/layout';
 
 /** Guard: this browser is a child device linked by the server, else → child code tab. */
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
+  // DEV-only sample child (/child/home?preview=1) — never in production builds.
+  if (import.meta.env.DEV) {
+    const { childPreviewOn, previewSession } = await import('../../dev/childPreview');
+    if (childPreviewOn(request.url)) return previewSession;
+  }
   const { requireChildSession } = await import('../../firebase/session');
   return requireChildSession(request.url);
 }

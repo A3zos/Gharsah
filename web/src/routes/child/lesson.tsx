@@ -17,6 +17,7 @@ import { WEEK_DAYS, type ChildProfile, type WeekDay } from '../../data/children'
 import { pickTodayLesson } from '../../data/student';
 import type { LessonScript } from '../../lesson/script';
 import { initialLessonState, type LessonProgress, type LessonState } from '../../lesson/state';
+import { PreviewProgressSink } from '../../dev/childPreview';
 import { createWebLesson, type WebLesson } from '../../lesson/web/createLesson';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { DESKTOP, useMedia } from '../../lib/useMedia';
@@ -139,6 +140,8 @@ function LessonCall({
       session: { parentUid: session.parentUid, childId: session.childId },
       childFirstName: firstName,
       progressFrom: resumeRef.current ?? undefined,
+      // DEV-only preview: progress stays in memory, the report is never uploaded.
+      sink: import.meta.env.DEV && session.childId === 'preview' ? new PreviewProgressSink() : undefined,
     });
     setLesson(l);
     void l.agent.start(l.progressFrom);
