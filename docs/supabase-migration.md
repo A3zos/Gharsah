@@ -85,3 +85,35 @@ Flutter `firebase_*` / `cloud_*` packages, the Firebase emulator e2e helpers.
 - ⬜ 9 Deploy (Vercel)
 - ⬜ 10 Custom domain
 - ⬜ 11 Public repo readiness
+
+## 6. Phase 8 — connect the remote project (the product owner runs these)
+
+From the repo root. `npx supabase` needs no install. Nothing is sent until you run it.
+
+```
+npx supabase login                                         # opens the browser once
+npx supabase link --project-ref qtxxhfgqfyuiqflxtcol       # asks for the database password
+npx supabase migration list --linked                       # shows what db push will apply
+npx supabase db push --include-seed                        # migrations + supabase/seed.sql (lessons)
+npx supabase test db --linked                              # pgTAP (rolls back; leaves no data)
+
+# Edge Function secrets (pick a long random CRON_SECRET):
+npx supabase secrets set DEMO_MODE=true CRON_SECRET=<random> ALLOWED_ORIGINS=https://gharsah.pages.dev,http://localhost:5173
+npx supabase functions deploy create-pairing-code revoke-pairing-code claim-pairing-code delete-account storage-cleanup
+```
+
+Then once in the SQL Editor (the daily storage-cleanup job reads these from Vault):
+
+```sql
+select vault.create_secret('https://qtxxhfgqfyuiqflxtcol.supabase.co', 'project_url');
+select vault.create_secret('<the same CRON_SECRET>', 'cron_secret');
+```
+
+Demo account (optional, for the judges; remove before public launch):
+
+```
+cd web
+SUPABASE_URL=https://qtxxhfgqfyuiqflxtcol.supabase.co SUPABASE_SERVICE_ROLE_KEY=<service key, shell only> DEMO_PASSWORD=<…> node ../supabase/scripts/seed_demo.mjs
+```
+
+Dashboard settings: see docs/deploy-cloudflare-pages.md §3 (Site URL, redirect URLs, **anonymous sign-ins ON**).

@@ -1,0 +1,11 @@
+# Cloudflare Pages: every app route is rendered by the SPA fallback page
+# (build/client/__spa-fallback.html). "/" stays the prerendered landing page and
+# /assets/*, /audio/* are never rewritten (no catch-all "/*" rule on purpose).
+/login              /__spa-fallback  200
+/signup             /__spa-fallback  200
+/forgot-password    /__spa-fallback  200
+/legal              /__spa-fallback  200
+/parent             /__spa-fallback  200
+/parent/*           /__spa-fallback  200
+/child              /__spa-fallback  200
+/child/*            /__spa-fallback  200
