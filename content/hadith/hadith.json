@@ -12,6 +12,30 @@
       "source": null,
       "reviewedBy": null,
       "audio": null
+    },
+    {
+      "id": "PLACEHOLDER-al-kadhib",
+      "title": "حديث عن الكذب",
+      "topic": "الكذب",
+      "approved": false,
+      "text": null,
+      "takhrij": null,
+      "grading": null,
+      "source": null,
+      "reviewedBy": null,
+      "audio": null
+    },
+    {
+      "id": "PLACEHOLDER-al-ghadab",
+      "title": "حديث عن الغضب",
+      "topic": "الغضب",
+      "approved": false,
+      "text": null,
+      "takhrij": null,
+      "grading": null,
+      "source": null,
+      "reviewedBy": null,
+      "audio": null
     }
   ]
 }
