@@ -290,7 +290,7 @@ class LessonAgent {
           _s.copyWith(
             beat: LessonBeat.awaitMic,
             captionId: 'ayah.repeat_now',
-            caption: lineBank.resolve(const TeacherLine('ayah.repeat_now')),
+            caption: lineBank.resolve(_repeatNow),
             teacherSpeaking: false,
           ),
           resume: () {},
@@ -603,7 +603,20 @@ class LessonAgent {
 
   /// «الآن ردّد بصوتك… ثلاث مرات.» with the mic's gold ring.
   void _promptRepeat({required bool fromRecitation}) =>
-      _say(const TeacherLine('ayah.repeat_now'), beat: LessonBeat.awaitMic);
+      _say(_repeatNow, beat: LessonBeat.awaitMic);
+
+  /// «الآن ردّد بصوتك… ثلاث مرات.» — the bank line now takes the count
+  /// (`{times}`, shared with the web v0.2 agent; the full 3-stage port follows).
+  TeacherLine get _repeatNow => TeacherLine('ayah.repeat_now', {
+    'times': switch (_s.repeatsTarget) {
+      1 => 'مرة واحدة',
+      2 => 'مرتين',
+      3 => 'ثلاث مرات',
+      4 => 'أربع مرات',
+      5 => 'خمس مرات',
+      final n => '$n مرات',
+    },
+  });
 
   void _enterListening() {
     final isHadith = _s.screen == LessonScreen.hadith;

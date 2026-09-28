@@ -18,8 +18,21 @@ class TeacherLineBank {
     'intro.surah': 'نبدأ بسورة {surah}.',
     'intro.count': 'وهي قصيرة — {countWords} فقط!',
     'intro.ready': 'جاهز نبدأ نحفظ؟',
+    // v0.2 — the three memorization stages (REVIEW: not in the design copy).
+    'stage.1': 'المرحلة الأولى: نستمع للسورة كاملة، ثم تقرأها مرة.', // REVIEW
+    'stage.2': 'المرحلة الثانية: آية آية… كل آية خمس مرات.', // REVIEW
+    'stage.3': 'المرحلة الثالثة: السورة كاملة… اقرأها مرتين.', // REVIEW
+    'stage1.your_turn': 'دورك… اقرأ السورة كاملة مرة واحدة.', // REVIEW
+    'praise.good': 'أحسنت!', // REVIEW
+    'full.start': 'اقرأ السورة كاملة… المرة {ordinalTime}.', // REVIEW
+    'full.again': 'أحسنت! والآن المرة {ordinalTime}.', // REVIEW
+    'full.done': 'ما شاء الله! قرأتها كاملة.', // REVIEW
+    'nudge.full': 'أكمل السورة… أنا أسمعك.', // REVIEW
+    'manners.redirect': 'نتكلم بهدوء وأدب يا {name}… ونكمل معًا.', // REVIEW
+    'review.intro': 'اليوم يوم المراجعة يا {name}… نراجع ما حفظت.', // REVIEW
+    'review.surah': 'نراجع سورة {surah}… اقرأها كاملة.', // REVIEW
     // Frame 18 — ayah loop.
-    'ayah.repeat_now': 'الآن ردّد بصوتك… ثلاث مرات.',
+    'ayah.repeat_now': 'الآن ردّد بصوتك… {times}.',
     'count.two_left': 'أحسنت… باقي مرتين.',
     'count.one_left': 'ممتاز… باقي مرة.',
     'count.more':
@@ -37,15 +50,22 @@ class TeacherLineBank {
     'surah.proud': '{countWords} بصوتك… فخور بك.',
     'surah.next_hadith': 'جاهز ننتقل للحديث؟',
     'surah.go_hadith': 'ممتاز! هيا بنا إلى حديث اليوم.',
+    'surah.to_hadith': 'ننتقل الآن لحديث اليوم.',
+    'nudge.answer': 'قل: نعم… وننتقل للحديث.', // REVIEW
     // Frame 20 (the hadith itself is never spoken by the teacher).
     'hadith.topic': 'والآن حديث اليوم يا {name}… {hadithTitle}.',
     'hadith.praise': 'أحسنت يا {name}… حفظت حديث اليوم.',
-    'hadith.to_project': 'والآن… مشروع هذا الأسبوع.',
-    // Frame 21 (project copy comes from assets/data/projects.json).
+    'hadith.to_project': 'والآن… مشروع اليوم.',
+    'hadith.today': 'حديث اليوم عن {topic}.',
+    'hadith.soon': 'سنتعلّمه معًا قريبًا بإذن الله.',
+    'end.saving': 'لحظة… نحفظ تقدّمك.', // REVIEW
+    // Frame 21 (project copy comes from content/projects/projects.json).
     'project.intro': '{projectIntro}',
     'project.tomorrow': '{projectTomorrow}',
     'project.ask': 'تقدر تقول لي: إن شاء الله؟',
     'project.bye': 'أحسنت! أراك غدًا يا {name}.',
+    'project.today': 'مشروعك اليوم: {projectTitle}.',
+    'project.hint': '{hint}',
     // Frame 22.
     'report.greet.morning': 'صباح الخير يا {name}! اشتقت لك.',
     'report.greet.evening': 'مساء الخير يا {name}! اشتقت لك.', // REVIEW
@@ -56,6 +76,7 @@ class TeacherLineBank {
     'end.praise': 'أحسنت يا {name}! أكملت درس اليوم.',
     'end.ask': 'تقدر تقول لي: أبشر؟',
     'end.bye': 'أحسنت! أراك بكرة يا {name}.',
+    'end.see_you': 'أراك غدًا يا {name}.',
     'offscript.ask_parent': 'سؤال جميل! اسأل بابا أو ماما.',
   };
 
