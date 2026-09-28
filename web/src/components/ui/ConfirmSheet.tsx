@@ -2,6 +2,7 @@
 // sheet with handle, icon, title, body, primary and quiet actions). Used for
 // «تخرج من الحصة؟», sign-out, removing a child, and leaving unsaved forms.
 import { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 import { cx } from '../../lib/cx';
 import { buttonClass } from './Button';
@@ -68,7 +69,10 @@ export function ConfirmSheet({
   }, [open, onDismiss]);
 
   if (!open) return null;
-  return (
+  // Portaled to <body>: a sheet opened from a sticky/positioned parent (e.g. the
+  // parent sidebar's sign-out) would otherwise be trapped in that stacking
+  // context and render under the page's cards.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center" role="presentation">
       <button
         type="button"
@@ -128,6 +132,7 @@ export function ConfirmSheet({
         </button>
         {footnote && <span className="text-center text-[12px] text-text-subtle">{footnote}</span>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
