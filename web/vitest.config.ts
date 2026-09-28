@@ -11,5 +11,9 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}', 'tools/**/*.test.ts'],
     restoreMocks: true,
+    // One worker: parallel jsdom workers time out while starting on low-memory machines;
+    // the suite is small, so serial is fast enough and deterministic.
+    fileParallelism: false,
+    maxWorkers: 1,
   },
 });

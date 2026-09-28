@@ -10,6 +10,7 @@ import { HadithRepository } from '../lesson/hadith';
 import { ProjectRepository } from '../lesson/projects';
 import { QuranMeta } from '../lesson/quran';
 import { parseLessonScript, type LessonScript } from '../lesson/script';
+import { expandLesson } from '../lesson/stages';
 
 export const quranMeta = QuranMeta.fromJson(metaJson);
 export const hadithRepo = HadithRepository.fromJson(hadithJson as { hadith: Record<string, unknown>[] });
@@ -17,7 +18,8 @@ export const projectRepo = ProjectRepository.fromJson(projectsJson);
 
 export const lessonScripts: ReadonlyMap<string, LessonScript> = new Map(
   [ikhlas, day2].map((j) => {
-    const s = parseLessonScript(j as Record<string, unknown>);
+    // Expanded once here (the three stages), so resume, progress and the home all see the same steps.
+    const s = expandLesson(parseLessonScript(j as Record<string, unknown>));
     return [s.lessonId, s];
   }),
 );

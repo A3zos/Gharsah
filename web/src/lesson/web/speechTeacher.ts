@@ -101,11 +101,11 @@ export class SpeechTeacher implements AiTeacher {
     const detector = new PresenceDetector({
       sampleRate: this.mic.sampleRate,
       onSpeechStart: () => this._actions.emit({ type: 'speechStarted' }),
-      onUtterance: () =>
+      onUtterance: (voicedMs) =>
         this._actions.emit(
           this.mode === 'answer'
             ? { type: 'answerDetected', intent: 'yes' } // INTERIM: presence = answer
-            : { type: 'repeatDetected' },
+            : { type: 'repeatDetected', voicedMs }, // v0.2 §8.5 (full-surah passes)
         ),
     });
     this.detector = detector;

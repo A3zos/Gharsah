@@ -55,10 +55,10 @@ export class FakeTeacher implements AiTeacher {
     this._actions.emit(a);
   }
 
-  /** The child says one repeat (speech then silence). */
-  childRepeats() {
+  /** The child says one repeat (speech then silence); `voicedMs` = how long they spoke. */
+  childRepeats(voicedMs?: number) {
     this.emit({ type: 'speechStarted' });
-    this.emit({ type: 'repeatDetected' });
+    this.emit(voicedMs === undefined ? { type: 'repeatDetected' } : { type: 'repeatDetected', voicedMs });
   }
 
   onEvent(event: LessonEvent) {
@@ -165,6 +165,10 @@ export class FakeRecorder implements ProjectRecorder {
     this.discarded.push(audio);
   }
   readonly level = this._level.subscribe;
+  /** The child's voice level while recording (0..1). */
+  talk(level: number) {
+    this._level.emit(level);
+  }
   async dispose() {}
 }
 
@@ -173,11 +177,15 @@ export class FakeSink implements LessonProgressSink {
   readonly completedCalls: LessonProgress[] = [];
   readonly reports: [string, RecordedAudio][] = [];
   failSave = false;
+  failCheckpoint = false;
+  failCompleted = false;
 
   async checkpoint(p: LessonProgress) {
+    if (this.failCheckpoint) throw Object.assign(new Error('offline'), { code: 'PGRST301' });
     this.checkpoints.push(p);
   }
   async completed(p: LessonProgress) {
+    if (this.failCompleted) throw Object.assign(new Error('offline'), { code: '23503' });
     this.completedCalls.push(p);
   }
   async saveReport(projectId: string, audio: RecordedAudio) {

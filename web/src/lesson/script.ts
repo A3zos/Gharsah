@@ -1,8 +1,10 @@
-// A lesson in the ai/CONTRACT.md format (Draft v0.1). Port of lesson_script.dart.
-// Religious content is referenced (Quran by surah:ayah, hadith by id), never embedded.
+// A lesson in the ai/CONTRACT.md format (v0.1, + the v0.2 PROPOSAL §8 step types).
+// Port of lesson_script.dart. Religious content is referenced (Quran by
+// surah:ayah, hadith by id), never embedded. v0.1 scripts are expanded into the
+// three memorization stages by stages.ts.
 import { FormatError, parseRef, refKey, type QuranMeta, type QuranRef } from './quran';
 
-export const SUPPORTED_CONTRACT = '0.1';
+export const SUPPORTED_CONTRACTS = ['0.1', '0.2'] as const;
 
 /** Frame 18 (plan). Surah facts: ayah count only — no Makki/Madani. */
 export interface IntroStep {
@@ -10,11 +12,35 @@ export interface IntroStep {
   readonly surah: number;
   readonly lines: readonly string[];
 }
-/** Frame 18 (ayah state). */
+/** Frame 18 (ayah state). `stage` 1 = «استمع وردّد», 2 = «آية آية» (v0.2). */
 export interface AyahLoopStep {
   readonly type: 'ayah_loop';
   readonly ref: QuranRef;
   readonly repeats: number;
+  readonly stage?: 1 | 2;
+}
+/** v0.2: the short line between memorization stages (auto-advances). */
+export interface StageIntroStep {
+  readonly type: 'stage_intro';
+  readonly stage: 1 | 2 | 3;
+  readonly surah: number;
+}
+/** v0.2 stage 1: the reciter plays the whole surah, ayah by ayah (the highlight follows it). */
+export interface ListenSurahStep {
+  readonly type: 'listen_surah';
+  readonly surah: number;
+}
+/** v0.2 stages 1 and 3 (and the weekly review): the child recites the whole surah `passes` times. */
+export interface FullSurahStep {
+  readonly type: 'full_surah';
+  readonly surah: number;
+  readonly passes: number;
+  readonly stage: 1 | 3;
+}
+/** v0.2: opens the weekly review lesson. */
+export interface ReviewIntroStep {
+  readonly type: 'review_intro';
+  readonly lines: readonly string[];
 }
 /** Frame 19. */
 export interface SurahDoneStep {
@@ -51,6 +77,10 @@ export interface LessonEndStep {
 export type LessonStep =
   | IntroStep
   | AyahLoopStep
+  | StageIntroStep
+  | ListenSurahStep
+  | FullSurahStep
+  | ReviewIntroStep
   | SurahDoneStep
   | HadithLoopStep
   | ProjectAssignStep
@@ -68,7 +98,7 @@ export interface LessonScript {
 type Json = Record<string, unknown>;
 
 export function parseLessonScript(j: Json): LessonScript {
-  if (j.contractVersion !== SUPPORTED_CONTRACT) {
+  if (!(SUPPORTED_CONTRACTS as readonly unknown[]).includes(j.contractVersion)) {
     throw new FormatError(`Unsupported lesson contract version ${String(j.contractVersion)}`);
   }
   const steps = (j.steps as Json[]).map(parseStep);
@@ -91,8 +121,24 @@ function parseStep(j: Json): LessonStep {
   switch (j.type) {
     case 'intro':
       return { type: 'intro', surah: j.surah as number, lines: lines() };
-    case 'ayah_loop':
-      return { type: 'ayah_loop', ref: parseRef(j.ref), repeats: repeats() };
+    case 'ayah_loop': {
+      const stage = j.stage === 1 || j.stage === 2 ? j.stage : undefined;
+      return { type: 'ayah_loop', ref: parseRef(j.ref), repeats: repeats(), ...(stage ? { stage } : {}) };
+    }
+    case 'stage_intro': {
+      if (j.stage !== 1 && j.stage !== 2 && j.stage !== 3)
+        throw new FormatError(`Bad stage ${String(j.stage)}`);
+      return { type: 'stage_intro', stage: j.stage, surah: j.surah as number };
+    }
+    case 'listen_surah':
+      return { type: 'listen_surah', surah: j.surah as number };
+    case 'full_surah': {
+      const passes = (j.passes as number | undefined) ?? 2;
+      if (passes < 1 || passes > 5) throw new FormatError(`Bad passes ${passes}`);
+      return { type: 'full_surah', surah: j.surah as number, passes, stage: j.stage === 1 ? 1 : 3 };
+    }
+    case 'review_intro':
+      return { type: 'review_intro', lines: lines() };
     case 'surah_done':
       return { type: 'surah_done', lines: lines(), question: j.question as string };
     case 'hadith_loop':
@@ -113,14 +159,26 @@ function parseStep(j: Json): LessonStep {
   }
 }
 
-/** Every Quran ref the lesson recites (to prefetch audio before starting). */
-export const quranRefsOf = (s: LessonScript): QuranRef[] =>
-  s.steps.filter((x): x is AyahLoopStep => x.type === 'ayah_loop').map((x) => x.ref);
+/** Every Quran ref the lesson recites via ayah steps (stage 2 covers each surah's ayat). */
+export function quranRefsOf(s: LessonScript): QuranRef[] {
+  const out = new Map<string, QuranRef>();
+  for (const x of s.steps) if (x.type === 'ayah_loop') out.set(refKey(x.ref), x.ref);
+  return [...out.values()];
+}
 
 /** Checks refs against the mushaf; throws [FormatError] if invalid. */
 export function validateLessonScript(s: LessonScript, meta: QuranMeta): void {
   for (const r of quranRefsOf(s)) {
     if (!meta.isValid(r)) throw new FormatError(`Invalid ayah ${refKey(r)}`);
   }
-  for (const step of s.steps) if (step.type === 'intro') meta.ayahCount(step.surah);
+  for (const step of s.steps) {
+    if (
+      step.type === 'intro' ||
+      step.type === 'stage_intro' ||
+      step.type === 'listen_surah' ||
+      step.type === 'full_surah'
+    ) {
+      meta.ayahCount(step.surah); // throws for an invalid surah
+    }
+  }
 }

@@ -155,12 +155,14 @@ export function pickTodayLesson(stored: Map<string, StoredProgress>, now = new D
   return { kind: 'doneToday', lessonId: lastId };
 }
 
-/** Script step indices where a visible "step" starts (the ayah loops count as one with the intro). */
+const MEMORIZE = new Set(['intro', 'stage_intro', 'listen_surah', 'ayah_loop', 'full_surah']);
+
+/** Script step indices where a visible "step" starts (the intro and all three stages count as one). */
 export function lessonStepGroups(s: LessonScript): number[] {
   const starts: number[] = [];
   s.steps.forEach((st, i) => {
     const prev = s.steps[i - 1];
-    const joins = st.type === 'ayah_loop' && !!prev && (prev.type === 'ayah_loop' || prev.type === 'intro');
+    const joins = st.type !== 'intro' && MEMORIZE.has(st.type) && !!prev && MEMORIZE.has(prev.type);
     if (!joins) starts.push(i);
   });
   return starts;

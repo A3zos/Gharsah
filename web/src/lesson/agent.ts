@@ -16,6 +16,11 @@
 // * autoplay blocked → state.playbackBlocked (small fallback play);
 // * silence → nudge; after `maxNudges` nudges the ayah is replayed once, then the
 //   agent waits.
+// v0.2 (ai/CONTRACT.md §8 PROPOSAL, review notes C8–C12):
+// * three memorization stages (stages.ts): 1× per ayah, 5× per ayah, whole surah ×2;
+// * nothing waits for a tap: lines finish, then ~2 s, then the next step; the mic
+//   opens by itself; the project report stops by itself after the child stops talking;
+// * `mannersRedirect` pauses counting for one redirect line, counts kept.
 import {
   MicPermissionDenied,
   type AiTeacher,
@@ -37,6 +42,7 @@ import {
 import type { ProjectContent, ProjectRepository } from './projects';
 import { quranRef, refKey, sameRef, type QuranMeta, type QuranRef, type QuranText } from './quran';
 import { quranRefsOf, validateLessonScript, type LessonScript, type LessonStep } from './script';
+import { expandLesson, FULL_PASS_PAUSE_MS, FULL_PASS_VOICED_SHARE, stageOfStep } from './stages';
 import {
   initialLessonState,
   newLessonProgress,
@@ -54,6 +60,8 @@ export interface LessonContent {
   readonly audio: {
     prefetch(refs: Iterable<QuranRef>): Promise<void>;
     resolve(ref: QuranRef): Promise<RecitationAudio>;
+    /** Reciter duration of a bundled ayah (manifest) — for full-surah passes. */
+    durationMsOf?(ref: QuranRef): number | undefined;
   };
   readonly hadith: HadithRepository;
   readonly projects: ProjectRepository;
@@ -69,7 +77,20 @@ export interface LessonTimings {
   /** Frame 22: «حُفظ صوتك» → moves on unless the child re-records. */
   readonly recordedAutoAdvanceMs: number;
   readonly maxRecordingMs: number;
+  /** v0.2: a line finishes, then this pause, then the next step (no taps). */
+  readonly advanceDelayMs: number;
+  /** v0.2: silence after enough voiced time that completes a full-surah pass. */
+  readonly fullPassPauseMs: number;
+  /** v0.2 frame 22: the report stops by itself after this much silence following speech… */
+  readonly reportSilenceMs: number;
+  /** …but never before this much recording. */
+  readonly reportMinMs: number;
 }
+
+/** Recorder level (0..1) that counts as the child talking during the report. */
+const REPORT_VOICE_LEVEL = 0.15;
+/** Assumed reciter duration of an ayah with no manifest entry. */
+const DEFAULT_AYAH_MS = 2500;
 
 export const defaultLessonTimings: LessonTimings = {
   silenceMs: 7000,
@@ -77,6 +98,10 @@ export const defaultLessonTimings: LessonTimings = {
   maxNudges: 2,
   recordedAutoAdvanceMs: 3200,
   maxRecordingMs: 3 * 60_000,
+  advanceDelayMs: 2000,
+  fullPassPauseMs: FULL_PASS_PAUSE_MS,
+  reportSilenceMs: 3000,
+  reportMinMs: 1500,
 };
 
 export interface LessonAgentOptions {
@@ -98,12 +123,6 @@ export interface LessonAgentOptions {
   debugTapCountsRepeat?: boolean;
   /** Where non-fatal problems are reported (Dart's debugPrint). */
   log?: (message: string, error?: unknown) => void;
-}
-
-interface Question {
-  line: TeacherLine;
-  expect: AnswerIntent;
-  onYes: () => void;
 }
 
 type Timer = ReturnType<typeof setTimeout>;
@@ -158,12 +177,20 @@ export class LessonAgent {
   // Per-step
   private nudges = 0;
   private autoReplayed = false;
-  private question: Question | undefined;
   private recorded: RecordedAudio | undefined;
   private saving = false;
+  // Stage 3 (full passes): voiced time so far in this pass, and the pause timer.
+  private passVoicedMs = 0;
+  private passTimer: Timer | undefined;
+  // Frame 22: has the child spoken yet, and when last.
+  private recVoiced = false;
+  private recLastVoiceAt = 0;
+  private readonly isReview: boolean;
 
   constructor(o: LessonAgentOptions) {
-    this.script = o.script;
+    // v0.1 scripts become the three stages (idempotent for v0.2 scripts).
+    this.script = expandLesson(o.script);
+    this.isReview = this.script.steps[0]?.type === 'review_intro';
     this.content = o.content;
     this.teacher = o.teacher;
     this.player = o.player;
@@ -210,7 +237,18 @@ export class LessonAgent {
     if (from && from.lessonId === this.script.lessonId && !from.completed) this._progress = from;
     try {
       validateLessonScript(this.script, this.content.meta);
-      await this.content.audio.prefetch(quranRefsOf(this.script));
+      // The surah card shows every ayah: all must be in the verified text (throws otherwise).
+      for (const st of this.script.steps) {
+        if (st.type === 'stage_intro' || st.type === 'listen_surah' || st.type === 'full_surah') {
+          this.surahAyatOf(st.surah);
+        }
+      }
+      const refs = quranRefsOf(this.script);
+      for (const st of this.script.steps) {
+        if (st.type !== 'listen_surah') continue;
+        for (let a = 1; a <= this.content.meta.ayahCount(st.surah); a++) refs.push(quranRef(st.surah, a));
+      }
+      await this.content.audio.prefetch(refs);
     } catch (e) {
       this.log('Lesson content not available', e);
       this.set(copy(this.s, { screen: 'failed', contentUnavailable: true }));
@@ -222,7 +260,12 @@ export class LessonAgent {
         if (this.listening) this.setLevel(v);
       }),
       this.recorder.level((v) => {
-        if (this.s.beat === 'recording') this.setLevel(v);
+        if (this.s.beat !== 'recording') return;
+        this.setLevel(v);
+        if (v >= REPORT_VOICE_LEVEL) {
+          this.recVoiced = true;
+          this.recLastVoiceAt = Date.now();
+        }
       }),
       this.player.completed(() => this.onRecitationComplete()),
     );
@@ -287,11 +330,12 @@ export class LessonAgent {
     this.maybeResume();
   }
 
-  /** Stops the reciter; the child can repeat straight away. */
+  /** Stops the reciter; the child can repeat straight away (stage 1 listening: the next ayah). */
   stop(): void {
     if (this.s.beat === 'reciting') {
       this.fire(this.player.stop());
-      this.promptRepeat();
+      if (this.step.type === 'listen_surah') this.nextListenAyah();
+      else this.promptRepeat();
     }
   }
 
@@ -315,42 +359,17 @@ export class LessonAgent {
     await Promise.all([this.player.setVolume(v), this.teacher.setVolume(v)]);
   }
 
-  /** The one persistent mic control. */
+  /**
+   * v0.2: the mic opens by itself (D2) — this only retries after it couldn't
+   * (permission refused → `awaitMic` + `micDenied`), or ends a recording early.
+   */
   micTap(): void {
     if (this.paused) return;
     switch (this.s.beat) {
       case 'awaitMic':
-        if (this.s.screen === 'projectReport') {
-          void this.startRecording();
-        } else if (this.question) {
-          this.enterHearingAnswer();
-        } else {
-          this.teacher.onEvent({ type: 'micOpened' });
-          this.enterListening();
-        }
-        break;
-      case 'listening':
-      case 'counted':
-      case 'nudging':
-        // Muting pauses counting only; repeats so far are kept.
-        this.teacher.onEvent({ type: 'micMuted' });
-        this.enter(
-          copy(this.s, {
-            beat: 'awaitMic',
-            captionId: 'ayah.repeat_now',
-            caption: this.lineBank.resolve(line('ayah.repeat_now')),
-            teacherSpeaking: false,
-          }),
-          { resume: () => {} },
-        );
-        break;
-      case 'hearingAnswer':
-        if (this.s.screen === 'intro') {
-          // Frame 18: the live mic reads «قلت نعم» — the design's tap fallback.
-          this.tapFallback('yes');
-        } else {
-          this.enter(copy(this.s, { beat: 'awaitMic', teacherSpeaking: false }), { resume: () => {} });
-        }
+        this.teacher.onEvent({ type: 'micOpened' });
+        if (this.s.screen === 'projectReport') void this.startRecording();
+        else this.enterListening();
         break;
       case 'recording':
         void this.stopRecording();
@@ -365,25 +384,24 @@ export class LessonAgent {
     if (this.paused) return;
     const beat = this.s.beat;
     if (beat === 'reciting') this.stop();
-    else if (beat === 'hearingAnswer') this.tapFallback('yes');
-    else if ((beat === 'listening' || beat === 'nudging') && this.debugTapCountsRepeat) this.countRepeat();
-    else if (beat === 'recorded') this.continueTapped();
+    else if (beat === 'hearingAnswer') this.onGoAhead();
+    else if ((beat === 'listening' || beat === 'nudging') && this.debugTapCountsRepeat) {
+      // Debug builds: a tap stands for one repeat (stage 3: one whole pass).
+      if (this.step.type === 'full_surah') this.completePass();
+      else this.countRepeat();
+    } else if (beat === 'recorded') this.continueTapped();
     else this.skipFn?.();
   }
 
-  /** The child tapped instead of speaking a short answer. */
-  tapFallback(answer: AnswerIntent): void {
-    if (this.paused || !this.question) return;
-    this.teacher.onEvent({ type: 'tapFallback', answer });
-    this.onAnswer(answer);
-  }
+  /** v0.1 short answers — v0.2 never asks a question, so there is nothing to answer. */
+  tapFallback(_answer: AnswerIntent): void {}
 
-  /** Gold arrow / «تابع» moments. */
+  /** Retry a report / the final save that couldn't be saved, or skip a handoff line. */
   continueTapped(): void {
     if (this.paused) return;
     switch (this.s.beat) {
-      case 'awaitContinue':
-        this.enterStep(this.s.stepIndex + 1);
+      case 'saveFailed':
+        void this.finishLesson();
         break;
       case 'recorded':
         void this.saveReport();
@@ -429,8 +447,10 @@ export class LessonAgent {
     if (i >= this.script.steps.length) return;
     this.nudges = 0;
     this.autoReplayed = false;
-    this.question = undefined;
+    this.passVoicedMs = 0;
+    clearTimeout(this.passTimer);
     this._progress = { ...this._progress, stepIndex: i };
+    const step = this.script.steps[i]!;
     this.set(
       copy(this.s, {
         stepIndex: i,
@@ -439,10 +459,12 @@ export class LessonAgent {
         repeatsDone: 0,
         playbackBlocked: false,
         contentUnavailable: false,
+        stage: stageOfStep(step),
+        stageTransition: false,
       }),
     );
     this.teacher.onEvent({ type: 'stepShown', stepIndex: i });
-    const step = this.script.steps[i]!;
+    // A checkpoint after every step — and so at every stage end (the next stage_intro).
     if (step.type !== 'lesson_end') this.fire(this.checkpoint(this._progress));
     switch (step.type) {
       case 'intro':
@@ -453,13 +475,22 @@ export class LessonAgent {
             surahAyahCount: this.content.meta.ayahCount(step.surah),
           }),
         );
-        this.sayLines(step.lines, {
-          question: step.lines.length === 0 ? undefined : step.lines[step.lines.length - 1],
-          onYes: () => this.next(),
+        this.sayLines(step.lines, { onDone: () => this.advanceAfterPause() });
+        break;
+      case 'review_intro':
+        this.set(copy(this.s, { screen: 'reviewIntro' }));
+        this.sayLines(step.lines, { onDone: () => this.advanceAfterPause() });
+        break;
+      case 'stage_intro':
+        this.showSurah(step.surah, { stageTransition: true, ayahRef: null });
+        this.say(this.isReview ? this.line('review.surah') : line(`stage.${step.stage}`), {
+          beat: 'speaking',
+          then: () => this.advanceAfterPause(),
         });
         break;
       case 'ayah_loop': {
         const r = step.ref;
+        this.showSurah(r.surah, { ayahRef: r });
         const surah = this.content.meta.surahName(r.surah);
         this.set(
           copy(this.s, {
@@ -467,44 +498,72 @@ export class LessonAgent {
             ayahRef: r,
             ayahText: this.content.text.text(r),
             ayahReference: `سورة ${surah} · الآية ${toArabicDigits(r.ayah)}`,
-            surahName: surah,
-            surahAyahCount: this.content.meta.ayahCount(r.surah),
             repeatsTarget: step.repeats,
           }),
         );
         void this.startRecitation();
         break;
       }
+      case 'listen_surah':
+        // Stage 1: the reciter plays the whole surah, ayah by ayah; the highlight follows it.
+        this.showSurah(step.surah, { ayahRef: quranRef(step.surah, 1) });
+        this.playListenAyah(quranRef(step.surah, 1));
+        break;
+      case 'full_surah':
+        this.showSurah(step.surah, { ayahRef: null });
+        this.set(copy(this.s, { passesDone: 0, passesTarget: step.passes, repeatsTarget: step.passes }));
+        this.say(
+          step.stage === 1
+            ? line('stage1.your_turn')
+            : this.line('full.start', { ordinalTime: TeacherLineBank.ordinalTime(1) }),
+          { beat: 'speaking', then: () => this.enterListening() },
+        );
+        break;
       case 'surah_done':
-        this.set(copy(this.s, { screen: 'surahDone' }));
+        this.set(copy(this.s, { screen: 'surahDone', stageTransition: false }));
+        // The hadith starts only after the child's go-ahead (voice; a tap on the teacher also works).
         this.sayLines([...step.lines, step.question], {
-          question: step.question,
           happyLines: true,
-          onYes: () =>
-            this.say(line('surah.go_hadith'), { beat: 'advancing', happy: true, then: () => this.next() }),
+          onDone: () => this.enterGoAhead(),
         });
         break;
       case 'hadith_loop': {
         const h = this.content.hadith.byId(step.hadithId);
         this.set(copy(this.s, { screen: 'hadith', hadith: h, repeatsTarget: step.repeats }));
-        this.say(this.line('hadith.topic'), {
+        this.say(this.line('hadith.today'), {
           beat: 'speaking',
-          then: h.canPlay ? () => void this.startRecitation() : () => this.promptRepeat(),
+          then: h.canPlay
+            ? () => void this.startRecitation()
+            : // Unapproved: the topic only — nothing recited, attributed or explained (D5).
+              () =>
+                this.say(line('hadith.soon'), {
+                  beat: 'speaking',
+                  lineIndex: 1,
+                  then: () => this.advanceAfterPause(),
+                }),
         });
         break;
       }
-      case 'project_assign':
-        this.set(
-          copy(this.s, { screen: 'projectAssign', project: this.content.projects.byId(step.projectId) }),
-        );
+      case 'project_assign': {
+        const project = this.content.projects.byId(step.projectId);
+        this.set(copy(this.s, { screen: 'projectAssign', project }));
         this._progress = { ...this._progress, projectAssigned: step.projectId };
-        this.sayLines([...step.lines, step.question], {
-          question: step.question,
-          expect: 'understood',
-          onYes: () =>
-            this.say(this.line('project.bye'), { beat: 'advancing', happy: true, then: () => this.next() }),
-        });
+        // «مشروعك اليوم: …», then the three steps one by one (lineIndex reveals them), then on (C12).
+        const hints = project.hints.map((hint) => line('project.hint', { hint }));
+        const say = (k: number): void => {
+          if (k > hints.length) {
+            this.advanceAfterPause();
+            return;
+          }
+          this.say(k === 0 ? this.line('project.today') : hints[k - 1]!, {
+            beat: 'speaking',
+            lineIndex: k,
+            then: () => say(k + 1),
+          });
+        };
+        say(0);
         break;
+      }
       case 'project_report':
         this.set(
           copy(this.s, {
@@ -518,31 +577,155 @@ export class LessonAgent {
         this.say(this.line(this.now().getHours() < 12 ? 'report.greet.morning' : 'report.greet.evening'), {
           beat: 'speaking',
           happy: true,
-          then: () => this.say(this.line(step.question), { beat: 'awaitMic', lineIndex: 1 }),
+          then: () =>
+            this.say(this.line(step.question), {
+              beat: 'speaking',
+              lineIndex: 1,
+              then: () => void this.startRecording(),
+            }),
         });
         break;
-      case 'lesson_end': {
+      case 'lesson_end':
         this._progress = { ...this._progress, completed: true, stepIndex: i };
-        this.fire(this.safe(() => this.sink.completed(this._progress)));
-        this.set(copy(this.s, { screen: 'lessonEnd' }));
-        const bye = () =>
-          this.say(this.line('end.bye'), { beat: 'done', happy: true, then: () => this.stopClock() });
-        if (step.question === null) {
-          this.sayLines(step.lines, { happyFirst: true, onDone: bye });
-        } else {
-          this.sayLines([...step.lines, step.question], {
-            question: step.question,
-            happyFirst: true,
-            onYes: bye,
-          });
-        }
+        void this.finishLesson();
         break;
-      }
     }
   }
 
   private next(): void {
     this.enterStep(this.s.stepIndex + 1);
+  }
+
+  // ── Stage 1: the whole surah from the reciter ──
+
+  private playListenAyah(r: QuranRef): void {
+    const name = this.content.meta.surahName(r.surah);
+    this.set(
+      copy(this.s, {
+        ayahRef: r,
+        ayahText: this.content.text.text(r),
+        ayahReference: `سورة ${name} · الآية ${toArabicDigits(r.ayah)}`,
+      }),
+    );
+    void this.startRecitation();
+  }
+
+  /** The reciter finished one ayah of the whole-surah listening → the next one, or on to the child's turn. */
+  private nextListenAyah(): void {
+    const r = this.s.ayahRef!;
+    if (r.ayah < this.content.meta.ayahCount(r.surah)) this.playListenAyah(quranRef(r.surah, r.ayah + 1));
+    else this.next();
+  }
+
+  // ── Before the hadith: the child's go-ahead (voice) ──
+
+  private enterGoAhead(): void {
+    this.teacher.onEvent({ type: 'micOpened' });
+    const g = this.enter(
+      copy(this.s, {
+        beat: 'hearingAnswer',
+        captionId: 'ui.hearing',
+        caption: this.lineBank.resolve(line('ui.hearing')),
+        teacherSpeaking: false,
+        micDenied: false,
+      }),
+      { resume: () => this.enterGoAhead(), skip: () => this.onGoAhead(), keepListening: true },
+    );
+    this.fire(this.teacher.stopSpeaking());
+    void this.listen('answer', g).then((ok) => {
+      if (!ok || g !== this.gen) return;
+      // Silence: a gentle re-ask, then listen again (no timer ever moves on without the child).
+      this.beatTimer = setTimeout(() => {
+        if (g === this.gen && !this.paused && this.s.beat === 'hearingAnswer') {
+          this.say(line('nudge.answer'), { beat: 'nudging', then: () => this.enterGoAhead() });
+        }
+      }, this.timings.silenceMs);
+    });
+  }
+
+  private onGoAhead(): void {
+    if (this.s.beat !== 'hearingAnswer') return;
+    this.fire(this.stopListening());
+    this.say(line('surah.to_hadith'), {
+      beat: 'advancing',
+      happy: true,
+      then: () => this.advanceAfterPause(),
+    });
+  }
+
+  // ── Frame 23 — only after the final save succeeded ──
+
+  private async finishLesson(): Promise<void> {
+    const g = this.enter(
+      copy(this.s, {
+        beat: 'saving',
+        captionId: 'end.saving',
+        caption: this.lineBank.resolve(line('end.saving')),
+        teacherSpeaking: false,
+        saveFailed: false,
+      }),
+      { resume: () => void this.finishLesson() },
+    );
+    try {
+      await this.sink.completed(this._progress);
+    } catch (e) {
+      this.log('Lesson completion not saved', e);
+      if (g !== this.gen) return;
+      // Never show the lesson as finished when the server doesn't have it.
+      this.enter(copy(this.s, { beat: 'saveFailed', progressSaveFailed: true }), {
+        resume: () => void this.finishLesson(),
+      });
+      return;
+    }
+    if (g !== this.gen || this.disposed) return;
+    const step = this.step;
+    if (step.type !== 'lesson_end') return;
+    this.set(copy(this.s, { screen: 'lessonEnd', progressSaveFailed: false }));
+    // «أراك غدًا يا {name}» ends the lesson (C12); no question, no tap.
+    this.sayLines([...step.lines, 'end.see_you'], {
+      happyFirst: true,
+      onDone: () => {
+        this.enter(copy(this.s, { beat: 'done', happy: true, teacherSpeaking: false }), { resume: () => {} });
+        this.stopClock();
+      },
+    });
+  }
+
+  /** v0.2: the line finished — wait ~2 s, then the next step (no tap). Tapping the teacher skips the wait. */
+  private advanceAfterPause(then: () => void = () => this.next()): void {
+    const g = this.gen;
+    this.resumeFn = () => this.advanceAfterPause(then);
+    this.skipFn = () => {
+      if (g === this.gen) then();
+    };
+    clearTimeout(this.beatTimer);
+    this.beatTimer = setTimeout(() => {
+      if (g === this.gen && !this.paused) then();
+    }, this.timings.advanceDelayMs);
+  }
+
+  /** The whole surah on the card (verified text), current ayah highlighted. */
+  private showSurah(surah: number, o: { ayahRef: QuranRef | null; stageTransition?: boolean }): void {
+    const name = this.content.meta.surahName(surah);
+    this.set(
+      copy(this.s, {
+        screen: 'ayah',
+        surahName: name,
+        surahAyahCount: this.content.meta.ayahCount(surah),
+        surahAyat:
+          this.s.surahName === name && this.s.surahAyat.length ? this.s.surahAyat : this.surahAyatOf(surah),
+        stageTransition: o.stageTransition ?? false,
+        ...(o.ayahRef === null ? { ayahRef: null, ayahText: null, ayahReference: `سورة ${name}` } : {}),
+      }),
+    );
+  }
+
+  private surahAyatOf(surah: number): { ayah: number; text: string }[] {
+    const count = this.content.meta.ayahCount(surah);
+    return Array.from({ length: count }, (_, k) => ({
+      ayah: k + 1,
+      text: this.content.text.text(quranRef(surah, k + 1)),
+    }));
   }
 
   private jumpAyah(dir: 1 | -1): void {
@@ -612,17 +795,24 @@ export class LessonAgent {
       type: 'recitationFinished',
       ref: this.s.screen === 'hadith' ? null : this.s.ayahRef,
     });
-    this.promptRepeat();
+    if (this.step.type === 'listen_surah') this.nextListenAyah();
+    else this.promptRepeat();
   }
 
-  /** «الآن ردّد بصوتك… ثلاث مرات.» with the mic's gold ring. */
+  /** «دورك… ردّدها مرة» (stage 1) / «الآن ردّد بصوتك… خمس مرات» — then the mic opens by itself. */
   private promptRepeat(): void {
-    this.say(line('ayah.repeat_now'), { beat: 'awaitMic' });
+    const l =
+      this.s.stage === 1
+        ? line('stage1.your_turn')
+        : line('ayah.repeat_now', { times: TeacherLineBank.timesInWords(this.s.repeatsTarget) });
+    this.say(l, { beat: 'speaking', then: () => this.enterListening() });
   }
 
   private enterListening(): void {
     const isHadith = this.s.screen === 'hadith';
-    const id = this.s.repeatsDone === 0 ? (isHadith ? 'ui.hearing_hadith' : 'ui.hearing_ayah') : 'ui.hearing';
+    const full = this.step.type === 'full_surah';
+    const id =
+      this.s.repeatsDone === 0 && !full ? (isHadith ? 'ui.hearing_hadith' : 'ui.hearing_ayah') : 'ui.hearing';
     const g = this.enter(
       copy(this.s, {
         beat: 'listening',
@@ -647,6 +837,11 @@ export class LessonAgent {
   }
 
   private onSilence(): void {
+    if (this.step.type === 'full_surah') {
+      // Keep the voiced time of this pass; just encourage.
+      this.say(line('nudge.full'), { beat: 'nudging', then: () => this.enterListening() });
+      return;
+    }
     this.nudges++;
     if (this.nudges > this.timings.maxNudges) {
       const canReplay = this.s.screen === 'ayah' || this.s.hadith?.canPlay === true;
@@ -682,6 +877,64 @@ export class LessonAgent {
     );
   }
 
+  // ── Stage 3: whole-surah passes (presence only — D3) ──
+
+  /** One utterance while reciting the whole surah: add its voiced time; enough + a pause = a pass. */
+  private onFullUtterance(voicedMs: number): void {
+    this.passVoicedMs += voicedMs;
+    clearTimeout(this.beatTimer); // not silent — no nudge
+    clearTimeout(this.passTimer);
+    const step = this.step;
+    if (step.type !== 'full_surah') return;
+    if (this.passVoicedMs >= this.passNeedMs(step.surah)) {
+      const g = this.gen;
+      this.passTimer = setTimeout(() => {
+        if (g === this.gen && !this.paused && this.s.beat === 'listening') this.completePass();
+      }, this.timings.fullPassPauseMs);
+    } else {
+      this.armSilence(this.gen);
+    }
+  }
+
+  /** Half the reciter's duration for the whole surah (manifest; a default per ayah otherwise). */
+  private passNeedMs(surah: number): number {
+    let total = 0;
+    for (let a = 1; a <= this.content.meta.ayahCount(surah); a++) {
+      total += this.content.audio.durationMsOf?.(quranRef(surah, a)) ?? DEFAULT_AYAH_MS;
+    }
+    return total * FULL_PASS_VOICED_SHARE;
+  }
+
+  private completePass(): void {
+    const step = this.step;
+    if (step.type !== 'full_surah') return;
+    clearTimeout(this.passTimer);
+    this.passVoicedMs = 0;
+    const done = this.s.passesDone + 1;
+    this.set(copy(this.s, { passesDone: done, repeatsDone: done }));
+    if (done < step.passes) {
+      this.say(this.line('full.again', { ordinalTime: TeacherLineBank.ordinalTime(done + 1) }), {
+        beat: 'counted',
+        happy: true,
+        then: () => this.enterListening(),
+      });
+      return;
+    }
+    if (step.stage === 1) {
+      // Stage 1 done (one reading after the reciter) — on to «آية آية».
+      this.say(line('praise.good'), { beat: 'praising', happy: true, then: () => this.advanceAfterPause() });
+      return;
+    }
+    // Whole surah recited: memorized (every ayah) and complete.
+    const refs = this.surahAyatOf(step.surah).map((a) => refKey(quranRef(step.surah, a.ayah)));
+    this._progress = {
+      ...this._progress,
+      doneRefs: new Set([...this._progress.doneRefs, ...refs]),
+      surahsCompleted: new Set([...this._progress.surahsCompleted, step.surah]),
+    };
+    this.say(line('full.done'), { beat: 'praising', happy: true, then: () => this.advanceAfterPause() });
+  }
+
   private praise(): void {
     const steps = this.script.steps;
     const i = this.s.stepIndex;
@@ -696,33 +949,32 @@ export class LessonAgent {
         happy: true,
         then: toProject
           ? () =>
-              this.say(line('hadith.to_project'), { beat: 'advancing', happy: true, then: () => this.next() })
-          : () => this.next(),
+              this.say(line('hadith.to_project'), {
+                beat: 'advancing',
+                happy: true,
+                then: () => this.advanceAfterPause(),
+              })
+          : () => this.advanceAfterPause(),
       });
       return;
     }
     const ref = this.s.ayahRef!;
-    const done = new Set([...this._progress.doneRefs, refKey(ref)]);
-    this._progress = { ...this._progress, doneRefs: done };
+    if (this.s.stage === 1) {
+      // Stage 1: one repeat, a short «أحسنت!», on to the next ayah (or stage).
+      this.say(line('praise.good'), { beat: 'praising', happy: true, then: () => this.next() });
+      return;
+    }
+    this._progress = { ...this._progress, doneRefs: new Set([...this._progress.doneRefs, refKey(ref)]) };
     const sameSurahAyah = (k: number): QuranRef | null => {
       const st = steps[k];
       return st?.type === 'ayah_loop' && st.ref.surah === ref.surah ? st.ref : null;
     };
     const nextRef = sameSurahAyah(i + 1);
     if (!nextRef) {
-      const count = this.content.meta.ayahCount(ref.surah);
-      let whole = true;
-      for (let a = 1; a <= count; a++) if (!done.has(refKey(quranRef(ref.surah, a)))) whole = false;
-      if (whole) {
-        this._progress = {
-          ...this._progress,
-          surahsCompleted: new Set([...this._progress.surahsCompleted, ref.surah]),
-        };
-      }
       this.say(line('praise.all_done'), {
         beat: 'praising',
         happy: true,
-        then: () => this.say(this.line('surah.complete'), { beat: 'awaitContinue', happy: true }),
+        then: () => this.advanceAfterPause(),
       });
       return;
     }
@@ -736,19 +988,12 @@ export class LessonAgent {
     });
   }
 
-  // ═══ Questions («جاهز؟» / «إن شاء الله» / «أبشر») ════════════════════════
+  // ═══ Lines (v0.2: nothing waits for an answer) ═══════════════════════════════
 
-  /** Says `lines` in order; if `question` is the last one, waits for the answer. */
+  /** Says `lines` in order, then `onDone`. */
   private sayLines(
     lines: readonly string[],
-    o: {
-      question?: string;
-      expect?: AnswerIntent;
-      onYes?: () => void;
-      onDone?: () => void;
-      happyLines?: boolean;
-      happyFirst?: boolean;
-    },
+    o: { onDone?: () => void; happyLines?: boolean; happyFirst?: boolean },
     from = 0,
   ): void {
     if (from >= lines.length) {
@@ -756,12 +1001,6 @@ export class LessonAgent {
       return;
     }
     const id = lines[from]!;
-    const isQuestion = o.question !== undefined && from === lines.length - 1;
-    if (isQuestion) {
-      this.question = { line: line(id), expect: o.expect ?? 'yes', onYes: o.onYes ?? (() => {}) };
-      this.say(this.line(id), { beat: 'awaitMic', lineIndex: from });
-      return;
-    }
     this.say(this.line(id), {
       beat: 'speaking',
       lineIndex: from,
@@ -770,37 +1009,10 @@ export class LessonAgent {
     });
   }
 
-  private enterHearingAnswer(): void {
-    this.teacher.onEvent({ type: 'micOpened' });
-    const g = this.enter(
-      copy(this.s, {
-        beat: 'hearingAnswer',
-        captionId: 'ui.hearing',
-        caption: this.lineBank.resolve(line('ui.hearing')),
-        teacherSpeaking: false,
-        micDenied: false,
-      }),
-      { resume: () => this.enterHearingAnswer(), keepListening: true },
-    );
-    this.fire(this.teacher.stopSpeaking());
-    this.fire(this.listen('answer', g));
-  }
-
-  private onAnswer(intent: AnswerIntent): void {
-    const q = this.question;
-    if (!q) return;
-    const accepted =
-      intent === q.expect ||
-      (intent === 'yes' && q.expect === 'understood') ||
-      (intent === 'understood' && q.expect === 'yes');
-    if (!accepted) {
-      // Ask again, kindly — the mic closes until the child opens it.
-      this.say(this.line(q.line.id), { beat: 'awaitMic' });
-      return;
-    }
-    this.question = undefined;
-    this.fire(this.stopListening());
-    q.onYes();
+  /** v0.2 §8.4: one redirect line, nothing counted; the same moment resumes (counts kept). */
+  private mannersRedirect(): void {
+    clearTimeout(this.passTimer);
+    this.say(this.line('manners.redirect'), { beat: 'speaking', then: () => this.enterListening() });
   }
 
   // ═══ Project report (frame 22) ════════════════════════════════════════════
@@ -824,6 +1036,8 @@ export class LessonAgent {
         },
       },
     );
+    this.recVoiced = false;
+    this.recLastVoiceAt = 0;
     await this.teacher.stopSpeaking();
     try {
       await this.recorder.start();
@@ -849,6 +1063,14 @@ export class LessonAgent {
     this.recClock = setInterval(() => {
       if (this.s.beat === 'recording' && !this.paused) {
         this.set(copy(this.s, { recordingElapsedMs: this.s.recordingElapsedMs + 1000 }));
+        // v0.2: the child spoke, then went quiet → the report is done (no tap).
+        if (
+          this.recVoiced &&
+          this.s.recordingElapsedMs >= this.timings.reportMinMs &&
+          Date.now() - this.recLastVoiceAt >= this.timings.reportSilenceMs
+        ) {
+          void this.stopRecording();
+        }
       }
     }, 1000);
   }
@@ -864,8 +1086,11 @@ export class LessonAgent {
     }
     this.setLevel(0);
     if (!rec) {
-      // Nothing usable — ask again.
-      this.say(this.line((this.step as { question: string }).question), { beat: 'awaitMic' });
+      // Nothing usable — ask again, and listen again by itself.
+      this.say(this.line((this.step as { question: string }).question), {
+        beat: 'speaking',
+        then: () => void this.startRecording(),
+      });
       return;
     }
     this.recorded = rec;
@@ -933,6 +1158,7 @@ export class LessonAgent {
   ): number {
     const g = ++this.gen;
     clearTimeout(this.beatTimer);
+    clearTimeout(this.passTimer);
     this.resumeFn = o.resume;
     this.skipFn = o.skip;
     if (!o.keepListening) this.fire(this.stopListening());
@@ -1017,13 +1243,25 @@ export class LessonAgent {
     if (this.paused || !this.listening) return;
     switch (a.type) {
       case 'speechStarted':
-        if (this.s.beat === 'listening') clearTimeout(this.beatTimer);
+        if (this.s.beat === 'hearingAnswer') clearTimeout(this.beatTimer);
+        if (this.s.beat === 'listening') {
+          clearTimeout(this.beatTimer);
+          clearTimeout(this.passTimer); // still reciting — the pass isn't over
+        }
         break;
       case 'repeatDetected':
-        if (this.s.beat === 'listening') this.countRepeat();
+        if (this.s.beat !== 'listening') break;
+        if (this.step.type === 'full_surah') this.onFullUtterance(a.voicedMs ?? 1000);
+        else this.countRepeat();
+        break;
+      case 'mannersRedirect':
+        if (this.s.beat === 'listening' || this.s.beat === 'counted' || this.s.beat === 'nudging') {
+          this.mannersRedirect();
+        }
         break;
       case 'answerDetected':
-        if (this.s.beat === 'hearingAnswer') this.onAnswer(a.intent);
+        // The only question left: the go-ahead before the hadith (presence = yes).
+        if (this.s.beat === 'hearingAnswer') this.onGoAhead();
         break;
     }
   }
@@ -1033,6 +1271,7 @@ export class LessonAgent {
     this.pauseApplied = true;
     this.gen++;
     clearTimeout(this.beatTimer);
+    clearTimeout(this.passTimer);
     clearInterval(this.recClock);
     this.fire(this.player.pause());
     this.fire(this.teacher.stopSpeaking());
@@ -1062,11 +1301,19 @@ export class LessonAgent {
 
   private cancelTimers(): void {
     clearTimeout(this.beatTimer);
+    clearTimeout(this.passTimer);
     clearInterval(this.recClock);
   }
 
-  private checkpoint(p: LessonProgress): Promise<void> {
-    return this.safe(() => this.sink.checkpoint(p));
+  /** A checkpoint; a failure (after the sink's own retries) is shown, and the lesson goes on. */
+  private async checkpoint(p: LessonProgress): Promise<void> {
+    try {
+      await this.sink.checkpoint(p);
+      if (this.s.progressSaveFailed && !this.disposed) this.set(copy(this.s, { progressSaveFailed: false }));
+    } catch (e) {
+      this.log('Lesson progress not saved', e);
+      if (!this.disposed) this.set(copy(this.s, { progressSaveFailed: true }));
+    }
   }
 
   private async safe(f: () => Promise<void>): Promise<void> {
@@ -1081,14 +1328,22 @@ export class LessonAgent {
   private line(id: string, extra: Record<string, string> = {}): TeacherLine {
     if (id === 'greet') id = this.now().getHours() < 12 ? 'greet.morning' : 'greet.evening';
     const project = this.s.project ?? this.firstProject();
-    const surah = this.s.ayahRef?.surah ?? this.introSurah();
+    const st = this.script.steps[this.s.stepIndex];
+    const surah =
+      this.s.ayahRef?.surah ??
+      (st?.type === 'stage_intro' || st?.type === 'full_surah' ? st.surah : null) ??
+      this.introSurah();
     const slots: Record<string, string> = { name: this.childFirstName };
     if (surah !== null) {
       slots.surah = this.content.meta.surahName(surah);
       slots.countWords = TeacherLineBank.ayatInWords(this.content.meta.ayahCount(surah));
     }
-    if (this.s.hadith) slots.hadithTitle = this.s.hadith.title;
+    if (this.s.hadith) {
+      slots.hadithTitle = this.s.hadith.title;
+      slots.topic = this.s.hadith.topic;
+    }
     if (project) {
+      slots.projectTitle = project.title;
       slots.projectIntro = project.intro;
       slots.projectTomorrow = project.tomorrow;
       slots.reportAsk = project.reportAsk;
@@ -1098,7 +1353,7 @@ export class LessonAgent {
 
   private introSurah(): number | null {
     for (const s of this.script.steps) {
-      if (s.type === 'intro') return s.surah;
+      if (s.type === 'intro' || s.type === 'stage_intro' || s.type === 'full_surah') return s.surah;
       if (s.type === 'ayah_loop') return s.ref.surah;
     }
     return null;

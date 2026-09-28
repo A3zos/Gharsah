@@ -224,7 +224,10 @@ export default function ChildHome() {
         </div>
         {finished ? (
           // TODO(design): no designed «done for today» hero; the CTA just says goodbye.
-          <span className="relative flex h-[68px] items-center justify-center gap-[10px] rounded-px-22 bg-gold/60 font-heading text-[22px] font-bold text-on-gold">
+          <span
+            aria-disabled="true"
+            className="relative flex h-[68px] items-center justify-center gap-[10px] rounded-px-22 bg-gold/60 font-heading text-[22px] font-bold text-on-gold"
+          >
             {cta}
           </span>
         ) : (

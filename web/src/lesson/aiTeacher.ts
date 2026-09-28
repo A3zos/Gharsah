@@ -32,8 +32,12 @@ export type LessonEvent =
 export type TeacherAction =
   /** The child started speaking (the agent holds the silence timer). */
   | { type: 'speechStarted' }
-  /** The child spoke and stopped — one repeat candidate (presence only). */
-  | { type: 'repeatDetected' }
+  /** The child spoke and stopped — one repeat candidate (presence only). `voicedMs`
+   *  = how long they actually spoke (v0.2 §8.5; full-surah passes). */
+  | { type: 'repeatDetected'; voicedMs?: number }
+  /** v0.2 §8.4: the AI heard something off (manners) — the teacher redirects, nothing is counted.
+   *  Only a content-aware AI module emits it; the interim presence-only teacher never does. */
+  | { type: 'mannersRedirect' }
   /** A short answer in 'answer' mode. */
   | { type: 'answerDetected'; intent: AnswerIntent };
 

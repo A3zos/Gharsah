@@ -1,17 +1,20 @@
-// One-to-one port of app/test/lesson/lesson_agent_test.dart — same test names,
-// same steps, same expectations. Dart's fakeAsync `elapse` / `flushMicrotasks`
-// map to vitest fake timers (`advanceTimersByTimeAsync`).
-import type { AnswerIntent } from './aiTeacher';
-import { HadithRepository, HADITH_PLACEHOLDER_TEXT } from './hadith';
+// LessonAgent v0.2 (ai/CONTRACT.md §8 PROPOSAL; review notes C8–C12): the three
+// memorization stages, no taps, the go-ahead before the hadith, manners_redirect,
+// visible save failures. Vitest fake timers drive the clock.
+// Mirrored by app/test/lesson/lesson_agent_test.dart.
+import { HadithRepository } from './hadith';
 import { quranRef, refKey } from './quran';
 import { FormatError } from './quran';
 import { parseLessonScript, validateLessonScript } from './script';
+import { AYAH_REPEATS, buildReviewScript, expandLesson, FULL_SURAH_PASSES, STAGE1_PASSES } from './stages';
 import type { LessonProgress } from './state';
-import { realContent, Rig } from './testing/fakes';
+import { loadScript, realContent, Rig } from './testing/fakes';
+import { stageOf } from './web/progressSink';
 
-const LINE = 1400; // speak (1s) + echo guard… as in the Dart test
+const LINE = 1300; // fake speech (1 s) + echo guard (0.3 s)
 const GUARD = 300;
 const SILENCE = 7000;
+const ADVANCE = 2000;
 
 const elapse = (ms: number) => vi.advanceTimersByTimeAsync(ms);
 const flush = () => vi.advanceTimersByTimeAsync(0);
@@ -28,164 +31,361 @@ async function start(r: Rig, from?: LessonProgress) {
   await flush();
 }
 
-/** Intro lines → «جاهز نبدأ نحفظ؟» → the child says yes. */
-async function intro(r: Rig) {
-  await elapse(LINE * 4);
-  expect(r.s.beat).toBe('awaitMic');
-  expect(r.s.captionId).toBe('intro.ready');
-  r.agent.micTap();
-  await elapse(GUARD);
-  expect(r.s.beat).toBe('hearingAnswer');
-  expect(r.teacher.listeningMode).toBe('answer');
-  r.teacher.emit({ type: 'answerDetected', intent: 'yes' });
-  await flush();
-}
+const stepType = (r: Rig) => r.agent.script.steps[r.s.stepIndex]?.type;
 
-/** Opens the mic after the prompt and waits for the listening gate. */
-async function openMic(r: Rig) {
-  r.agent.micTap();
-  await elapse(GUARD);
-  expect(r.s.beat).toBe('listening');
-  expect(r.teacher.listeningMode).toBe('repeats');
-}
-
-/** Three repeats with the teacher counting in between. */
-async function threeRepeats(r: Rig) {
-  for (let k = 1; k <= 3; k++) {
-    r.teacher.childRepeats();
-    await flush();
-    expect(r.s.repeatsDone).toBe(k);
-    if (k < 3) {
-      expect(r.s.beat).toBe('counted');
-      await elapse(LINE + GUARD);
-      expect(r.s.beat).toBe('listening');
+/**
+ * Plays the child: lets each recitation finish, repeats when listening, reads the
+ * whole surah (one long utterance per pass), and says «نعم» before the hadith.
+ */
+async function autopilot(r: Rig, until: () => boolean, maxMs = 900_000) {
+  let passKey = '';
+  for (let t = 0; t < maxMs; t += 100) {
+    if (until()) return;
+    const s = r.s;
+    if (s.beat === 'reciting' && r.player.playing && !r.player.paused) {
+      r.player.finish();
+    } else if (s.beat === 'listening' && r.teacher.isListening) {
+      if (stepType(r) === 'full_surah') {
+        const key = `${s.stepIndex}:${s.passesDone}`;
+        if (key !== passKey) {
+          passKey = key;
+          r.teacher.childRepeats(120_000); // a whole reading, then the pause completes the pass
+        }
+      } else {
+        r.teacher.childRepeats();
+      }
+    } else if (s.beat === 'hearingAnswer' && r.teacher.isListening) {
+      r.teacher.emit({ type: 'answerDetected', intent: 'yes' });
     }
+    await elapse(100);
   }
-  expect(r.s.beat).toBe('praising');
+  throw new Error(
+    `autopilot timed out at ${JSON.stringify({ screen: r.s.screen, beat: r.s.beat, step: r.s.stepIndex })}`,
+  );
 }
 
-async function ayah(r: Rig, n: number) {
-  expect(r.s.screen).toBe('ayah');
-  expect(r.s.beat).toBe('reciting');
-  expect(r.player.lastAsset).toBe(`audio/quran/11200${n}.mp3`);
-  expect(r.s.ayahRef).toEqual(quranRef(112, n));
-  r.player.finish();
-  expect(r.s.beat).toBe('awaitMic');
-  await openMic(r);
-  await threeRepeats(r);
-  await elapse(LINE);
-}
+/** The exact teacher lines of stage 2 for one ayah (5 repeats), ending with `praise`. */
+const stage2Ayah = (praise: string) => [
+  'ayah.repeat_now',
+  'count.more',
+  'count.more',
+  'count.two_left',
+  'count.one_left',
+  praise,
+];
 
-async function answer(r: Rig, intent: AnswerIntent) {
-  expect(r.s.beat).toBe('awaitMic');
-  r.agent.micTap();
-  await elapse(GUARD);
-  r.teacher.emit({ type: 'answerDetected', intent });
-  await flush();
-}
+test('stages: v0.1 Al-Ikhlas expands to 1× whole surah after the reciter → 5× per ayah → whole surah ×2', () => {
+  const s = loadScript('m01-w03-ikhlas');
+  const x = expandLesson(s);
+  expect(STAGE1_PASSES).toBe(1);
+  expect(AYAH_REPEATS).toBe(5);
+  expect(FULL_SURAH_PASSES).toBe(2);
+  expect(x.steps.map((st) => st.type)).toEqual([
+    'intro',
+    'stage_intro',
+    'listen_surah',
+    'full_surah',
+    'stage_intro',
+    'ayah_loop',
+    'ayah_loop',
+    'ayah_loop',
+    'ayah_loop',
+    'stage_intro',
+    'full_surah',
+    'surah_done',
+    'hadith_loop',
+    'project_assign',
+    'lesson_end',
+  ]);
+  expect(x.steps[3]).toMatchObject({ type: 'full_surah', passes: 1, stage: 1 });
+  expect(x.steps.filter((st) => st.type === 'ayah_loop').every((st) => st.repeats === 5)).toBe(true);
+  expect(x.steps[10]).toMatchObject({ type: 'full_surah', passes: 2, stage: 3 });
+  expect(x.steps[0]).toMatchObject({ lines: ['greet', 'intro.plan', 'intro.surah', 'intro.count'] });
+  expect(expandLesson(x)).toBe(x); // idempotent
+});
 
-const events = (r: Rig, type: string) => r.teacher.events.filter((e) => e.type === type);
-
-test('happy path: whole lesson in design order, nothing invented', async () => {
+test('full Al-Ikhlas run: the exact action sequence, no taps, progress saved with stage «done»', async () => {
   const r = new Rig();
   await start(r);
-  expect(r.s.screen).toBe('intro');
-  expect(r.s.surahAyahCount).toBe(4);
-  await intro(r);
-  for (let i = 1; i <= 4; i++) await ayah(r, i);
-  expect(r.s.beat).toBe('awaitContinue');
-  expect(r.s.caption).toBe('أتممت سورة الإخلاص كاملة… أحسنت يا سارة!');
-  r.agent.continueTapped();
-
-  expect(r.s.screen).toBe('surahDone');
-  await elapse(LINE * 2);
-  await answer(r, 'yes');
-  expect(r.s.beat).toBe('advancing');
-  await elapse(LINE);
-
-  // Hadith: unapproved placeholder → no audio, the 3 repeats still count.
-  expect(r.s.screen).toBe('hadith');
-  expect(r.s.hadith!.displayText).toBe(HADITH_PLACEHOLDER_TEXT);
-  await elapse(LINE);
-  expect(r.s.beat).toBe('awaitMic');
-  expect(r.player.started).toHaveLength(4);
-  await openMic(r);
-  await threeRepeats(r);
-  await elapse(LINE * 2);
-
-  expect(r.s.screen).toBe('projectAssign');
-  expect(r.s.project!.hints).toHaveLength(3);
-  await elapse(LINE * 2);
-  await answer(r, 'understood');
-  await elapse(LINE);
-
-  expect(r.s.screen).toBe('lessonEnd');
-  await elapse(LINE * 2);
-  await answer(r, 'yes');
-  await elapse(LINE);
-  expect(r.s.beat).toBe('done');
+  await autopilot(r, () => r.s.beat === 'done');
 
   expect(r.teacher.spoken).toEqual([
+    // intro (no «جاهز نبدأ نحفظ؟» — nothing waits)
     'greet.evening',
     'intro.plan',
     'intro.surah',
     'intro.count',
-    'intro.ready',
-    'ayah.repeat_now',
-    'count.two_left',
-    'count.one_left',
-    'praise.first',
-    'ayah.repeat_now',
-    'count.two_left',
-    'count.one_left',
-    'praise.next',
-    'ayah.repeat_now',
-    'count.two_left',
-    'count.one_left',
-    'praise.last_left',
-    'ayah.repeat_now',
-    'count.two_left',
-    'count.one_left',
-    'praise.all_done',
-    'surah.complete',
+    // stage 1: the reciter plays the whole surah, then the child reads it once
+    'stage.1',
+    'stage1.your_turn',
+    'praise.good',
+    // stage 2: each ayah 5×
+    'stage.2',
+    ...stage2Ayah('praise.first'),
+    ...stage2Ayah('praise.next'),
+    ...stage2Ayah('praise.last_left'),
+    ...stage2Ayah('praise.all_done'),
+    // stage 3: the whole surah twice
+    'stage.3',
+    'full.start',
+    'full.again',
+    'full.done',
+    // celebration, then the child's go-ahead before the hadith
     'surah.done',
     'surah.proud',
     'surah.next_hadith',
-    'surah.go_hadith',
-    'hadith.topic',
-    'ayah.repeat_now',
-    'count.two_left',
-    'count.one_left',
-    'hadith.praise',
-    'hadith.to_project',
-    'project.intro',
-    'project.tomorrow',
-    'project.ask',
-    'project.bye',
+    'surah.to_hadith',
+    // hadith (unapproved): the topic only
+    'hadith.today',
+    'hadith.soon',
+    // project of the day: title + the three steps
+    'project.today',
+    'project.hint',
+    'project.hint',
+    'project.hint',
+    // lesson end (after the final save)
     'end.praise',
     'project.tomorrow',
-    'end.ask',
-    'end.bye',
+    'end.see_you',
   ]);
-
-  const p = r.agent.progress;
-  expect(p.doneRefs).toEqual(new Set([1, 2, 3, 4].map((i) => refKey(quranRef(112, i)))));
-  expect(p.surahsCompleted).toEqual(new Set([112]));
-  expect(p.hadithDone).toEqual(new Set(['PLACEHOLDER-birr-alwalidayn']));
-  expect(p.projectAssigned).toBe('birr-3-acts');
-  expect(p.completed).toBe(true);
+  // The reciter: the whole surah in stage 1, then each ayah again in stage 2; never in stage 3.
+  const recited = r.teacher.events.flatMap((e) =>
+    e.type === 'recitationStarted' && e.ref ? [refKey(e.ref)] : [],
+  );
+  expect(recited).toEqual(['112:1', '112:2', '112:3', '112:4', '112:1', '112:2', '112:3', '112:4']);
+  expect(r.s.screen).toBe('lessonEnd');
   expect(r.sink.completedCalls).toHaveLength(1);
-  expect(r.sink.checkpoints.map((c) => c.stepIndex)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
-  expect(r.s.elapsedMs / 1000).toBeGreaterThan(30);
+  const final = r.sink.completedCalls[0]!;
+  expect(final.completed).toBe(true);
+  expect(stageOf(r.agent.script, final)).toBe('done');
+  expect([...final.doneRefs].sort()).toEqual(['112:1', '112:2', '112:3', '112:4']);
+  expect([...final.surahsCompleted]).toEqual([112]);
+  expect(final.projectAssigned).toBe('birr-3-acts');
+  await r.agent.dispose();
+});
 
+test('a checkpoint is written at every stage end, with the matching database stage', async () => {
+  const r = new Rig();
+  await start(r);
+  await autopilot(r, () => r.s.beat === 'done');
+  const idx = r.sink.checkpoints.map((c) => c.stepIndex);
+  for (const stageStart of [1, 4, 9, 11]) expect(idx).toContain(stageStart);
+  const script = r.agent.script;
+  const at = (i: number) => stageOf(script, { ...r.sink.checkpoints.find((c) => c.stepIndex === i)! });
+  expect([at(1), at(4), at(9), at(11)]).toEqual(['listen_full', 'ayah_repeat', 'full_twice', 'hadith']);
+  await r.agent.dispose();
+});
+
+test('insult → manners_redirect → the same ayah resumes with the count kept', async () => {
+  const r = new Rig();
+  await start(r);
+  await autopilot(r, () => r.s.stepIndex === 5 && r.s.beat === 'listening' && r.teacher.isListening);
+  for (let k = 1; k <= 2; k++) {
+    r.teacher.childRepeats();
+    await flush();
+    expect(r.s.repeatsDone).toBe(k);
+    await elapse(LINE + GUARD);
+  }
+  expect(r.s.beat).toBe('listening');
+  r.teacher.emit({ type: 'mannersRedirect' });
+  await flush();
+  expect(r.teacher.spoken.at(-1)).toBe('manners.redirect');
+  expect(r.s.repeatsDone).toBe(2); // nothing counted
+  await elapse(LINE + GUARD);
+  expect(r.s.beat).toBe('listening');
+  expect(r.s.stepIndex).toBe(5);
+  expect(r.s.ayahRef).toEqual(quranRef(112, 1));
+  for (let k = 3; k <= 5; k++) {
+    r.teacher.childRepeats();
+    await flush();
+    expect(r.s.repeatsDone).toBe(k);
+    if (k < 5) await elapse(LINE + GUARD);
+  }
+  expect(r.teacher.spoken.at(-1)).toBe('praise.first');
+  await r.agent.dispose();
+});
+
+test('stage 2 needs exactly 5 repeats per ayah before moving on', async () => {
+  const r = new Rig();
+  await start(r);
+  await autopilot(r, () => r.s.stepIndex === 5 && r.s.beat === 'listening' && r.teacher.isListening);
+  for (let k = 1; k <= 4; k++) {
+    r.teacher.childRepeats();
+    await flush();
+    expect(r.s.stepIndex).toBe(5);
+    await elapse(LINE + GUARD);
+  }
+  expect(r.s.repeatsDone).toBe(4);
+  r.teacher.childRepeats();
+  await flush();
+  expect(r.s.beat).toBe('praising');
+  await elapse(LINE);
+  expect(r.s.stepIndex).toBe(6);
+  await r.agent.dispose();
+});
+
+test('a full pass needs half the reciter time spoken, then a pause; exactly 2 passes', async () => {
+  const content = realContent();
+  const need =
+    [1, 2, 3, 4].reduce((t, a) => t + (content.audio.durationMsOf?.(quranRef(112, a)) ?? 2500), 0) / 2;
+  const r = new Rig({ content });
+  await start(r);
+  await autopilot(r, () => r.s.stepIndex === 10 && r.s.beat === 'listening' && r.teacher.isListening);
+  expect(r.s.passesTarget).toBe(2);
+  r.teacher.childRepeats(need / 2); // not enough yet
+  await elapse(3000);
+  expect(r.s.passesDone).toBe(0);
+  r.teacher.childRepeats(need); // enough…
+  await elapse(1000);
+  r.teacher.emit({ type: 'speechStarted' }); // …but still reading: no pass yet
+  await elapse(3000);
+  expect(r.s.passesDone).toBe(0);
+  r.teacher.emit({ type: 'repeatDetected', voicedMs: 200 });
+  await elapse(2500); // the pause after the reading
+  expect(r.s.passesDone).toBe(1);
+  expect(r.teacher.spoken.at(-1)).toBe('full.again');
+  await elapse(LINE + GUARD);
+  r.teacher.childRepeats(need + 1);
+  await elapse(2500);
+  expect(r.s.passesDone).toBe(2);
+  expect(r.teacher.spoken.at(-1)).toBe('full.done');
+  await elapse(LINE + ADVANCE);
+  expect(r.s.screen).toBe('surahDone');
+  await r.agent.dispose();
+});
+
+test('exit mid-stage saves the step; start(from:) resumes at the same ayah of the same stage', async () => {
+  const r = new Rig();
+  await start(r);
+  await autopilot(r, () => r.s.stepIndex === 6 && r.s.beat === 'listening');
+  await r.agent.endCall();
+  expect(r.s.screen).toBe('ended');
+  const saved = r.sink.checkpoints.at(-1)!;
+  expect(saved.stepIndex).toBe(6);
+  await r.agent.dispose();
+
+  const r2 = new Rig();
+  await start(r2, saved);
+  expect(r2.s.stepIndex).toBe(6);
+  expect(r2.s.stage).toBe(2);
+  expect(r2.s.ayahRef).toEqual(quranRef(112, 2));
+  expect(r2.s.beat).toBe('reciting');
+  await r2.agent.dispose();
+});
+
+test('the hadith waits for the child: silence re-asks, voice goes on', async () => {
+  const r = new Rig();
+  await start(r);
+  await autopilot(r, () => r.s.beat === 'hearingAnswer' && r.teacher.isListening);
+  expect(r.s.screen).toBe('surahDone');
+  await elapse(SILENCE);
+  expect(r.teacher.spoken.at(-1)).toBe('nudge.answer');
+  await elapse(LINE + GUARD + 100);
+  expect(r.s.screen).toBe('surahDone'); // no timer moves on without the child
+  expect(r.s.beat).toBe('hearingAnswer');
+  r.teacher.emit({ type: 'answerDetected', intent: 'yes' });
+  await elapse(LINE + ADVANCE + 100);
+  expect(r.s.screen).toBe('hadith');
+  await r.agent.dispose();
+});
+
+test('the final save failing never shows the lesson as finished; retry finishes it', async () => {
+  const r = new Rig();
+  await start(r);
+  r.sink.failCompleted = true;
+  await autopilot(r, () => r.s.beat === 'saveFailed');
+  expect(r.s.screen).not.toBe('lessonEnd');
+  expect(r.s.progressSaveFailed).toBe(true);
+  expect(r.teacher.spoken).not.toContain('end.praise');
+  r.sink.failCompleted = false;
+  r.agent.continueTapped();
+  await autopilot(r, () => r.s.beat === 'done');
+  expect(r.s.screen).toBe('lessonEnd');
+  expect(r.s.progressSaveFailed).toBe(false);
+  expect(r.sink.completedCalls).toHaveLength(1);
+  await r.agent.dispose();
+});
+
+test('a checkpoint that fails is shown, and the next success clears it', async () => {
+  const r = new Rig();
+  r.sink.failCheckpoint = true;
+  await start(r);
+  expect(r.s.progressSaveFailed).toBe(true);
+  expect(r.s.screen).toBe('intro'); // the lesson goes on
+  r.sink.failCheckpoint = false;
+  await autopilot(r, () => r.s.stepIndex >= 1);
+  await flush();
+  expect(r.s.progressSaveFailed).toBe(false);
+  await r.agent.dispose();
+});
+
+test('silence in stage 2: nudges, then one replay, then waits quietly', async () => {
+  const r = new Rig();
+  await start(r);
+  await autopilot(r, () => r.s.stepIndex === 5 && r.s.beat === 'listening' && r.teacher.isListening);
+  await elapse(SILENCE);
+  expect(r.teacher.spoken.at(-1)).toBe('nudge.start');
+  await elapse(LINE + GUARD + SILENCE);
+  expect(r.teacher.spoken.at(-1)).toBe('nudge.start');
+  await elapse(LINE + GUARD + SILENCE);
+  expect(r.s.beat).toBe('reciting'); // the one replay
+  r.player.finish();
+  await elapse(LINE + GUARD + SILENCE * 4);
+  expect(r.s.beat).toBe('listening'); // then just waits
+  await r.agent.dispose();
+});
+
+test('autoplay blocked → the fallback play, then the surah continues', async () => {
+  const r = new Rig();
+  r.player.blockAutoplay = true;
+  await start(r);
+  await autopilot(r, () => r.s.playbackBlocked);
+  expect(stepType(r)).toBe('listen_surah');
+  r.player.blockAutoplay = false;
+  r.agent.play();
+  await flush();
+  expect(r.s.beat).toBe('reciting');
+  expect(r.player.playing).toBe(true);
+  await r.agent.dispose();
+});
+
+test('backgrounded: everything pauses; back: the same moment, counts kept', async () => {
+  const r = new Rig();
+  await start(r);
+  await autopilot(r, () => r.s.stepIndex === 5 && r.s.beat === 'listening' && r.teacher.isListening);
+  r.teacher.childRepeats();
+  await elapse(LINE + GUARD);
+  r.agent.setForeground(false);
+  await flush();
+  expect(r.s.paused).toBe(true);
+  expect(r.teacher.isListening).toBe(false);
+  await elapse(60_000);
+  r.agent.setForeground(true);
+  await elapse(GUARD);
+  expect(r.s.beat).toBe('listening');
+  expect(r.s.repeatsDone).toBe(1);
+  await r.agent.dispose();
+});
+
+test('mic refused → «awaitMic» with the flag; a tap retries', async () => {
+  const r = new Rig();
+  r.teacher.denyMic = true;
+  await start(r);
+  await autopilot(r, () => r.s.micDenied);
+  expect(r.s.beat).toBe('awaitMic');
+  r.teacher.denyMic = false;
+  r.agent.micTap();
+  await elapse(GUARD);
+  expect(r.s.beat).toBe('listening');
+  expect(r.s.micDenied).toBe(false);
   await r.agent.dispose();
 });
 
 test('captions: ayah count only, no Makki/Madani, slots filled', async () => {
   const r = new Rig();
-  await start(r);
   const captions: string[] = [];
   r.agent.state.subscribe((s) => captions.push(s.caption));
+  await start(r);
   await elapse(LINE * 4);
   expect(captions).toContain('وهي قصيرة — أربع آيات فقط!');
   expect(captions).toContain('نبدأ بسورة الإخلاص.');
@@ -193,331 +393,31 @@ test('captions: ayah count only, no Makki/Madani, slots filled', async () => {
   await r.agent.dispose();
 });
 
-test('silence: nudges, then one replay, then waits quietly', async () => {
-  const r = new Rig();
-  await start(r);
-  await intro(r);
-  r.player.finish();
-  await openMic(r);
-
-  await elapse(SILENCE);
-  expect(r.s.beat).toBe('nudging');
-  expect(r.teacher.spoken.at(-1)).toBe('nudge.start');
-  await elapse(LINE + GUARD);
-  await elapse(SILENCE);
-  expect(r.teacher.spoken.at(-1)).toBe('nudge.start');
-  await elapse(LINE + GUARD);
-  expect(r.player.started).toHaveLength(1);
-
-  await elapse(SILENCE); // 3rd silence → replay once
-  expect(r.s.beat).toBe('reciting');
-  expect(r.player.started).toHaveLength(2);
-  r.player.finish();
-  await openMic(r);
-
-  // Two repeats, then silence before the last one → «باقي مرة، هيا…»
-  r.teacher.childRepeats();
-  await elapse(LINE + GUARD);
-  r.teacher.childRepeats();
-  await elapse(LINE + GUARD);
-  await elapse(SILENCE);
-  expect(r.teacher.spoken.at(-1)).toBe('nudge.one_left');
-  await elapse(LINE + GUARD);
-  await elapse(SILENCE);
-  await elapse(LINE + GUARD);
-  const spokenBefore = r.teacher.spoken.length;
-  await elapse(SILENCE * 5); // replayed already → just wait
-  expect(r.s.beat).toBe('listening');
-  expect(r.player.started).toHaveLength(2);
-  expect(r.teacher.spoken).toHaveLength(spokenBefore);
-  expect(r.s.repeatsDone).toBe(2);
-
-  r.teacher.childRepeats();
-  expect(r.s.beat).toBe('praising');
-  await r.agent.dispose();
-});
-
-test('reciter and teacher audio are never counted as the child', async () => {
-  const r = new Rig();
-  await start(r);
-  await intro(r);
-  expect(r.s.beat).toBe('reciting');
-  expect(r.teacher.isListening).toBe(false);
-  r.teacher.childRepeats(); // reciter's voice leaking into the mic
-  expect(r.s.repeatsDone).toBe(0);
-  expect(r.teacher.stopSpeakingCalls).toBeGreaterThan(0); // teacher silenced
-
-  r.player.finish();
-  await openMic(r);
-  r.teacher.childRepeats();
-  expect(r.s.beat).toBe('counted');
-  expect(r.teacher.isListening).toBe(false); // deaf while counting aloud
-  r.teacher.childRepeats();
-  r.teacher.childRepeats();
-  expect(r.s.repeatsDone).toBe(1);
-  await elapse(1100); // line over, echo guard
-  r.teacher.childRepeats();
-  expect(r.s.repeatsDone).toBe(1);
-  await elapse(GUARD * 2);
-  r.teacher.childRepeats();
-  expect(r.s.repeatsDone).toBe(2);
-  await r.agent.dispose();
-});
-
-test('muting the mic pauses counting, not the lesson; repeats kept', async () => {
-  const r = new Rig();
-  await start(r);
-  await intro(r);
-  r.player.finish();
-  await openMic(r);
-  r.teacher.childRepeats();
-  await elapse(LINE + GUARD);
-
-  r.agent.micTap(); // mute
-  expect(r.s.beat).toBe('awaitMic');
-  expect(r.teacher.isListening).toBe(false);
-  expect(events(r, 'micMuted')).toHaveLength(1);
-  r.teacher.childRepeats();
-  const spoken = r.teacher.spoken.length;
-  await elapse(SILENCE * 3); // no nudges while muted
-  expect(r.teacher.spoken).toHaveLength(spoken);
-  expect(r.s.repeatsDone).toBe(1);
-  expect(r.s.paused).toBe(false);
-
-  await openMic(r);
-  r.teacher.childRepeats();
-  expect(r.s.repeatsDone).toBe(2);
-  await r.agent.dispose();
-});
-
-test('autoplay blocked → fallback play control, then continues', async () => {
-  const r = new Rig();
-  r.player.blockAutoplay = true;
-  await start(r);
-  await intro(r);
-  expect(r.s.beat).toBe('reciting');
-  expect(r.s.playbackBlocked).toBe(true);
-  expect(events(r, 'playbackBlocked')).toHaveLength(1);
-  await elapse(SILENCE * 2);
-  expect(r.s.beat).toBe('reciting'); // waits for the tap
-
-  r.player.blockAutoplay = false;
-  r.agent.play();
-  await flush();
-  expect(r.s.playbackBlocked).toBe(false);
-  expect(r.player.playing).toBe(true);
-  r.player.finish();
-  expect(r.s.beat).toBe('awaitMic');
-  await r.agent.dispose();
-});
-
-test('app backgrounded pauses everything and resumes the same moment', async () => {
-  const r = new Rig();
-  await start(r);
-  await elapse(500); // mid-greeting
-  r.agent.setForeground(false);
-  expect(r.s.paused).toBe(true);
-  expect(r.teacher.isSpeaking).toBe(false);
-  const elapsed = r.s.elapsedMs;
-  await elapse(60_000);
-  expect(r.s.elapsedMs).toBe(elapsed); // call timer stopped
-  expect(r.s.captionId).toBe('greet.evening');
-  r.agent.setForeground(true);
-  expect(r.teacher.spoken).toEqual(['greet.evening', 'greet.evening']); // re-said
-  await elapse(LINE * 3);
-  expect(r.s.captionId).toBe('intro.count');
-
-  // During recitation.
-  await elapse(LINE);
-  r.agent.micTap();
-  await elapse(GUARD);
-  r.teacher.emit({ type: 'answerDetected', intent: 'yes' });
-  await flush();
-  expect(r.s.beat).toBe('reciting');
-  r.agent.setForeground(false);
-  expect(r.player.paused).toBe(true);
-  r.player.finish(); // can't finish while paused
-  expect(r.s.beat).toBe('reciting');
-  r.agent.setForeground(true);
-  expect(r.player.paused).toBe(false);
-  r.player.finish();
-  expect(r.s.beat).toBe('awaitMic');
-
-  // While listening: no nudges in the background; listening resumes.
-  await openMic(r);
-  r.agent.setForeground(false);
-  expect(r.teacher.isListening).toBe(false);
-  const spoken = r.teacher.spoken.length;
-  await elapse(SILENCE * 3);
-  expect(r.teacher.spoken).toHaveLength(spoken);
-  r.agent.setForeground(true);
-  await elapse(GUARD);
-  expect(r.teacher.isListening).toBe(true);
-  await elapse(SILENCE);
-  expect(r.s.beat).toBe('nudging');
-
-  // User pause + background: resumes only when both are cleared.
-  r.agent.pause();
-  r.agent.setForeground(false);
-  r.agent.setForeground(true);
-  expect(r.s.paused).toBe(true);
-  r.agent.resume();
-  expect(r.s.paused).toBe(false);
-  await r.agent.dispose();
-});
-
-test('replay keeps the count; next/previous move between ayat', async () => {
-  const r = new Rig();
-  await start(r);
-  await intro(r);
-  r.player.finish();
-  await openMic(r);
-  r.teacher.childRepeats();
-  await elapse(LINE + GUARD);
-
-  r.agent.replayAyah();
-  await flush();
-  expect(r.s.beat).toBe('reciting');
-  expect(r.player.started).toHaveLength(2);
-  expect(r.teacher.isListening).toBe(false);
-  r.player.finish();
-  await openMic(r);
-  r.teacher.childRepeats();
-  expect(r.s.repeatsDone).toBe(2);
-
-  r.agent.nextAyah();
-  await flush();
-  expect(r.s.ayahRef).toEqual(quranRef(112, 2));
-  expect(r.s.repeatsDone).toBe(0);
-  expect(r.player.lastAsset).toBe('audio/quran/112002.mp3');
-  r.agent.previousAyah();
-  await flush();
-  expect(r.player.lastAsset).toBe('audio/quran/112001.mp3');
-  r.agent.previousAyah(); // nothing before ayah 1 → stays
-  await flush();
-  expect(r.s.ayahRef).toEqual(quranRef(112, 1));
-
-  r.agent.stop();
-  expect(r.s.beat).toBe('awaitMic');
-  expect(r.player.playing).toBe(false);
-
-  void r.agent.setVolume(0.4);
-  await flush();
-  expect(r.player.volume).toBe(0.4);
-  expect(r.agent.progress.doneRefs.size).toBe(0); // skipping never counts
-  await r.agent.dispose();
-});
-
-test('mic permission denied → state flag, retry works', async () => {
-  const r = new Rig();
-  await start(r);
-  await intro(r);
-  r.player.finish();
-  r.teacher.denyMic = true;
-  r.agent.micTap();
-  await elapse(GUARD);
-  expect(r.s.micDenied).toBe(true);
-  expect(r.s.beat).toBe('awaitMic');
-  r.teacher.denyMic = false;
-  await openMic(r);
-  expect(r.s.micDenied).toBe(false);
-  await r.agent.dispose();
-});
-
-test('end call saves a checkpoint; start(from:) resumes there', async () => {
-  const r = new Rig();
-  await start(r);
-  await intro(r);
-  await ayah(r, 1);
-  r.player.finish();
-  void r.agent.endCall();
-  await flush();
-  expect(r.s.screen).toBe('ended');
-  expect(r.s.endedByUser).toBe(true);
-  const cp = r.sink.checkpoints.at(-1)!;
-  expect(cp.stepIndex).toBe(2);
-  expect(cp.doneRefs).toEqual(new Set([refKey(quranRef(112, 1))]));
-  expect(r.player.playing).toBe(false);
-
-  const r2 = new Rig();
-  await start(r2, cp);
-  expect(r2.s.screen).toBe('ayah');
-  expect(r2.s.ayahRef).toEqual(quranRef(112, 2));
-  expect(r2.agent.progress.doneRefs).toEqual(new Set([refKey(quranRef(112, 1))]));
-  await r.agent.dispose();
-  await r2.agent.dispose();
-});
-
-test('tap fallback answers «نعم»; tapping the teacher skips a line', async () => {
-  const r = new Rig();
-  await start(r);
-  r.agent.tapTeacher(); // skip greeting
-  await flush();
-  expect(r.s.captionId).toBe('intro.plan');
-  await elapse(LINE * 3);
-  r.agent.micTap();
-  await elapse(GUARD);
-  r.agent.micTap(); // frame 18: live mic = «قلت نعم»
-  await flush();
-  expect(r.s.screen).toBe('ayah');
-  expect(events(r, 'tapFallback')).toHaveLength(1);
-  await r.agent.dispose();
-});
-
-test('day 2: report → re-record → auto-save → hadith → end', async () => {
+test('day 2: the report records and stops by itself → auto-save → hadith → end', async () => {
   const r = new Rig({ lessonId: 'm01-w03-day2', now: new Date(2026, 8, 25, 9) });
   await start(r);
   expect(r.s.screen).toBe('projectReport');
-  await elapse(LINE);
-  expect(r.s.beat).toBe('awaitMic');
-  expect(r.s.caption).toBe(r.s.project!.reportAsk);
-
-  r.agent.micTap();
-  await flush();
-  expect(r.s.beat).toBe('recording');
-  await elapse(5000);
-  expect(r.s.recordingElapsedMs).toBe(5000);
-  r.agent.micTap();
-  await flush();
+  await elapse(LINE * 2);
+  expect(r.s.beat).toBe('recording'); // no tap
+  r.recorder.talk(0.6);
+  await elapse(1500);
+  r.recorder.talk(0.6);
+  await elapse(4000); // quiet → stops by itself
   expect(r.s.beat).toBe('recorded');
   expect(r.s.recordedDurationMs).toBe(11_000);
-
-  r.agent.reRecord();
-  await flush();
-  expect(r.recorder.discarded).toHaveLength(1);
-  expect(r.s.beat).toBe('recording');
-  r.agent.micTap();
-  await flush();
-  await elapse(LINE + 3200);
-  expect(r.s.beat).toBe('advancing');
-  expect(r.teacher.spoken.at(-1)).toBe('report.to_hadith');
-  expect(r.sink.reports).toHaveLength(1);
-  expect(r.sink.reports[0]![0]).toBe('birr-3-acts');
-  expect(r.sink.reports[0]![1].path).toBe('/tmp/take2.m4a');
-  await elapse(LINE);
-
-  expect(r.s.screen).toBe('hadith');
-  await elapse(LINE);
-  await openMic(r);
-  await threeRepeats(r);
-  await elapse(LINE);
-  expect(r.s.screen).toBe('lessonEnd');
-  await elapse(LINE * 2);
-  expect(r.s.beat).toBe('done');
+  await autopilot(r, () => r.s.beat === 'done');
   expect(r.teacher.spoken).toEqual([
     'report.greet.morning',
     'report.ask',
     'report.thanks',
-    'report.thanks',
     'report.to_hadith',
-    'hadith.topic',
-    'ayah.repeat_now',
-    'count.two_left',
-    'count.one_left',
-    'hadith.praise',
+    'hadith.today',
+    'hadith.soon',
     'end.praise',
-    'end.bye',
+    'end.see_you',
   ]);
+  expect(r.sink.reports).toHaveLength(1);
+  expect(r.sink.reports[0]![0]).toBe('birr-3-acts');
   expect(r.agent.progress.reportedProject).toBe('birr-3-acts');
   await r.agent.dispose();
 });
@@ -526,19 +426,16 @@ test('report save failure keeps the recording and retries', async () => {
   const r = new Rig({ lessonId: 'm01-w03-day2' });
   r.sink.failSave = true;
   await start(r);
-  await elapse(LINE);
-  r.agent.micTap();
-  await flush();
-  r.agent.micTap();
-  await flush();
+  await elapse(LINE * 2);
+  r.recorder.talk(0.6);
+  await elapse(5000);
   await elapse(LINE + 3200);
   expect(r.s.beat).toBe('recorded');
   expect(r.s.saveFailed).toBe(true);
   expect(r.recorder.discarded).toHaveLength(0);
-
   r.sink.failSave = false;
   r.agent.continueTapped();
-  await elapse(LINE * 2);
+  await elapse(LINE * 2 + ADVANCE);
   expect(r.sink.reports).toHaveLength(1);
   expect(r.s.screen).toBe('hadith');
   await r.agent.dispose();
@@ -550,6 +447,7 @@ test('approved hadith plays automatically, with no code change', async () => {
       {
         id: 'PLACEHOLDER-birr-alwalidayn',
         title: 'حديث برّ الوالدين',
+        topic: 'برّ الوالدين',
         approved: true,
         text: 'TEST-TEXT',
         takhrij: 'TEST-TAKHRIJ',
@@ -562,20 +460,37 @@ test('approved hadith plays automatically, with no code change', async () => {
   });
   const r = new Rig({ lessonId: 'm01-w03-day2', content: realContent({ hadith }) });
   await start(r);
-  r.agent.nextAyah(); // no ayat in day 2 → no-op
-  await elapse(LINE);
-  r.agent.micTap();
-  await flush();
-  r.agent.micTap();
-  await flush();
-  await elapse(LINE + 3200);
-  await elapse(LINE);
-  await elapse(LINE); // hadith.topic
-  expect(r.s.screen).toBe('hadith');
-  expect(r.s.beat).toBe('reciting');
+  await elapse(LINE * 2);
+  r.recorder.talk(0.6);
+  await elapse(5000);
+  await autopilot(r, () => r.s.screen === 'hadith' && r.s.beat === 'reciting');
   expect(r.s.captionId).toBe('ui.listen_hadith');
   expect(r.player.lastAsset).toBe('audio/hadith/test.mp3');
   expect(r.s.hadith!.displayText).toBe('TEST-TEXT');
+  await r.agent.dispose();
+});
+
+test('weekly review: each memorized surah read once in full; unapproved hadith skipped', async () => {
+  const script = buildReviewScript({ memorizedSurahs: [112], approvedHadithIds: [] });
+  expect(script.steps.map((s) => s.type)).toEqual([
+    'review_intro',
+    'stage_intro',
+    'full_surah',
+    'lesson_end',
+  ]);
+  const r = new Rig({ script });
+  await start(r);
+  expect(r.s.screen).toBe('reviewIntro');
+  await autopilot(r, () => r.s.beat === 'done');
+  expect(r.teacher.spoken).toEqual([
+    'review.intro',
+    'review.surah',
+    'full.start',
+    'full.done',
+    'end.praise',
+    'end.see_you',
+  ]);
+  expect(r.player.started).toHaveLength(0); // no reciter in a review
   await r.agent.dispose();
 });
 
@@ -586,7 +501,7 @@ test('audio not on the device and offline → failed before starting', async () 
     title: 't',
     steps: [{ type: 'ayah_loop', ref: { surah: 2, ayah: 255 }, repeats: 3 }],
   });
-  const r = new Rig({ script }); // fetch fails: offline
+  const r = new Rig({ script });
   void r.agent.start();
   await flush();
   expect(r.s.screen).toBe('failed');
@@ -595,7 +510,7 @@ test('audio not on the device and offline → failed before starting', async () 
   await r.agent.dispose();
 });
 
-test('invalid ayah refs are rejected', () => {
+test('invalid ayah refs and unknown contract versions are rejected', () => {
   expect(() =>
     validateLessonScript(
       parseLessonScript({

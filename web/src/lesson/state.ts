@@ -8,7 +8,8 @@ import type { QuranRef } from './quran';
 export type LessonScreen =
   | 'loading'
   | 'intro' // 18 (plan)
-  | 'ayah' // 18 (ayah loop)
+  | 'reviewIntro' // weekly review (v0.2 §8.6)
+  | 'ayah' // 18 (the three memorization stages: whole surah card)
   | 'surahDone' // 19
   | 'hadith' // 20
   | 'projectAssign' // 21
@@ -23,20 +24,22 @@ export type LessonBeat =
   | 'speaking'
   /** Reciter plays; teacher quiet; mic closed (dimmed). */
   | 'reciting'
-  /** Waiting for the child to open the mic (gold ring) — to repeat, answer or record. */
+  /** Waiting for the mic — only when it couldn't open by itself (permission refused); a tap retries. */
   | 'awaitMic'
   /** Mic open, hearing the child's repeats. */
   | 'listening'
+  /** Mic open for the child's go-ahead before the hadith («جاهز ننتقل للحديث؟») — any speech = yes. */
+  | 'hearingAnswer'
+  /** The lesson's final save is in progress (the lesson isn't shown as finished before it succeeds). */
+  | 'saving'
+  /** The final save failed after retries — «حاول مجددًا» retries it. */
+  | 'saveFailed'
   /** Teacher counts by voice («باقي مرتين»); mic stays open. */
   | 'counted'
   /** Silence nudge («باقي مرة، هيا…»); mic stays open. */
   | 'nudging'
   /** Teacher praises after the last repeat; mic idle. */
   | 'praising'
-  /** Frame 18 «complete» — the gold arrow to continue. */
-  | 'awaitContinue'
-  /** Mic open for a short answer («قل: نعم»). */
-  | 'hearingAnswer'
   /** Handoff line («ننتقل…») — moving to the next screen. */
   | 'advancing'
   /** Frame 22 — recording the project report. */
@@ -69,6 +72,15 @@ export interface LessonState {
   readonly project: ProjectContent | null;
   readonly repeatsDone: number;
   readonly repeatsTarget: number;
+  /** v0.2 stage of the current step: 1 «استمع وردّد», 2 «آية آية», 3 «السورة كاملة» (0 = none). */
+  readonly stage: 0 | 1 | 2 | 3;
+  /** The short line between stages is showing (thin progress bar, then auto-advance). */
+  readonly stageTransition: boolean;
+  /** The whole current surah — verified Tanzil text, in order (the surah card). */
+  readonly surahAyat: readonly { readonly ayah: number; readonly text: string }[];
+  /** Stage 3: full passes done / needed («المرة ١ من ٢»). */
+  readonly passesDone: number;
+  readonly passesTarget: number;
   /** Autoplay was refused — show only the design's small fallback play. */
   readonly playbackBlocked: boolean;
   readonly paused: boolean;
@@ -76,6 +88,8 @@ export interface LessonState {
   readonly micDenied: boolean;
   /** TODO(design): the project report couldn't be saved — retry. */
   readonly saveFailed: boolean;
+  /** A progress checkpoint couldn't be saved after retries («لم نتمكّن من حفظ تقدّمك»). */
+  readonly progressSaveFailed: boolean;
   /** TODO(design): the recitation audio isn't on the device (offline). */
   readonly contentUnavailable: boolean;
   /** Call timer (frames 18–23 «٠٢:٤٦»), in ms. */
@@ -103,10 +117,16 @@ export const initialLessonState: LessonState = {
   project: null,
   repeatsDone: 0,
   repeatsTarget: 3,
+  stage: 0,
+  stageTransition: false,
+  surahAyat: [],
+  passesDone: 0,
+  passesTarget: 0,
   playbackBlocked: false,
   paused: false,
   micDenied: false,
   saveFailed: false,
+  progressSaveFailed: false,
   contentUnavailable: false,
   elapsedMs: 0,
   recordingElapsedMs: 0,
