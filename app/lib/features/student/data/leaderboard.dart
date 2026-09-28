@@ -1,55 +1,87 @@
 import '../../../core/arabic_digits.dart';
 
-/// The weekly board from `get_leaderboard()` (refreshed by pg_cron). Rows are
-/// rank + stars ONLY: other children are never identified.
+/// One of the top-5 rows from `get_leaderboard()`: rank + points only — other
+/// children are never identified (no id, name, age or avatar).
+class BoardEntry {
+  const BoardEntry({required this.rank, required this.points, this.me = false});
+
+  final int rank;
+  final int points;
+
+  /// This row is the child's own.
+  final bool me;
+}
+
+/// This child's own standing.
+class BoardStanding {
+  const BoardStanding({
+    required this.rank,
+    required this.points,
+    this.gapToAbove,
+    this.inTop5 = false,
+  });
+
+  final int rank;
+  final int points;
+
+  /// Points to the next higher rank (null in first place).
+  final int? gapToAbove;
+  final bool inTop5;
+}
+
+/// The weekly board from `get_leaderboard()` (live; dense ranks, ties share a
+/// rank; resets Saturday 00:00 Riyadh). Mirrors web/src/data/student.ts.
 class LeaderBoard {
   const LeaderBoard({
     required this.weekKey,
     required this.total,
-    required this.rows,
+    required this.top,
+    this.me,
   });
 
-  factory LeaderBoard.fromMap(Map<String, dynamic> m) => LeaderBoard(
-    weekKey: m['weekKey'] as String? ?? '',
-    total: (m['total'] as num?)?.toInt() ?? 0,
-    rows: [
-      for (final r in (m['rows'] as List? ?? const []))
-        if (r is Map && r['rank'] is num && r['points'] is num)
-          ((r['rank'] as num).toInt(), (r['points'] as num).toInt()),
-    ],
-  );
-
-  /// From the `get_leaderboard()` RPC: rows are (rank, stars).
-  factory LeaderBoard.fromRpc(Map<dynamic, dynamic> d) => LeaderBoard(
-    weekKey: '${d['weekKey'] ?? ''}',
-    total: (d['total'] as num?)?.toInt() ?? 0,
-    rows: [
-      for (final r in (d['rows'] as List? ?? const []))
-        if (r is Map && r['rank'] is num && r['stars'] is num)
-          ((r['rank'] as num).toInt(), (r['stars'] as num).toInt()),
-    ],
-  );
-
-  /// This child's own standing from the same RPC, in the `leader` shape that
-  /// [buildBoard] reads (points = stars).
-  static Map<String, dynamic>? ownFromRpc(Map<dynamic, dynamic> d) {
-    final own = d['own'];
-    if (own is! Map) return null;
-    return {
-      'weekKey': '${d['weekKey'] ?? ''}',
-      'rank': own['rank'],
-      'points': own['stars'],
-      'total': own['total'],
-      'topPercent': own['topPercent'],
-      'gapToAbove': own['gapToAbove'],
-    };
+  /// Accepts the current payload `{weekKey, total, top[], me{}}` and the
+  /// previous one `{weekKey, total, rows[{rank, stars, me}], own{rank, stars,
+  /// gapToAbove}}`, so the app works whichever the server runs.
+  factory LeaderBoard.fromRpc(Map<dynamic, dynamic> d) {
+    int? i(Object? v) => v is num ? v.toInt() : null;
+    final isNew = d['top'] is List;
+    final pointsKey = isNew ? 'points' : 'stars';
+    final rawRows = (isNew ? d['top'] : d['rows']) as List? ?? const [];
+    final top = <BoardEntry>[
+      for (final r in rawRows)
+        if (r is Map && r['rank'] is num && r[pointsKey] is num)
+          BoardEntry(
+            rank: i(r['rank'])!,
+            points: i(r[pointsKey])!,
+            me: r['me'] == true,
+          ),
+    ].take(_topRows).toList();
+    final m = isNew ? d['me'] : d['own'];
+    BoardStanding? me;
+    if (m is Map && m['rank'] is num) {
+      me = BoardStanding(
+        rank: i(m['rank'])!,
+        points: i(m[pointsKey]) ?? 0,
+        gapToAbove: i(m['gapToAbove']),
+        inTop5: isNew ? m['inTop5'] == true : top.any((r) => r.me),
+      );
+    }
+    return LeaderBoard(
+      weekKey: '${d['weekKey'] ?? ''}',
+      total: i(d['total']) ?? 0,
+      top: top,
+      me: me,
+    );
   }
 
   final String weekKey;
   final int total;
 
-  /// (rank, points)
-  final List<(int, int)> rows;
+  /// Ranks 1–5 as the server gives them (≤ 5 rows).
+  final List<BoardEntry> top;
+
+  /// This child's own standing (always present for a paired device).
+  final BoardStanding? me;
 }
 
 /// One row as StudentHome shows it.
@@ -57,7 +89,7 @@ class BoardRow {
   const BoardRow({
     required this.rank,
     required this.points,
-    required this.label,
+    this.label,
     this.avatarId,
     this.me = false,
   });
@@ -65,75 +97,85 @@ class BoardRow {
   final int rank;
   final int points;
 
-  /// «طالب ٣» for others; the child's own first name for [me].
-  final String label;
+  /// Only the child's own row has a label (its first name); other rows show
+  /// rank + a neutral avatar + points only.
+  final String? label;
 
-  /// Only the child's own row has an avatar; others get one generic avatar.
+  /// Only the child's own row has an avatar; others get one neutral avatar.
   final String? avatarId;
   final bool me;
 }
 
 class BoardView {
-  const BoardView(this.rows, this.note);
+  const BoardView(this.rows, this.note, {this.own, this.separator = false});
+
+  /// The top-5 rows (the child's own row in place when it is among them).
   final List<BoardRow> rows;
 
-  /// «أنت ضمن أفضل ٢٠٪ هذا الأسبوع — باقي ١٥ نجمة لتلحق بطالب ٤.» (null when
-  /// the child has no points yet this week).
+  /// The child's own row below the top 5 (null when it is among them).
+  final BoardRow? own;
+
+  /// Show «⋯» between the five rows and [own].
+  final bool separator;
+
+  /// The motivation line (null when nobody has stars yet this week).
   final String? note;
 }
 
 const _topRows = 5;
 
-/// Builds the rows: the top 5 (anonymous), with the child's own row in place
-/// if it's among them, otherwise the top 4 + the child's own row.
+/// «نجمة واحدة» / «نجمتان» / «٣ نجوم» / «١١ نجمة»
+String starsPhrase(int n) {
+  if (n == 1) return 'نجمة واحدة';
+  if (n == 2) return 'نجمتان';
+  if (n >= 3 && n <= 10) return '${n.arabicDigits} نجوم';
+  return '${n.arabicDigits} نجمة';
+}
+
+/// Ranks 1–5 with the child's own row in place — or, when the child isn't in
+/// the top 5, the five rows, a «⋯» separator, then the child's own row with the
+/// real rank. The note motivates with the gap to the rank above.
 BoardView buildBoard({
   required LeaderBoard? board,
-  required Map<String, dynamic>? own,
   required String myName,
   required String myAvatar,
 }) {
-  String other(int rank) => 'طالب ${rank.arabicDigits}';
-  final ownThisWeek =
-      own != null && board != null && own['weekKey'] == board.weekKey;
-  final myRank = ownThisWeek ? (own['rank'] as num?)?.toInt() : null;
-  final myPoints = ownThisWeek ? (own['points'] as num?)?.toInt() ?? 0 : 0;
-  final top = board?.rows ?? const <(int, int)>[];
-
+  final me = board?.me;
   final rows = <BoardRow>[
-    for (final (rank, points) in top.take(_topRows))
-      rank == myRank
+    for (final r in (board?.top ?? const <BoardEntry>[]).take(_topRows))
+      r.me
           ? BoardRow(
-              rank: rank,
-              points: points,
+              rank: r.rank,
+              points: r.points,
               label: myName,
               avatarId: myAvatar,
               me: true,
             )
-          : BoardRow(rank: rank, points: points, label: other(rank)),
+          : BoardRow(rank: r.rank, points: r.points),
   ];
-  if (!rows.any((r) => r.me)) {
-    if (rows.length >= _topRows) rows.removeLast();
-    rows.add(
-      BoardRow(
-        rank: myRank ?? (board?.total ?? 0) + 1,
-        points: myPoints,
-        label: myName,
-        avatarId: myAvatar,
-        me: true,
-      ),
-    );
-  }
-
+  final own = me != null && !rows.any((r) => r.me)
+      ? BoardRow(
+          rank: me.rank,
+          points: me.points,
+          label: myName,
+          avatarId: myAvatar,
+          me: true,
+        )
+      : null;
   String? note;
-  if (myRank != null) {
-    final pct = (own!['topPercent'] as num?)?.toInt() ?? 100;
-    final gap = (own['gapToAbove'] as num?)?.toInt();
-    // REVIEW: copy adapted from the design so it names no other child.
-    note = myRank == 1 || gap == null
+  if (me != null && (me.points > 0 || (board?.total ?? 0) > 0)) {
+    // To pass the rank above: one star more than the gap (a tie shares it).
+    final gap = me.gapToAbove;
+    note = me.rank == 1 || gap == null
         ? 'أنت في المركز الأول هذا الأسبوع — استمر!'
-        : 'أنت ضمن أفضل ${pct.arabicDigits}٪ هذا الأسبوع — باقي ${gap.arabicDigits} نجمة لتلحق ب${other(myRank - 1)}.';
+        : 'باقي لك ${starsPhrase(gap + 1)} وتسبق المركز ${(me.rank - 1).arabicDigits}';
   }
-  return BoardView(rows, note);
+  return BoardView(
+    rows,
+    note,
+    own: own,
+    separator: own != null && rows.length >= _topRows,
+  );
 }
 
 /// Whole days until the board resets (Saturday 00:00 Riyadh, UTC+3).

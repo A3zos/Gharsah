@@ -201,7 +201,6 @@ class ChildProfile {
     this.linked = false,
     this.createdAt,
     this.stats,
-    this.leader,
     this.schedule,
     this.isMock = false,
   });
@@ -213,7 +212,6 @@ class ChildProfile {
     Map<String, dynamic> r, {
     Object? pairing,
     Object? stats,
-    Map<String, dynamic>? leader,
   }) {
     final s = stats is Map ? Map<String, dynamic>.from(stats) : null;
     return ChildProfile(
@@ -226,7 +224,6 @@ class ChildProfile {
       linked: pairing is Map && pairing['linked'] == true,
       createdAt: parseDate(r['created_at']),
       stats: s != null && hasActivity(s) ? s : null,
-      leader: leader,
       schedule: ChildSchedule.fromRow(r),
     );
   }
@@ -265,9 +262,6 @@ class ChildProfile {
   /// child finishes a first lesson step. Parsed by the dashboard.
   final Map<String, dynamic>? stats;
 
-  /// This child's own leaderboard standing (from `get_leaderboard`, the child
-  /// device only): weekKey, rank, points (stars), total, topPercent, gapToAbove.
-  final Map<String, dynamic>? leader;
   final ChildSchedule? schedule;
 
   /// Design sample data (debug previews only), not a real child.
@@ -286,7 +280,6 @@ class ChildProfile {
     linked: linked,
     createdAt: createdAt,
     stats: stats,
-    leader: leader,
     schedule: schedule,
     isMock: isMock,
   );

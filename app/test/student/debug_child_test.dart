@@ -15,7 +15,7 @@ void main() {
     final child = await repo.watchChild().first;
     expect(child!.name, 'عبدالله');
     expect(child.stats!['streak'], 5);
-    expect((await repo.watchLeaderboard().first)!.rows, hasLength(5));
+    expect((await repo.watchLeaderboard().first)!.top, hasLength(5));
 
     // Fresh app run: nothing done → today's lesson is the real seed lesson.
     final first = await repo.watchProgress().first;

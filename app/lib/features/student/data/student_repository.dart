@@ -159,14 +159,13 @@ class SupabaseStudentRepository implements StudentRepository {
     }
   }
 
-  /// get_leaderboard() → the board + this child's standing in the `leader` shape.
-  Future<(LeaderBoard?, Map<String, dynamic>?)> _board() async {
+  /// get_leaderboard() → the top 5 (anonymous) + this child's own standing.
+  Future<LeaderBoard?> _board() async {
     try {
       final d = await supa.rpc('get_leaderboard');
-      if (d is! Map) return (null, null);
-      return (LeaderBoard.fromRpc(d), LeaderBoard.ownFromRpc(d));
+      return d is Map ? LeaderBoard.fromRpc(d) : null;
     } on Object {
-      return (null, null);
+      return null;
     }
   }
 
@@ -189,8 +188,7 @@ class SupabaseStudentRepository implements StudentRepository {
         'child_stats',
         params: {'c': session.childId},
       );
-      final (_, own) = await _board();
-      return ChildProfile.fromRow(r, stats: stats, leader: own);
+      return ChildProfile.fromRow(r, stats: stats);
     },
   );
 
@@ -220,14 +218,14 @@ class SupabaseStudentRepository implements StudentRepository {
     },
   );
 
-  /// The anonymous weekly board (refreshed every 30 min by pg_cron): re-read
-  /// on the child's own stars and every 5 minutes.
+  /// The weekly board (computed live by get_leaderboard): re-read every
+  /// 5 minutes while the home is open.
   @override
   Stream<LeaderBoard?> watchLeaderboard() {
     late final StreamController<LeaderBoard?> c;
     Timer? timer;
     Future<void> load() async {
-      final (b, _) = await _board();
+      final b = await _board();
       if (!c.isClosed) c.add(b);
     }
 

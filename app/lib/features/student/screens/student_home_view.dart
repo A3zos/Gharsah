@@ -48,6 +48,8 @@ class StudentHomeData {
     required this.leaders,
     required this.leaderNote,
     required this.daysLeftInWeek,
+    this.leaderOwn,
+    this.leaderSeparator = false,
   });
 
   final String name;
@@ -61,8 +63,14 @@ class StudentHomeData {
   final int projects;
   final TodayHero? hero;
 
-  /// Anonymous board rows (see student/data/leaderboard.dart).
+  /// Anonymous board rows 1–5 (see student/data/leaderboard.dart).
   final List<BoardRow> leaders;
+
+  /// The child's own row below the top 5 (null when it is among them).
+  final BoardRow? leaderOwn;
+
+  /// «⋯» between the five rows and [leaderOwn].
+  final bool leaderSeparator;
   final String? leaderNote;
   final int daysLeftInWeek;
 }
@@ -250,6 +258,20 @@ class StudentHomeView extends StatelessWidget {
           if (i > 0) const SizedBox(height: 7),
           _leaderRow(i, data.leaders[i]),
         ],
+        if (data.leaderSeparator) ...[
+          const SizedBox(height: 4),
+          ExcludeSemantics(
+            child: Text(
+              '⋯',
+              textAlign: TextAlign.center,
+              style: LessonText.tinyCenter,
+            ),
+          ),
+        ],
+        if (data.leaderOwn != null) ...[
+          SizedBox(height: data.leaderSeparator ? 4 : 7),
+          _leaderRow(data.leaders.length, data.leaderOwn!),
+        ],
         if (data.leaderNote != null) ...[
           const SizedBox(height: 12),
           Container(
@@ -331,17 +353,20 @@ class StudentHomeView extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
+          // Other children: rank + a neutral avatar + points only — never a name.
           Expanded(
-            child: Text(
-              r.me ? '${r.label} — أنت' : r.label,
-              style: LessonText.leaderName.copyWith(
-                color: ink,
-                fontWeight: r.me ? FontWeight.w800 : FontWeight.w700,
-              ),
-            ),
+            child: r.me
+                ? Text(
+                    '${r.label ?? ''} — أنت',
+                    style: LessonText.leaderName.copyWith(
+                      color: ink,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
           Text(
-            r.points.arabicDigits,
+            '${r.points.arabicDigits} ⭐',
             style: LessonText.leaderPoints.copyWith(color: ink),
           ),
         ],

@@ -126,8 +126,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 final avatar = child?.avatarId ?? s.avatar;
                 final board = buildBoard(
                   board: boardSnap.data,
-                  own: child?.leader,
-                  myName: name,
+                  // Only the child's own row is named — its first name.
+                  myName: name.trim().split(RegExp(r'\s+')).first,
                   myAvatar: avatar,
                 );
                 return StudentHomeView(
@@ -141,6 +141,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     projects: n('projects'),
                     hero: today == null ? null : _hero(today, stored!),
                     leaders: board.rows,
+                    leaderOwn: board.own,
+                    leaderSeparator: board.separator,
                     leaderNote: board.note,
                     daysLeftInWeek: daysUntilReset(DateTime.now()),
                   ),

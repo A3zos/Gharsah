@@ -51,14 +51,6 @@ class DebugStudentRepository implements StudentRepository {
         'hadith': 4,
         'projects': 3,
       },
-      leader: const {
-        'weekKey': _week,
-        'rank': 5,
-        'points': 295,
-        'total': 25,
-        'topPercent': 20,
-        'gapToAbove': 15,
-      },
       isMock: true,
     );
   }
@@ -81,7 +73,14 @@ class DebugStudentRepository implements StudentRepository {
     const LeaderBoard(
       weekKey: _week,
       total: 25,
-      rows: [(1, 420), (2, 385), (3, 340), (4, 310), (5, 295)],
+      top: [
+        BoardEntry(rank: 1, points: 420),
+        BoardEntry(rank: 2, points: 385),
+        BoardEntry(rank: 3, points: 340),
+        BoardEntry(rank: 4, points: 310),
+        BoardEntry(rank: 5, points: 295, me: true),
+      ],
+      me: BoardStanding(rank: 5, points: 295, gapToAbove: 15, inTop5: true),
     ),
   );
 

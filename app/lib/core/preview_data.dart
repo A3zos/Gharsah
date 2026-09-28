@@ -92,25 +92,10 @@ Widget previewStudentHome() => StudentHomeView(
       doneSteps: 0,
       totalSteps: 5,
     ),
-    // Anonymous board as shipped (product-owner rule): «طالب N» + one
-    // generic avatar for others; the design's point values.
-    leaders: buildBoard(
-      board: const LeaderBoard(
-        weekKey: 'w',
-        total: 25,
-        rows: [(1, 420), (2, 385), (3, 340), (4, 310), (5, 295)],
-      ),
-      own: const {
-        'weekKey': 'w',
-        'rank': 5,
-        'points': 295,
-        'topPercent': 20,
-        'gapToAbove': 15,
-      },
-      myName: 'عبدالله',
-      myAvatar: 'b1',
-    ).rows,
-    leaderNote: 'أنت ضمن أفضل ٢٠٪ هذا الأسبوع — باقي ١٥ نقطة لتلحق بطالب ٤.',
+    // Anonymous board as shipped (product-owner rule): rank + a neutral
+    // avatar + points for others; the design's point values.
+    leaders: _previewBoard.rows,
+    leaderNote: _previewBoard.note,
     daysLeftInWeek: 3,
   ),
   onStart: () {},
@@ -210,3 +195,20 @@ LessonState _ayahPreview(AppContent content, int ayah) {
     elapsed: const Duration(minutes: 1, seconds: 40),
   );
 }
+
+final _previewBoard = buildBoard(
+  board: const LeaderBoard(
+    weekKey: 'w',
+    total: 25,
+    top: [
+      BoardEntry(rank: 1, points: 420),
+      BoardEntry(rank: 2, points: 385),
+      BoardEntry(rank: 3, points: 340),
+      BoardEntry(rank: 4, points: 310),
+      BoardEntry(rank: 5, points: 295, me: true),
+    ],
+    me: BoardStanding(rank: 5, points: 295, gapToAbove: 15, inTop5: true),
+  ),
+  myName: 'عبدالله',
+  myAvatar: 'b1',
+);
