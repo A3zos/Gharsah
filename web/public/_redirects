@@ -9,3 +9,5 @@
 /parent/*           /__spa-fallback  200
 /child              /__spa-fallback  200
 /child/*            /__spa-fallback  200
+/admin              /__spa-fallback  200
+/admin/*            /__spa-fallback  200

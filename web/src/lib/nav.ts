@@ -3,7 +3,10 @@ import { useLocation, useNavigate } from 'react-router';
 /** Only in-app destinations are followed after login (no open redirects). */
 export function safeNext(params: URLSearchParams, area: 'parent' | 'child'): string | null {
   const next = params.get('next');
-  return next && next.startsWith(`/${area}`) && !next.startsWith('//') ? next : null;
+  if (!next || next.startsWith('//')) return null;
+  // A parent sign-in may also return to the (unlinked) admin statistics page.
+  const admin = area === 'parent' && (next === '/admin' || /^\/admin[/?]/.test(next));
+  return next.startsWith(`/${area}`) || admin ? next : null;
 }
 
 /**

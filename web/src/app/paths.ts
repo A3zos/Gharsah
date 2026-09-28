@@ -11,6 +11,8 @@ export const paths = {
   loginTo: (tab: 'parent' | 'child', next?: string) =>
     `/login?tab=${tab}${next ? `&next=${encodeURIComponent(next)}` : ''}`,
   signup: '/signup',
+  /** Admin statistics — never linked from the normal UI. */
+  admin: '/admin',
   forgotPassword: '/forgot-password',
   legal: '/legal',
   terms: '/legal?doc=terms',

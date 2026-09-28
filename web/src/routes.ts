@@ -33,5 +33,8 @@ export default [
     route('lesson/:lessonId', 'routes/child/lesson.tsx'),
   ]),
 
+  // Admin statistics (aggregates only; admins are added in the SQL Editor). Not linked anywhere.
+  route('admin', 'routes/admin.tsx'),
+
   route('*', 'routes/not-found.tsx'),
 ] satisfies RouteConfig;
