@@ -19,21 +19,44 @@ export interface ChildRef {
 
 type Row = Record<string, unknown>;
 
-/** The board + this child's own standing (in the old `leader` shape the UI reads). */
-async function loadBoard(): Promise<{ board: LeaderBoard | null; own: Row | null }> {
+/** The weekly board from get_leaderboard(): top 5 (anonymous) + this child's own standing. */
+async function loadBoard(): Promise<LeaderBoard | null> {
   const { data, error } = await supabase().rpc('get_leaderboard');
-  if (error || !data) return { board: null, own: null };
-  const d = data as Row;
-  const weekKey = String(d.weekKey ?? '');
-  const rows = (Array.isArray(d.rows) ? (d.rows as Row[]) : [])
-    .filter((r) => typeof r.rank === 'number' && typeof r.stars === 'number')
-    .map((r) => [r.rank as number, r.stars as number] as [number, number]);
-  const own = d.own && typeof d.own === 'object' ? (d.own as Row) : null;
+  if (error || !data) return null;
+  return parseBoard(data as Row);
+}
+
+/**
+ * get_leaderboard() payload → LeaderBoard. Also reads the previous payload
+ * ({rows, own} with `stars`) so the site works whichever of web/db deploys first.
+ */
+export function parseBoard(d: Row): LeaderBoard {
+  const rawTop = Array.isArray(d.top) ? (d.top as Row[]) : Array.isArray(d.rows) ? (d.rows as Row[]) : [];
+  const pts = (r: Row) =>
+    typeof r.points === 'number' ? r.points : typeof r.stars === 'number' ? r.stars : null;
+  const top = rawTop
+    .filter((r) => typeof r.rank === 'number' && pts(r) !== null)
+    .slice(0, TOP_ROWS)
+    .map((r) => ({ rank: r.rank as number, points: pts(r)!, me: r.me === true }));
+  const m =
+    d.me && typeof d.me === 'object'
+      ? (d.me as Row)
+      : d.own && typeof d.own === 'object'
+        ? (d.own as Row)
+        : null;
   return {
-    board: { weekKey, total: typeof d.total === 'number' ? d.total : 0, rows },
-    own: own
-      ? { weekKey, rank: own.rank, points: own.stars, topPercent: own.topPercent, gapToAbove: own.gapToAbove }
-      : null,
+    weekKey: String(d.weekKey ?? ''),
+    total: typeof d.total === 'number' ? d.total : 0,
+    top,
+    me:
+      m && typeof m.rank === 'number'
+        ? {
+            rank: m.rank,
+            points: pts(m) ?? 0,
+            gapToAbove: typeof m.gapToAbove === 'number' ? m.gapToAbove : null,
+            inTop5: typeof m.inTop5 === 'boolean' ? m.inTop5 : top.some((r) => r.me),
+          }
+        : null,
   };
 }
 
@@ -58,9 +81,8 @@ export function watchStudent(
         .maybeSingle();
       if (e) throw e;
       if (!data) return null;
-      const [stats, board] = await Promise.all([db.rpc('child_stats', { c: s.childId }), loadBoard()]);
-      const child = childFromRow(data, { stats: (stats.data as Row | null) ?? null });
-      return { ...child, leader: board.own };
+      const stats = await db.rpc('child_stats', { c: s.childId });
+      return childFromRow(data, { stats: (stats.data as Row | null) ?? null });
     },
     next,
     error,
@@ -170,74 +192,87 @@ export function lessonStepGroups(s: LessonScript): number[] {
 
 // ── Leaderboard (anonymous; stars this week) ────────────────────────────────
 
+const TOP_ROWS = 5;
+
+export interface BoardEntry {
+  rank: number;
+  points: number;
+  me: boolean;
+}
+
 export interface LeaderBoard {
   weekKey: string;
   total: number;
-  /** (rank, stars) only — other children are never identified. */
-  rows: [number, number][];
+  /** Ranks 1–5 (dense; ties share a rank) — other children are never identified. */
+  top: BoardEntry[];
+  /** This child's own standing (always present for a paired device). */
+  me: { rank: number; points: number; gapToAbove: number | null; inTop5: boolean } | null;
 }
 
-/** The board refreshes every 30 minutes (pg_cron) — re-read on own stars and every 5 minutes. */
-export function watchLeaderboard(next: (b: LeaderBoard | null) => void) {
+/** get_leaderboard() is live — re-read every 5 minutes and when the child's own stars change. */
+export function watchLeaderboard(next: (b: LeaderBoard | null) => void, childId?: string) {
   let stop = false;
   const load = () =>
     loadBoard()
       .then((b) => {
-        if (!stop) next(b.board);
+        if (!stop) next(b);
       })
       .catch(() => {
         if (!stop) next(null);
       });
   void load();
   const t = setInterval(load, 5 * 60_000);
+  const unwatch = childId
+    ? watch([{ table: 'star_events', filter: `child_id=eq.${childId}` }], loadBoard, (b) => {
+        if (!stop) next(b);
+      })
+    : () => {};
   return () => {
     stop = true;
     clearInterval(t);
+    unwatch();
   };
 }
 
 export interface BoardRow {
   rank: number;
   points: number;
-  /** «طالب ٣» for others; the child's own first name for `me`. */
-  label: string;
   me: boolean;
+  /** Only the child's own row has a label («بدر — أنت»); others show rank + avatar + points only. */
+  label: string | null;
 }
 
-const TOP_ROWS = 5;
+/** «نجمة واحدة» / «نجمتان» / «٣ نجوم» / «١١ نجمة» */
+export function starsPhrase(n: number): string {
+  if (n === 1) return 'نجمة واحدة';
+  if (n === 2) return 'نجمتان';
+  if (n >= 3 && n <= 10) return `${toArabicDigits(n)} نجوم`;
+  return `${toArabicDigits(n)} نجمة`;
+}
 
-/** Top 5 (anonymous) with the child's own row in place, or top 4 + the child's row. */
+/**
+ * Top 5 (anonymous) with the child's own row in place — or, when the child isn't
+ * in the top 5, the five rows, a «⋯» separator, then the child's own row with the
+ * real rank. The note motivates with the gap to the rank above.
+ */
 export function buildBoard(
   board: LeaderBoard | null,
-  own: Record<string, unknown> | null,
-  myName: string,
-): { rows: BoardRow[]; note: string | null } {
-  const other = (rank: number) => `طالب ${toArabicDigits(rank)}`;
-  const ownThisWeek = !!own && !!board && own.weekKey === board.weekKey;
-  const myRank = ownThisWeek && typeof own!.rank === 'number' ? (own!.rank as number) : null;
-  const myPoints = ownThisWeek && typeof own!.points === 'number' ? (own!.points as number) : 0;
-  const rows: BoardRow[] = (board?.rows ?? [])
-    .slice(0, TOP_ROWS)
-    .map(([rank, points]) =>
-      rank === myRank
-        ? { rank, points, label: myName, me: true }
-        : { rank, points, label: other(rank), me: false },
-    );
-  if (!rows.some((r) => r.me)) {
-    if (rows.length >= TOP_ROWS) rows.pop();
-    rows.push({ rank: myRank ?? (board?.total ?? 0) + 1, points: myPoints, label: myName, me: true });
-  }
+  myLabel: string,
+): { rows: BoardRow[]; own: BoardRow | null; separator: boolean; note: string | null } {
+  const top = (board?.top ?? []).slice(0, TOP_ROWS);
+  const me = board?.me ?? null;
+  const rows: BoardRow[] = top.map((r) => ({ ...r, label: r.me ? myLabel : null }));
+  const own: BoardRow | null =
+    me && !rows.some((r) => r.me) ? { rank: me.rank, points: me.points, me: true, label: myLabel } : null;
   let note: string | null = null;
-  if (myRank !== null) {
-    const pct = typeof own!.topPercent === 'number' ? (own!.topPercent as number) : 100;
-    const gap = typeof own!.gapToAbove === 'number' ? (own!.gapToAbove as number) : null;
-    // REVIEW: copy adapted from the design so it names no other child.
+  if (me && (me.points > 0 || (board?.total ?? 0) > 0)) {
+    // To pass the rank above, one star more than the gap (a tie would share the rank).
     note =
-      myRank === 1 || gap === null
+      me.rank === 1 || me.gapToAbove === null
         ? 'أنت في المركز الأول هذا الأسبوع — استمر!'
-        : `أنت ضمن أفضل ${toArabicDigits(pct)}٪ هذا الأسبوع — باقي ${toArabicDigits(gap)} نجمة لتلحق ب${other(myRank - 1)}.`;
+        : `باقي لك ${starsPhrase(me.gapToAbove + 1)} وتسبق المركز ${toArabicDigits(me.rank - 1)}`;
   }
-  return { rows, note };
+  return { rows, own, separator: !!own && rows.length >= TOP_ROWS, note };
 }
 
 /** Whole days until the board resets (Saturday 00:00 Riyadh, UTC+3). */

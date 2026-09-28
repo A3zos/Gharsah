@@ -58,7 +58,7 @@ export function ChildDataProvider({
     const unsubs = [
       watchStudent(session, (c) => (c ? setChild(c) : navigate(paths.childCode, { replace: true })), revoked),
       watchProgress(session, setProgress, revoked),
-      watchLeaderboard(setBoard),
+      watchLeaderboard(setBoard, session.childId),
     ];
     return () => unsubs.forEach((u) => u());
   }, [session, navigate]);
