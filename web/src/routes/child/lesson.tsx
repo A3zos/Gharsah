@@ -154,6 +154,11 @@ function LessonCall({
   }, [script, session.parentUid, session.childId, firstName, attempt]);
 
   const agent = lesson?.agent;
+  const voiceMissing = useSyncExternalStore(
+    useCallback((cb: () => void) => (lesson ? lesson.voiceMissing.subscribe(cb) : () => {}), [lesson]),
+    () => lesson?.voiceMissing.value ?? false,
+    () => false,
+  );
   const subscribe = useCallback((cb: () => void) => (agent ? agent.state.subscribe(cb) : () => {}), [agent]);
   const state = useSyncExternalStore(
     subscribe,
@@ -191,6 +196,7 @@ function LessonCall({
       replayAyah: () => agent?.replayAyah(),
       play: () => agent?.play(),
       reRecord: () => agent?.reRecord(),
+      repeatTapped: () => agent?.repeatTapped(),
       exit: () => {
         agent?.pause();
         setExitOpen(true);
@@ -224,6 +230,7 @@ function LessonCall({
         actions={actions}
         level={agent.level}
         desktop={desktop}
+        voiceMissing={voiceMissing}
       />
       <ConfirmSheet
         open={sheetOpen}

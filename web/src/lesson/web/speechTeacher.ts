@@ -1,8 +1,10 @@
 // INTERIM AI teacher for the web — clearly temporary, replaced by the AI
 // developer's module behind AiTeacher (ai/CONTRACT.md). Port of
 // app/lib/features/lesson/ai/interim/device_ai_teacher.dart:
-// * Voice: the browser's Arabic speech synthesis reading the approved line bank
-//   (no Arabic voice → silent, paced by the caption length).
+// * Voice: with VITE_AI_VOICE=1, the AI server's voice via our ai-speak function
+//   (serverVoice.ts); otherwise — or whenever the server fails or is slow — the
+//   browser's Arabic speech synthesis reading the approved line bank (no Arabic
+//   voice → silent, paced by the caption length, and `voiceMissing` turns true).
 // * Listening: on-device presence detection on the shared mic. Presence only —
 //   no grading; nothing is stored or uploaded.
 // * Short answers: any detected speech in answer mode counts as «yes» (INTERIM,
@@ -18,6 +20,7 @@ import { Emitter } from '../observable';
 import { PresenceDetector } from '../presenceDetector';
 import type { TeacherLine } from '../teacherLines';
 import type { LessonMicrophone } from './microphone';
+import type { ServerVoice } from './serverVoice';
 
 const MS_PER_CHAR = 70;
 const MIN_SILENT_MS = 1200;
@@ -31,6 +34,11 @@ export class SpeechTeacher implements AiTeacher {
   private readonly _level = new Emitter<number>();
   readonly actions = this._actions.subscribe;
   readonly inputLevel = this._level.subscribe;
+  private readonly _voiceMissing = new Emitter<boolean>();
+  /** True while lines can't be voiced at all (captions only) — the view says so. */
+  readonly voiceMissing = this._voiceMissing.subscribe;
+  private missing = false;
+  private audio: HTMLAudioElement | null = null;
 
   private mode: ListenMode | null = null;
   private stopSampling: (() => void) | null = null;
@@ -39,21 +47,39 @@ export class SpeechTeacher implements AiTeacher {
   private volume = 1;
   private voice: Promise<SpeechSynthesisVoice | null> | null = null;
   private detector: PresenceDetector | null = null;
+  private speakToken: object | null = null;
 
   constructor(
     private readonly mic: LessonMicrophone,
     private readonly synth: SpeechSynthesis | null = typeof speechSynthesis === 'undefined'
       ? null
       : speechSynthesis,
+    private readonly server: ServerVoice | null = null,
   ) {}
+
+  get isVoiceMissing(): boolean {
+    return this.missing;
+  }
 
   onEvent(_event: LessonEvent): void {
     // Stateless between events (the real module may use them).
   }
 
-  async speak(_line: TeacherLine, text: string): Promise<void> {
+  async speak(line: TeacherLine, text: string): Promise<void> {
     this.finishSpeech?.();
+    this.speaking = true; // deaf from now — also while the server voice loads
+    const mine = {};
+    this.speakToken = mine;
+    const blob = this.server ? await this.server.audioFor(line) : null;
+    if (this.speakToken !== mine) return; // stopped or replaced meanwhile
+    if (blob && (await this.playServer(blob, text, mine))) {
+      this.setMissing(false);
+      return;
+    }
+    if (this.speakToken !== mine) return;
     const voice = await this.arabicVoice();
+    if (this.speakToken !== mine) return;
+    this.setMissing(!this.synth || !voice);
     this.speaking = true;
     await new Promise<void>((resolve) => {
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -84,12 +110,15 @@ export class SpeechTeacher implements AiTeacher {
   }
 
   async stopSpeaking(): Promise<void> {
+    this.speakToken = null;
+    this.audio?.pause();
     try {
       this.synth?.cancel();
     } catch {
       // nothing to stop
     }
     this.finishSpeech?.();
+    this.speaking = false; // also when stopped while the server voice was loading
   }
 
   async listen(mode: ListenMode): Promise<void> {
@@ -128,6 +157,50 @@ export class SpeechTeacher implements AiTeacher {
 
   async setVolume(volume: number): Promise<void> {
     this.volume = Math.min(1, Math.max(0, volume));
+    if (this.audio) this.audio.volume = this.volume;
+  }
+
+  /** Plays the server's MP3; false if the browser refuses it (→ the browser's voice). */
+  private async playServer(blob: Blob, text: string, token: object): Promise<boolean> {
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.volume = this.volume;
+    this.audio = audio;
+    const started = await audio.play().then(
+      () => true,
+      () => false,
+    );
+    if (!started || this.speakToken !== token) {
+      audio.pause();
+      URL.revokeObjectURL(url);
+      if (this.audio === audio) this.audio = null;
+      return this.speakToken !== token; // stopped meanwhile → nothing more to say
+    }
+    await new Promise<void>((resolve) => {
+      const done = () => {
+        if (this.finishSpeech !== done) return;
+        this.finishSpeech = null;
+        this.speaking = false;
+        clearTimeout(timer);
+        audio.pause();
+        URL.revokeObjectURL(url);
+        if (this.audio === audio) this.audio = null;
+        resolve();
+      };
+      this.finishSpeech = done;
+      audio.onended = done;
+      audio.onerror = done;
+      audio.onpause = done; // stopSpeaking pauses it
+      // Never hang the lesson on a stuck stream.
+      const timer = setTimeout(done, estimatedSpeechMs(text) * 2 + 5000);
+    });
+    return true;
+  }
+
+  private setMissing(missing: boolean): void {
+    if (missing === this.missing) return;
+    this.missing = missing;
+    this._voiceMissing.emit(missing);
   }
 
   async dispose(): Promise<void> {
@@ -135,6 +208,7 @@ export class SpeechTeacher implements AiTeacher {
     await this.stopSpeaking();
     this._actions.clear();
     this._level.clear();
+    this._voiceMissing.clear();
   }
 
   /** ar-SA first, then any Arabic voice; null if the browser has none. */

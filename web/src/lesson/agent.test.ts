@@ -10,6 +10,15 @@ import { AYAH_REPEATS, buildReviewScript, expandLesson, FULL_SURAH_PASSES, STAGE
 import type { LessonProgress } from './state';
 import { loadScript, realContent, Rig } from './testing/fakes';
 import { stageOf } from './web/progressSink';
+import aiLines from '../../../supabase/functions/ai-speak/lines.json';
+import aiSlots from '../../../supabase/functions/ai-speak/slots.json';
+import { resolveLine } from '../../../supabase/functions/ai-speak/resolve';
+import { NAME_SLOT, slotKeysOf } from './aiSpeakSlots';
+import { TeacherLineBank } from './teacherLines';
+import { serverRequestFor } from './web/serverVoice';
+
+const AI_LINES = aiLines as Record<string, string>;
+const AI_SLOTS = aiSlots as Record<string, string[]>;
 
 const LINE = 1300; // fake speech (1 s) + echo guard (0.3 s)
 const GUARD = 300;
@@ -379,6 +388,103 @@ test('mic refused → «awaitMic» with the flag; a tap retries', async () => {
   expect(r.s.beat).toBe('listening');
   expect(r.s.micDenied).toBe(false);
   await r.agent.dispose();
+});
+
+test('mic refused: «ردّدت» carries the whole lesson to the end — no dead end', async () => {
+  const r = new Rig();
+  r.teacher.denyMic = true;
+  await start(r);
+  let taps = 0;
+  for (let t = 0; t < 900_000 && r.s.beat !== 'done'; t += 100) {
+    const s = r.s;
+    if (s.beat === 'reciting' && r.player.playing && !r.player.paused) r.player.finish();
+    else if (s.beat === 'awaitMic') {
+      expect(s.manualRepeat).toBe(true);
+      r.agent.repeatTapped();
+      taps++;
+    }
+    await elapse(100);
+  }
+  expect(r.s.beat).toBe('done');
+  // stage 1: 1 pass; stage 2: 4 ayat × 5; stage 3: 2 passes; the go-ahead before the hadith.
+  expect(taps).toBe(STAGE1_PASSES + 4 * AYAH_REPEATS + FULL_SURAH_PASSES + 1);
+  expect(r.sink.completedCalls).toHaveLength(1);
+  await r.agent.dispose();
+});
+
+test('report with the mic blocked: «ردّدت» moves on, nothing recorded or uploaded', async () => {
+  const r = new Rig({ lessonId: 'm01-w03-day2', now: new Date(2026, 8, 25, 9) });
+  r.teacher.denyMic = true;
+  r.recorder.denyMic = true;
+  await start(r);
+  await elapse(LINE * 2);
+  expect(r.s.screen).toBe('projectReport');
+  expect(r.s.beat).toBe('awaitMic');
+  expect(r.s.manualRepeat).toBe(true);
+  r.agent.repeatTapped();
+  await elapse(LINE * 3);
+  expect(r.teacher.spoken.slice(0, 4)).toEqual([
+    'report.greet.morning',
+    'report.ask',
+    'report.thanks',
+    'report.to_hadith',
+  ]);
+  expect(r.s.screen).toBe('hadith');
+  expect(r.sink.reports).toEqual([]); // no recording leaves the device
+  expect(r.sink.checkpoints.at(-1)?.reportedProject).toBe('birr-3-acts');
+  await r.agent.dispose();
+});
+
+test('silence offers «ردّدت» for that step only; a tap counts one repeat', async () => {
+  const r = new Rig();
+  await start(r);
+  await autopilot(r, () => r.s.stepIndex === 5 && r.s.beat === 'listening' && r.teacher.isListening);
+  expect(r.s.manualRepeat).toBe(false);
+  r.agent.repeatTapped(); // not offered yet — ignored
+  expect(r.s.repeatsDone).toBe(0);
+  await elapse(SILENCE);
+  expect(r.s.manualRepeat).toBe(true);
+  await elapse(LINE + GUARD);
+  r.agent.repeatTapped();
+  await flush();
+  expect(r.s.repeatsDone).toBe(1);
+  await autopilot(r, () => r.s.stepIndex === 6);
+  expect(r.s.manualRepeat).toBe(false);
+  await r.agent.dispose();
+});
+
+test('server voice: every line of a real lesson is either kept on the device (name) or passes ai-speak', async () => {
+  const day1 = new Rig();
+  await start(day1);
+  await autopilot(day1, () => day1.s.beat === 'done');
+  const day2 = new Rig({ lessonId: 'm01-w03-day2', now: new Date(2026, 8, 25, 9) });
+  await start(day2);
+  await elapse(LINE * 2);
+  day2.recorder.talk(0.6);
+  await elapse(1500);
+  day2.recorder.talk(0.6);
+  await elapse(4000);
+  await autopilot(day2, () => day2.s.beat === 'done');
+
+  const bank = new TeacherLineBank();
+  let sent = 0;
+  let kept = 0;
+  for (const l of [...day1.teacher.spokenLines, ...day2.teacher.spokenLines]) {
+    const req = serverRequestFor(l);
+    if (slotKeysOf(l.id).includes(NAME_SLOT)) {
+      expect(req).toBeNull(); // the child's name never leaves the device
+      kept++;
+      continue;
+    }
+    expect(req).not.toBeNull();
+    expect(Object.keys(req!.slots)).not.toContain(NAME_SLOT);
+    expect(resolveLine(AI_LINES, AI_SLOTS, req!.id, req!.slots)).toEqual({ text: bank.resolve(l) });
+    sent++;
+  }
+  expect(sent).toBeGreaterThan(20);
+  expect(kept).toBeGreaterThan(3);
+  await day1.agent.dispose();
+  await day2.agent.dispose();
 });
 
 test('captions: ayah count only, no Makki/Madani, slots filled', async () => {

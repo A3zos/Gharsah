@@ -21,3 +21,8 @@ test('TS teacher lines and captions equal the Flutter bank', () => {
   expect(TEACHER_LINES).toEqual(dartMap(src, 'lines'));
   expect(TEACHER_CAPTIONS).toEqual(dartMap(src, 'captions'));
 });
+
+test('the ai-speak function voices exactly the approved bank (supabase/functions/ai-speak/lines.json)', () => {
+  const file = path.resolve(__dirname, '../../../supabase/functions/ai-speak/lines.json');
+  expect(JSON.parse(fs.readFileSync(file, 'utf8'))).toEqual(TEACHER_LINES);
+});

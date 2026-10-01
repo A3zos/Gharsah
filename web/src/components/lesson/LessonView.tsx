@@ -38,6 +38,8 @@ export interface LessonActions {
   replayAyah(): void;
   play(): void;
   reRecord(): void;
+  /** «ردّدت» — one repeat when the mic can't hear the child (agent `manualRepeat`). */
+  repeatTapped(): void;
   /** The ✕ — opens ExitConfirm. */
   exit(): void;
   goHome(): void;
@@ -67,6 +69,7 @@ export function LessonView({
   actions,
   level,
   desktop,
+  voiceMissing = false,
 }: {
   state: LessonState;
   plan: LessonPlanInfo;
@@ -74,6 +77,8 @@ export function LessonView({
   actions: LessonActions;
   level: LevelSource;
   desktop: boolean;
+  /** Neither the server voice nor a browser Arabic voice — the teacher is captions only. */
+  voiceMissing?: boolean;
 }) {
   const body = (
     <>
@@ -90,7 +95,7 @@ export function LessonView({
           {s.caption}
         </p>
       </div>
-      <Problems state={s} actions={actions} />
+      <Problems state={s} actions={actions} voiceMissing={voiceMissing} />
       <div className="flex min-h-0 grow flex-col">
         <Middle state={s} plan={plan} glance={glance} actions={actions} />
       </div>
@@ -205,7 +210,15 @@ function Teacher({ state, size, onTap }: { state: LessonState; size: number; onT
 }
 
 /** Save / mic / offline problems — the design's gold note. */
-function Problems({ state: s, actions }: { state: LessonState; actions: LessonActions }) {
+function Problems({
+  state: s,
+  actions,
+  voiceMissing,
+}: {
+  state: LessonState;
+  actions: LessonActions;
+  voiceMissing: boolean;
+}) {
   const text =
     s.progressSaveFailed || s.saveFailed
       ? SAVE_FAILED_TEXT
@@ -213,7 +226,10 @@ function Problems({ state: s, actions }: { state: LessonState; actions: LessonAc
         ? 'لا أسمعك — اطلب من بابا أو ماما السماح للمتصفح باستخدام الميكروفون.'
         : s.contentUnavailable
           ? 'لا يوجد اتصال لتحميل التلاوة — اتصل بالإنترنت وحاول مجددًا.'
-          : null;
+          : voiceMissing
+            ? // TODO(design): no designed state — the teacher's voice is unavailable.
+              'صوت المعلّم غير متاح الآن — اقرأ كلامه المكتوب بجانبه.'
+            : null;
   if (!text) return null;
   const retry = s.beat === 'saveFailed' || (s.beat === 'recorded' && s.saveFailed);
   return (
@@ -711,6 +727,26 @@ function Bottom({
         </span>
         {live && <VoiceBars level={level} />}
       </span>
+      {canTapRepeat(s) && (
+        // TODO(design): «ردّدت» — the fallback when the mic can't hear the child; never a dead end.
+        <button
+          type="button"
+          onClick={actions.repeatTapped}
+          className="h-[48px] shrink-0 cursor-pointer rounded-px-14 border-0 bg-deep-green px-[18px] text-[17px] font-extrabold text-surface"
+        >
+          {s.screen === 'surahDone' ? 'جاهز' : 'ردّدت'}
+        </button>
+      )}
     </div>
+  );
+}
+
+/** «ردّدت» is offered (mic refused, or silence past a nudge) while the child's turn is open. */
+function canTapRepeat(s: LessonState): boolean {
+  if (!s.manualRepeat || s.paused) return false;
+  // The report: only when the mic is blocked (a working mic records the child's voice).
+  if (s.screen === 'projectReport') return s.beat === 'awaitMic';
+  return (
+    s.beat === 'listening' || s.beat === 'nudging' || s.beat === 'awaitMic' || s.beat === 'hearingAnswer'
   );
 }

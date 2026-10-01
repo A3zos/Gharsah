@@ -1,6 +1,7 @@
 // Wires a LessonAgent for the browser: verified local content, the reciter audio
 // (bundled, or downloaded once + sha256-checked into Cache Storage), the interim
-// speech teacher, the WAV project recorder and the Supabase progress sink.
+// speech teacher (+ the AI server's voice via ai-speak when VITE_AI_VOICE=1), the
+// WAV project recorder and the Supabase progress sink.
 import manifestJson from '@content/audio/quran/manifest.json';
 import textJson from '@content/quran/quran_text.json';
 
@@ -16,6 +17,7 @@ import { LessonMicrophone } from './microphone';
 import { SupabaseProgressSink } from './progressSink';
 import { HtmlRecitationPlayer } from './recitationPlayer';
 import { MAX_REPORT_MS, WavProjectRecorder } from './recorder';
+import { aiSpeakPost, ServerVoice, serverVoiceEnabled } from './serverVoice';
 import { SpeechTeacher } from './speechTeacher';
 
 const CACHE_NAME = 'gharsah-quran-audio-v1';
@@ -81,6 +83,8 @@ export interface WebLesson {
   agent: LessonAgent;
   /** Where the lesson resumes from (pass to agent.start). */
   progressFrom: LessonProgress | undefined;
+  /** True while the teacher's lines can't be voiced at all (captions only). */
+  voiceMissing: { readonly value: boolean; subscribe: SpeechTeacher['voiceMissing'] };
   dispose(): Promise<void>;
 }
 
@@ -108,7 +112,10 @@ export function createWebLesson(o: {
   };
   const mic = new LessonMicrophone();
   const player = new HtmlRecitationPlayer('/');
-  const teacher = new SpeechTeacher(mic);
+  // The DEV preview (a local sink) has no paired session — browser voice only there.
+  const server = serverVoiceEnabled() && !o.sink ? new ServerVoice(aiSpeakPost) : null;
+  server?.warm();
+  const teacher = new SpeechTeacher(mic, undefined, server);
   const recorder = new WavProjectRecorder(mic);
   const agent = new LessonAgent({
     script: o.script,
@@ -125,6 +132,12 @@ export function createWebLesson(o: {
   return {
     agent,
     progressFrom: o.progressFrom,
+    voiceMissing: {
+      get value() {
+        return teacher.isVoiceMissing;
+      },
+      subscribe: teacher.voiceMissing,
+    },
     async dispose() {
       if (disposed) return;
       disposed = true;

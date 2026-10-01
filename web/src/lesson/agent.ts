@@ -369,6 +369,7 @@ export class LessonAgent {
       case 'awaitMic':
         this.teacher.onEvent({ type: 'micOpened' });
         if (this.s.screen === 'projectReport') void this.startRecording();
+        else if (this.s.screen === 'surahDone') this.enterGoAhead();
         else this.enterListening();
         break;
       case 'recording':
@@ -391,6 +392,32 @@ export class LessonAgent {
       else this.countRepeat();
     } else if (beat === 'recorded') this.continueTapped();
     else this.skipFn?.();
+  }
+
+  /**
+   * «ردّدت» — offered only when the mic can't hear the child (permission refused) or
+   * after a silence nudge. One tap = one repeat (stage 1/3: one whole pass; before the
+   * hadith: the go-ahead; the report with the mic blocked: told without a recording).
+   * Presence is never graded, so a tap is as good as a detected repeat — nothing on
+   * the lesson path depends on the mic or the AI server.
+   */
+  repeatTapped(): void {
+    if (this.paused || !this.s.manualRepeat) return;
+    const beat = this.s.beat;
+    if (this.s.screen === 'projectReport') {
+      if (beat === 'awaitMic') this.reportWithoutRecording();
+      return;
+    }
+    if (this.s.screen === 'surahDone') {
+      if (beat === 'hearingAnswer' || beat === 'nudging' || beat === 'awaitMic') {
+        this.set(copy(this.s, { beat: 'hearingAnswer' }));
+        this.onGoAhead();
+      }
+      return;
+    }
+    if (beat !== 'listening' && beat !== 'nudging' && beat !== 'awaitMic') return;
+    if (this.step.type === 'full_surah') this.completePass();
+    else this.countRepeat();
   }
 
   /** v0.1 short answers — v0.2 never asks a question, so there is nothing to answer. */
@@ -453,6 +480,7 @@ export class LessonAgent {
     const step = this.script.steps[i]!;
     this.set(
       copy(this.s, {
+        manualRepeat: false,
         stepIndex: i,
         lineIndex: 0,
         happy: false,
@@ -637,6 +665,7 @@ export class LessonAgent {
       // Silence: a gentle re-ask, then listen again (no timer ever moves on without the child).
       this.beatTimer = setTimeout(() => {
         if (g === this.gen && !this.paused && this.s.beat === 'hearingAnswer') {
+          this.set(copy(this.s, { manualRepeat: true }));
           this.say(line('nudge.answer'), { beat: 'nudging', then: () => this.enterGoAhead() });
         }
       }, this.timings.silenceMs);
@@ -837,6 +866,8 @@ export class LessonAgent {
   }
 
   private onSilence(): void {
+    // The mic may not be hearing the child — offer «ردّدت» from now on (this step).
+    if (!this.s.manualRepeat) this.set(copy(this.s, { manualRepeat: true }));
     if (this.step.type === 'full_surah') {
       // Keep the voiced time of this pass; just encourage.
       this.say(line('nudge.full'), { beat: 'nudging', then: () => this.enterListening() });
@@ -1044,7 +1075,9 @@ export class LessonAgent {
     } catch (e) {
       if (!(e instanceof MicPermissionDenied)) throw e;
       if (g !== this.gen) return;
-      this.enter(copy(this.s, { beat: 'awaitMic', micDenied: true }), { resume: () => {} });
+      this.enter(copy(this.s, { beat: 'awaitMic', micDenied: true, manualRepeat: true }), {
+        resume: () => {},
+      });
       return;
     }
     if (g !== this.gen) return;
@@ -1146,6 +1179,27 @@ export class LessonAgent {
     if (this.s.screen === 'projectReport' && !this.disposed) this.next();
   }
 
+  /**
+   * The report with the mic blocked: the child told the teacher, nothing is recorded or
+   * uploaded (the parent gets no recording for this day). The step counts as reported so
+   * tomorrow doesn't ask again; the lesson moves on as after a saved report.
+   */
+  private reportWithoutRecording(): void {
+    const step = this.step;
+    if (step.type !== 'project_report' || this.saving) return;
+    this._progress = { ...this._progress, reportedProject: step.projectId };
+    const i = this.s.stepIndex;
+    const toHadith = i + 1 < this.script.steps.length && this.script.steps[i + 1]!.type === 'hadith_loop';
+    this.say(this.line('report.thanks'), {
+      beat: 'praising',
+      happy: true,
+      then: () =>
+        toHadith
+          ? this.say(line('report.to_hadith'), { beat: 'advancing', happy: true, then: () => this.next() })
+          : this.next(),
+    });
+  }
+
   // ═══ Beat plumbing ════════════════════════════════════════════════════════
 
   /**
@@ -1221,7 +1275,9 @@ export class LessonAgent {
     } catch (e) {
       if (!(e instanceof MicPermissionDenied)) throw e;
       if (g !== this.gen) return false;
-      this.enter(copy(this.s, { beat: 'awaitMic', micDenied: true }), { resume: () => {} });
+      this.enter(copy(this.s, { beat: 'awaitMic', micDenied: true, manualRepeat: true }), {
+        resume: () => {},
+      });
       return false;
     }
     if (g !== this.gen) {

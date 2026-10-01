@@ -37,6 +37,8 @@ export const SPEAK_MS = 1000;
 export class FakeTeacher implements AiTeacher {
   readonly events: LessonEvent[] = [];
   readonly spoken: string[] = [];
+  /** The lines with their slots (what a real teacher would voice). */
+  readonly spokenLines: TeacherLine[] = [];
   private readonly _actions = new Emitter<TeacherAction>();
   private readonly _level = new Emitter<number>();
   private speakingDone: (() => void) | undefined;
@@ -69,6 +71,7 @@ export class FakeTeacher implements AiTeacher {
 
   speak(l: TeacherLine): Promise<void> {
     this.spoken.push(l.id);
+    this.spokenLines.push(l);
     return new Promise<void>((resolve) => {
       const done = () => {
         if (this.speakingDone === done) this.speakingDone = undefined;

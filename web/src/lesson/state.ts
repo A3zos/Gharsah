@@ -86,6 +86,9 @@ export interface LessonState {
   readonly paused: boolean;
   /** TODO(design): no designed state for a denied mic permission yet. */
   readonly micDenied: boolean;
+  /** «ردّدت» is offered — the mic can't hear the child (refused) or the child was silent
+   *  past a nudge. One tap = one repeat (presence only), so the lesson never stalls. */
+  readonly manualRepeat: boolean;
   /** TODO(design): the project report couldn't be saved — retry. */
   readonly saveFailed: boolean;
   /** A progress checkpoint couldn't be saved after retries («لم نتمكّن من حفظ تقدّمك»). */
@@ -125,6 +128,7 @@ export const initialLessonState: LessonState = {
   playbackBlocked: false,
   paused: false,
   micDenied: false,
+  manualRepeat: false,
   saveFailed: false,
   progressSaveFailed: false,
   contentUnavailable: false,
