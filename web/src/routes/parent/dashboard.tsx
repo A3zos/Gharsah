@@ -3,7 +3,6 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { ChildAvatar } from '../../components/child/ChildAvatar';
-import { AiVoiceConsent } from '../../components/parent/AiVoiceConsent';
 import { PlanTimeline, StageBadge } from '../../components/parent/PlanTimeline';
 import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage, SettingsButton } from '../../components/parent/ParentShell';
@@ -343,7 +342,6 @@ function Desktop({
         </div>
         <Recordings child={child} subs={subs} pending={pending} />
       </section>
-      <AiVoiceConsent child={child} />
     </div>
   );
 }
@@ -451,7 +449,6 @@ function Mobile({
               قريبًا
             </span>
           </div>
-          <AiVoiceConsent child={child} />
           <p className="m-0 text-center text-[12.5px] text-text-muted">اضغط أي بطاقة لعرض تفاصيلها.</p>
         </>
       )}

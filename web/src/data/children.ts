@@ -52,8 +52,6 @@ export interface ChildDraft {
   gender: Gender;
   schedule: ChildSchedule;
   avatarId: string;
-  /** «التحدث مع المعلم بالصوت» (add-child step 4) — off by default. */
-  aiVoiceConsent?: boolean;
 }
 
 export interface PairingInfo {
@@ -175,12 +173,22 @@ export function childFromRow(
     stats: extra.stats ?? null,
     leader: null,
     schedule: scheduleFromRow(r),
-    aiVoiceConsent: r.ai_voice_consent === true,
+    aiVoiceConsent: AI_VOICE_CONSENT && r.ai_voice_consent === true,
     pilotDaysDone: extra.pilotDaysDone ?? 0,
     pilotDoneAt: extra.pilotDoneAt ?? {},
     pilotUnscored: extra.pilotUnscored ?? [],
   };
 }
+
+/**
+ * The «صوت طفلك للمعلّم الذكي» option is off for now (PO, 2026-10-03): no parent
+ * control, and every lesson runs in the on-device voice mode — the child's voice
+ * never leaves the device, the teacher continues when the child speaks, quiz
+ * answers aren't graded. children.ai_voice_consent and the consent-gated lesson
+ * paths stay (unused) so it can come back without a migration: set this to true
+ * and restore a parent control.
+ */
+export const AI_VOICE_CONSENT = false;
 
 export const CHILD_COLUMNS =
   'id, name, age, gender, avatar, schedule_days, schedule_time, schedule_custom, session_duration, reminder, review_days, ai_voice_consent, created_at';
@@ -287,7 +295,6 @@ export async function addChild(draft: ChildDraft): Promise<{ id: string; pairing
       gender: draft.gender,
       avatar: draft.avatarId,
       ...scheduleToRow(draft.schedule),
-      ...(draft.aiVoiceConsent ? { ai_voice_consent: true } : {}),
     })
     .select('id')
     .single();
