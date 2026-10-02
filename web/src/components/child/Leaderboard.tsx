@@ -1,6 +1,6 @@
 // «المتصدّرون هذا الأسبوع» on the child home: ranks 1–5 (dense; ties share a rank),
 // then — when the child isn't among them — «⋯» and the child's own row with the real
-// rank. Other children are never identified: rank + a neutral avatar + points only.
+// rank. Other children are never identified: rank + their chosen avatar + points only.
 // The data is get_leaderboard() (aggregate only, server-side).
 import { buildBoard, daysUntilReset, type BoardRow, type LeaderBoard } from '../../data/student';
 import { toArabicDigits } from '../../lib/arabicDigits';
@@ -101,18 +101,10 @@ function LeaderRow({ row, avatarId }: { row: BoardRow; avatarId: string }) {
         {toArabicDigits(row.rank)}
       </span>
       <span className="shrink-0">
-        {row.me ? (
-          <ChildAvatar id={avatarId} size={38} />
-        ) : (
-          // Other children never show a personal avatar — one generic one.
-          <svg width="38" height="38" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-            <circle cx="32" cy="32" r="32" fill={C.borderSoft} />
-            <circle cx="32" cy="26" r="10" fill={C.stageOffStem} />
-            <path d="M14 54 C14 43 22 38 32 38 C42 38 50 43 50 54 Z" fill={C.stageOffStem} />
-          </svg>
-        )}
+        {/* other children: their chosen avatar key only — never who they are */}
+        <ChildAvatar id={row.me ? avatarId : (row.avatar ?? 'neutral')} size={38} />
       </span>
-      {/* Other children: rank + a neutral avatar + points only — never a name. */}
+      {/* Other children: rank + avatar + points only — never a name. */}
       <span className="grow text-[14.5px] font-extrabold text-deep-green">{row.label}</span>
       <span
         className={cx(

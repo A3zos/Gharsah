@@ -64,8 +64,8 @@ select is((select string_agg(e ->> 'rank', ',') from jsonb_array_elements((selec
 select is((select j from b) ->> 'total', '22', '22 children with stars this week');
 select ok((select j from b)::text !~ 'ظل' , 'no other child''s name leaves the database');
 select ok((select j from b)::text !~ '31000000-', 'no child id leaves the database');
-select ok((select bool_and(e ->> 'avatar' = 'neutral') from jsonb_array_elements((select j from b) -> 'top') e),
-  'other rows show a neutral avatar only');
+select ok((select bool_and(e ->> 'avatar' = 'boy-4') from jsonb_array_elements((select j from b) -> 'top') e),
+  'other rows show their chosen avatar key only (b2 → boy-4)');
 
 -- T2 — tied at 30 but reached it second → listed second, rank 1, own row highlighted
 select pg_temp.act_as('30000000-0000-0000-0000-0000000000d2', true);

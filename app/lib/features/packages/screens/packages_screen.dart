@@ -5,6 +5,7 @@ import '../../../core/arabic_digits.dart';
 import '../../../core/mock_data.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/app_icons.dart';
+import '../../../widgets/child_avatar.dart';
 import '../../../widgets/g_page_header.dart';
 import '../../children/data/child_profile.dart';
 import '../../children/screens/pairing_code_screen.dart';
@@ -508,7 +509,7 @@ class _ChildCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          AppIcon.childAvatar(child.avatarId),
+          ChildAvatar(child.avatarId),
           const SizedBox(width: 13),
           Expanded(
             // TODO(design): the card opens frame 11 (code / «إصدار رمز جديد»).

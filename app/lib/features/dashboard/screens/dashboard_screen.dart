@@ -7,6 +7,7 @@ import '../../../core/time_format.dart';
 import '../../../widgets/info_note.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/app_icons.dart';
+import '../../../widgets/child_avatar.dart';
 import '../../../widgets/decor_blob.dart';
 import '../../../widgets/g_page_header.dart';
 import '../../../widgets/growth_timeline.dart';
@@ -296,11 +297,7 @@ class _ChildChip extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AppIcon.childAvatar(
-                  child.avatarId,
-                  size: AppSizes.chipAvatar,
-                  variant: AvatarVariant.chip,
-                ),
+                ChildAvatar(child.avatarId, size: AppSizes.chipAvatar),
                 const SizedBox(width: 8),
                 Text(
                   child.name,

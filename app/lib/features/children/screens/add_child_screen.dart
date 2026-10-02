@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/app_scope.dart';
 import '../../../core/arabic_digits.dart';
 import '../../../theme/app_theme.dart';
-import '../../../widgets/app_icons.dart';
+import '../../../widgets/child_avatar.dart';
 import '../../../widgets/g_back_button.dart';
 import '../../../widgets/g_text_field.dart';
 import '../../../widgets/info_note.dart';
@@ -88,7 +88,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
         stream: _children,
         builder: (context, kids) {
           final s = sub.data;
-          final monthly = s != null &&
+          final monthly =
+              s != null &&
               s.active &&
               s.expiresAt.isAfter(DateTime.now()) &&
               s.plan == SubscriptionPlan.monthly;
@@ -169,8 +170,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
                 Expanded(
                   child: _GenderCard(
                     label: 'بنت',
-                    avatar: AppIcon.childAvatar(
-                      'g1',
+                    avatar: ChildAvatar(
+                      AvatarStyle.defaultKey(girl: true),
                       size: AppSizes.genderAvatar,
                     ),
                     selected: _gender == ChildGender.girl,
@@ -181,8 +182,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
                 Expanded(
                   child: _GenderCard(
                     label: 'ولد',
-                    avatar: AppIcon.childAvatar(
-                      'b1',
+                    avatar: ChildAvatar(
+                      AvatarStyle.defaultKey(girl: false),
                       size: AppSizes.genderAvatar,
                     ),
                     selected: _gender == ChildGender.boy,

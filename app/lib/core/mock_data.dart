@@ -22,7 +22,7 @@ abstract final class MockData {
         status: 'active',
       ),
       gender: ChildGender.girl,
-      avatarId: 'g1',
+      avatarId: 'girl-1',
       isMock: true,
     ),
     ChildProfile(
@@ -35,7 +35,7 @@ abstract final class MockData {
         status: 'active',
       ),
       gender: ChildGender.boy,
-      avatarId: 'b1',
+      avatarId: 'boy-1',
       isMock: true,
     ),
   ];

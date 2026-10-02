@@ -32,7 +32,7 @@ class ChildSession {
       parentUid: 'debug-parent',
       childId: 'mock-abdullah',
       name: 'عبدالله',
-      avatar: 'b1',
+      avatar: 'boy-1',
       gender: 'boy',
       debugMock: true,
     );

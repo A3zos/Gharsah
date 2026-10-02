@@ -7,21 +7,28 @@
 //   SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_ROLE_KEY=… DEMO_PASSWORD=… \
 //     node supabase/scripts/seed_demo.mjs
 // (run from web/ so @supabase/supabase-js resolves, or `npm i @supabase/supabase-js` next to it)
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) {
-  console.error('Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your shell (never commit them).');
+  console.error(
+    "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your shell (never commit them).",
+  );
   process.exit(1);
 }
-const EMAIL = process.env.DEMO_EMAIL ?? 'demo@gharsah.app';
-const CODE = '472918';
-const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+const EMAIL = process.env.DEMO_EMAIL ?? "demo@gharsah.app";
+const CODE = "472918";
+const db = createClient(url, key, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 async function findUser(email) {
   for (let page = 1; page < 50; page++) {
-    const { data, error } = await db.auth.admin.listUsers({ page, perPage: 200 });
+    const { data, error } = await db.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
     if (error) throw error;
     const u = data.users.find((x) => x.email === email);
     if (u) return u;
@@ -31,16 +38,16 @@ async function findUser(email) {
 }
 
 const existing = await findUser(EMAIL);
-if (process.argv.includes('--remove')) {
+if (process.argv.includes("--remove")) {
   if (existing) await db.auth.admin.deleteUser(existing.id); // cascades to every demo row
-  await db.from('pairing_codes').delete().eq('code', CODE);
-  console.log('demo account removed');
+  await db.from("pairing_codes").delete().eq("code", CODE);
+  console.log("demo account removed");
   process.exit(0);
 }
 
 const password = process.env.DEMO_PASSWORD;
 if (!password || password.length < 8) {
-  console.error('Set DEMO_PASSWORD (≥ 8 characters) for the demo parent.');
+  console.error("Set DEMO_PASSWORD (≥ 8 characters) for the demo parent.");
   process.exit(1);
 }
 let uid = existing?.id;
@@ -49,33 +56,40 @@ if (!uid) {
     email: EMAIL,
     password,
     email_confirm: true,
-    user_metadata: { name: 'حساب تجريبي' },
+    user_metadata: { name: "حساب تجريبي" },
   });
   if (error) throw error;
   uid = data.user.id;
 }
-await db.from('subscriptions').upsert({ parent_id: uid, plan: 'annual' }, { onConflict: 'parent_id' });
-let { data: child } = await db.from('children').select('id').eq('parent_id', uid).limit(1).maybeSingle();
+await db
+  .from("subscriptions")
+  .upsert({ parent_id: uid, plan: "annual" }, { onConflict: "parent_id" });
+let { data: child } = await db
+  .from("children")
+  .select("id")
+  .eq("parent_id", uid)
+  .limit(1)
+  .maybeSingle();
 if (!child) {
   const r = await db
-    .from('children')
+    .from("children")
     .insert({
       parent_id: uid,
-      name: 'عبدالله',
+      name: "عبدالله",
       age: 10,
-      gender: 'boy',
-      avatar: 'b1',
+      gender: "boy",
+      avatar: "boy-1",
       schedule_days: [0, 1, 2, 3, 4, 5, 6],
       schedule_time: 1020,
       review_days: [5],
     })
-    .select('id')
+    .select("id")
     .single();
   if (r.error) throw r.error;
   child = r.data;
 }
-await db.from('pairing_codes').delete().eq('code', CODE);
-const { error } = await db.from('pairing_codes').insert({
+await db.from("pairing_codes").delete().eq("code", CODE);
+const { error } = await db.from("pairing_codes").insert({
   code: CODE,
   parent_id: uid,
   child_id: child.id,
@@ -83,4 +97,6 @@ const { error } = await db.from('pairing_codes').insert({
   is_demo: true,
 });
 if (error) throw error;
-console.log(`demo ready: parent ${EMAIL}, child code ${CODE} (works only with DEMO_MODE=true)`);
+console.log(
+  `demo ready: parent ${EMAIL}, child code ${CODE} (works only with DEMO_MODE=true)`,
+);

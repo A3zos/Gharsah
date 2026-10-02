@@ -30,7 +30,7 @@ export const previewChild: ChildProfile = {
   name: 'عبدالله (معاينة)',
   age: 10,
   gender: 'boy',
-  avatarId: 'b1',
+  avatarId: 'boy-1',
   pairing: null,
   linked: true,
   createdAt: null,

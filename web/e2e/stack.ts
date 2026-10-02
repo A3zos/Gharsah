@@ -74,7 +74,7 @@ export async function seedParent(
         name: c.name,
         age: c.age ?? 10,
         gender: c.gender ?? 'boy',
-        avatar: c.avatar ?? 'b1',
+        avatar: c.avatar ?? 'boy-1',
         schedule_days: days,
         schedule_time: 1020,
         review_days: c.reviewDays ?? [days.at(-1)!],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/app_scope.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/app_icons.dart';
+import '../../../widgets/child_avatar.dart';
 import '../../../widgets/g_back_button.dart';
 import '../../../widgets/loading_label.dart';
 import '../../../widgets/screen_frame.dart';
@@ -11,7 +12,7 @@ import '../data/child_profile.dart';
 import '../widgets/add_child_stepper.dart';
 import 'pairing_code_screen.dart';
 
-/// Frame 10 — «اختر شخصية …»: the nine modest avatars. «حفظ وإنشاء رمز
+/// Frame 10 — «اختر شخصية …»: the four avatars of the child's gender. «حفظ وإنشاء رمز
 /// الربط» saves the child (Supabase) and shows its pairing code (11).
 class AvatarPickerScreen extends StatefulWidget {
   const AvatarPickerScreen({super.key, required this.draft});
@@ -23,9 +24,8 @@ class AvatarPickerScreen extends StatefulWidget {
 }
 
 class _AvatarPickerScreenState extends State<AvatarPickerScreen> {
-  late String _picked =
-      widget.draft.avatarId ??
-      (widget.draft.gender == ChildGender.girl ? 'g1' : 'b1');
+  late final bool _girl = widget.draft.gender == ChildGender.girl;
+  late String _picked = AvatarStyle.keyFor(widget.draft.avatarId, girl: _girl);
   bool _busy = false;
   String? _error;
 
@@ -89,7 +89,7 @@ class _AvatarPickerScreenState extends State<AvatarPickerScreen> {
             GridView(
               // Fixed 112px card height, as in the design.
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
+                crossAxisCount: 4,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
                 mainAxisExtent: AppSizes.avatarCardHeight,
@@ -98,11 +98,11 @@ class _AvatarPickerScreenState extends State<AvatarPickerScreen> {
               physics: const NeverScrollableScrollPhysics(),
               padding: EdgeInsets.zero,
               children: [
-                for (final a in AvatarStyle.all)
+                for (final a in AvatarStyle.forGender(girl: _girl))
                   _AvatarCard(
                     style: a,
-                    selected: a.id == _picked,
-                    onTap: () => setState(() => _picked = a.id),
+                    selected: a.key == _picked,
+                    onTap: () => setState(() => _picked = a.key),
                   ),
               ],
             ),
@@ -193,10 +193,10 @@ class _AvatarCard extends StatelessWidget {
           child: Stack(
             children: [
               Center(
-                child: AppIcon.childAvatar(
-                  style.id,
+                child: ChildAvatar(
+                  style.key,
                   size: AppSizes.avatarPicker,
-                  variant: AvatarVariant.picker,
+                  circle: false,
                 ),
               ),
               if (selected)

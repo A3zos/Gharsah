@@ -39,7 +39,12 @@ export function parseBoard(d: Row): LeaderBoard {
   const top = rawTop
     .filter((r) => typeof r.rank === 'number' && pts(r) !== null)
     .slice(0, TOP_ROWS)
-    .map((r) => ({ rank: r.rank as number, points: pts(r)!, me: r.me === true }));
+    .map((r) => ({
+      rank: r.rank as number,
+      points: pts(r)!,
+      me: r.me === true,
+      ...(typeof r.avatar === 'string' ? { avatar: r.avatar } : {}),
+    }));
   const m =
     d.me && typeof d.me === 'object'
       ? (d.me as Row)
@@ -228,6 +233,8 @@ export interface BoardEntry {
   rank: number;
   points: number;
   me: boolean;
+  /** The row's chosen avatar key (no name or id, ever); 'neutral' from an older board. */
+  avatar?: string;
 }
 
 export interface LeaderBoard {
@@ -268,6 +275,7 @@ export interface BoardRow {
   rank: number;
   points: number;
   me: boolean;
+  avatar?: string;
   /** Only the child's own row has a label («بدر — أنت»); others show rank + avatar + points only. */
   label: string | null;
 }

@@ -52,7 +52,7 @@ test('without a subscription the server refuses a code and the child is not kept
 
 test('«أبنائي» lists children with their state; plans never sell on the web', async ({ page }) => {
   const p = await seedParent({
-    children: [{ name: 'عبدالله' }, { name: 'مريم', gender: 'girl', avatar: 'g1' }],
+    children: [{ name: 'عبدالله' }, { name: 'مريم', gender: 'girl', avatar: 'girl-1' }],
   });
   // عبدالله is paired: a device session written the way claim-pairing-code does it.
   const device = await admin().auth.admin.createUser({

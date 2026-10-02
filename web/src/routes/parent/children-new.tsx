@@ -3,7 +3,8 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { agentEnabled } from '../../lesson/server/api';
-import { AVATARS, ChildAvatar } from '../../components/child/ChildAvatar';
+import { ChildAvatar } from '../../components/child/ChildAvatar';
+import { avatarKey, avatarsFor, defaultAvatar } from '../../content/avatars';
 import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage } from '../../components/parent/ParentShell';
 import { BackButton } from '../../components/ui/BackButton';
@@ -116,7 +117,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     age: editing?.age ?? 10,
     gender: editing?.gender ?? 'girl',
     schedule: editing?.schedule ?? DEFAULT_SCHEDULE,
-    avatarId: editing?.avatarId ?? 'g1',
+    avatarId: editing?.avatarId ?? defaultAvatar(editing?.gender ?? 'girl'),
     aiVoiceConsent: editing?.aiVoiceConsent ?? false,
   }));
   // Step 4 «التحدث مع المعلم بالصوت» only matters when the lesson runs on the AI teacher.
@@ -137,8 +138,8 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     setSchedule({ days, reviewDays: draft.schedule.reviewDays.filter((x) => days.includes(x)) });
   };
   const pickGender = (g: Gender) => {
-    const matches = AVATARS.find((a) => a.id === draft.avatarId)?.girl === (g === 'girl');
-    set({ gender: g, avatarId: matches ? draft.avatarId : g === 'girl' ? 'g1' : 'b1' });
+    // keeps the chosen avatar when it is of that gender, else that gender's first
+    set({ gender: g, avatarId: avatarKey(draft.avatarId, g) });
   };
 
   const exit = () => navigate(origin);
@@ -314,7 +315,12 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                     )}
                   >
                     <h2 className="m-0 font-heading text-[23px] font-bold">شخصية الابن</h2>
-                    <AvatarGrid value={draft.avatarId} onChange={(avatarId) => set({ avatarId })} compact />
+                    <AvatarGrid
+                      gender={draft.gender}
+                      value={draft.avatarId}
+                      onChange={(avatarId) => set({ avatarId })}
+                      compact
+                    />
                   </section>
                 )}
                 {!editing && lastStep === 3 && (
@@ -490,7 +496,11 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
               <p className="m-0 text-[13.5px] leading-[1.8] text-text-muted">
                 شخصيات محتشمة ولطيفة — يراها طفلك في تطبيقه مع كل إنجاز.
               </p>
-              <AvatarGrid value={draft.avatarId} onChange={(avatarId) => set({ avatarId })} />
+              <AvatarGrid
+                gender={draft.gender}
+                value={draft.avatarId}
+                onChange={(avatarId) => set({ avatarId })}
+              />
               <div className="flex items-center gap-[12px] rounded-px-20 bg-surface px-[16px] py-[14px] shadow-child-card">
                 <svg width="24" height="24" viewBox="0 0 76 76" fill="none" aria-hidden="true">
                   <path d="M38 60 V34" stroke={C.deepGreen} strokeWidth="6" strokeLinecap="round" />
@@ -715,7 +725,7 @@ function GenderField({ value, onChange }: { value: Gender; onChange: (g: Gender)
                   : 'border-[1.5px] border-border bg-surface',
               )}
             >
-              <ChildAvatar id={g === 'girl' ? 'g1' : 'b1'} size={58} />
+              <ChildAvatar id={defaultAvatar(g)} size={58} />
               <span className="text-[15px] font-bold text-text-dark">{g === 'girl' ? 'بنت' : 'ولد'}</span>
             </button>
           );
@@ -725,31 +735,30 @@ function GenderField({ value, onChange }: { value: Gender; onChange: (g: Gender)
   );
 }
 
+/** «شخصية الابن»: the four avatars of the chosen gender. */
 function AvatarGrid({
+  gender,
   value,
   onChange,
   compact,
 }: {
+  gender: Gender;
   value: string;
   onChange: (id: string) => void;
   compact?: boolean;
 }) {
   return (
-    <div
-      role="radiogroup"
-      aria-label="الشخصية"
-      className={cx('grid gap-[12px]', compact ? 'grid-cols-5' : 'grid-cols-3')}
-    >
-      {AVATARS.map((a) => {
-        const on = a.id === value;
+    <div role="radiogroup" aria-label="الشخصية" className="grid grid-cols-4 gap-[12px]">
+      {avatarsFor(gender).map((a) => {
+        const on = a.key === value;
         return (
           <button
-            key={a.id}
+            key={a.key}
             type="button"
             role="radio"
             aria-checked={on}
             aria-label={a.label}
-            onClick={() => onChange(a.id)}
+            onClick={() => onChange(a.key)}
             className={cx(
               'relative flex items-center justify-center p-0',
               compact ? 'h-[78px] rounded-px-26' : 'h-[112px] rounded-px-24',
@@ -758,7 +767,7 @@ function AvatarGrid({
                 : 'border-[1.5px] border-border bg-surface',
             )}
           >
-            <ChildAvatar id={a.id} size={compact ? 54 : 74} circle={false} />
+            <ChildAvatar id={a.key} size={compact ? 54 : 74} circle={false} />
             {on && (
               <span
                 className="absolute top-[8px] left-[8px] flex h-[26px] w-[26px] items-center justify-center rounded-full bg-deep-green"

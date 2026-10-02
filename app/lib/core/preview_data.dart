@@ -81,7 +81,7 @@ class NoLessonActions implements LessonActions {
 Widget previewStudentHome() => StudentHomeView(
   data: StudentHomeData(
     name: 'عبدالله',
-    avatarId: 'b1',
+    avatarId: 'boy-1',
     stage: 'غَرْسة',
     streak: 5,
     surahs: 8,
@@ -210,5 +210,5 @@ final _previewBoard = buildBoard(
     me: BoardStanding(rank: 5, points: 295, gapToAbove: 15, inTop5: true),
   ),
   myName: 'عبدالله',
-  myAvatar: 'b1',
+  myAvatar: 'boy-1',
 );

@@ -1,4 +1,5 @@
 import '../../../core/supa.dart';
+import '../../../widgets/child_avatar.dart';
 
 enum ChildGender { girl, boy }
 
@@ -219,7 +220,10 @@ class ChildProfile {
       name: r['name'] as String? ?? '',
       age: (r['age'] as num?)?.toInt() ?? 10,
       gender: r['gender'] == 'boy' ? ChildGender.boy : ChildGender.girl,
-      avatarId: r['avatar'] as String? ?? 'g1',
+      avatarId: AvatarStyle.keyFor(
+        r['avatar'] as String?,
+        girl: r['gender'] != 'boy',
+      ),
       pairing: PairingInfo.fromMap(pairing),
       linked: pairing is Map && pairing['linked'] == true,
       createdAt: parseDate(r['created_at']),

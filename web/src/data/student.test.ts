@@ -80,11 +80,12 @@ test('parseBoard reads the new payload and the previous one', () => {
   const now = parseBoard({
     weekKey: '2026-09-26',
     total: 22,
-    top: [{ rank: 1, points: 30, avatar: 'neutral', me: false }],
-    me: { rank: 20, points: 4, gapToAbove: 8, inTop5: false, firstName: 'بدر', avatar: 'b1' },
+    top: [{ rank: 1, points: 30, avatar: 'girl-3', me: false }],
+    me: { rank: 20, points: 4, gapToAbove: 8, inTop5: false, firstName: 'بدر', avatar: 'boy-1' },
   });
   expect(now.me).toEqual({ rank: 20, points: 4, gapToAbove: 8, inTop5: false });
-  expect(now.top).toEqual([{ rank: 1, points: 30, me: false }]);
+  // other children: their chosen avatar key only
+  expect(now.top).toEqual([{ rank: 1, points: 30, me: false, avatar: 'girl-3' }]);
   const old = parseBoard({
     weekKey: '2026-09-26',
     total: 3,

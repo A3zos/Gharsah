@@ -4,6 +4,7 @@ import { supabase } from '../supabase/client';
 import { watch } from '../supabase/live';
 import { toAuthFailure } from './authFailure';
 import { issueCode } from './pairing';
+import { avatarKey } from '../content/avatars';
 
 export type Gender = 'girl' | 'boy';
 
@@ -156,7 +157,7 @@ export function childFromRow(
     name: typeof r.name === 'string' ? r.name : '',
     age: typeof r.age === 'number' ? r.age : 10,
     gender: r.gender === 'boy' ? 'boy' : 'girl',
-    avatarId: typeof r.avatar === 'string' ? r.avatar : 'g1',
+    avatarId: avatarKey(typeof r.avatar === 'string' ? r.avatar : null, r.gender === 'boy' ? 'boy' : 'girl'),
     pairing:
       p && typeof p.code === 'string'
         ? { code: p.code, expiresAt: date(p.expiresAt) ?? new Date(), status: String(p.status ?? 'active') }

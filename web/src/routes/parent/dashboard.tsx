@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
-import { avatarById, avatarInk, avatarTint, ChildAvatar } from '../../components/child/ChildAvatar';
+import { ChildAvatar } from '../../components/child/ChildAvatar';
 import { GrowthPath } from '../../components/child/GrowthPath';
 import { AiVoiceConsent } from '../../components/parent/AiVoiceConsent';
 import { PilotPlanCard } from '../../components/parent/PilotPlanCard';
 import { GrowthHero } from '../../components/parent/GrowthHero';
-import { initialOf, useParentData } from '../../components/parent/ParentData';
+import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage, SettingsButton } from '../../components/parent/ParentShell';
 import { projectTitle, Recordings } from '../../components/parent/Recordings';
 import { C } from '../../components/ui/color';
@@ -23,14 +23,6 @@ import { DashDetail, type DashCard } from '../../components/parent/DashDetail';
 import type { Route } from './+types/dashboard';
 
 export const meta: Route.MetaFunction = () => [{ title: 'لوحة التحكم — غَرْسة' }];
-
-const TINT_BG: Record<string, string> = {
-  berryTint: 'bg-berry-tint',
-  skyTint: 'bg-sky-tint',
-  greenTint: 'bg-green-tint',
-  goldTint: 'bg-gold-tint',
-  borderSoft: 'bg-border-soft',
-};
 
 /** «باقٍ ١٤٪ ليصير شجرة» */
 function toNextStage(h: Headline): string {
@@ -221,7 +213,6 @@ function Desktop({
           <nav aria-label="الأبناء" className="flex items-center gap-[10px]">
             {kids.map((k) => {
               const on = k.id === child.id;
-              const a = avatarById(k.avatarId);
               return (
                 <Link
                   key={k.id}
@@ -234,15 +225,7 @@ function Desktop({
                       : 'border-[1.5px] border-border bg-surface font-bold text-text-muted hover:text-text-muted',
                   )}
                 >
-                  <span
-                    className={cx(
-                      'flex h-[32px] w-[32px] items-center justify-center rounded-full font-heading text-[15px] font-extrabold',
-                      on ? 'bg-surface/20' : cx(TINT_BG[avatarTint(a)], avatarInk(a)),
-                    )}
-                    aria-hidden="true"
-                  >
-                    {initialOf(k.name)}
-                  </span>
+                  <ChildAvatar id={k.avatarId} size={32} />
                   {k.name}
                 </Link>
               );
@@ -278,16 +261,7 @@ function Desktop({
           className="flex grow flex-col gap-[20px] rounded-px-32 bg-surface px-[32px] py-[30px] shadow-dark-16-34-5"
         >
           <div className="flex items-center gap-[16px]">
-            <span
-              className={cx(
-                'flex h-[58px] w-[58px] items-center justify-center rounded-px-20 font-heading text-[23px] font-extrabold',
-                TINT_BG[avatarTint(avatarById(child.avatarId))],
-                avatarInk(avatarById(child.avatarId)),
-              )}
-              aria-hidden="true"
-            >
-              {initialOf(child.name)}
-            </span>
+            <ChildAvatar id={child.avatarId} size={58} className="rounded-px-20" />
             <span className="flex grow flex-col gap-[4px]">
               <h2 className="m-0 font-heading text-[24px] font-bold">{child.name}</h2>
               <span className="text-[13.5px] text-text-muted">
@@ -429,7 +403,7 @@ function Mobile({
                     : 'border border-border bg-surface text-text-dark hover:text-text-dark',
                 )}
               >
-                <ChildAvatar id={k.avatarId} size={28} mouth={false} />
+                <ChildAvatar id={k.avatarId} size={28} />
                 {k.name}
               </Link>
             );

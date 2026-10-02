@@ -3,10 +3,18 @@ import '../../../core/arabic_digits.dart';
 /// One of the top-5 rows from `get_leaderboard()`: rank + points only — other
 /// children are never identified (no id, name, age or avatar).
 class BoardEntry {
-  const BoardEntry({required this.rank, required this.points, this.me = false});
+  const BoardEntry({
+    required this.rank,
+    required this.points,
+    this.me = false,
+    this.avatar,
+  });
 
   final int rank;
   final int points;
+
+  /// The row's chosen avatar key — never a name or id.
+  final String? avatar;
 
   /// This row is the child's own.
   final bool me;
@@ -54,6 +62,7 @@ class LeaderBoard {
             rank: i(r['rank'])!,
             points: i(r[pointsKey])!,
             me: r['me'] == true,
+            avatar: r['avatar'] is String ? r['avatar'] as String : null,
           ),
     ].take(_topRows).toList();
     final m = isNew ? d['me'] : d['own'];
@@ -98,10 +107,10 @@ class BoardRow {
   final int points;
 
   /// Only the child's own row has a label (its first name); other rows show
-  /// rank + a neutral avatar + points only.
+  /// rank + their avatar + points only.
   final String? label;
 
-  /// Only the child's own row has an avatar; others get one neutral avatar.
+  /// The row's avatar key (others: their chosen one; unknown → neutral).
   final String? avatarId;
   final bool me;
 }
@@ -151,7 +160,7 @@ BoardView buildBoard({
               avatarId: myAvatar,
               me: true,
             )
-          : BoardRow(rank: r.rank, points: r.points),
+          : BoardRow(rank: r.rank, points: r.points, avatarId: r.avatar),
   ];
   final own = me != null && !rows.any((r) => r.me)
       ? BoardRow(

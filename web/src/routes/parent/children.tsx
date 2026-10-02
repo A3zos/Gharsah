@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
-import { avatarById, avatarInk, avatarTint, ChildAvatar } from '../../components/child/ChildAvatar';
-import { initialOf, useParentData } from '../../components/parent/ParentData';
+import { ChildAvatar } from '../../components/child/ChildAvatar';
+import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, MobileHeader, ParentPage, SettingsButton } from '../../components/parent/ParentShell';
 import { buttonClass } from '../../components/ui/Button';
 import { C } from '../../components/ui/color';
@@ -17,14 +17,6 @@ import { hoursUntil } from '../../lib/dates';
 import type { Route } from './+types/children';
 
 export const meta: Route.MetaFunction = () => [{ title: 'أبنائي — غَرْسة' }];
-
-const TINT_BG: Record<string, string> = {
-  berryTint: 'bg-berry-tint',
-  skyTint: 'bg-sky-tint',
-  greenTint: 'bg-green-tint',
-  goldTint: 'bg-gold-tint',
-  borderSoft: 'bg-border-soft',
-};
 
 /** «١٠ سنوات · رمز الربط ٤٧٢٩١٨» or, waiting, «… · الرمز ينتهي بعد ٢٣ ساعة». */
 function childLine(c: ChildProfile, desktopWaiting: boolean): string {
@@ -104,23 +96,13 @@ function Desktop({ kids }: { kids: ChildProfile[] | null }) {
       <div className="grid grid-cols-2 gap-[20px]" aria-busy={kids === null}>
         {kids?.map((c) => {
           const h = headline(c);
-          const a = avatarById(c.avatarId);
           return (
             <article
               key={c.id}
               className="flex flex-col gap-[18px] rounded-px-30 border-[1.5px] border-border bg-surface px-[26px] py-[24px] shadow-dark-12-26-5"
             >
               <div className="flex items-center gap-[16px]">
-                <span
-                  className={cx(
-                    'flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-px-20 font-heading text-[22px] font-extrabold',
-                    TINT_BG[avatarTint(a)],
-                    avatarInk(a),
-                  )}
-                  aria-hidden="true"
-                >
-                  {initialOf(c.name)}
-                </span>
+                <ChildAvatar id={c.avatarId} size={58} className="rounded-px-20" />
                 <span className="flex min-w-0 grow flex-col gap-[5px]">
                   <h2 className="m-0 font-heading text-[22px] leading-[1.4] font-bold">{c.name}</h2>
                   <span className="text-[13.5px] text-text-muted">{childLine(c, true)}</span>

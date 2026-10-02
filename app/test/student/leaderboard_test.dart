@@ -113,7 +113,7 @@ void main() {
       'weekKey': '2026-09-26',
       'total': 22,
       'top': [
-        {'rank': 1, 'points': 30, 'avatar': 'neutral', 'me': false},
+        {'rank': 1, 'points': 30, 'avatar': 'girl-3', 'me': false},
         {'rank': 1, 'points': 30, 'avatar': 'b2', 'me': true},
       ],
       'me': {
@@ -132,6 +132,8 @@ void main() {
     ]);
     expect(b.me!.inTop5, isTrue);
     expect(b.me!.gapToAbove, isNull);
+    // other children: their chosen avatar key only
+    expect(b.top.first.avatar, 'girl-3');
   });
 
   test('parses the previous payload (rows/own with stars)', () {

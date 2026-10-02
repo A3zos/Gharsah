@@ -5,7 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/arabic_digits.dart';
 import '../../../theme/app_theme.dart';
-import '../../../widgets/app_icons.dart';
+import '../../../widgets/child_avatar.dart';
 import '../../../widgets/decor_blob.dart';
 import '../../lesson/widgets/live_widgets.dart';
 import '../data/leaderboard.dart';
@@ -153,9 +153,7 @@ class StudentHomeView extends StatelessWidget {
 
   Widget _header() => Row(
     children: [
-      PopIn(
-        child: AppIcon.childAvatar(data.avatarId, size: LessonSizes.homeAvatar),
-      ),
+      PopIn(child: ChildAvatar(data.avatarId, size: LessonSizes.homeAvatar)),
       const SizedBox(width: 13),
       Expanded(
         child: Column(
@@ -338,22 +336,16 @@ class StudentHomeView extends StatelessWidget {
             height: LessonSizes.leaderAvatar + 6,
             child: Align(
               alignment: Alignment.topCenter,
-              // Other children never show a personal avatar — one generic one.
-              child: r.avatarId == null
-                  ? SvgPicture.string(
-                      _genericAvatar,
-                      width: LessonSizes.leaderAvatar,
-                      height: LessonSizes.leaderAvatar,
-                    )
-                  : AppIcon.childAvatar(
-                      r.avatarId!,
-                      size: LessonSizes.leaderAvatar,
-                      variant: AvatarVariant.row,
-                    ),
+              // Other children: their chosen avatar key only — never who
+              // they are; unknown → a neutral silhouette.
+              child: ChildAvatar(
+                r.avatarId ?? 'neutral',
+                size: LessonSizes.leaderAvatar,
+              ),
             ),
           ),
           const SizedBox(width: 10),
-          // Other children: rank + a neutral avatar + points only — never a name.
+          // Other children: rank + avatar + points only — never a name.
           Expanded(
             child: r.me
                 ? Text(
@@ -655,11 +647,6 @@ class StudentHomeView extends StatelessWidget {
 <path d="M7 5.5 H4.5 V7 C4.5 8.9 5.6 10.3 7 10.7 M17 5.5 H19.5 V7 C19.5 8.9 18.4 10.3 17 10.7" stroke="${_hex(AppColors.goldDeep)}" stroke-width="1.8" stroke-linecap="round"/></svg>''';
 
   /// The one generic avatar for anonymous leaderboard rows.
-  static String get _genericAvatar =>
-      '''
-<svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="32" fill="${_hex(AppColors.borderSoft)}"/>
-<circle cx="32" cy="26" r="10" fill="${_hex(AppColors.stageOffStem)}"/>
-<path d="M14 54 C14 43 22 38 32 38 C42 38 50 43 50 54 Z" fill="${_hex(AppColors.stageOffStem)}"/></svg>''';
   static String get _starIcon =>
       '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2.8 L14.3 9.2 L21 9.4 L15.7 13.5 L17.6 20 L12 16.2 L6.4 20 L8.3 13.5 L3 9.4 L9.7 9.2 Z" fill="${_hex(AppColors.primary)}"/></svg>';
   static String get _heroSprout =>
