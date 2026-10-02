@@ -40,11 +40,25 @@ class SupabaseChildrenRepository implements ChildrenRepository {
   ];
 
   Future<ChildProfile> _withServerFields(Map<String, dynamic> r) async {
-    final results = await Future.wait([
+    final results = await Future.wait<Object?>([
       supa.rpc('child_pairing', params: {'p_child': r['id']}),
       supa.rpc('child_stats', params: {'c': r['id']}),
+      // the pilot days (plan timeline): finished + when
+      supa
+          .from('progress')
+          .select('lesson_id, stage, completed_at, updated_at')
+          .eq('child_id', '${r['id']}')
+          .like('lesson_id', 'pilot-day-%'),
     ]);
-    return ChildProfile.fromRow(r, pairing: results[0], stats: results[1]);
+    return ChildProfile.fromRow(
+      r,
+      pairing: results[0],
+      stats: results[1],
+      pilot: [
+        for (final p in results[2] as List? ?? const [])
+          if (p is Map) Map<String, dynamic>.from(p),
+      ],
+    );
   }
 
   @override

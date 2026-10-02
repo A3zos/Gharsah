@@ -9,8 +9,10 @@ import { buttonClass } from '../../components/ui/Button';
 import { C } from '../../components/ui/color';
 import { CheckIcon, ClockIcon, ForwardIcon, PlusIcon } from '../../components/ui/icons';
 import { pairingActive, removeChild, type ChildProfile } from '../../data/children';
-import { ageLabel, childrenCount, headline, STAGE_LABEL, pilotChip } from '../../data/stats';
-import { PILOT_NAME, PILOT_PRICE } from '../../content/pilot';
+import { PlanBar, PlanTimeline, StageBadge } from '../../components/parent/PlanTimeline';
+import { planProgress } from '../../data/planProgress';
+import { ageLabel, childrenCount, headline } from '../../data/stats';
+import { PILOT_PRICE } from '../../content/pilot';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
 import { hoursUntil } from '../../lib/dates';
@@ -96,6 +98,7 @@ function Desktop({ kids }: { kids: ChildProfile[] | null }) {
       <div className="grid grid-cols-2 gap-[20px]" aria-busy={kids === null}>
         {kids?.map((c) => {
           const h = headline(c);
+          const plan = planProgress(c);
           return (
             <article
               key={c.id}
@@ -110,28 +113,12 @@ function Desktop({ kids }: { kids: ChildProfile[] | null }) {
                 <StatusPill linked={c.linked} />
               </div>
               <div className="flex flex-col gap-[8px]">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[13px] font-bold text-text-muted">
-                    {PILOT_NAME} · {PILOT_PRICE} · {pilotChip(c.pilotDaysDone)} — المرحلة:{' '}
-                    <span className="text-deep-green">{h.started ? STAGE_LABEL[h.stage] : 'لم يبدأ'}</span>
-                  </span>
-                  <span className="font-heading text-[16px] font-extrabold text-deep-green">
-                    {toArabicDigits(h.planPct)}٪
-                  </span>
-                </div>
-                <div
-                  className="h-[9px] overflow-hidden rounded-px-5 bg-border-soft"
-                  role="progressbar"
-                  aria-valuenow={h.planPct}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label="من الباقة التجريبية"
-                >
-                  <span
-                    className="block h-[9px] rounded-px-5 bg-primary"
-                    style={{ width: `${h.planPct}%` }}
-                  />
-                </div>
+                <span className="flex items-center gap-[8px] text-[13px] font-bold text-text-muted">
+                  {plan.plan.name} · {PILOT_PRICE}
+                  <StageBadge stage={plan.stage} />
+                </span>
+                <PlanTimeline progress={plan} unscored={c.pilotUnscored} compact />
+                <PlanBar progress={plan} />
               </div>
               <div className="flex gap-[10px]">
                 {(

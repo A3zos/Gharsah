@@ -204,6 +204,7 @@ class ChildProfile {
     this.stats,
     this.schedule,
     this.isMock = false,
+    this.pilotDoneAt = const {},
   });
 
   /// A `children` row + the server's `child_pairing` / `child_stats` answers.
@@ -213,6 +214,7 @@ class ChildProfile {
     Map<String, dynamic> r, {
     Object? pairing,
     Object? stats,
+    List<Map<String, dynamic>> pilot = const [],
   }) {
     final s = stats is Map ? Map<String, dynamic>.from(stats) : null;
     return ChildProfile(
@@ -229,6 +231,14 @@ class ChildProfile {
       createdAt: parseDate(r['created_at']),
       stats: s != null && hasActivity(s) ? s : null,
       schedule: ChildSchedule.fromRow(r),
+      pilotDoneAt: {
+        for (final p in pilot)
+          if (p['stage'] == 'done' &&
+              parseDate(p['completed_at'] ?? p['updated_at']) != null)
+            '${p['lesson_id']}': parseDate(
+              p['completed_at'] ?? p['updated_at'],
+            )!,
+      },
     );
   }
 
@@ -271,6 +281,10 @@ class ChildProfile {
   /// Design sample data (debug previews only), not a real child.
   final bool isMock;
 
+  /// When each finished pilot day was completed (by lesson id) — the parent
+  /// dashboard's plan timeline.
+  final Map<String, DateTime> pilotDoneAt;
+
   /// Six Latin digits, or '' before the server issued one.
   String get pairingCode => pairing?.code ?? '';
 
@@ -286,6 +300,7 @@ class ChildProfile {
     stats: stats,
     schedule: schedule,
     isMock: isMock,
+    pilotDoneAt: pilotDoneAt,
   );
 
   /// The insert for a new child (the database checks every column). The

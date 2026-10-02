@@ -3,10 +3,8 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { ChildAvatar } from '../../components/child/ChildAvatar';
-import { GrowthPath } from '../../components/child/GrowthPath';
 import { AiVoiceConsent } from '../../components/parent/AiVoiceConsent';
-import { PilotPlanCard } from '../../components/parent/PilotPlanCard';
-import { GrowthHero } from '../../components/parent/GrowthHero';
+import { PlanTimeline, StageBadge } from '../../components/parent/PlanTimeline';
 import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage, SettingsButton } from '../../components/parent/ParentShell';
 import { projectTitle, Recordings } from '../../components/parent/Recordings';
@@ -14,22 +12,16 @@ import { C } from '../../components/ui/color';
 import { ForwardIcon, PlusIcon } from '../../components/ui/icons';
 import { projectValue } from '../../content/library';
 import { reviewDayNames, type ChildProfile } from '../../data/children';
-import { ageLabel, headline, pilotChip, STAGE_LABEL, type Headline } from '../../data/stats';
+import { planProgress, planSubtitle } from '../../data/planProgress';
+import { ageLabel, headline, STAGE_LABEL, type Headline } from '../../data/stats';
 import { watchSubmissions, type ProjectSubmission } from '../../data/submissions';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
-import { daysPhrase, plural } from '../../lib/plural';
+import { daysPhrase } from '../../lib/plural';
 import { DashDetail, type DashCard } from '../../components/parent/DashDetail';
 import type { Route } from './+types/dashboard';
 
 export const meta: Route.MetaFunction = () => [{ title: 'لوحة التحكم — غَرْسة' }];
-
-/** «باقٍ ١٤٪ ليصير شجرة» */
-function toNextStage(h: Headline): string {
-  if (h.stage === 'tree') return 'وصل إلى الشجرة — ما شاء الله.';
-  const next = h.stage === 'seed' ? { at: 34, name: 'غَرْسة' } : { at: 67, name: 'شجرة' };
-  return `أتمّ ${toArabicDigits(h.planPct)}٪ من الباقة التجريبية — باقٍ ${toArabicDigits(next.at - h.planPct)}٪ ليصير ${next.name}.`;
-}
 
 function useSubmissions(uid: string, childId: string | undefined) {
   // Keyed by child so switching children never shows the previous child's list.
@@ -201,7 +193,7 @@ function Desktop({
   h: Headline;
   subs: ProjectSubmission[] | null;
 }) {
-  const s = child.schedule;
+  const plan = planProgress(child);
   const pending =
     typeof child.stats?.pendingProject === 'string' ? (child.stats.pendingProject as string) : null;
   return (
@@ -263,12 +255,11 @@ function Desktop({
           <div className="flex items-center gap-[16px]">
             <ChildAvatar id={child.avatarId} size={58} className="rounded-px-20" />
             <span className="flex grow flex-col gap-[4px]">
-              <h2 className="m-0 font-heading text-[24px] font-bold">{child.name}</h2>
-              <span className="text-[13.5px] text-text-muted">
-                {ageLabel(child.age)}
-                {s &&
-                  ` · ${plural(s.days.length, { one: 'حصة واحدة', two: 'حصتان', few: 'حصص', many: 'حصة' })} في الأسبوع · ${toArabicDigits(s.duration)} دقيقة للجلسة`}
+              <span className="flex items-center gap-[10px]">
+                <h2 className="m-0 font-heading text-[24px] font-bold">{child.name}</h2>
+                <StageBadge stage={plan.stage} />
               </span>
+              <span className="text-[13.5px] text-text-muted">{planSubtitle(ageLabel(child.age), plan)}</span>
             </span>
             {h.streak > 0 && (
               <span className="rounded-pill bg-gold-tint px-[16px] py-[9px] text-[13px] font-extrabold text-warning-text">
@@ -277,8 +268,7 @@ function Desktop({
             )}
           </div>
           <div className="h-[1px] bg-border" />
-          <GrowthPath stage={h.stage} pct={h.planPct} size={74} />
-          <span className="text-[13.5px] font-bold text-text-muted">{toNextStage(h)}</span>
+          <PlanTimeline progress={plan} unscored={child.pilotUnscored} />
         </section>
         {pending && (
           <section
@@ -342,7 +332,6 @@ function Desktop({
           </div>
         ))}
       </div>
-      <PilotPlanCard child={child} />
       <section aria-labelledby="recordings" className="flex min-h-0 grow flex-col gap-[14px]">
         <div className="flex items-center gap-[12px]">
           <h2 id="recordings" className="m-0 font-heading text-[22px] font-bold">
@@ -410,13 +399,7 @@ function Mobile({
           })}
         </nav>
       )}
-      <GrowthHero
-        name={child.name}
-        stage={h.stage}
-        pct={h.planPct}
-        planChip={pilotChip(child.pilotDaysDone)}
-      />
-      {!card && <PilotPlanCard child={child} />}
+      <MobilePlan child={child} />
       {card ? (
         <DashDetail
           card={card}
@@ -474,5 +457,28 @@ function Mobile({
       )}
       <span className="sr-only">{STAGE_LABEL[h.stage]}</span>
     </div>
+  );
+}
+
+/** Phones: the child's plan timeline (vertical) under the name, badge and subtitle. */
+function MobilePlan({ child }: { child: ChildProfile }) {
+  const plan = planProgress(child);
+  return (
+    <section
+      aria-label={`نموّ ${child.name}`}
+      className="flex flex-col gap-[14px] rounded-px-28 bg-surface px-[18px] py-[20px] shadow-card"
+    >
+      <div className="flex items-center gap-[12px]">
+        <ChildAvatar id={child.avatarId} size={52} className="rounded-px-18" />
+        <span className="flex min-w-0 grow flex-col gap-[3px]">
+          <span className="flex items-center gap-[8px]">
+            <h2 className="m-0 font-heading text-[20px] font-bold">{child.name}</h2>
+            <StageBadge stage={plan.stage} />
+          </span>
+          <span className="text-[12.5px] text-text-muted">{planSubtitle(ageLabel(child.age), plan)}</span>
+        </span>
+      </div>
+      <PlanTimeline progress={plan} vertical unscored={child.pilotUnscored} />
+    </section>
   );
 }

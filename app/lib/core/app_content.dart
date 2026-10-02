@@ -1,3 +1,4 @@
+import '../features/dashboard/data/plan_progress.dart';
 import '../features/lesson/data/hadith_repository.dart';
 import '../features/lesson/data/project_repository.dart';
 import '../features/quran/data/quran_audio_repository.dart';
@@ -13,6 +14,7 @@ class AppContent {
     required this.manifest,
     required this.hadith,
     required this.projects,
+    required this.pilot,
   });
 
   static Future<AppContent> load() async {
@@ -23,12 +25,15 @@ class AppContent {
       HadithRepository.load(),
       ProjectRepository.load(),
     ]);
+    final meta = r[0] as QuranMeta;
+    final hadith = r[3] as HadithRepository;
     return AppContent(
-      meta: r[0] as QuranMeta,
+      meta: meta,
       text: r[1] as QuranTextRepository,
       manifest: r[2] as RecitationManifest,
-      hadith: r[3] as HadithRepository,
+      hadith: hadith,
       projects: r[4] as ProjectRepository,
+      pilot: await Plan.loadPilot(meta, hadith),
     );
   }
 
@@ -37,4 +42,7 @@ class AppContent {
   final RecitationManifest manifest;
   final HadithRepository hadith;
   final ProjectRepository projects;
+
+  /// The pilot plan's steps (the parent dashboard's plan timeline).
+  final Plan pilot;
 }

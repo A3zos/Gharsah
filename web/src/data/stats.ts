@@ -1,6 +1,7 @@
 // The server-written `stats` on a child document (functions/src/progress.ts) —
 // headline numbers only here; the dashboard parses the detail lists.
 import { PILOT_DAYS } from '../content/pilot';
+import { planStage } from './planProgress';
 import { toArabicDigits } from '../lib/arabicDigits';
 import type { ChildProfile } from './children';
 
@@ -21,16 +22,14 @@ export interface Headline {
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.round(v)) : 0);
 
-/** seed 0–33 / sprout 34–66 / tree 67–100 (CLAUDE.md §12). */
-export const stageOf = (pct: number): Stage => (pct >= 67 ? 'tree' : pct >= 34 ? 'sprout' : 'seed');
-
 export function headline(child: ChildProfile): Headline {
   const s = child.stats;
   const planPct = pilotPct(child.pilotDaysDone);
   return {
     started: !!s,
     planPct,
-    stage: stageOf(planPct),
+    // the badge follows the plan: بذرة 0–33, غَرْسة 34–99, شجرة 100
+    stage: planStage(planPct),
     surahs: num(s?.surahs),
     ayat: num(s?.ayat),
     hadith: num(s?.hadith),

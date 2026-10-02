@@ -55,7 +55,7 @@ export default function ChildProfileRoute() {
     };
   });
   const next =
-    h.stage === 'seed' ? { at: 34, name: 'غَرْسة' } : h.stage === 'sprout' ? { at: 67, name: 'شجرة' } : null;
+    h.stage === 'seed' ? { at: 34, name: 'غَرْسة' } : h.stage === 'sprout' ? { at: 100, name: 'شجرة' } : null;
   // REVIEW: the design's «باقٍ ٤ حصص وتصير شجرة!» — lessons-to-go isn't known yet, so it counts plan percent.
   const toNext = next
     ? `باقٍ ${toArabicDigits(next.at - h.planPct)}٪ من خطتك وتصير ${next.name}!`

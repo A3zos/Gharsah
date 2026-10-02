@@ -83,6 +83,8 @@ export interface ChildProfile {
   aiVoiceConsent: boolean;
   /** Pilot plan days finished (0–3), from the `progress` rows (parent views). */
   pilotDaysDone: number;
+  /** When each finished pilot day was completed (by lesson id). */
+  pilotDoneAt: Readonly<Record<string, Date>>;
   /** Pilot days whose quiz was answered on the device only — «لم يُقيَّم» (parent views). */
   pilotUnscored: readonly string[];
 }
@@ -149,7 +151,13 @@ const date = (v: unknown): Date | null => (typeof v === 'string' ? new Date(v) :
 
 export function childFromRow(
   r: Row,
-  extra: { pairing?: Row | null; stats?: Row | null; pilotDaysDone?: number; pilotUnscored?: string[] } = {},
+  extra: {
+    pairing?: Row | null;
+    stats?: Row | null;
+    pilotDaysDone?: number;
+    pilotDoneAt?: Record<string, Date>;
+    pilotUnscored?: string[];
+  } = {},
 ): ChildProfile {
   const p = extra.pairing;
   return {
@@ -169,6 +177,7 @@ export function childFromRow(
     schedule: scheduleFromRow(r),
     aiVoiceConsent: r.ai_voice_consent === true,
     pilotDaysDone: extra.pilotDaysDone ?? 0,
+    pilotDoneAt: extra.pilotDoneAt ?? {},
     pilotUnscored: extra.pilotUnscored ?? [],
   };
 }
@@ -181,9 +190,9 @@ async function pilotRows(childId: string): Promise<Row[]> {
   const db = supabase();
   const q = (cols: string) =>
     db.from('progress').select(cols).eq('child_id', childId).like('lesson_id', 'pilot-day-%');
-  const full = await q('lesson_id, stage, quiz_unscored');
+  const full = await q('lesson_id, stage, completed_at, updated_at, quiz_unscored');
   if (!full.error) return (full.data ?? []) as unknown as Row[];
-  const basic = await q('lesson_id, stage');
+  const basic = await q('lesson_id, stage, completed_at, updated_at');
   return (basic.data ?? []) as unknown as Row[];
 }
 
@@ -200,6 +209,12 @@ async function withServerFields(rows: Row[]): Promise<ChildProfile[]> {
         pairing: (pairing.data as Row | null) ?? null,
         stats: (stats.data as Row | null) ?? null,
         pilotDaysDone: pilot.filter((p) => p.stage === 'done').length,
+        pilotDoneAt: Object.fromEntries(
+          pilot.flatMap((p) => {
+            const at = p.stage === 'done' ? (date(p.completed_at) ?? date(p.updated_at)) : null;
+            return at ? [[String(p.lesson_id), at]] : [];
+          }),
+        ),
         pilotUnscored: pilot.filter((p) => p.quiz_unscored === true).map((p) => String(p.lesson_id)),
       });
     }),

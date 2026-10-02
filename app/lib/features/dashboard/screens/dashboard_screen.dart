@@ -8,14 +8,14 @@ import '../../../widgets/info_note.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/app_icons.dart';
 import '../../../widgets/child_avatar.dart';
-import '../../../widgets/decor_blob.dart';
 import '../../../widgets/g_page_header.dart';
-import '../../../widgets/growth_timeline.dart';
 import '../../../core/app_scope.dart';
 import '../../children/data/child_profile.dart';
 import '../data/dashboard_data.dart';
 import '../data/submissions_repository.dart';
+import '../data/plan_progress.dart';
 import '../widgets/detail_panels.dart';
+import '../widgets/plan_timeline.dart';
 
 /// Frames 12–16 — «لوحة التحكم» (view-only): child switcher, growth hero and
 /// four stat cards. The cards are an accordion inside this screen: one open
@@ -128,7 +128,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
               const SizedBox(height: 18),
-              _GrowthHero(name: child.name, stats: stats),
+              PlanCard(
+                child: child,
+                progress: PlanProgress.of(content.pilot, child),
+              ),
               const SizedBox(height: 18),
               _StatGrid(stats: stats, open: open, onTap: _toggle),
               const SizedBox(height: 18),
@@ -309,141 +312,6 @@ class _ChildChip extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _GrowthHero extends StatelessWidget {
-  const _GrowthHero({required this.name, required this.stats});
-
-  final String name;
-  final ChildStats stats;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final stage = GrowthTimeline.stageOf(stats.yearProgress);
-    const stageNames = ['بذرة', 'غَرْسة', 'شجرة'];
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.card),
-        boxShadow: AppShadows.card,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          DecorBlob(
-            top: -80,
-            left: -70,
-            size: 230,
-            color: AppColors.blobGreenFaint,
-          ),
-          DecorBlob(
-            bottom: -60,
-            right: -50,
-            size: 160,
-            color: AppColors.blobGoldFaint,
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: Text(name, style: t.headlineSmall)),
-                    const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.borderSoft,
-                        borderRadius: BorderRadius.circular(AppRadii.pill),
-                      ),
-                      child: Text(
-                        'الشهر ${stats.month.arabicDigits} · الأسبوع ${stats.week.arabicDigits}',
-                        style: AppTextStyles.chip.copyWith(
-                          color: AppColors.textDark,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Center(child: AppIcon.growthArt(stage)),
-                const SizedBox(height: 14),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text.rich(
-                        TextSpan(
-                          text: 'المرحلة الحالية: ',
-                          style: AppTextStyles.priceUnit,
-                          children: [
-                            TextSpan(
-                              text: stageNames[stage],
-                              style: const TextStyle(
-                                color: AppColors.deepGreen,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      '${stats.yearProgress.arabicDigits}٪',
-                      style: AppTextStyles.percent,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Semantics(
-                  label: 'التقدّم في الخطة السنوية',
-                  value: '${stats.yearProgress.arabicDigits}٪',
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadii.progress),
-                    child: SizedBox(
-                      height: AppSizes.progressHeight,
-                      child: Stack(
-                        children: [
-                          const Positioned.fill(
-                            child: ColoredBox(color: AppColors.borderSoft),
-                          ),
-                          FractionallySizedBox(
-                            alignment: AlignmentDirectional.centerStart,
-                            widthFactor: stats.yearProgress / 100,
-                            heightFactor: 1,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.progress,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text('من الخطة السنوية', style: AppTextStyles.tiny),
-                const SizedBox(height: 14),
-                GrowthTimeline(progress: stats.yearProgress, topPadding: 6),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
