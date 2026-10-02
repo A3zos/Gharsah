@@ -4,6 +4,7 @@
 // parent's consent — the recitation recorder and the browser's speech recognition.
 import { PresenceDetector } from '../presenceDetector';
 import { PlaybackBlocked } from '../ports';
+import { lessonAudio } from './audioUnlock';
 import { estimatedSpeechMs } from './speechTeacher';
 import type { LessonMicrophone } from './microphone';
 import type { AgentApi, Gender } from '../server/api';
@@ -15,14 +16,14 @@ import type {
   UtteranceRecorder,
 } from '../server/serverLesson';
 
-/** /speak cuts at 1200 characters — longer lines go in sentence-sized pieces. */
-const SPEAK_CHUNK = 1000;
+/** /speak cuts at 1200 characters; pieces this short also make the live caption. */
+export const CAPTION_CHARS = 140;
 /** Silence before a repeat window gives up and listens again (the «ردّدت» stays offered). */
 const LISTEN_WINDOW_MS = 25_000;
 const MAX_RECITATION_MS = 20_000;
 const ECHO_GUARD_MS = 300;
 
-export function speechChunks(text: string, max = SPEAK_CHUNK): string[] {
+export function speechChunks(text: string, max = CAPTION_CHARS): string[] {
   const t = text.trim();
   if (t.length <= max) return t ? [t] : [];
   const parts = t.split(/(?<=[.!؟?،…\n])\s+/);
@@ -43,10 +44,14 @@ export function speechChunks(text: string, max = SPEAK_CHUNK): string[] {
   return out;
 }
 
-/** The server's ElevenLabs voice; any failure → the browser's Arabic voice for that line. */
+/**
+ * The server's ElevenLabs voice (/speak), piece by piece — the next piece is fetched
+ * while the current one plays, so the line flows and the caption follows it. A
+ * piece the server can't voice → the browser's Arabic voice for that piece. Audio
+ * refused before a tap → PlaybackBlocked (the lesson shows the small play button).
+ */
 export class ServerTeacherVoice implements TeacherVoice {
   private available: Promise<boolean> | null = null;
-  private audio: HTMLAudioElement | null = null;
   private token: object | null = null;
   private finish: (() => void) | null = null;
   private voice: Promise<SpeechSynthesisVoice | null> | null = null;
@@ -57,27 +62,37 @@ export class ServerTeacherVoice implements TeacherVoice {
     private readonly synth: SpeechSynthesis | null = typeof speechSynthesis === 'undefined'
       ? null
       : speechSynthesis,
+    private readonly audio: HTMLAudioElement = lessonAudio('voice'),
   ) {}
 
-  async speak(text: string): Promise<void> {
+  warm(): void {
+    this.available ??= this.api.speakAvailable();
+  }
+
+  async speak(text: string, onPiece?: (piece: string) => void): Promise<void> {
     this.stop();
     const mine = {};
     this.token = mine;
-    this.available ??= this.api.speakAvailable();
-    const server = await this.available;
-    for (const piece of speechChunks(text)) {
+    this.warm();
+    const server = await this.available!;
+    const pieces = speechChunks(text);
+    const fetchPiece = (i: number) =>
+      server && pieces[i] ? this.api.speak(pieces[i], this.gender) : Promise.resolve(null);
+    let next = fetchPiece(0);
+    for (let i = 0; i < pieces.length; i++) {
+      const blob = await next;
       if (this.token !== mine) return;
-      const blob = server ? await this.api.speak(piece, this.gender) : null;
+      next = fetchPiece(i + 1);
+      onPiece?.(pieces[i]!);
+      if (blob && (await this.playBlob(blob, pieces[i]!, mine))) continue;
       if (this.token !== mine) return;
-      if (blob && (await this.playBlob(blob, piece, mine))) continue;
-      if (this.token !== mine) return;
-      await this.browserSay(piece, mine);
+      await this.browserSay(pieces[i]!, mine);
     }
   }
 
   stop(): void {
     this.token = null;
-    this.audio?.pause();
+    this.audio.pause();
     try {
       this.synth?.cancel();
     } catch {
@@ -86,17 +101,19 @@ export class ServerTeacherVoice implements TeacherVoice {
     this.finish?.();
   }
 
+  /** True when played (or stopped meanwhile); false → use the browser's voice. */
   private async playBlob(blob: Blob, text: string, token: object): Promise<boolean> {
     const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.audio = audio;
-    const ok = await audio.play().then(
-      () => true,
-      () => false,
+    const audio = this.audio;
+    audio.src = url;
+    const refused = await audio.play().then(
+      () => null,
+      (e: unknown) => e as DOMException,
     );
-    if (!ok || this.token !== token) {
+    if (refused || this.token !== token) {
       audio.pause();
       URL.revokeObjectURL(url);
+      if (refused?.name === 'NotAllowedError' && this.token === token) throw new PlaybackBlocked();
       return this.token !== token;
     }
     await new Promise<void>((resolve) => {
@@ -104,7 +121,8 @@ export class ServerTeacherVoice implements TeacherVoice {
         if (this.finish !== done) return;
         this.finish = null;
         clearTimeout(timer);
-        audio.pause();
+        audio.onended = null;
+        audio.onerror = null;
         URL.revokeObjectURL(url);
         resolve();
       };
@@ -167,10 +185,11 @@ export class ServerTeacherVoice implements TeacherVoice {
   }
 }
 
-/** The reciter, from the server's (everyayah) URLs. */
+/** The reciter, from the server's (everyayah) URLs, on the shared (tap-unlocked) element. */
 export class HtmlUrlPlayer implements UrlPlayer {
-  private readonly audio = new Audio();
   private finish: (() => void) | null = null;
+
+  constructor(private readonly audio: HTMLAudioElement = lessonAudio('reciter')) {}
 
   play(url: string): Promise<void> {
     this.stop();
@@ -183,6 +202,7 @@ export class HtmlUrlPlayer implements UrlPlayer {
       this.finish = done;
       this.audio.onended = done;
       this.audio.onerror = () => {
+        if (this.finish !== done) return;
         this.finish = null;
         reject(new Error('audio error'));
       };

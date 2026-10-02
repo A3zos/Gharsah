@@ -13,7 +13,8 @@ import { lessonChips, lessonScripts, lessonValue } from '../../content/library';
 import { reviewItems } from '../../content/review';
 import { nextReviewDay } from '../../data/children';
 import { headline, STAGE_LABEL } from '../../data/stats';
-import { warmAgent } from '../../lesson/server/api';
+import { agentEnabled, warmAgent } from '../../lesson/server/api';
+import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
 import { lessonStepGroups, pickTodayLesson } from '../../data/student';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
@@ -179,6 +180,8 @@ export default function ChildHome() {
         ) : (
           <Link
             to={paths.child.lesson(today.lessonId)}
+            // AI lesson: this tap unlocks audio so the teacher's first line can play.
+            onClick={agentEnabled() ? unlockLessonAudio : undefined}
             className="relative flex h-[68px] animate-[gh-breathe_2.8s_ease-in-out_infinite] items-center justify-center gap-[10px] rounded-px-22 bg-gold font-heading text-[22px] font-bold text-on-gold no-underline hover:text-on-gold"
           >
             {cta}

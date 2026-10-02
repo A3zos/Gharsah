@@ -31,9 +31,15 @@ import {
 // ── ports ──
 
 export interface TeacherVoice {
-  /** Resolves when the line has been said (or skipped). */
-  speak(text: string): Promise<void>;
+  /**
+   * Says the line (in short pieces; `onPiece` fires as each one starts — the live
+   * caption). Resolves when said or skipped; rejects with PlaybackBlocked when the
+   * browser refuses audio before a tap.
+   */
+  speak(text: string, onPiece?: (piece: string) => void): Promise<void>;
   stop(): void;
+  /** Wakes the voice service at lesson start (optional). */
+  warm?(): void;
 }
 
 export interface UrlPlayer {
@@ -164,6 +170,8 @@ export const RATE_LIMIT_BACKOFF_MS = [4000, 8000, 16000, 30000];
 const UNAVAILABLE_RETRY_MS = [1500, 4000];
 const MAX_RESTARTS = 2;
 const CONTINUE_TEXT = 'أكمل';
+/** Automatic listening rounds after each line before the mic waits for a tap. */
+export const AUTO_LISTEN_TRIES = 2;
 const REPEATED_TEXT = 'ردّدت';
 
 type Segment =
@@ -211,6 +219,7 @@ export class ServerLesson {
   // ── lifecycle ──
 
   async start(): Promise<void> {
+    this.d.voice.warm?.();
     const warm = setTimeout(() => {
       if (this.state.value.phase === 'starting') this.set({ phase: 'warming' });
     }, this.d.warmingAfterMs ?? 3000);
@@ -368,11 +377,7 @@ export class ServerLesson {
     });
     try {
       for (const a of turn.actions) this.show(a, turn);
-      if (turn.say.trim()) {
-        this.set({ speaking: true });
-        await this.guard(abort, this.d.voice.speak(turn.say));
-        this.set({ speaking: false });
-      }
+      if (turn.say.trim()) await this.say(turn.say, abort);
       for (const a of turn.actions) {
         if (a.type === 'play_all') for (const u of a.urls) await this.recite(u, abort);
         if (a.type === 'play_ayah') {
@@ -387,10 +392,51 @@ export class ServerLesson {
     }
   }
 
+  /** The teacher's line, voiced; the caption follows the piece being said. */
+  private async say(text: string, abort: AbortController): Promise<void> {
+    this.set({ speaking: true });
+    try {
+      for (;;) {
+        try {
+          await this.guard(
+            abort,
+            this.d.voice.speak(text, (piece) => !abort.signal.aborted && this.set({ caption: piece })),
+          );
+          return;
+        } catch (e) {
+          if (!(e instanceof PlaybackBlocked)) throw e;
+          // Audio refused before a tap: the small play button, then the line again.
+          this.set({ playbackBlocked: true });
+          await this.guard(abort, new Promise<void>((r) => (this.unblock = r)));
+          this.set({ playbackBlocked: false });
+        }
+      }
+    } finally {
+      this.set({ speaking: false });
+    }
+  }
+
+  /** The whole surah from the verified local text (the built-in lesson's surah card). */
+  private showSurah(current: number | null): void {
+    const surah = this.segSurah;
+    if (surah === null) return;
+    if (this.state.value.ayat[0] && this.state.value.surahName === this.d.surahName(surah)) {
+      this.set({ currentAyah: current });
+      return;
+    }
+    const ayat: { ayah: number; text: string }[] = [];
+    for (let a = 1; a <= this.d.ayahCount(surah); a++) {
+      const text = this.d.verifiedAyah(surah, a);
+      if (text) ayat.push({ ayah: a, text });
+    }
+    this.set({ ayat, currentAyah: current, surahName: this.d.surahName(surah) });
+  }
+
   /** show_ayat / show_words — the display only. */
   private show(a: AgentAction, turn: ServerTurn): void {
     if (a.type === 'play_ayah') {
       if (a.text.trim()) this.reference = a.text;
+      if (turn.kind === 'quran') this.showSurah(a.ayah);
       return;
     }
     if (a.type === 'show_words') {
@@ -408,14 +454,7 @@ export class ServerLesson {
       this.set({ hadith: { title: a.hadithTitle ?? turn.hadithTitle, source: a.source } });
       return;
     }
-    const surah = this.segSurah;
-    if (surah === null) return;
-    const ayat: { ayah: number; text: string }[] = [];
-    for (let i = 0; i < a.ayat.length; i++) {
-      const text = this.d.verifiedAyah(surah, a.first + i);
-      if (text) ayat.push({ ayah: a.first + i, text });
-    }
-    this.set({ ayat, currentAyah: a.current, surahName: this.d.surahName(surah) });
+    this.showSurah(a.current);
   }
 
   private async recite(url: string, abort: AbortController): Promise<void> {
@@ -443,13 +482,48 @@ export class ServerLesson {
   /** Waits for the child the way `expects` asks. */
   private async await(turn: ServerTurn, abort: AbortController): Promise<void> {
     if (turn.expects === 'none') return this.segmentEnded();
-    this.set({
-      expects: turn.expects,
-      quickReplies: turn.quickReplies,
-      canSpeak:
-        !!this.d.speechInput && this.d.consent && turn.expects !== 'choice' && turn.expects !== 'repeat',
+    const canSpeak = !!this.d.speechInput && this.d.consent && turn.expects !== 'repeat';
+    this.set({ expects: turn.expects, quickReplies: turn.quickReplies, canSpeak });
+    if (turn.expects === 'repeat') return this.listenForRepeat(abort);
+    // Like a call: the child just answers — the mic opens by itself (consent only).
+    if (canSpeak) await this.autoListen(abort);
+  }
+
+  /** Listens a couple of times after the teacher's line; then the mic waits for a tap. */
+  private async autoListen(abort: AbortController): Promise<void> {
+    for (let i = 0; i < AUTO_LISTEN_TRIES; i++) {
+      if (abort.signal.aborted || this.state.value.busy) return;
+      if (await this.listenOnce(abort)) return;
+    }
+  }
+
+  /** One recognition; true when it produced an answer that was sent. */
+  private async listenOnce(abort: AbortController): Promise<boolean> {
+    const input = this.d.speechInput;
+    if (!input) return false;
+    this.set({ hearing: true });
+    const text = await this.guard(abort, input.listen(abort.signal)).catch((e: unknown) => {
+      if (e instanceof Cancelled) throw e;
+      return null;
     });
-    if (turn.expects === 'repeat') await this.listenForRepeat(abort);
+    this.set({ hearing: false });
+    const answer = text ? this.spokenAnswer(text) : null;
+    if (!answer) return false;
+    this.answer(answer);
+    return true;
+  }
+
+  /** A spoken answer: a choice must match one of the buttons; free answers go as said. */
+  private spokenAnswer(text: string): string | null {
+    const s = this.state.value;
+    const said = normalizeArabic(text);
+    if (!said) return null;
+    const match = s.quickReplies.find((q) => {
+      const n = normalizeArabic(q);
+      return n && (said.includes(n) || n.includes(said));
+    });
+    if (s.expects === 'choice') return match ?? null;
+    return match ?? text.trim();
   }
 
   private async listenForRepeat(abort: AbortController): Promise<void> {
@@ -583,15 +657,9 @@ export class ServerLesson {
   /** The mic button on text/continue — the browser's recognition (consent only). */
   async speakAnswer(): Promise<void> {
     const s = this.state.value;
-    if (!s.canSpeak || !this.d.speechInput || s.busy || s.hearing) return;
     const abort = this.turnAbort;
-    this.set({ hearing: true });
-    const text = await this.d.speechInput
-      .listen(abort?.signal ?? new AbortController().signal)
-      .catch(() => null);
-    if (this.turnAbort !== abort) return;
-    this.set({ hearing: false });
-    if (text) this.answer(text);
+    if (!s.canSpeak || !abort || s.busy || s.hearing || !s.expects) return;
+    await this.listenOnce(abort).catch(() => {});
   }
 
   /** A section in the stages bar (only ones already reached). */
@@ -689,4 +757,16 @@ export async function blobToBase64(b: Blob): Promise<string> {
   let bin = '';
   for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(bin);
+}
+
+/** For matching a spoken answer to a button: no diacritics, tatweel or punctuation; one alef / ya / ha. */
+export function normalizeArabic(t: string): string {
+  return t
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g, '')
+    .replace(/[إأآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/[^\p{L}\p{N}\s]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

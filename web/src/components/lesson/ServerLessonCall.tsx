@@ -7,6 +7,7 @@ import { useBlocker, useNavigate } from 'react-router';
 
 import { paths } from '../../app/paths';
 import type { ChildProfile } from '../../data/children';
+import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
 import { createServerLesson, type WebServerLesson } from '../../lesson/web/createServerLesson';
 import { initialServerState } from '../../lesson/server/serverLesson';
 import { DESKTOP, useMedia } from '../../lib/useMedia';
@@ -102,8 +103,10 @@ export function ServerLessonCall({
       continueTapped: () => lesson?.continueTapped(),
       repeatTapped: () => lesson?.repeatTapped(),
       speakAnswer: () => void lesson?.speakAnswer(),
-      jumpTo: (i) => lesson?.jumpTo(i),
-      playTapped: () => lesson?.playTapped(),
+      playTapped: () => {
+        unlockLessonAudio();
+        lesson?.playTapped();
+      },
       markProjectDone: (id) => void lesson?.markProjectDone(id).catch(() => {}),
       exit: () => {
         lesson?.pause();
@@ -130,6 +133,7 @@ export function ServerLessonCall({
         confirmLabel="أكمل الحصة"
         cancelLabel="خروج"
         onConfirm={() => {
+          unlockLessonAudio();
           closeSheet();
           lesson?.resume();
         }}

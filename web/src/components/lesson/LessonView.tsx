@@ -103,6 +103,11 @@ export function LessonView({
     </>
   );
 
+  return <CallFrame desktop={desktop}>{body}</CallFrame>;
+}
+
+/** The call's page: phone column, or the centered card on desktop (LessonDesktop). Shared with the AI-server lesson. */
+export function CallFrame({ desktop, children }: { desktop: boolean; children: React.ReactNode }) {
   if (desktop) {
     return (
       <main className="relative flex h-dvh items-center justify-center overflow-hidden bg-background px-[16px] py-[24px] text-text-dark">
@@ -119,7 +124,7 @@ export function LessonView({
           <span className="font-heading text-[21px] font-bold text-deep-green">غَرْسة</span>
         </div>
         <div className="relative z-1 flex h-full max-h-[720px] w-[560px] max-w-full flex-col gap-[12px] rounded-px-40 border-[1.5px] border-border bg-surface px-[28px] pt-[22px] pb-[20px] shadow-dark-30-70-10">
-          {body}
+          {children}
         </div>
       </main>
     );
@@ -130,7 +135,7 @@ export function LessonView({
         aria-hidden="true"
         className="absolute -top-[170px] -left-[140px] h-[400px] w-[400px] rounded-full bg-blob-green-strong"
       />
-      <div className="z-1 flex min-h-0 w-full max-w-[520px] flex-col gap-[10px]">{body}</div>
+      <div className="z-1 flex min-h-0 w-full max-w-[520px] flex-col gap-[10px]">{children}</div>
     </main>
   );
 }
@@ -173,6 +178,35 @@ function Teacher({ state, size, onTap }: { state: LessonState; size: number; onT
   const listening = isTeacherListening(state);
   const speaking = !quiet && !listening;
   return (
+    <TeacherAvatar
+      size={size}
+      onTap={onTap}
+      pose={quiet ? 'quiet' : listening ? 'listening' : 'speaking'}
+      talking={speaking && state.teacherSpeaking}
+      happy={state.happy}
+    />
+  );
+}
+
+/** The teacher's look per moment — shared with the AI-server lesson (same character, same animation). */
+export function TeacherAvatar({
+  size,
+  onTap,
+  pose,
+  talking,
+  happy,
+}: {
+  size: number;
+  onTap?: () => void;
+  pose: 'speaking' | 'listening' | 'quiet';
+  /** Mouth open + sound arcs (a line is actually being voiced). */
+  talking: boolean;
+  happy: boolean;
+}) {
+  const quiet = pose === 'quiet';
+  const listening = pose === 'listening';
+  const speaking = pose === 'speaking';
+  return (
     <button
       type="button"
       onClick={onTap}
@@ -199,10 +233,10 @@ function Teacher({ state, size, onTap }: { state: LessonState; size: number; onT
       >
         <TeacherArt
           size={size}
-          eyes={state.happy ? 'happy' : 'open'}
+          eyes={happy ? 'happy' : 'open'}
           eyeRy={listening ? 11.5 : 10}
-          mouth={speaking && state.teacherSpeaking ? 'open' : 'shut'}
-          arcs={speaking && state.teacherSpeaking ? 'double' : 'none'}
+          mouth={speaking && talking ? 'open' : 'shut'}
+          arcs={speaking && talking ? 'double' : 'none'}
         />
       </span>
     </button>
@@ -291,7 +325,7 @@ function Middle({
   }
 }
 
-function Card({ children, className }: { children: React.ReactNode; className?: string }) {
+export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
       className={cx(
@@ -310,11 +344,7 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
  * bar between stages. The card scrolls inside itself and keeps the current ayah visible.
  */
 function SurahStage({ state: s, actions }: { state: LessonState; actions: LessonActions }) {
-  const current = useRef<HTMLSpanElement>(null);
   const currentAyah = s.ayahRef?.ayah ?? null;
-  useEffect(() => {
-    current.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
-  }, [currentAyah]);
   const stage = s.stage === 1 || s.stage === 2 || s.stage === 3 ? s.stage : null;
   return (
     <div className="flex min-h-0 grow flex-col gap-[8px]">
@@ -352,45 +382,80 @@ function SurahStage({ state: s, actions }: { state: LessonState; actions: Lesson
           <div className="h-full origin-right animate-[gh-line_2s_linear_both] rounded-pill bg-primary" />
         </div>
       )}
-      <button
-        type="button"
-        onClick={actions.replayAyah}
-        aria-label={s.ayahReference ?? `سورة ${s.surahName ?? ''}`}
-        className={cx(
-          'flex min-h-0 grow cursor-pointer flex-col overflow-y-auto rounded-px-28 bg-surface px-[18px] py-[14px] text-right font-body text-text-dark shadow-lesson-ayah-card',
-          s.beat === 'reciting' ? 'border-[2px] border-primary' : 'border-[1.5px] border-border',
-        )}
-      >
-        <span className="mb-[6px] text-center text-[16px] font-bold text-text-muted">سورة {s.surahName}</span>
-        <span className="font-ayah text-[28px] leading-[2.1]">
-          {s.surahAyat.map((a) => {
-            const on = a.ayah === currentAyah;
-            return (
-              <span
-                key={a.ayah}
-                ref={on ? current : undefined}
-                className={cx(
-                  'rounded-px-12 px-[4px] transition-colors',
-                  on && 'bg-gold-tint text-deep-green',
-                )}
-              >
-                {a.text}
-                <span className="text-ayah-bracket" aria-hidden="true">
-                  {' '}
-                  ﴿{toArabicDigits(a.ayah)}﴾{' '}
-                </span>
-              </span>
-            );
-          })}
-        </span>
-        {s.playbackBlocked && <PlayFallback onTap={actions.play} />}
-      </button>
+      <SurahCard
+        surahName={s.surahName ?? ''}
+        ayat={s.surahAyat}
+        currentAyah={currentAyah}
+        reciting={s.beat === 'reciting'}
+        playbackBlocked={s.playbackBlocked}
+        label={s.ayahReference ?? `سورة ${s.surahName ?? ''}`}
+        onTap={actions.replayAyah}
+        onPlay={actions.play}
+      />
     </div>
   );
 }
 
+/** The surah card (verified text, current ayah highlighted, tap = hear again) — shared with the AI-server lesson. */
+export function SurahCard({
+  surahName,
+  ayat,
+  currentAyah,
+  reciting,
+  playbackBlocked,
+  label,
+  onTap,
+  onPlay,
+}: {
+  surahName: string;
+  ayat: readonly { readonly ayah: number; readonly text: string }[];
+  currentAyah: number | null;
+  reciting: boolean;
+  playbackBlocked: boolean;
+  label: string;
+  onTap: () => void;
+  onPlay: () => void;
+}) {
+  const current = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    current.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+  }, [currentAyah]);
+  return (
+    <button
+      type="button"
+      onClick={onTap}
+      aria-label={label}
+      className={cx(
+        'flex min-h-0 grow cursor-pointer flex-col overflow-y-auto rounded-px-28 bg-surface px-[18px] py-[14px] text-right font-body text-text-dark shadow-lesson-ayah-card',
+        reciting ? 'border-[2px] border-primary' : 'border-[1.5px] border-border',
+      )}
+    >
+      <span className="mb-[6px] text-center text-[16px] font-bold text-text-muted">سورة {surahName}</span>
+      <span className="font-ayah text-[28px] leading-[2.1]">
+        {ayat.map((a) => {
+          const on = a.ayah === currentAyah;
+          return (
+            <span
+              key={a.ayah}
+              ref={on ? current : undefined}
+              className={cx('rounded-px-12 px-[4px] transition-colors', on && 'bg-gold-tint text-deep-green')}
+            >
+              {a.text}
+              <span className="text-ayah-bracket" aria-hidden="true">
+                {' '}
+                ﴿{toArabicDigits(a.ayah)}﴾{' '}
+              </span>
+            </span>
+          );
+        })}
+      </span>
+      {playbackBlocked && <PlayFallback onTap={onPlay} />}
+    </button>
+  );
+}
+
 /** Small fallback play when the browser blocked autoplay (the only visible play control). */
-function PlayFallback({ onTap }: { onTap: () => void }) {
+export function PlayFallback({ onTap }: { onTap: () => void }) {
   return (
     <span
       role="button"
@@ -472,14 +537,7 @@ function HadithCard({ state: s, actions }: { state: LessonState; actions: Lesson
   if (!h) return null;
   if (!h.isApproved) {
     // Unapproved: the topic only — never a placeholder, bracket or internal note (C11).
-    return (
-      <Card className="items-center justify-center gap-[14px] text-center">
-        <span className="font-heading text-[26px] font-bold">حديث اليوم عن {h.topic}</span>
-        <span className="rounded-pill bg-gold-tint px-[14px] py-[6px] text-[16px] font-extrabold text-warning-text">
-          قيد المراجعة الشرعية
-        </span>
-      </Card>
-    );
+    return <HadithPendingCard topic={h.topic} />;
   }
   return (
     <button
@@ -499,6 +557,18 @@ function HadithCard({ state: s, actions }: { state: LessonState; actions: Lesson
       <span className="text-[16px] font-bold text-text-subtle">{h.displayTakhrij}</span>
       {s.playbackBlocked && <PlayFallback onTap={actions.play} />}
     </button>
+  );
+}
+
+/** An unapproved hadith: the topic only — never a placeholder, bracket or internal note (C11). */
+export function HadithPendingCard({ topic }: { topic: string }) {
+  return (
+    <Card className="items-center justify-center gap-[14px] text-center">
+      <span className="font-heading text-[26px] font-bold">حديث اليوم عن {topic}</span>
+      <span className="rounded-pill bg-gold-tint px-[14px] py-[6px] text-[16px] font-extrabold text-warning-text">
+        قيد المراجعة الشرعية
+      </span>
+    </Card>
   );
 }
 
@@ -617,7 +687,7 @@ function LessonEnd({ glance }: { glance: ChildGlance }) {
 
 const BARS = [9, 14, 7, 16, 11, 18, 6, 13, 17, 8, 15, 10, 18, 7, 14, 9, 16, 11, 6, 13, 8];
 
-function VoiceBars({ level }: { level: LevelSource }) {
+export function VoiceBars({ level }: { level: LevelSource }) {
   const lvl = useSyncExternalStore(
     level.subscribe,
     () => level.value,
@@ -676,6 +746,45 @@ function Bottom({
         : s.beat === 'saving' || s.beat === 'saveFailed'
           ? 'نحفظ تقدّمك…'
           : 'المعلّم يتكلم…';
+  return (
+    <MicIndicator
+      live={live}
+      label={label}
+      level={level}
+      onMicTap={denied ? actions.micTap : undefined}
+      trailing={
+        canTapRepeat(s) && (
+          // TODO(design): «ردّدت» — the fallback when the mic can't hear the child; never a dead end.
+          <button
+            type="button"
+            onClick={actions.repeatTapped}
+            className="h-[48px] shrink-0 cursor-pointer rounded-px-14 border-0 bg-deep-green px-[18px] text-[17px] font-extrabold text-surface"
+          >
+            {s.screen === 'surahDone' ? 'جاهز' : 'ردّدت'}
+          </button>
+        )
+      }
+    />
+  );
+}
+
+/**
+ * The mic indicator (gold + pulse + voice bars while live; dimmed otherwise) and
+ * its line — shared with the AI-server lesson. A button only when `onMicTap` is set.
+ */
+export function MicIndicator({
+  live,
+  label,
+  level,
+  onMicTap,
+  trailing,
+}: {
+  live: boolean;
+  label: string;
+  level?: LevelSource;
+  onMicTap?: () => void;
+  trailing?: React.ReactNode;
+}) {
   const mic = (
     <span
       className={cx(
@@ -708,11 +817,11 @@ function Bottom({
   );
   return (
     <div className="flex shrink-0 items-center justify-center gap-[14px]" role="status" aria-live="polite">
-      {denied ? (
-        // Only when the mic couldn't open by itself: a tap asks again.
+      {onMicTap ? (
+        // Only when the mic couldn't open by itself (or the child can retry listening): a tap asks again.
         <button
           type="button"
-          onClick={actions.micTap}
+          onClick={onMicTap}
           aria-label="افتح الميكروفون"
           className="cursor-pointer border-0 bg-transparent p-0"
         >
@@ -725,18 +834,9 @@ function Bottom({
         <span className={cx('text-[17px] font-extrabold', live ? 'text-warning-text' : 'text-text-muted')}>
           {label}
         </span>
-        {live && <VoiceBars level={level} />}
+        {live && level && <VoiceBars level={level} />}
       </span>
-      {canTapRepeat(s) && (
-        // TODO(design): «ردّدت» — the fallback when the mic can't hear the child; never a dead end.
-        <button
-          type="button"
-          onClick={actions.repeatTapped}
-          className="h-[48px] shrink-0 cursor-pointer rounded-px-14 border-0 bg-deep-green px-[18px] text-[17px] font-extrabold text-surface"
-        >
-          {s.screen === 'surahDone' ? 'جاهز' : 'ردّدت'}
-        </button>
-      )}
+      {trailing}
     </div>
   );
 }

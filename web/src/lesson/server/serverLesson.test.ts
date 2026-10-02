@@ -4,13 +4,14 @@ import { PlaybackBlocked } from '../ports';
 import { AgentApi } from './api';
 import type { ProgressUpdate } from './progressMap';
 import {
+  AUTO_LISTEN_TRIES,
   HADITH_PLACEHOLDER,
+  normalizeArabic,
   RATE_LIMIT_BACKOFF_MS,
   ServerLesson,
   type PresenceListener,
   type ServerLessonDeps,
   type ServerLessonState,
-  type SpeechInput,
   type UrlPlayer,
   type UtteranceRecorder,
 } from './serverLesson';
@@ -251,21 +252,52 @@ describe('ServerLesson — repeat and consent', () => {
     await vi.waitFor(() => expect(t.server.messages().at(-1)).toBe('REF-AYAH-1'));
   });
 
-  it('speech recognition only with consent, and never for choice', async () => {
-    const speech: SpeechInput = { listen: async () => 'بخير والحمد لله' };
-    const off = setup({ speechInput: speech, consent: false });
+  it('speech recognition only with consent', async () => {
+    const listen = vi.fn(async () => 'بخير والحمد لله');
+    const off = setup({ speechInput: { listen }, consent: false });
     void off.lesson.start();
     await at(off.lesson, 'greet', 'text');
     expect(off.lesson.state.value.canSpeak).toBe(false);
+    expect(listen).not.toHaveBeenCalled();
+  });
 
-    const on = setup({ speechInput: speech, consent: true });
-    void on.lesson.start();
-    await at(on.lesson, 'greet', 'text');
-    expect(on.lesson.state.value.canSpeak).toBe(true);
-    await on.lesson.speakAnswer();
-    await at(on.lesson, 'surah', 'choice');
-    expect(on.lesson.state.value.canSpeak).toBe(false);
-    expect(on.server.messages()[0]).toBe('بخير والحمد لله');
+  it('like a call: after the line, the mic listens by itself and the answer is sent', async () => {
+    const said = ['بخير والحمد لله', 'أبي سورة الإخلاص'];
+    const listen = vi.fn(async () => said.shift() ?? null);
+    const t = setup({ speechInput: { listen }, consent: true });
+    void t.lesson.start();
+    // greet (free answer) → name (auto) → surah (choice: matched to the button) → intro
+    await at(t.lesson, 'lesson_intro', 'continue');
+    expect(t.server.messages()).toEqual(['بخير والحمد لله', 'بطل', 'الإخلاص']);
+    expect(t.lesson.state.value.canSpeak).toBe(true);
+  });
+
+  it('a spoken choice that matches no button is not sent; the mic then waits for a tap', async () => {
+    const said = ['تمام', 'ما أدري', 'ولا شي'];
+    const listen = vi.fn(async () => said.shift() ?? null);
+    const t = setup({ speechInput: { listen }, consent: true });
+    void t.lesson.start();
+    await at(t.lesson, 'surah', 'choice');
+    await until(t.lesson, (s) => !s.hearing && listen.mock.calls.length === 3);
+    expect(t.server.messages()).toEqual(['تمام', 'بطل']);
+    // a chip still works
+    t.lesson.answer('الإخلاص');
+    await at(t.lesson, 'lesson_intro', 'continue');
+  });
+
+  it('silence: listens AUTO_LISTEN_TRIES times, then the mic tap listens again', async () => {
+    const said: (string | null)[] = [null, null, 'تمام'];
+    const listen = vi.fn(async () => said.shift() ?? null);
+    const t = setup({ speechInput: { listen }, consent: true });
+    void t.lesson.start();
+    await until(
+      t.lesson,
+      (s) => s.expects === 'text' && !s.hearing && listen.mock.calls.length === AUTO_LISTEN_TRIES,
+    );
+    expect(t.server.messages()).toEqual([]);
+    await t.lesson.speakAnswer();
+    await at(t.lesson, 'surah', 'choice');
+    expect(t.server.messages()[0]).toBe('تمام');
   });
 
   it('with consent, a ready taseem runs first; the server sends no text and none is shown', async () => {
@@ -473,5 +505,76 @@ describe('ServerLesson — stages bar, autoplay, pause', () => {
     await at(t.lesson, 'surah', 'choice');
     expect(t.server.messages()[1]).toBe('بطلة');
     expect(t.server.calls[0]!.body).toMatchObject({ gender: 'girl' });
+  });
+});
+
+describe('ServerLesson — voice first', () => {
+  it('warms the voice at the start and captions the piece being said', async () => {
+    const warm = vi.fn();
+    const captions: string[] = [];
+    const t = setup({
+      voice: {
+        warm,
+        speak: async (text, onPiece) => {
+          for (const piece of text.split('! ')) onPiece?.(piece);
+        },
+        stop: () => {},
+      },
+    });
+    t.lesson.state.subscribe((s) => captions.push(s.caption));
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    expect(warm).toHaveBeenCalledOnce();
+    expect(captions).toContain('السلام عليكم');
+    expect(t.lesson.state.value.caption).toBe('أنا المعلم عبدالله. كيف حالك يا بطل؟');
+  });
+
+  it('the first line refused before a tap → the play button, then the line plays', async () => {
+    let refused = true;
+    const spoken: string[] = [];
+    const t = setup({
+      voice: {
+        speak: async (text) => {
+          if (refused) {
+            refused = false;
+            throw new PlaybackBlocked();
+          }
+          spoken.push(text);
+        },
+        stop: () => {},
+      },
+    });
+    void t.lesson.start();
+    await until(t.lesson, (s) => s.playbackBlocked && s.speaking);
+    expect(t.lesson.state.value.expects).toBeNull();
+    t.lesson.playTapped();
+    await at(t.lesson, 'greet', 'text');
+    expect(spoken[0]).toMatch(/^السلام عليكم/);
+    expect(t.lesson.state.value.playbackBlocked).toBe(false);
+  });
+
+  it('recitation shows the whole verified surah with the current ayah', async () => {
+    const t = setup({ presence: { waitForSpeech: () => new Promise(() => {}) } });
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('تمام');
+    await at(t.lesson, 'surah', 'choice');
+    t.lesson.answer('الإخلاص');
+    await at(t.lesson, 'lesson_intro', 'continue');
+    t.lesson.continueTapped();
+    await at(t.lesson, 'tafsir', 'continue');
+    t.lesson.continueTapped();
+    await at(t.lesson, 'fadl', 'continue');
+    t.lesson.continueTapped();
+    await until(t.lesson, (s) => s.expects === 'repeat');
+    expect(t.lesson.state.value.ayat.map((a) => a.text)).toEqual(
+      [1, 2, 3, 4].map((a) => `VERIFIED-112:${a}`),
+    );
+    expect(t.lesson.state.value.currentAyah).toBe(1);
+  });
+
+  it('normalizeArabic ignores diacritics, hamza forms and punctuation', () => {
+    expect(normalizeArabic('الإِخْلاص!')).toBe(normalizeArabic('الاخلاص'));
+    expect(normalizeArabic('  سورةُ  الناسِ؟ ')).toBe('سوره الناس');
   });
 });
