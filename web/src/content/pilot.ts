@@ -7,6 +7,7 @@ import day2 from '@content/lessons/pilot-day-2.json';
 import day3 from '@content/lessons/pilot-day-3.json';
 
 import { toArabicDigits } from '../lib/arabicDigits';
+import { PILOT_MAX_CHILDREN } from './plans';
 import { hadithRepo, quranMeta } from './library';
 
 export interface PilotDay {
@@ -50,9 +51,14 @@ export const pilotDay = (lessonId: string): PilotDay | undefined =>
 
 export const PILOT_NAME = 'الباقة التجريبية';
 
+/** The pilot is free — no payment step; signing up starts it. */
+export const PILOT_PRICE = 'مجانًا';
+export const PILOT_CTA = 'ابدأ مجانًا';
+
 /** What the package contains — shown wherever the app shows the plan. */
 export const PILOT_ITEMS: readonly string[] = [
-  `${toArabicDigits(PILOT_DAYS.length)} سور: ${PILOT_DAYS.map((d) => d.surahName).join('، ')}`,
-  `${toArabicDigits(PILOT_DAYS.length)} أحاديث: ${PILOT_DAYS.map((d) => d.hadithTopic).join('، ')}`,
+  `${toArabicDigits(PILOT_DAYS.length)} سور (${PILOT_DAYS.map((d) => d.surahName).join('، ')})`,
+  `${toArabicDigits(PILOT_DAYS.length)} أحاديث`,
   'حصة واحدة كل يوم',
+  `حتى ${toArabicDigits(PILOT_MAX_CHILDREN)} أطفال`,
 ];

@@ -15,7 +15,8 @@ begin
   perform set_config('role', 'authenticated', true);
 end $$;
 
-insert into public.subscriptions (parent_id, plan) values ('40000000-0000-0000-0000-00000000000a', 'annual');
+insert into public.subscriptions (parent_id, plan) values ('40000000-0000-0000-0000-00000000000a', 'annual')
+  on conflict (parent_id) do update set plan = excluded.plan; -- sign-up already started the free pilot
 insert into public.children (id, parent_id, name, age, gender, avatar, schedule_days, schedule_time, review_days) values
   ('41000000-0000-0000-0000-0000000000a1', '40000000-0000-0000-0000-00000000000a', 'خالد', 10, 'boy', 'b1', '{0,1,2}', 1020, '{2}');
 insert into public.child_sessions (device_uid, parent_id, child_id) values

@@ -28,9 +28,9 @@ import { AuthFailure } from '../../data/authFailure';
 import { childrenCount } from '../../data/stats';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { hijriDate, hijriDayMonth } from '../../lib/dates';
-import { PlanList } from '../../components/landing/shared';
-import { maxChildren } from '../../content/plans';
-import { PILOT_DAYS, PILOT_ITEMS, PILOT_NAME } from '../../content/pilot';
+import { ComingSoonPlan, PlanList } from '../../components/landing/shared';
+import { maxChildren, PLANS, PRICE } from '../../content/plans';
+import { PILOT_CTA, PILOT_DAYS, PILOT_ITEMS, PILOT_NAME, PILOT_PRICE } from '../../content/pilot';
 import { cx } from '../../lib/cx';
 import type { Route } from './+types/plans';
 
@@ -74,7 +74,9 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
             <CheckIcon size={28} />
           </span>
           <span className="flex grow flex-col gap-[5px]">
-            <span className="text-[19px] font-extrabold">باقتك الحالية — {PILOT_NAME}</span>
+            <span className="text-[19px] font-extrabold">
+              باقتك الحالية — {PILOT_NAME} · {PILOT_PRICE}
+            </span>
             <span className="text-[14px] text-text-muted">
               تنتهي في {hijriDate(sub.expiresAt)} · {PILOT_ITEMS[2]}
             </span>
@@ -95,6 +97,10 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
       )}
       <div className="max-w-[560px]">
         <PilotCard current={!!sub} large />
+      </div>
+      <div className="flex max-w-[862px] items-stretch gap-[22px] pt-[6px]">
+        <ComingSoonPlan title="الباقة الشهرية" price={PRICE.monthly} per="ريال / شهر" items={PLANS.monthly} />
+        <ComingSoonPlan title="الباقة السنوية" price={PRICE.annual} per="ريال / سنة" items={PLANS.annual} />
       </div>
       <div className="flex grow items-end gap-[20px]">
         <Link
@@ -149,7 +155,7 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
           />
           <div className="relative flex items-center justify-between gap-[10px]">
             <span className="font-heading text-[19px] leading-[1.5] font-bold text-surface">
-              باقتك الحالية — {PILOT_NAME}
+              باقتك الحالية — {PILOT_NAME} · {PILOT_PRICE}
             </span>
             <span className="rounded-pill bg-gold px-[12px] py-[5px] text-[12px] font-extrabold whitespace-nowrap text-on-gold">
               نشطة
@@ -176,6 +182,20 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
       )}
 
       <PilotCard current={!!current} />
+      <ComingSoonPlan
+        compact
+        title="الباقة الشهرية"
+        price={PRICE.monthly}
+        per="ريال / شهر"
+        items={PLANS.monthly}
+      />
+      <ComingSoonPlan
+        compact
+        title="الباقة السنوية"
+        price={PRICE.annual}
+        per="ريال / سنة"
+        items={PLANS.annual}
+      />
 
       <Link
         to={paths.parent.addChildFrom('plans')}
@@ -259,6 +279,15 @@ function PilotCard({ current, large }: { current: boolean; large?: boolean }) {
       <h2 className={cx('m-0 font-heading leading-[1.4] font-bold', large ? 'text-[25px]' : 'text-[22px]')}>
         {PILOT_NAME}
       </h2>
+      {/* The price spot: the pilot is free. */}
+      <span
+        className={cx(
+          'font-heading leading-[1] font-extrabold text-deep-green',
+          large ? 'text-[58px]' : 'text-[46px]',
+        )}
+      >
+        {PILOT_PRICE}
+      </span>
       <span className="self-start rounded-pill bg-gold-tint px-[13px] py-[7px] text-[13px] font-bold text-warning-text">
         {toArabicDigits(PILOT_DAYS.length)} أيام — يومًا بعد يوم، بالترتيب
       </span>
@@ -282,7 +311,7 @@ function PilotCard({ current, large }: { current: boolean; large?: boolean }) {
             'h-[56px] gap-[9px] rounded-px-19 font-heading text-[18px] font-bold',
           )}
         >
-          ابدأ التجربة
+          {PILOT_CTA}
           <ForwardIcon size={20} />
         </SubscribeButton>
       )}
@@ -322,7 +351,8 @@ function SubscribeButton({
   const navigate = useNavigate();
   const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle');
   const [error, setError] = useState<string | null>(null);
-  if (!trialSubscribeEnabled()) {
+  // The free pilot needs no purchase; paid plans only through Google Play (off on the web).
+  if (plan !== 'trial' && !trialSubscribeEnabled()) {
     return (
       <button type="button" disabled className={className}>
         قريبًا من التطبيق

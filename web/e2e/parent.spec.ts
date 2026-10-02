@@ -72,17 +72,18 @@ test('«أبنائي» lists children with their state; plans never sell on the 
   await expect(page.locator('input[autocomplete*="cc-"]')).toHaveCount(0);
 });
 
-// Review notes B6 + B4 + the pilot (2026-10-02): «ابدأ التجربة» writes the trial plan → dashboard.
+// Review notes B6 + B4 + the pilot (2026-10-02): the pilot is free — «ابدأ مجانًا» starts it (no payment).
 test('pilot package subscribe → dashboard with «الباقة التجريبية» in the sidebar', async ({ page }) => {
   const p = await seedParent({ plan: null });
   await page.setViewportSize({ width: 1366, height: 768 });
   await loginParent(page, p.email, p.password);
   const sidebar = page.getByRole('complementary');
-  await expect(sidebar.getByRole('link', { name: 'اشترك الآن' })).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: 'ابدأ مجانًا' })).toBeVisible();
   await page.goto('/parent/plans');
   await expect(page.getByRole('heading', { name: 'الباقة التجريبية' })).toBeVisible();
   await expect(page.getByText('حصة واحدة كل يوم').first()).toBeVisible();
-  await page.getByRole('button', { name: 'ابدأ التجربة' }).click();
+  await expect(page.getByText('مجانًا').first()).toBeVisible();
+  await page.getByRole('button', { name: 'ابدأ مجانًا' }).click();
   await expect(page.getByText('تم تفعيل الباقة').first()).toBeVisible();
   await page.waitForURL(/\/parent\/dashboard/);
   await expect(sidebar.getByText('الباقة التجريبية')).toBeVisible();

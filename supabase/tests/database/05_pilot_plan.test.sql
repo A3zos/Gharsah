@@ -1,10 +1,11 @@
 -- غَرْسة — the pilot plan: catalogue rows + one day at a time (pgTAP). Run: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(16);
 
 insert into auth.users (id, email, is_anonymous, raw_user_meta_data) values
   ('50000000-0000-0000-0000-00000000000a', 'pilot-a@test.local', false, '{"name":"أبو سعد"}'),
+  ('50000000-0000-0000-0000-00000000000b', 'pilot-b@test.local', false, '{"name":"أم ريم"}'),
   ('50000000-0000-0000-0000-0000000000d1', null, true, '{}');
 
 create or replace function pg_temp.act_as(uid uuid, anon boolean) returns void language plpgsql as $$
@@ -14,11 +15,17 @@ begin
   perform set_config('role', 'authenticated', true);
 end $$;
 
-insert into public.subscriptions (parent_id, plan) values ('50000000-0000-0000-0000-00000000000a', 'trial');
+insert into public.subscriptions (parent_id, plan) values ('50000000-0000-0000-0000-00000000000a', 'trial')
+  on conflict (parent_id) do update set plan = excluded.plan; -- sign-up already started the free pilot
 insert into public.children (id, parent_id, name, age, gender, avatar, schedule_days, schedule_time, review_days) values
   ('51000000-0000-0000-0000-0000000000a1', '50000000-0000-0000-0000-00000000000a', 'سعد', 9, 'boy', 'b1', '{0,1,2}', 1020, '{2}');
 insert into public.child_sessions (device_uid, parent_id, child_id) values
   ('50000000-0000-0000-0000-0000000000d1', '50000000-0000-0000-0000-00000000000a', '51000000-0000-0000-0000-0000000000a1');
+
+select is((select plan || '/' || status from public.subscriptions where parent_id = '50000000-0000-0000-0000-00000000000b'),
+  'trial/active', 'signing up starts the free pilot (no payment step)');
+select is((select count(*)::int from public.subscriptions where parent_id = '50000000-0000-0000-0000-0000000000d1'), 0,
+  'a child device (anonymous) gets no subscription');
 
 select is((select string_agg(lesson_id || '=' || ref || '/' || hadith_id, ' ' order by sort_order)
            from public.lessons where lesson_id like 'pilot-day-%'),

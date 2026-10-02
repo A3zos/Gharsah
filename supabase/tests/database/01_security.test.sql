@@ -21,7 +21,8 @@ end $$;
 
 insert into public.subscriptions (parent_id, plan) values
   ('00000000-0000-0000-0000-00000000000a', 'annual'),
-  ('00000000-0000-0000-0000-00000000000b', 'monthly');
+  ('00000000-0000-0000-0000-00000000000b', 'monthly')
+  on conflict (parent_id) do update set plan = excluded.plan; -- sign-up already started the free pilot
 insert into public.children (id, parent_id, name, age, gender, avatar, schedule_days, schedule_time, review_days) values
   ('10000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-00000000000a', 'أحمد علي', 10, 'boy', 'b1', '{0,1,2,4,5}', 1020, '{5}'),
   ('10000000-0000-0000-0000-0000000000a2', '00000000-0000-0000-0000-00000000000a', 'سارة علي', 9, 'girl', 'g1', '{0,1,2}', 1020, '{2}'),

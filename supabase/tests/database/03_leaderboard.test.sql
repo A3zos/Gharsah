@@ -11,7 +11,8 @@ insert into auth.users (id, email, is_anonymous, raw_user_meta_data) values
   ('30000000-0000-0000-0000-00000000000a', 'lb@test.local', false, '{"name":"ولي أمر"}'),
   ('30000000-0000-0000-0000-0000000000d1', null, true, '{}'),
   ('30000000-0000-0000-0000-0000000000d2', null, true, '{}');
-insert into public.subscriptions (parent_id, plan) values ('30000000-0000-0000-0000-00000000000a', 'annual');
+insert into public.subscriptions (parent_id, plan) values ('30000000-0000-0000-0000-00000000000a', 'annual')
+  on conflict (parent_id) do update set plan = excluded.plan; -- sign-up already started the free pilot
 
 create temp table kids (id uuid, name text, points int, mins int);
 insert into kids values

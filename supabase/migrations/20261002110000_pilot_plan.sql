@@ -69,3 +69,24 @@ begin
   end if;
   return new;
 end $$;
+
+-- The pilot is FREE: signing up starts it — no payment step. A parent account gets
+-- the 'trial' plan at creation (anonymous child devices get nothing). Paid plans
+-- stay Google Play Billing only.
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if coalesce(new.is_anonymous, false) then
+    return new;
+  end if;
+  insert into public.parents (id, name, email)
+  values (
+    new.id,
+    coalesce(nullif(btrim(new.raw_user_meta_data ->> 'name'), ''), split_part(new.email, '@', 1), 'ولي الأمر'),
+    new.email
+  )
+  on conflict (id) do nothing;
+  insert into public.subscriptions (parent_id, plan) values (new.id, 'trial')
+  on conflict (parent_id) do nothing;
+  return new;
+end $$;

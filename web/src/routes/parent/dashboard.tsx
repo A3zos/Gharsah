@@ -5,6 +5,7 @@ import { paths } from '../../app/paths';
 import { avatarById, avatarInk, avatarTint, ChildAvatar } from '../../components/child/ChildAvatar';
 import { GrowthPath } from '../../components/child/GrowthPath';
 import { AiVoiceConsent } from '../../components/parent/AiVoiceConsent';
+import { PilotPlanCard } from '../../components/parent/PilotPlanCard';
 import { GrowthHero } from '../../components/parent/GrowthHero';
 import { initialOf, useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage, SettingsButton } from '../../components/parent/ParentShell';
@@ -367,6 +368,7 @@ function Desktop({
           </div>
         ))}
       </div>
+      <PilotPlanCard child={child} />
       <section aria-labelledby="recordings" className="flex min-h-0 grow flex-col gap-[14px]">
         <div className="flex items-center gap-[12px]">
           <h2 id="recordings" className="m-0 font-heading text-[22px] font-bold">
@@ -440,6 +442,7 @@ function Mobile({
         pct={h.planPct}
         planChip={pilotChip(child.pilotDaysDone)}
       />
+      {!card && <PilotPlanCard child={child} />}
       {card ? (
         <DashDetail
           card={card}

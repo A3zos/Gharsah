@@ -3,7 +3,7 @@
 import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
-import { PILOT_DAYS, PILOT_ITEMS, PILOT_NAME } from '../../content/pilot';
+import { PILOT_CTA, PILOT_DAYS, PILOT_ITEMS, PILOT_NAME, PILOT_PRICE } from '../../content/pilot';
 import { verifiedAyah } from '../../content/verified';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { buttonClass } from '../ui/Button';
@@ -399,6 +399,15 @@ export function PilotOffer({ compact = false }: { compact?: boolean }) {
       <h3 className={cx('m-0 font-heading font-bold', compact ? 'text-[21px]' : 'text-[24px]')}>
         {PILOT_NAME}
       </h3>
+      {/* The price spot: the pilot is free. */}
+      <span
+        className={cx(
+          'font-heading leading-[1] font-extrabold text-deep-green',
+          compact ? 'text-[48px]' : 'text-[62px]',
+        )}
+      >
+        {PILOT_PRICE}
+      </span>
       <span className="self-start rounded-pill bg-gold-tint px-[14px] py-[8px] text-[14px] font-bold text-warning-text">
         {toArabicDigits(PILOT_DAYS.length)} أيام — يومًا بعد يوم، بالترتيب
       </span>
@@ -422,7 +431,7 @@ export function PilotOffer({ compact = false }: { compact?: boolean }) {
           ),
         )}
       >
-        ابدأ التجربة
+        {PILOT_CTA}
       </Link>
     </div>
   );

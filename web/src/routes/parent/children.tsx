@@ -9,7 +9,8 @@ import { buttonClass } from '../../components/ui/Button';
 import { C } from '../../components/ui/color';
 import { CheckIcon, ClockIcon, ForwardIcon, PlusIcon } from '../../components/ui/icons';
 import { pairingActive, removeChild, type ChildProfile } from '../../data/children';
-import { ageLabel, childrenCount, headline, STAGE_LABEL } from '../../data/stats';
+import { ageLabel, childrenCount, headline, STAGE_LABEL, pilotChip } from '../../data/stats';
+import { PILOT_NAME, PILOT_PRICE } from '../../content/pilot';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
 import { hoursUntil } from '../../lib/dates';
@@ -129,7 +130,7 @@ function Desktop({ kids }: { kids: ChildProfile[] | null }) {
               <div className="flex flex-col gap-[8px]">
                 <div className="flex items-baseline justify-between">
                   <span className="text-[13px] font-bold text-text-muted">
-                    المرحلة:{' '}
+                    {PILOT_NAME} · {PILOT_PRICE} · {pilotChip(c.pilotDaysDone)} — المرحلة:{' '}
                     <span className="text-deep-green">{h.started ? STAGE_LABEL[h.stage] : 'لم يبدأ'}</span>
                   </span>
                   <span className="font-heading text-[16px] font-extrabold text-deep-green">

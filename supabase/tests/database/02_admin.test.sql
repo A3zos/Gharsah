@@ -8,7 +8,8 @@ insert into auth.users (id, email, is_anonymous, raw_user_meta_data) values
   ('20000000-0000-0000-0000-00000000000b', 'parent@test.local', false, '{"name":"ولي أمر"}'),
   ('20000000-0000-0000-0000-0000000000d1', null, true, '{}');
 insert into public.admins (user_id) values ('20000000-0000-0000-0000-00000000000a');
-insert into public.subscriptions (parent_id, plan) values ('20000000-0000-0000-0000-00000000000b', 'annual');
+insert into public.subscriptions (parent_id, plan) values ('20000000-0000-0000-0000-00000000000b', 'annual')
+  on conflict (parent_id) do update set plan = excluded.plan; -- sign-up already started the free pilot
 insert into public.children (id, parent_id, name, age, gender, avatar, schedule_days, schedule_time, review_days) values
   ('21000000-0000-0000-0000-0000000000c1', '20000000-0000-0000-0000-00000000000b', 'سعد', 9, 'boy', 'b1', '{0,1}', 1020, '{1}');
 insert into public.child_sessions (device_uid, parent_id, child_id) values

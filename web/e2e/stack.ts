@@ -59,10 +59,11 @@ export async function seedParent(
   if (error || !data.user) throw error ?? new Error('createUser failed');
   const uid = data.user.id;
   const plan = opts.plan === undefined ? 'annual' : opts.plan;
-  if (plan) {
-    const { error: e } = await db.from('subscriptions').insert({ parent_id: uid, plan });
-    if (e) throw e;
-  }
+  // Sign-up already started the free pilot ('trial'): set the wanted plan, or remove it for «no plan».
+  const { error: e } = plan
+    ? await db.from('subscriptions').upsert({ parent_id: uid, plan }, { onConflict: 'parent_id' })
+    : await db.from('subscriptions').delete().eq('parent_id', uid);
+  if (e) throw e;
   const childIds: string[] = [];
   for (const c of opts.children ?? []) {
     const days = c.scheduleDays ?? [0, 1, 2, 4, 5];
