@@ -5,7 +5,7 @@
 // inside itself), and the mic indicator fixed at the bottom. No "next" arrows —
 // the agent moves on by itself; the only control is ✕ → ExitConfirm. No text
 // under 16px. Religious text only from the verified content (never generated).
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import type { Subscribe } from '../../lesson/observable';
 import { isMicLive, isTeacherListening, isTeacherQuiet, type LessonState } from '../../lesson/state';
@@ -16,6 +16,7 @@ import { TEACHER_NAME, TEACHER_TEXT, type TeacherGender } from '../child/teacher
 import { TeacherSprite, type MouthSource } from '../child/TeacherSprite';
 import { C } from '../ui/color';
 import { SproutMark } from '../ui/icons';
+import { AllowPrompt, VoiceMic } from './VoiceCall';
 
 /** What the plan card (L1) and the celebration frames (L6, L10) need beyond the state. */
 export interface LessonPlanInfo {
@@ -110,6 +111,12 @@ export function LessonView({
         <Middle state={s} plan={plan} glance={glance} actions={actions} />
       </div>
       <Bottom state={s} actions={actions} level={level} gender={gender} />
+      {/* The one button of the call: allow the mic, or the sound the browser blocked. */}
+      {s.beat === 'awaitMic' ? (
+        <AllowPrompt reason="mic" gender={gender} onAllow={actions.micTap} />
+      ) : (
+        s.playbackBlocked && <AllowPrompt reason="sound" gender={gender} onAllow={actions.play} />
+      )}
     </>
   );
 
@@ -370,14 +377,12 @@ function Problems({
   const text =
     s.progressSaveFailed || s.saveFailed
       ? SAVE_FAILED_TEXT
-      : s.micDenied
-        ? 'لا أسمعك — اطلب من بابا أو ماما السماح للمتصفح باستخدام الميكروفون.'
-        : s.contentUnavailable
-          ? 'لا يوجد اتصال لتحميل التلاوة — اتصل بالإنترنت وحاول مجددًا.'
-          : voiceMissing
-            ? // TODO(design): no designed state — the teacher's voice is unavailable.
-              TEACHER_TEXT[gender].voiceMissing
-            : null;
+      : s.contentUnavailable
+        ? 'لا يوجد اتصال لتحميل التلاوة — اتصل بالإنترنت وحاول مجددًا.'
+        : voiceMissing
+          ? // TODO(design): no designed state — the teacher's voice is unavailable.
+            TEACHER_TEXT[gender].voiceMissing
+          : null;
   if (!text) return null;
   const retry = s.beat === 'saveFailed' || (s.beat === 'recorded' && s.saveFailed);
   return (
@@ -501,7 +506,7 @@ function SurahStage({ state: s, actions }: { state: LessonState; actions: Lesson
         ayat={s.surahAyat}
         currentAyah={currentAyah}
         reciting={s.beat === 'reciting'}
-        playbackBlocked={s.playbackBlocked}
+        playbackBlocked={false}
         label={s.ayahReference ?? `سورة ${s.surahName ?? ''}`}
         onTap={actions.replayAyah}
         onPlay={actions.play}
@@ -669,7 +674,6 @@ function HadithCard({ state: s, actions }: { state: LessonState; actions: Lesson
       {/* Approved, vetted text exactly as in content/hadith/hadith.json. */}
       <span className="font-classical text-[24px] leading-[1.9]">«{h.displayText}»</span>
       <span className="text-[16px] font-bold text-text-subtle">{h.displayTakhrij}</span>
-      {s.playbackBlocked && <PlayFallback onTap={actions.play} />}
     </button>
   );
 }
@@ -835,6 +839,10 @@ function Bottom({
   level: LevelSource;
   gender: TeacherGender;
 }) {
+  // «I heard you»: each counted repeat / pass (the counters reset per step, this one only grows)
+  const total = s.repeatsDone + s.passesDone;
+  const [heard, setHeard] = useState({ prev: total, n: 0 });
+  if (total !== heard.prev) setHeard({ prev: total, n: total > heard.prev ? heard.n + 1 : heard.n });
   if (s.beat === 'done') {
     return (
       <div className="flex shrink-0 flex-col gap-[8px]">
@@ -862,26 +870,8 @@ function Bottom({
         : s.beat === 'saving' || s.beat === 'saveFailed'
           ? 'نحفظ تقدّمك…'
           : TEACHER_TEXT[gender].talking;
-  return (
-    <MicIndicator
-      live={live}
-      label={label}
-      level={level}
-      onMicTap={denied ? actions.micTap : undefined}
-      trailing={
-        canTapRepeat(s) && (
-          // TODO(design): «ردّدت» — the fallback when the mic can't hear the child; never a dead end.
-          <button
-            type="button"
-            onClick={actions.repeatTapped}
-            className="h-[48px] shrink-0 cursor-pointer rounded-px-14 border-0 bg-deep-green px-[18px] text-[17px] font-extrabold text-surface"
-          >
-            {s.screen === 'surahDone' ? 'جاهز' : 'ردّدت'}
-          </button>
-        )
-      }
-    />
-  );
+  // A voice call: only the mic animation — no «ردّدت», no text (the label is for screen readers).
+  return <VoiceMic live={live && !denied} heardKey={heard.n} level={level} label={label} />;
 }
 
 /**
@@ -894,12 +884,15 @@ export function MicIndicator({
   level,
   onMicTap,
   trailing,
+  hideLabel = false,
 }: {
   live: boolean;
   label: string;
   level?: LevelSource;
   onMicTap?: () => void;
   trailing?: React.ReactNode;
+  /** A voice call shows no text: the label is for screen readers only. */
+  hideLabel?: boolean;
 }) {
   const mic = (
     <span
@@ -946,7 +939,7 @@ export function MicIndicator({
       ) : (
         mic
       )}
-      <span className="flex flex-col gap-[4px]">
+      <span className={cx('flex flex-col gap-[4px]', hideLabel && 'sr-only')}>
         <span className={cx('text-[17px] font-extrabold', live ? 'text-warning-text' : 'text-text-muted')}>
           {label}
         </span>
@@ -954,15 +947,5 @@ export function MicIndicator({
       </span>
       {trailing}
     </div>
-  );
-}
-
-/** «ردّدت» is offered (mic refused, or silence past a nudge) while the child's turn is open. */
-function canTapRepeat(s: LessonState): boolean {
-  if (!s.manualRepeat || s.paused) return false;
-  // The report: only when the mic is blocked (a working mic records the child's voice).
-  if (s.screen === 'projectReport') return s.beat === 'awaitMic';
-  return (
-    s.beat === 'listening' || s.beat === 'nudging' || s.beat === 'awaitMic' || s.beat === 'hearingAnswer'
   );
 }

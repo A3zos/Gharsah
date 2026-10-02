@@ -632,3 +632,49 @@ test('invalid ayah refs and unknown contract versions are rejected', () => {
     FormatError,
   );
 });
+
+// ── A pure voice call (the web: voiceOnly) ─────────────────────────────────────
+
+const VOICE = { voiceOnly: true, silenceMs: 6000 } as const;
+
+test('voice-only: silence before the hadith → one nudge, then the lesson moves on by itself', async () => {
+  const r = new Rig({ timings: VOICE });
+  await start(r);
+  await autopilot(r, () => r.s.beat === 'hearingAnswer' && r.teacher.isListening);
+  await elapse(6000);
+  expect(r.teacher.spoken.at(-1)).toBe('nudge.answer');
+  await elapse(LINE + GUARD + 6000 + LINE + ADVANCE + 200);
+  expect(r.s.screen).toBe('hadith'); // never stuck
+  expect(r.s.manualRepeat).toBe(false); // no «ردّدت» in a voice call
+  await r.agent.dispose();
+});
+
+test('voice-only: silence while repeating → one nudge, then the step completes (no replay, no waiting)', async () => {
+  const r = new Rig({ timings: VOICE });
+  await start(r);
+  await autopilot(r, () => r.s.stepIndex === 5 && r.s.beat === 'listening' && r.teacher.isListening);
+  const step = r.s.stepIndex;
+  await elapse(6000);
+  expect(r.teacher.spoken.at(-1)).toBe('nudge.start');
+  await elapse(LINE + GUARD + 6000 + 100);
+  expect(r.s.repeatsDone).toBe(r.s.repeatsTarget); // completed by itself
+  await autopilot(r, () => r.s.stepIndex > step, 60_000);
+  expect(r.s.stepIndex).toBeGreaterThan(step);
+  expect(r.player.started.filter((a) => a).length).toBeGreaterThan(0);
+  await r.agent.dispose();
+});
+
+test('voice-only: mic blocked → the «سماح» prompt; still blocked → listen-only, the lesson goes on', async () => {
+  const r = new Rig({ timings: VOICE });
+  r.teacher.denyMic = true;
+  await start(r);
+  await autopilot(r, () => r.s.beat === 'awaitMic');
+  expect(r.s.micDenied).toBe(true); // the view shows «سماح»
+  const step = r.s.stepIndex;
+  r.agent.micTap(); // «سماح» — still refused
+  await elapse(GUARD + 1500 + LINE + ADVANCE + 200);
+  await autopilot(r, () => r.s.stepIndex > step, 120_000);
+  expect(r.s.beat).not.toBe('awaitMic');
+  expect(r.s.stepIndex).toBeGreaterThan(step);
+  await r.agent.dispose();
+});

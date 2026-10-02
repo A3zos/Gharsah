@@ -5,12 +5,7 @@ import { initialServerState, type ServerLessonState } from '../../lesson/server/
 import { ServerLessonView, type ServerLessonActions } from './ServerLessonView';
 
 const actions = (): ServerLessonActions => ({
-  answer: vi.fn(),
-  continueTapped: vi.fn(),
-  repeatTapped: vi.fn(),
-  speakAnswer: vi.fn(),
-  playTapped: vi.fn(),
-  markProjectDone: vi.fn(),
+  allowTapped: vi.fn(),
   exit: vi.fn(),
   goHome: vi.fn(),
 });
@@ -77,48 +72,53 @@ describe('ServerLessonView — the live call', () => {
     expect(screen.getByText('قول الحق')).toBeInTheDocument();
   });
 
-  it('with consent + speech: the mic is the answer, replies are small chips', () => {
-    const a = view(live({ expects: 'choice', canSpeak: true, quickReplies: ['الإخلاص', 'الناس'] }));
-    fireEvent.click(screen.getByRole('button', { name: 'افتح الميكروفون' }));
-    expect(a.speakAnswer).toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'الإخلاص' }));
-    expect(a.answer).toHaveBeenCalledWith('الإخلاص');
+  it('a pure voice call: no reply buttons, no «اكتب», no text field — only the end-call ✕', () => {
+    for (const expects of ['text', 'continue', 'choice', 'repeat'] as const) {
+      const { unmount } = render(
+        <ServerLessonView
+          state={live({ expects, quickReplies: ['الأم', 'الصديق'], canSpeak: expects !== 'repeat' })}
+          actions={actions()}
+          desktop={false}
+        />,
+      );
+      expect(screen.queryByRole('textbox')).toBeNull();
+      expect(screen.queryByText('اكتب')).toBeNull();
+      expect(screen.queryByText('أكمل')).toBeNull();
+      expect(screen.queryByText('ردّدت')).toBeNull();
+      expect(screen.queryByText('الأم')).toBeNull();
+      // buttons: the ✕ and the character (a tap target, not an answer)
+      const names = screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'));
+      expect(names.sort()).toEqual(['إنهاء المكالمة', 'المعلم عبدالله'].sort());
+      unmount();
+    }
   });
 
-  it('while listening, the mic is live (no tap needed)', () => {
-    view(live({ expects: 'text', canSpeak: true, hearing: true }));
-    expect(screen.getByText('دورك… أنا أسمعك')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'افتح الميكروفون' })).toBeNull();
+  it('while listening, the mic is live; its words are for screen readers only', () => {
+    view(live({ expects: 'text', hearing: true }));
+    const label = screen.getByText('دورك… أنا أسمعك');
+    expect(label.closest('.sr-only')).not.toBeNull();
   });
 
-  it('without consent: big reply buttons, no mic', () => {
-    const a = view(live({ expects: 'choice', canSpeak: false, quickReplies: ['الأم', 'الصديق'] }));
-    expect(screen.queryByRole('button', { name: 'افتح الميكروفون' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'الأم' }));
-    expect(a.answer).toHaveBeenCalledWith('الأم');
+  it('heard the child → a short ✓ on the mic', () => {
+    const { rerender } = render(
+      <ServerLessonView state={live({ heard: 0 })} actions={actions()} desktop={false} />,
+    );
+    rerender(<ServerLessonView state={live({ heard: 1 })} actions={actions()} desktop={false} />);
+    expect(screen.getByText('سمعتك')).toBeInTheDocument();
   });
 
-  it('the text field hides behind «اكتب», only when expects is text', () => {
-    const a = view(live({ expects: 'text', quickReplies: ['تمام'] }));
-    expect(screen.queryByRole('textbox')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'اكتب' }));
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'بخير' } });
-    fireEvent.click(screen.getByRole('button', { name: 'أرسل' }));
-    expect(a.answer).toHaveBeenCalledWith('بخير');
+  it('mic blocked → the one full-screen «سماح» prompt', () => {
+    const a = view(live({ expects: 'text', micPrompt: true }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('المعلم عبدالله يريد أن يسمعك');
+    fireEvent.click(screen.getByRole('button', { name: 'سماح' }));
+    expect(a.allowTapped).toHaveBeenCalled();
   });
 
-  it('no «اكتب» on continue or choice; «أكمل» leads on continue', () => {
-    const a = view(live({ expects: 'continue', quickReplies: ['عندي سؤال'] }));
-    expect(screen.queryByRole('button', { name: 'اكتب' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'أكمل' }));
-    expect(a.continueTapped).toHaveBeenCalled();
-  });
-
-  it('repeat: the live mic with «ردّدت»', () => {
-    const a = view(live({ expects: 'repeat', repeat: 'listening' }));
-    expect(screen.getByText('دورك… ردّد وأنا أسمعك')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'ردّدت' }));
-    expect(a.repeatTapped).toHaveBeenCalled();
+  it('sound blocked → the same «سماح» prompt (to hear the teacher)', () => {
+    const a = view(live({ playbackBlocked: true, speaking: true }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('لنسمع المعلم عبدالله');
+    fireEvent.click(screen.getByRole('button', { name: 'سماح' }));
+    expect(a.allowTapped).toHaveBeenCalled();
   });
 
   it('the surah card from the verified ayat; the hadith as the built-in «قيد المراجعة» card', () => {
@@ -151,9 +151,9 @@ describe('ServerLessonView — the live call', () => {
     expect(screen.queryByRole('button', { name: 'ردّدت' })).toBeNull();
   });
 
-  it('blocked teacher voice → «اضغط لتسمع المعلّم»', () => {
-    const a = view(live({ playbackBlocked: true, speaking: true }));
-    fireEvent.click(screen.getByRole('button', { name: 'اضغط لتسمع المعلّم' }));
-    expect(a.playTapped).toHaveBeenCalled();
+  it('the lesson over: «عودة للرئيسية» (the call is done)', () => {
+    const a = view(live({ phase: 'finished' }));
+    fireEvent.click(screen.getByRole('button', { name: 'عودة للرئيسية' }));
+    expect(a.goHome).toHaveBeenCalled();
   });
 });

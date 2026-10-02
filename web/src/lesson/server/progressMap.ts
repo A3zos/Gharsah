@@ -67,6 +67,8 @@ export interface ProgressUpdate {
   readonly doneRefs: readonly string[];
   /** The server's stage index (our step_index column; 0–99). */
   readonly stepIndex: number;
+  /** The quiz was answered on-device (no words known) — «لم يُقيَّم» for the parent. */
+  readonly quizUnscored?: boolean;
 }
 
 /** Where server-lesson progress goes (Supabase in the app, a fake in tests). */

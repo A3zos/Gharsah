@@ -66,6 +66,10 @@ export function PilotPlanCard({ child }: { child: ChildProfile }) {
                   اليوم {toArabicDigits(d.day)}: سورة {d.surahName}
                 </span>
                 <span className="text-[13px] text-text-muted">{d.hadithTitle}</span>
+                {child.pilotUnscored.includes(d.lessonId) && (
+                  // answered by voice on the device only (no voice consent) — the option isn't known
+                  <span className="text-[12.5px] font-bold text-warning-text">سؤال الحديث: لم يُقيَّم</span>
+                )}
               </span>
               <span
                 className={cx(

@@ -85,6 +85,12 @@ export interface LessonTimings {
   readonly reportSilenceMs: number;
   /** …but never before this much recording. */
   readonly reportMinMs: number;
+  /**
+   * A pure voice call (the web): no «ردّدت» — after a silence one nudge, after a
+   * second silence the step completes by itself; a blocked mic → the «سماح» prompt,
+   * then listen-only (each step continues by itself). The child is never stuck.
+   */
+  readonly voiceOnly: boolean;
 }
 
 /** Recorder level (0..1) that counts as the child talking during the report. */
@@ -102,7 +108,13 @@ export const defaultLessonTimings: LessonTimings = {
   fullPassPauseMs: FULL_PASS_PAUSE_MS,
   reportSilenceMs: 3000,
   reportMinMs: 1500,
+  voiceOnly: false,
 };
+
+/** Voice-only: the «سماح» prompt waits this long, then listen-only. */
+const MIC_PROMPT_MS = 20_000;
+/** Voice-only listen-only mode: the pause after a line before the step continues. */
+const LISTEN_ONLY_PAUSE_MS = 1500;
 
 export interface LessonAgentOptions {
   script: LessonScript;
@@ -177,6 +189,10 @@ export class LessonAgent {
   // Per-step
   private nudges = 0;
   private autoReplayed = false;
+  /** Voice-only: silences at the go-ahead, mic refusals, listen-only mode. */
+  private goAheadSilences = 0;
+  private micDenials = 0;
+  private listenOnly = false;
   private recorded: RecordedAudio | undefined;
   private saving = false;
   // Stage 3 (full passes): voiced time so far in this pass, and the pause timer.
@@ -662,10 +678,15 @@ export class LessonAgent {
     this.fire(this.teacher.stopSpeaking());
     void this.listen('answer', g).then((ok) => {
       if (!ok || g !== this.gen) return;
-      // Silence: a gentle re-ask, then listen again (no timer ever moves on without the child).
+      // Silence: a gentle re-ask, then listen again. Voice-only: after a second silence
+      // the lesson moves on by itself.
       this.beatTimer = setTimeout(() => {
         if (g === this.gen && !this.paused && this.s.beat === 'hearingAnswer') {
-          this.set(copy(this.s, { manualRepeat: true }));
+          if (this.timings.voiceOnly && ++this.goAheadSilences >= 2) {
+            this.onGoAhead();
+            return;
+          }
+          if (!this.timings.voiceOnly) this.set(copy(this.s, { manualRepeat: true }));
           this.say(line('nudge.answer'), { beat: 'nudging', then: () => this.enterGoAhead() });
         }
       }, this.timings.silenceMs);
@@ -866,6 +887,23 @@ export class LessonAgent {
   }
 
   private onSilence(): void {
+    if (this.timings.voiceOnly) {
+      // One gentle nudge; silence again → the step completes by itself (never stuck).
+      if (++this.nudges >= 2) {
+        this.autoContinue();
+        return;
+      }
+      const id =
+        this.step.type === 'full_surah'
+          ? 'nudge.full'
+          : this.s.repeatsTarget - this.s.repeatsDone === 1
+            ? 'nudge.one_left'
+            : this.s.repeatsTarget - this.s.repeatsDone === 2
+              ? 'nudge.two_left'
+              : 'nudge.start';
+      this.say(line(id), { beat: 'nudging', then: () => this.enterListening() });
+      return;
+    }
     // The mic may not be hearing the child — offer «ردّدت» from now on (this step).
     if (!this.s.manualRepeat) this.set(copy(this.s, { manualRepeat: true }));
     if (this.step.type === 'full_surah') {
@@ -964,6 +1002,38 @@ export class LessonAgent {
       surahsCompleted: new Set([...this._progress.surahsCompleted, step.surah]),
     };
     this.say(line('full.done'), { beat: 'praising', happy: true, then: () => this.advanceAfterPause() });
+  }
+
+  /** Voice-only: after `ms`, the current step completes by itself (if nothing moved meanwhile). */
+  private scheduleAutoContinue(g: number, ms: number): void {
+    clearTimeout(this.beatTimer);
+    this.beatTimer = setTimeout(() => {
+      if (g === this.gen && !this.paused) this.autoContinue();
+    }, ms);
+  }
+
+  /** Voice-only: the child stayed silent (or can't be heard) — complete the step and go on. */
+  private autoContinue(): void {
+    clearTimeout(this.beatTimer);
+    this.fire(this.stopListening());
+    this.nudges = 0;
+    if (this.s.screen === 'surahDone') {
+      this.set(copy(this.s, { beat: 'hearingAnswer' }));
+      this.onGoAhead();
+      return;
+    }
+    if (this.s.screen === 'projectReport') {
+      this.reportWithoutRecording();
+      return;
+    }
+    const step = this.step;
+    if (step.type === 'full_surah') {
+      this.set(copy(this.s, { passesDone: Math.max(this.s.passesDone, step.passes - 1) }));
+      this.completePass();
+      return;
+    }
+    this.set(copy(this.s, { repeatsDone: Math.max(this.s.repeatsDone, this.s.repeatsTarget - 1) }));
+    this.countRepeat();
   }
 
   private praise(): void {
@@ -1270,14 +1340,32 @@ export class LessonAgent {
   private async listen(mode: ListenMode, g: number): Promise<boolean> {
     await delay(this.timings.echoGuardMs);
     if (g !== this.gen || this.paused) return false;
+    if (this.listenOnly) {
+      this.scheduleAutoContinue(g, LISTEN_ONLY_PAUSE_MS);
+      return false;
+    }
     try {
       await this.teacher.listen(mode);
     } catch (e) {
       if (!(e instanceof MicPermissionDenied)) throw e;
       if (g !== this.gen) return false;
-      this.enter(copy(this.s, { beat: 'awaitMic', micDenied: true, manualRepeat: true }), {
+      if (this.timings.voiceOnly && ++this.micDenials >= 2) {
+        // Still blocked after «سماح»: listen-only — each step continues by itself.
+        this.listenOnly = true;
+        this.scheduleAutoContinue(g, LISTEN_ONLY_PAUSE_MS);
+        return false;
+      }
+      const prompt = this.enter(copy(this.s, { beat: 'awaitMic', micDenied: true, manualRepeat: true }), {
         resume: () => {},
       });
+      if (this.timings.voiceOnly) {
+        // nobody taps «سماح» → listen-only, so the child is never stuck on the prompt
+        this.beatTimer = setTimeout(() => {
+          if (prompt !== this.gen || this.paused || this.s.beat !== 'awaitMic') return;
+          this.listenOnly = true;
+          this.autoContinue();
+        }, MIC_PROMPT_MS);
+      }
       return false;
     }
     if (g !== this.gen) {

@@ -131,7 +131,9 @@ export function createWebLesson(o: {
     recorder,
     sink: o.sink ?? new SupabaseProgressSink(o.session, o.script),
     // ~600 ms of quiet after a question before the mic listens (a natural pause)
-    timings: { maxRecordingMs: MAX_REPORT_MS, echoGuardMs: 600 },
+    // A pure voice call: ~6 s of silence → one nudge, again → the step continues by
+    // itself; a blocked mic → «سماح», then listen-only.
+    timings: { maxRecordingMs: MAX_REPORT_MS, echoGuardMs: 600, voiceOnly: true, silenceMs: 6000 },
     childFirstName: o.childFirstName,
     debugTapCountsRepeat: import.meta.env.DEV,
   });

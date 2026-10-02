@@ -118,15 +118,10 @@ export function ServerLessonCall({
 
   const actions: ServerLessonActions = useMemo(
     () => ({
-      answer: (t) => lesson?.answer(t),
-      continueTapped: () => lesson?.continueTapped(),
-      repeatTapped: () => lesson?.repeatTapped(),
-      speakAnswer: () => void lesson?.speakAnswer(),
-      playTapped: () => {
-        unlockLessonAudio();
-        lesson?.playTapped();
+      allowTapped: () => {
+        unlockLessonAudio(); // the tap also unlocks the sound
+        lesson?.allowTapped();
       },
-      markProjectDone: (id) => void lesson?.markProjectDone(id).catch(() => {}),
       exit: () => {
         lesson?.pause();
         setExitOpen(true);

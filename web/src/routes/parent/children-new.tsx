@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
+import { agentEnabled } from '../../lesson/server/api';
 import { AVATARS, ChildAvatar } from '../../components/child/ChildAvatar';
 import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage } from '../../components/parent/ParentShell';
@@ -44,9 +45,9 @@ import type { Route } from './+types/children-new';
 
 export const meta: Route.MetaFunction = () => [{ title: 'إضافة ابن — غَرْسة' }];
 
-const STEPS = ['البيانات', 'الجدول', 'الشخصية'];
+const STEPS = ['البيانات', 'الجدول', 'الشخصية', 'الصوت'];
 /** Each step is a URL (`?step=`) so the browser back button walks the steps. */
-const STEP_KEYS = ['data', 'schedule', 'avatar'] as const;
+const STEP_KEYS = ['data', 'schedule', 'avatar', 'voice'] as const;
 /** Where the flow was opened from — «رجوع» on the first step goes back there. */
 const ORIGINS: Record<string, string> = {
   children: paths.parent.children,
@@ -59,6 +60,7 @@ interface Draft {
   name: string;
   age: number;
   gender: Gender;
+  aiVoiceConsent: boolean;
   schedule: ChildSchedule;
   avatarId: string;
 }
@@ -102,7 +104,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
   const [params, setParams] = useSearchParams();
   const origin = ORIGINS[params.get('from') ?? ''] ?? paths.parent.children;
   const keyIndex = STEP_KEYS.indexOf((params.get('step') ?? 'data') as (typeof STEP_KEYS)[number]);
-  const step = editing ? 1 : Math.max(0, keyIndex);
+  const step = editing ? 1 : Math.min(agentEnabled() ? 3 : 2, Math.max(0, keyIndex));
   const setStep = (n: number) => {
     const next = new URLSearchParams(params);
     next.set('step', STEP_KEYS[n]!);
@@ -115,7 +117,11 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     gender: editing?.gender ?? 'girl',
     schedule: editing?.schedule ?? DEFAULT_SCHEDULE,
     avatarId: editing?.avatarId ?? 'g1',
+    aiVoiceConsent: editing?.aiVoiceConsent ?? false,
   }));
+  // Step 4 «التحدث مع المعلم بالصوت» only matters when the lesson runs on the AI teacher.
+  const steps = agentEnabled() ? STEPS : STEPS.slice(0, 3);
+  const lastStep = steps.length - 1;
   const [initial] = useState(() => JSON.stringify(draft));
   const dirty = JSON.stringify(draft) !== initial;
   const [nameError, setNameError] = useState(false);
@@ -166,6 +172,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
       if (!custom) setSchedule({ custom: {} });
       if (!editing) return setStep(2);
     }
+    if (!editing && step < lastStep) return setStep(step + 1);
     if (busy) return;
     setBusy(true);
     const schedule = custom ? draft.schedule : { ...draft.schedule, custom: {} };
@@ -193,7 +200,9 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
         ? desktop
           ? 'التالي — الشخصية'
           : 'التالي — اختيار الشخصية'
-        : 'حفظ وإنشاء رمز الربط';
+        : step < lastStep
+          ? 'التالي — الصوت'
+          : 'حفظ وإنشاء رمز الربط';
 
   // A deep link to a later step of a new child starts at the first step.
   if (!editing && step > 0 && !draft.name.trim()) {
@@ -229,7 +238,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                   : 'ثلاث خطوات: بياناته، جدوله، ثم شخصيته — وينتهي برمز الربط.'
               }
             />
-            {!editing && <StepperWide steps={STEPS} current={step} />}
+            {!editing && <StepperWide steps={steps} current={step} />}
             <div className="flex min-h-0 grow gap-[20px]">
               <section
                 aria-label="بيانات الابن"
@@ -308,6 +317,22 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                     <AvatarGrid value={draft.avatarId} onChange={(avatarId) => set({ avatarId })} compact />
                   </section>
                 )}
+                {!editing && lastStep === 3 && (
+                  <section
+                    aria-label="التحدث مع المعلم بالصوت"
+                    className={cx(
+                      'flex grow flex-col gap-[16px] rounded-px-30 bg-surface px-[32px] py-[30px] shadow-dark-14-30-5',
+                      dim(3),
+                    )}
+                  >
+                    <h2 className="m-0 font-heading text-[23px] font-bold">التحدث مع المعلم بالصوت</h2>
+                    <VoiceConsentStep
+                      name={draft.name.trim()}
+                      on={draft.aiVoiceConsent}
+                      onChange={(aiVoiceConsent) => set({ aiVoiceConsent })}
+                    />
+                  </section>
+                )}
               </div>
             </div>
             {errorLine}
@@ -350,7 +375,9 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
       ? 'إضافة ابن'
       : step === 1
         ? 'جدول التعلّم'
-        : `اختر شخصية ${draft.name.trim()}`;
+        : step === 2
+          ? `اختر شخصية ${draft.name.trim()}`
+          : 'التحدث مع المعلم بالصوت';
   return (
     <ParentPage
       tab={null}
@@ -362,11 +389,11 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
           <div className="flex items-center gap-[12px]">
             <BackButton
               onClick={back}
-              label={step === 0 || editing ? 'رجوع' : `رجوع إلى ${STEPS[step - 1]}`}
+              label={step === 0 || editing ? 'رجوع' : `رجوع إلى ${steps[step - 1]}`}
             />
             <h1 className="m-0 font-heading text-[24px] leading-[1.5] font-bold">{title}</h1>
           </div>
-          {!editing && <Stepper steps={STEPS} current={step} />}
+          {!editing && <Stepper steps={steps} current={step} />}
 
           {step === 0 && (
             <>
@@ -477,6 +504,14 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
             </>
           )}
 
+          {step === 3 && (
+            <VoiceConsentStep
+              name={draft.name.trim()}
+              on={draft.aiVoiceConsent}
+              onChange={(aiVoiceConsent) => set({ aiVoiceConsent })}
+            />
+          )}
+
           {errorLine}
           <Button className="mt-auto shrink-0" onClick={() => void next()} disabled={busy} aria-busy={busy}>
             {ctaLabel}
@@ -484,6 +519,57 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
         </div>
       }
     />
+  );
+}
+
+/**
+ * Step 4 «التحدث مع المعلم بالصوت»: the lesson is a voice call. With this on, the
+ * child's words are understood by speech recognition (Google) and the recitation
+ * goes to the AI teacher's server; off (the default), the voice never leaves the
+ * device. Saved as children.ai_voice_consent (also on the dashboard).
+ * TODO(design): no designed consent step yet.
+ */
+function VoiceConsentStep({
+  name,
+  on,
+  onChange,
+}: {
+  name: string;
+  on: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-[14px]">
+      <p className="m-0 text-[14px] leading-[1.9] text-text-dark">
+        الحصة مكالمة صوتية: يتكلّم المعلّم مع {name || 'طفلك'}، ويجيبه بصوته.
+      </p>
+      <div className="flex items-center gap-[12px] rounded-px-20 bg-background px-[16px] py-[14px]">
+        <span id="voice-consent-label" className="grow text-[15px] font-extrabold">
+          فهم كلام {name || 'طفلك'} بالصوت
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-labelledby="voice-consent-label"
+          onClick={() => onChange(!on)}
+          className={cx(
+            'flex h-[30px] w-[52px] shrink-0 cursor-pointer items-center rounded-px-15 border-0 px-[3px]',
+            on ? 'justify-end bg-primary' : 'justify-start bg-border-strong',
+          )}
+        >
+          <span className="h-[24px] w-[24px] rounded-full bg-surface" />
+        </button>
+      </div>
+      <p className="m-0 text-[13px] leading-[1.9] text-text-muted">
+        {on
+          ? 'مفعّل: يُعالَج كلام طفلك لدى Google ليفهم المعلّم إجاباته، ويُرسَل صوته أثناء ترديد الآيات إلى خادم المعلّم الذكي لتقييم التلاوة ويُحفظ هناك.'
+          : 'متوقف (الافتراضي): لا يغادر صوت طفلك جهازه — يكفي أن يتكلّم ليكمل المعلّم، دون فهم كلماته.'}
+      </p>
+      <Note tone="green" icon={<InfoGreen />}>
+        يمكنك تغيير ذلك لاحقًا من لوحة التحكم.
+      </Note>
+    </div>
   );
 }
 

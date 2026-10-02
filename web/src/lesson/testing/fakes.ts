@@ -10,7 +10,7 @@ import manifestJson from '@content/audio/quran/manifest.json';
 import metaJson from '@content/quran/quran_meta.json';
 import textJson from '@content/quran/quran_text.json';
 
-import { LessonAgent, type LessonContent } from '../agent';
+import { LessonAgent, type LessonContent, type LessonTimings } from '../agent';
 import {
   MicPermissionDenied,
   type AiTeacher,
@@ -253,6 +253,7 @@ export class Rig {
       now?: Date;
       debugTap?: boolean;
       script?: LessonScript;
+      timings?: Partial<LessonTimings>;
     } = {},
   ) {
     this.agent = new LessonAgent({
@@ -265,6 +266,7 @@ export class Rig {
       childFirstName: 'سارة',
       now: () => o.now ?? new Date(2026, 8, 24, 18),
       debugTapCountsRepeat: o.debugTap ?? false,
+      ...(o.timings ? { timings: o.timings } : {}),
       log: () => {},
     });
   }

@@ -48,7 +48,16 @@ export interface UrlPlayer {
 
 /** On-device speech presence — measured only, never stored or sent. */
 export interface PresenceListener {
-  waitForSpeech(signal: AbortSignal): Promise<'spoke' | 'silent' | 'denied'>;
+  /**
+   * Resolves 'spoke' once the child spoke for at least `minMs` (then fell quiet),
+   * 'silent' after `timeoutMs` without that, 'denied' when the mic can't open.
+   */
+  waitForSpeech(
+    signal: AbortSignal,
+    opts?: { purpose?: 'repeat' | 'answer'; minMs?: number; timeoutMs?: number },
+  ): Promise<'spoke' | 'silent' | 'denied'>;
+  /** Ask for the mic again — called inside the «سماح» tap. */
+  requestAccess?(): Promise<boolean>;
 }
 
 /** Records one utterance (consent only). Null when nothing usable was heard. */
@@ -140,6 +149,12 @@ export interface ServerLessonState {
   readonly notice: 'rateLimited' | 'restarted' | null;
   readonly repeat: 'idle' | 'listening' | 'sending';
   readonly micDenied: boolean;
+  /** The one full-screen prompt: «سماح» for the mic. */
+  readonly micPrompt: boolean;
+  /** The mic stayed blocked: the lesson continues by itself after each line. */
+  readonly listenOnly: boolean;
+  /** Counts the times the child was heard — the mic shows «I heard you». */
+  readonly heard: number;
   readonly canSpeak: boolean;
   readonly hearing: boolean;
   readonly nextSegment: TurnKind | null;
@@ -178,6 +193,9 @@ export const initialServerState: ServerLessonState = {
   notice: null,
   repeat: 'idle',
   micDenied: false,
+  micPrompt: false,
+  listenOnly: false,
+  heard: 0,
   canSpeak: false,
   hearing: false,
   nextSegment: null,
@@ -207,8 +225,35 @@ export const NAME_STAND_IN = 'بطل';
 const MAX_NAME_ANSWERS = 2;
 /** Stages before the surah is chosen — their surah_no is the server's default (1). */
 const BEFORE_SURAH = new Set(['greet', 'name', 'surah']);
-/** Automatic listening rounds after each line before the mic waits for a tap. */
-export const AUTO_LISTEN_TRIES = 2;
+/** Silence (no speech) that counts as «the child said nothing». */
+export const SILENCE_MS = 6000;
+/** Two silences: one nudge after the first, the lesson continues after the second. */
+export const SILENCES_BEFORE_CONTINUE = 2;
+/** On-device: an answer is speech of at least this long. */
+export const ANSWER_MIN_SPEECH_MS = 600;
+/** Listen-only (mic blocked): the pause after each line before moving on. */
+export const LISTEN_ONLY_PAUSE_MS = 1500;
+/** The «سماح» prompt waits this long for a tap, then listen-only. */
+export const MIC_PROMPT_MS = 20_000;
+/** Between two parts of the lesson (no «next» button). */
+export const SEGMENT_PAUSE_MS = 1500;
+/** What goes to the server when the child's words aren't known (no quick replies). */
+export const DEFAULT_ANSWER = 'تمام';
+/** Approved nudges after a silence (the teacher speaks to a boy / a girl). */
+export const NUDGE_ANSWER: Record<Gender, string> = {
+  boy: 'أنا أسمعك يا بطل، قلها بصوتك',
+  girl: 'أنا أسمعكِ يا بطلة، قوليها بصوتكِ',
+};
+export const NUDGE_REPEAT: Record<Gender, string> = {
+  boy: 'أنا أسمعك يا بطل، ردّدها بصوتك',
+  girl: 'أنا أسمعكِ يا بطلة، ردّديها بصوتكِ',
+};
+
+/** What one listening window brought: the child spoke (and maybe their words). */
+interface Heard {
+  readonly spoke: boolean;
+  readonly text: string | null;
+}
 const REPEATED_TEXT = 'ردّدت';
 
 type Segment =
@@ -240,6 +285,10 @@ export class ServerLesson {
   private reference: string | null = null;
   private segSurah: number | null = null;
   private surahAnswers = 0;
+  private listenOnly = false;
+  private speechBroken = false;
+  private quizUnscored = false;
+  private allowAnswer: ((ok: boolean) => void) | null = null;
   private unblock: (() => void) | null = null;
   private pausedByBackground = false;
 
@@ -546,41 +595,145 @@ export class ServerLesson {
     }
   }
 
-  /** Waits for the child the way `expects` asks. */
+  /**
+   * A pure voice call: after every line the mic opens by itself (no buttons, no text).
+   *   consent + recognition -> the child's real words (a choice -> the closest option)
+   *   otherwise -> on-device voice activity only (nothing recorded or sent): speech of
+   *     >=0.6 s = an answer -> the first quick reply (or «تمام»); a choice -> the first
+   *     option, marked «لم يُقيَّم» for the parent; a repeat counts by presence
+   *   silence ~6 s -> one gentle nudge; silence again -> the lesson continues by itself
+   *   mic blocked -> one «سماح» prompt; still blocked -> listen-only (auto-continue)
+   */
   private async await(turn: ServerTurn, abort: AbortController): Promise<void> {
     if (turn.expects === 'none') return this.segmentEnded();
-    const canSpeak = !!this.d.speechInput && this.d.consent && turn.expects !== 'repeat';
+    const canSpeak =
+      !!this.d.speechInput && this.d.consent && !this.speechBroken && turn.expects !== 'repeat';
     this.set({ expects: turn.expects, quickReplies: turn.quickReplies, canSpeak });
-    if (turn.expects === 'repeat') return this.listenForRepeat(abort);
-    // Like a call: the child just answers — the mic opens by itself (consent only).
-    if (canSpeak) await this.autoListen(abort);
-  }
-
-  /** Listens a couple of times after the teacher's line; then the mic waits for a tap. */
-  private async autoListen(abort: AbortController): Promise<void> {
-    for (let i = 0; i < AUTO_LISTEN_TRIES; i++) {
-      if (abort.signal.aborted || this.state.value.busy) return;
-      if (await this.listenOnce(abort)) return;
+    for (let silences = 0; ;) {
+      const heard = await this.hear(turn, abort);
+      if (heard !== 'silent') return this.respond(turn, heard);
+      silences++;
+      if (silences >= SILENCES_BEFORE_CONTINUE) return this.respond(turn, { spoke: false, text: null });
+      await this.nudge(turn, abort);
     }
   }
 
-  /** One recognition; true when it produced an answer that was sent. */
-  private async listenOnce(abort: AbortController): Promise<boolean> {
-    const input = this.d.speechInput;
-    if (!input) return false;
-    this.set({ hearing: true });
-    const text = await this.guard(abort, input.listen(abort.signal)).catch((e: unknown) => {
-      if (e instanceof Cancelled) throw e;
-      return null;
-    });
-    this.set({ hearing: false });
-    const answer = text ? this.spokenAnswer(text) : null;
-    if (!answer) return false;
-    this.answer(answer);
-    return true;
+  /** One listening window: what the child said / that they spoke, or silence. */
+  private async hear(turn: ServerTurn, abort: AbortController): Promise<Heard | 'silent'> {
+    if (this.listenOnly) {
+      // The mic stays blocked: the lesson goes on by itself after each line.
+      await this.guard(abort, this.beat(LISTEN_ONLY_PAUSE_MS));
+      return { spoke: false, text: null };
+    }
+    const repeat = turn.expects === 'repeat';
+    if (repeat) this.set({ repeat: 'listening' });
+    else this.set({ hearing: true });
+    try {
+      // With consent: the recitation goes to the server for its transcription...
+      if (repeat && this.d.consent && this.d.recorder) {
+        const blob = await this.guard(abort, this.d.recorder.record(abort.signal)).catch((e: unknown) => {
+          if (e instanceof Cancelled) throw e;
+          return null;
+        });
+        if (blob) {
+          this.set({ repeat: 'sending' });
+          const toB64 = this.d.blobToBase64 ?? blobToBase64;
+          const score = await this.guard(
+            abort,
+            toB64(blob).then((b) => this.d.api.scoreRecitation(this.turn!.sessionId, b)),
+          ).catch((e: unknown) => {
+            if (e instanceof Cancelled) throw e;
+            return { available: false, transcription: null };
+          });
+          return { spoke: true, text: score.available ? score.transcription : null };
+        }
+        if (abort.signal.aborted) throw new Cancelled();
+      }
+      // ...and the child's words go to speech recognition.
+      if (!repeat && this.d.consent && this.d.speechInput && !this.speechBroken) {
+        const text = await this.guard(abort, this.d.speechInput.listen(abort.signal)).catch((e: unknown) => {
+          if (e instanceof Cancelled) throw e;
+          this.speechBroken = true; // unsupported / blocked -> on-device presence from now on
+          return undefined;
+        });
+        if (text) return { spoke: true, text };
+        if (text === null) return 'silent';
+      }
+      // On-device voice activity only — measured, never recorded or sent.
+      const r = await this.guard(
+        abort,
+        this.d.presence.waitForSpeech(abort.signal, {
+          purpose: repeat ? 'repeat' : 'answer',
+          minMs: repeat ? undefined : ANSWER_MIN_SPEECH_MS,
+          timeoutMs: SILENCE_MS,
+        }),
+      );
+      if (r === 'spoke') return { spoke: true, text: null };
+      if (r === 'silent') return 'silent';
+      return (await this.micBlocked(abort)) ? this.hear(turn, abort) : { spoke: false, text: null };
+    } finally {
+      if (!abort.signal.aborted) this.set({ hearing: false, repeat: 'idle' });
+    }
   }
 
-  /** A spoken answer: a choice must match one of the buttons; free answers go as said. */
+  /** The child answered (or the lesson moves on without them): what goes to the server. */
+  private respond(turn: ServerTurn, h: Heard): Promise<void> {
+    if (h.spoke) this.set({ heard: this.state.value.heard + 1 }); // «I heard you» on the mic
+    if (turn.expects === 'repeat') {
+      if (h.spoke) this.cheer();
+      return this.send(h.text?.trim() || this.repeatText());
+    }
+    const first = turn.quickReplies[0];
+    if (turn.expects === 'choice') {
+      const match = h.text ? closestReply(h.text, turn.quickReplies) : null;
+      if (match) return this.send(match);
+      // On-device we can't know which option was said: the first one, not scored.
+      this.quizUnscored = true;
+      return this.send(first ?? DEFAULT_ANSWER);
+    }
+    if (h.text) return this.send(this.spokenAnswer(h.text) ?? h.text.trim());
+    return this.send(first ?? DEFAULT_ANSWER);
+  }
+
+  /** One gentle nudge after a silence (an approved line, in the teacher's voice). */
+  private async nudge(turn: ServerTurn, abort: AbortController): Promise<void> {
+    const text = turn.expects === 'repeat' ? NUDGE_REPEAT[this.d.gender] : NUDGE_ANSWER[this.d.gender];
+    await this.say(text, abort);
+    await this.guard(abort, this.beat(QUESTION_PAUSE_MS));
+  }
+
+  /** The mic is blocked: the one «سماح» prompt. True -> the mic works now. */
+  private async micBlocked(abort: AbortController): Promise<boolean> {
+    if (this.listenOnly) return false;
+    this.set({ micDenied: true, micPrompt: true, hearing: false, repeat: 'idle' });
+    const allowed = await this.guard(
+      abort,
+      new Promise<boolean>((resolve) => {
+        this.allowAnswer = resolve;
+        setTimeout(() => resolve(false), MIC_PROMPT_MS); // never stuck on the prompt
+      }),
+    ).finally(() => (this.allowAnswer = null));
+    this.set({ micPrompt: false });
+    if (allowed) {
+      this.set({ micDenied: false });
+      return true;
+    }
+    this.listenOnly = true;
+    this.set({ listenOnly: true });
+    return false;
+  }
+
+  /** «سماح» on the prompt: ask for the mic again (inside the tap). */
+  allowTapped(): void {
+    if (this.state.value.micPrompt) {
+      const ask = this.d.presence.requestAccess?.() ?? Promise.resolve(false);
+      void ask.then((ok) => this.allowAnswer?.(ok));
+      return;
+    }
+    if (this.state.value.playbackBlocked) this.playTapped();
+  }
+
+  /** The child's words: a free answer goes as said (or its matching quick reply). */
   private spokenAnswer(text: string): string | null {
     const s = this.state.value;
     const said = normalizeArabic(text);
@@ -589,45 +742,7 @@ export class ServerLesson {
       const n = normalizeArabic(q);
       return n && (said.includes(n) || n.includes(said));
     });
-    if (s.expects === 'choice') return match ?? null;
     return match ?? text.trim();
-  }
-
-  private async listenForRepeat(abort: AbortController): Promise<void> {
-    this.set({ repeat: 'listening' });
-    if (this.d.consent && this.d.recorder) {
-      const blob = await this.guard(abort, this.d.recorder.record(abort.signal)).catch((e: unknown) => {
-        if (e instanceof Cancelled) throw e;
-        return null;
-      });
-      if (blob) {
-        this.set({ repeat: 'sending' });
-        const toB64 = this.d.blobToBase64 ?? blobToBase64;
-        const score = await this.guard(
-          abort,
-          toB64(blob).then((b) => this.d.api.scoreRecitation(this.turn!.sessionId, b)),
-        ).catch((e: unknown) => {
-          if (e instanceof Cancelled) throw e;
-          return { available: false, transcription: null };
-        });
-        // Groq's transcription as the child's answer; else the presence-only path below.
-        this.cheer();
-        return this.send(score.available && score.transcription ? score.transcription : this.repeatText());
-      }
-      if (abort.signal.aborted) throw new Cancelled();
-    }
-    // On-device presence only (nothing stored or sent). «ردّدت» also works any time.
-    for (;;) {
-      const heard = await this.guard(abort, this.d.presence.waitForSpeech(abort.signal));
-      if (heard === 'spoke') {
-        this.cheer();
-        return this.send(this.repeatText());
-      }
-      if (heard === 'denied') {
-        this.set({ micDenied: true });
-        return; // only «ردّدت» now
-      }
-    }
   }
 
   private cheer(): void {
@@ -644,11 +759,13 @@ export class ServerLesson {
     const next = this.segments[this.segIndex + 1];
     if (next) {
       this.set({ phase: 'segmentDone', nextSegment: next.kind });
+      // a voice call: no «next» button — the next part starts by itself after a pause
+      const abort = this.turnAbort;
+      await (abort ? this.guard(abort, this.beat(SEGMENT_PAUSE_MS)) : this.beat(SEGMENT_PAUSE_MS));
+      if (this.state.value.phase === 'segmentDone' && !this.state.value.paused) this.continueTapped();
       return;
     }
     this.set({ phase: 'finished' });
-    const projects = await this.d.api.actionItems(this.d.deviceId).catch(() => []);
-    this.set({ projects });
   }
 
   // ── progress ──
@@ -666,6 +783,7 @@ export class ServerLesson {
       // Where the built-in lesson would resume: the start, the hadith, or the end.
       stepIndex: stage === 'done' ? plan.lastStepIndex : stage === 'hadith' ? plan.hadithStepIndex : 0,
       doneRefs: doneRefsOf(turn, stage, plan.surahNo, this.d.ayahCount),
+      ...(this.quizUnscored && turn.kind === 'hadith' ? { quizUnscored: true } : {}),
     };
     void this.d.sink.record(update).then(
       () => this.state.value.saveFailed && this.set({ saveFailed: false }),
@@ -706,19 +824,11 @@ export class ServerLesson {
     if (s.expects === 'continue') this.answer(CONTINUE_TEXT);
   }
 
-  /** «ردّدت» — one repeat without the mic (or without consent). */
+  /** A tap fallback kept for tests and old callers: one repeat without the mic. */
   repeatTapped(): void {
     if (this.state.value.expects !== 'repeat' || this.state.value.busy) return;
     this.cheer();
     void this.send(this.repeatText());
-  }
-
-  /** The mic button on text/continue — the browser's recognition (consent only). */
-  async speakAnswer(): Promise<void> {
-    const s = this.state.value;
-    const abort = this.turnAbort;
-    if (!s.canSpeak || !abort || s.busy || s.hearing || !s.expects) return;
-    await this.listenOnce(abort).catch(() => {});
   }
 
   /** A section in the stages bar (only ones already reached). */
@@ -834,4 +944,33 @@ export function normalizeArabic(t: string): string {
 function hadithTitleOf(turn: ServerTurn): string | null {
   for (const a of turn.actions) if (a.type === 'show_ayat' && a.hadithTitle) return a.hadithTitle;
   return turn.hadithTitle;
+}
+
+/**
+ * The spoken words -> the closest quick reply (a quiz option): the option sharing
+ * most words with what was said; null when nothing matches at all.
+ */
+export function closestReply(said: string, replies: readonly string[]): string | null {
+  const words = new Set(
+    normalizeArabic(said)
+      .split(' ')
+      .map((w) => w.replace(/^(و|ال|وال)/, ''))
+      .filter((w) => w.length >= 2),
+  );
+  let best: string | null = null;
+  let bestScore = 0;
+  for (const r of replies) {
+    const n = normalizeArabic(r);
+    const rw = n
+      .split(' ')
+      .map((w) => w.replace(/^(و|ال|وال)/, ''))
+      .filter((w) => w.length >= 2);
+    let score = rw.filter((w) => [...words].some((x) => x.includes(w) || w.includes(x))).length;
+    if (n && normalizeArabic(said).includes(n)) score += 2;
+    if (score > bestScore) {
+      bestScore = score;
+      best = r;
+    }
+  }
+  return best;
 }

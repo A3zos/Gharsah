@@ -22,7 +22,8 @@ export const CAPTION_CHARS = 140;
 /** Quiet between the teacher's sentences. */
 export const LINE_GAP_MS = 350;
 /** Silence before a repeat window gives up and listens again (the «ردّدت» stays offered). */
-const LISTEN_WINDOW_MS = 25_000;
+/** Silence before a listening window gives up (the lesson then nudges / continues). */
+const LISTEN_WINDOW_MS = 6000;
 const MAX_RECITATION_MS = 20_000;
 const ECHO_GUARD_MS = 300;
 
@@ -256,7 +257,20 @@ export class HtmlUrlPlayer implements UrlPlayer {
 export class MicPresenceListener implements PresenceListener {
   constructor(private readonly mic: LessonMicrophone) {}
 
-  async waitForSpeech(signal: AbortSignal): Promise<'spoke' | 'silent' | 'denied'> {
+  /** Ask for the mic again (inside the «سماح» tap). */
+  async requestAccess(): Promise<boolean> {
+    try {
+      await this.mic.open();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async waitForSpeech(
+    signal: AbortSignal,
+    opts: { minMs?: number; timeoutMs?: number } = {},
+  ): Promise<'spoke' | 'silent' | 'denied'> {
     try {
       await this.mic.open();
     } catch {
@@ -275,11 +289,13 @@ export class MicPresenceListener implements PresenceListener {
       const onAbort = () => finish('silent');
       const detector = new PresenceDetector({
         sampleRate: this.mic.sampleRate,
-        onSpeechStart: () => {},
+        // the child started speaking: no «silence» while they talk
+        onSpeechStart: () => clearTimeout(timer),
         onUtterance: () => finish('spoke'),
+        ...(opts.minMs ? { minUtteranceMs: opts.minMs } : {}),
       });
       stop = this.mic.sample((frame, rate) => detector.addSamples(frame, rate));
-      const timer = setTimeout(() => finish('silent'), LISTEN_WINDOW_MS);
+      const timer = setTimeout(() => finish('silent'), opts.timeoutMs ?? LISTEN_WINDOW_MS);
       signal.addEventListener('abort', onAbort, { once: true });
     });
   }
@@ -343,7 +359,7 @@ interface RecognitionLike {
   interimResults: boolean;
   maxAlternatives: number;
   onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((e?: { error?: string }) => void) | null;
   onend: (() => void) | null;
   start(): void;
   abort(): void;
@@ -363,7 +379,7 @@ export class BrowserSpeechInput implements SpeechInput {
   private constructor(private readonly Ctor: new () => RecognitionLike) {}
 
   listen(signal: AbortSignal): Promise<string | null> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const r = new this.Ctor();
       r.lang = 'ar-SA';
       r.interimResults = false;
@@ -372,13 +388,18 @@ export class BrowserSpeechInput implements SpeechInput {
       r.onresult = (e) => {
         text = e.results[0]?.[0]?.transcript?.trim() || null;
       };
-      r.onerror = () => {};
-      r.onend = () => resolve(text);
+      let failed = false;
+      // «no-speech» = silence (null); a blocked / unavailable service = a failure
+      // (rejects → the lesson uses on-device presence from then on)
+      r.onerror = (e?: { error?: string }) => {
+        if (e?.error && e.error !== 'no-speech' && e.error !== 'aborted') failed = true;
+      };
+      r.onend = () => (failed ? reject(new Error('speech recognition unavailable')) : resolve(text));
       signal.addEventListener('abort', () => r.abort(), { once: true });
       try {
         r.start();
       } catch {
-        resolve(null);
+        reject(new Error('speech recognition unavailable'));
       }
     });
   }

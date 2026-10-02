@@ -11,6 +11,7 @@ interface Known {
   stage: ProgressStage;
   refs: Set<string>;
   exists: boolean;
+  quizUnscored: boolean;
 }
 
 export class SupabaseServerProgressSink implements ServerProgressSink {
@@ -43,13 +44,21 @@ export class SupabaseServerProgressSink implements ServerProgressSink {
         stage: row?.stage ?? 'listen_full',
         refs: new Set(row?.done_refs ?? []),
         exists: !!row,
+        quizUnscored: false,
       };
       this.known.set(u.lessonId, k);
     }
     const stage = maxStage(k.stage, u.stage);
     const refs = new Set([...k.refs, ...u.doneRefs]);
-    if (k.exists && stageRank(stage) === stageRank(k.stage) && refs.size === k.refs.size) return;
-    const flow = { stage, step_index: Math.min(99, Math.max(0, u.stepIndex)), done_refs: [...refs] };
+    const unscored = !!u.quizUnscored && !k.quizUnscored;
+    if (k.exists && stageRank(stage) === stageRank(k.stage) && refs.size === k.refs.size && !unscored) return;
+    const flow = {
+      stage,
+      step_index: Math.min(99, Math.max(0, u.stepIndex)),
+      done_refs: [...refs],
+      // the quiz answered on the device (no words known) → «لم يُقيَّم» for the parent
+      ...(unscored ? { quiz_unscored: true } : {}),
+    };
     if (!k.exists) {
       const { error } = await db
         .from('progress')
@@ -60,6 +69,7 @@ export class SupabaseServerProgressSink implements ServerProgressSink {
       if (!error) {
         k.stage = stage;
         k.refs = refs;
+        k.quizUnscored ||= unscored;
         return;
       }
     }
@@ -76,5 +86,6 @@ export class SupabaseServerProgressSink implements ServerProgressSink {
     if (error) throw error;
     k.stage = stage;
     k.refs = refs;
+    k.quizUnscored ||= unscored;
   }
 }

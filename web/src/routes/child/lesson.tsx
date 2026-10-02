@@ -22,6 +22,7 @@ import { initialLessonState, type LessonProgress, type LessonState } from '../..
 import { PreviewProgressSink } from '../../dev/childPreview';
 import { agentBaseUrl, SPEAK_WARM_TIMEOUT_MS } from '../../lesson/server/api';
 import { preloadTeacher } from '../../components/child/teacherCharacter';
+import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
 import { createWebLesson, type WebLesson } from '../../lesson/web/createLesson';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { DESKTOP, useMedia } from '../../lib/useMedia';
@@ -247,10 +248,16 @@ function LessonCall({
   const actions: LessonActions = useMemo(
     () => ({
       tapTeacher: () => agent?.tapTeacher(),
-      micTap: () => agent?.micTap(),
+      micTap: () => {
+        unlockLessonAudio(); // «سماح» is a tap: it also unlocks the sound
+        agent?.micTap();
+      },
       continueTapped: () => agent?.continueTapped(),
       replayAyah: () => agent?.replayAyah(),
-      play: () => agent?.play(),
+      play: () => {
+        unlockLessonAudio();
+        agent?.play();
+      },
       reRecord: () => agent?.reRecord(),
       repeatTapped: () => agent?.repeatTapped(),
       exit: () => {

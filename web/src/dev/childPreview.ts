@@ -38,6 +38,7 @@ export const previewChild: ChildProfile = {
   leader: null,
   aiVoiceConsent: false,
   pilotDaysDone: 0,
+  pilotUnscored: [],
   schedule: {
     days: ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'],
     time: 17 * 60,

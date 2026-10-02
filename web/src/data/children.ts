@@ -51,6 +51,8 @@ export interface ChildDraft {
   gender: Gender;
   schedule: ChildSchedule;
   avatarId: string;
+  /** «التحدث مع المعلم بالصوت» (add-child step 4) — off by default. */
+  aiVoiceConsent?: boolean;
 }
 
 export interface PairingInfo {
@@ -80,6 +82,8 @@ export interface ChildProfile {
   aiVoiceConsent: boolean;
   /** Pilot plan days finished (0–3), from the `progress` rows (parent views). */
   pilotDaysDone: number;
+  /** Pilot days whose quiz was answered on the device only — «لم يُقيَّم» (parent views). */
+  pilotUnscored: readonly string[];
 }
 
 // Days are stored as integers 0 = السبت … 6 = الجمعة (WEEK_DAYS order).
@@ -144,7 +148,7 @@ const date = (v: unknown): Date | null => (typeof v === 'string' ? new Date(v) :
 
 export function childFromRow(
   r: Row,
-  extra: { pairing?: Row | null; stats?: Row | null; pilotDaysDone?: number } = {},
+  extra: { pairing?: Row | null; stats?: Row | null; pilotDaysDone?: number; pilotUnscored?: string[] } = {},
 ): ChildProfile {
   const p = extra.pairing;
   return {
@@ -164,11 +168,23 @@ export function childFromRow(
     schedule: scheduleFromRow(r),
     aiVoiceConsent: r.ai_voice_consent === true,
     pilotDaysDone: extra.pilotDaysDone ?? 0,
+    pilotUnscored: extra.pilotUnscored ?? [],
   };
 }
 
 export const CHILD_COLUMNS =
   'id, name, age, gender, avatar, schedule_days, schedule_time, schedule_custom, session_duration, reminder, review_days, ai_voice_consent, created_at';
+
+/** The child's pilot-day rows (works before the quiz_unscored migration too). */
+async function pilotRows(childId: string): Promise<Row[]> {
+  const db = supabase();
+  const q = (cols: string) =>
+    db.from('progress').select(cols).eq('child_id', childId).like('lesson_id', 'pilot-day-%');
+  const full = await q('lesson_id, stage, quiz_unscored');
+  if (!full.error) return (full.data ?? []) as unknown as Row[];
+  const basic = await q('lesson_id, stage');
+  return (basic.data ?? []) as unknown as Row[];
+}
 
 async function withServerFields(rows: Row[]): Promise<ChildProfile[]> {
   const db = supabase();
@@ -177,17 +193,13 @@ async function withServerFields(rows: Row[]): Promise<ChildProfile[]> {
       const [pairing, stats, pilot] = await Promise.all([
         db.rpc('child_pairing', { p_child: r.id }),
         db.rpc('child_stats', { c: r.id }),
-        db
-          .from('progress')
-          .select('lesson_id')
-          .eq('child_id', r.id)
-          .like('lesson_id', 'pilot-day-%')
-          .eq('stage', 'done'),
+        pilotRows(String(r.id)),
       ]);
       return childFromRow(r, {
         pairing: (pairing.data as Row | null) ?? null,
         stats: (stats.data as Row | null) ?? null,
-        pilotDaysDone: pilot.data?.length ?? 0,
+        pilotDaysDone: pilot.filter((p) => p.stage === 'done').length,
+        pilotUnscored: pilot.filter((p) => p.quiz_unscored === true).map((p) => String(p.lesson_id)),
       });
     }),
   );
@@ -259,6 +271,7 @@ export async function addChild(draft: ChildDraft): Promise<{ id: string; pairing
       gender: draft.gender,
       avatar: draft.avatarId,
       ...scheduleToRow(draft.schedule),
+      ...(draft.aiVoiceConsent ? { ai_voice_consent: true } : {}),
     })
     .select('id')
     .single();
