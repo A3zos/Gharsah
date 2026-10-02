@@ -10,8 +10,8 @@ import { C } from '../ui/color';
 import { BookIcon, CodeIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
 import { StoreBadges } from '../ui/StoreBadges';
-import { PLANS, PRICE } from '../../content/plans';
-import { ComingSoonPlan, DashboardPreview, PhoneMock, PilotOffer, SourceIcons } from './shared';
+import { DashboardPreview, PhoneMock, SourceIcons } from './shared';
+import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
 
 const MENU = [
   ['#m-how', 'كيف تعمل'],
@@ -249,27 +249,13 @@ export function LandingMobile() {
 
         <section
           id="m-plans"
-          className="mx-auto flex w-full max-w-[560px] scroll-mt-[80px] flex-col gap-[16px] px-[20px] py-[40px]"
+          className="mx-auto flex w-full max-w-[560px] scroll-mt-[80px] flex-col gap-[24px] px-[20px] py-[40px] min-[900px]:max-w-[1176px]"
         >
           <h2 className="m-0 text-center font-heading text-[27px] font-bold">الباقات</h2>
           <p className="m-0 mb-[4px] text-center text-[14px] text-text-muted">
             ابدأ بالباقة التجريبية — الباقتان الشهرية والسنوية قريبًا
           </p>
-          <PilotOffer compact />
-          <ComingSoonPlan
-            compact
-            title="الباقة الشهرية"
-            price={PRICE.monthly}
-            per="ريال / شهر"
-            items={PLANS.monthly}
-          />
-          <ComingSoonPlan
-            compact
-            title="الباقة السنوية"
-            price={PRICE.annual}
-            per="ريال / سنة"
-            items={PLANS.annual}
-          />
+          <PlanCards pilotAction={<PilotSignupLink />} />
           <div
             id="m-get-app"
             className="flex flex-col gap-[13px] rounded-px-24 border-[1.5px] border-border bg-surface p-[18px]"

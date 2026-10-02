@@ -5,8 +5,8 @@ import { paths } from '../../app/paths';
 import { buttonClass } from '../ui/Button';
 import { BookIcon, CheckIcon, CodeIcon, ForwardIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
-import { PLANS, PRICE } from '../../content/plans';
-import { ComingSoonPlan, DashboardPreview, PhoneMock, PilotOffer, SourceIcons } from './shared';
+import { DashboardPreview, PhoneMock, SourceIcons } from './shared';
+import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
 import { StoreBadges } from '../ui/StoreBadges';
 
 const COL = 'mx-auto w-full max-w-[1200px] px-[24px] min-[1248px]:px-0';
@@ -264,23 +264,7 @@ export function LandingDesktop() {
                   ابدأ بالباقة التجريبية — الباقتان الشهرية والسنوية قريبًا
                 </p>
               </div>
-              <div className="flex w-full max-w-[862px] flex-col gap-[30px]">
-                <PilotOffer />
-                <div className="flex items-stretch gap-[22px]">
-                  <ComingSoonPlan
-                    title="الباقة الشهرية"
-                    price={PRICE.monthly}
-                    per="ريال / شهر"
-                    items={PLANS.monthly}
-                  />
-                  <ComingSoonPlan
-                    title="الباقة السنوية"
-                    price={PRICE.annual}
-                    per="ريال / سنة"
-                    items={PLANS.annual}
-                  />
-                </div>
-              </div>
+              <PlanCards pilotAction={<PilotSignupLink />} />
               <div
                 id="get-app"
                 className="flex w-full items-center gap-[24px] rounded-px-28 border-[1.5px] border-border bg-background px-[32px] py-[24px]"

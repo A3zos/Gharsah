@@ -28,10 +28,10 @@ import { AuthFailure } from '../../data/authFailure';
 import { childrenCount } from '../../data/stats';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { hijriDate, hijriDayMonth } from '../../lib/dates';
-import { ComingSoonPlan, PlanList } from '../../components/landing/shared';
-import { maxChildren, PLANS, PRICE } from '../../content/plans';
-import { PILOT_CTA, PILOT_DAYS, PILOT_ITEMS, PILOT_NAME, PILOT_PRICE } from '../../content/pilot';
-import { cx } from '../../lib/cx';
+import { PlanCards } from '../../components/plans/PlanCards';
+import { PILOT_BUTTON } from '../../components/plans/pilotButton';
+import { maxChildren } from '../../content/plans';
+import { PILOT_CTA, PILOT_ITEMS, PILOT_NAME, PILOT_PRICE } from '../../content/pilot';
 import type { Route } from './+types/plans';
 
 export const meta: Route.MetaFunction = () => [{ title: 'الباقات — غَرْسة' }];
@@ -95,13 +95,7 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
           </a>
         </div>
       )}
-      <div className="max-w-[560px]">
-        <PilotCard current={!!sub} large />
-      </div>
-      <div className="flex max-w-[862px] items-stretch gap-[22px] pt-[6px]">
-        <ComingSoonPlan title="الباقة الشهرية" price={PRICE.monthly} per="ريال / شهر" items={PLANS.monthly} />
-        <ComingSoonPlan title="الباقة السنوية" price={PRICE.annual} per="ريال / سنة" items={PLANS.annual} />
-      </div>
+      <PlanCards pilotAction={<PilotAction current={!!sub} />} />
       <div className="flex grow items-end gap-[20px]">
         <Link
           to={paths.parent.children}
@@ -181,21 +175,7 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
         </div>
       )}
 
-      <PilotCard current={!!current} />
-      <ComingSoonPlan
-        compact
-        title="الباقة الشهرية"
-        price={PRICE.monthly}
-        per="ريال / شهر"
-        items={PLANS.monthly}
-      />
-      <ComingSoonPlan
-        compact
-        title="الباقة السنوية"
-        price={PRICE.annual}
-        per="ريال / سنة"
-        items={PLANS.annual}
-      />
+      <PlanCards pilotAction={<PilotAction current={!!current} />} />
 
       <Link
         to={paths.parent.addChildFrom('plans')}
@@ -267,55 +247,14 @@ function LimitBanner({ max }: { max: number }) {
   );
 }
 
-/** «الباقة التجريبية»: the three pilot days — 3 surahs, 3 hadiths, one lesson a day. */
-function PilotCard({ current, large }: { current: boolean; large?: boolean }) {
+/** The pilot card's button: «باقتك الحالية» when on it, else «ابدأ مجانًا» (free — no payment). */
+function PilotAction({ current }: { current: boolean }) {
+  if (current) return <CurrentChip />;
   return (
-    <div
-      className={cx(
-        'relative flex flex-col gap-[15px] rounded-px-28 border-[2.5px] border-primary bg-surface shadow-lesson-done-card',
-        large ? 'px-[32px] pt-[30px] pb-[26px]' : 'px-[20px] pt-[26px] pb-[20px]',
-      )}
-    >
-      <h2 className={cx('m-0 font-heading leading-[1.4] font-bold', large ? 'text-[25px]' : 'text-[22px]')}>
-        {PILOT_NAME}
-      </h2>
-      {/* The price spot: the pilot is free. */}
-      <span
-        className={cx(
-          'font-heading leading-[1] font-extrabold text-deep-green',
-          large ? 'text-[58px]' : 'text-[46px]',
-        )}
-      >
-        {PILOT_PRICE}
-      </span>
-      <span className="self-start rounded-pill bg-gold-tint px-[13px] py-[7px] text-[13px] font-bold text-warning-text">
-        {toArabicDigits(PILOT_DAYS.length)} أيام — يومًا بعد يوم، بالترتيب
-      </span>
-      <span className="h-[1px] bg-border" />
-      <PlanList items={PILOT_ITEMS} text={large ? 'text-[15px]' : 'text-[14.5px]'} />
-      <ol className="m-0 flex flex-col gap-[6px] ps-[20px] text-[13.5px] leading-[1.7] text-text-muted">
-        {PILOT_DAYS.map((d) => (
-          <li key={d.lessonId}>
-            اليوم {toArabicDigits(d.day)}: سورة {d.surahName} + {d.hadithTitle}
-          </li>
-        ))}
-      </ol>
-      {current ? (
-        <CurrentChip />
-      ) : (
-        <SubscribeButton
-          plan="trial"
-          className={buttonClass(
-            'primary',
-            'custom',
-            'h-[56px] gap-[9px] rounded-px-19 font-heading text-[18px] font-bold',
-          )}
-        >
-          {PILOT_CTA}
-          <ForwardIcon size={20} />
-        </SubscribeButton>
-      )}
-    </div>
+    <SubscribeButton plan="trial" className={PILOT_BUTTON}>
+      {PILOT_CTA}
+      <ForwardIcon size={20} />
+    </SubscribeButton>
   );
 }
 
