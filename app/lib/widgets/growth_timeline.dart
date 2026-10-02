@@ -6,17 +6,25 @@ import 'app_icons.dart';
 /// Seed → sprout → tree strip (frames 02 and 12), driven by yearly-plan
 /// [progress] 0–100 exactly as in the design: بذرة 0–33, غَرْسة 34–66,
 /// شجرة 67–100. The current stage gets a ring and a pulse; later stages are
-/// greyed. Nodes pop in, then the connectors draw in.
+/// greyed. Nodes pop in, then the connectors draw in. [treeAt] moves the
+/// tree threshold: the parent dashboard measures the CURRENT plan, where شجرة
+/// is the whole plan (100).
 ///
 /// Layout follows the approved PNG/HTML (`direction: ltr`): seed on the LEFT.
 class GrowthTimeline extends StatefulWidget {
-  const GrowthTimeline({super.key, this.progress = 100, this.topPadding = 4});
+  const GrowthTimeline({
+    super.key,
+    this.progress = 100,
+    this.topPadding = 4,
+    this.treeAt = 67,
+  });
 
   final int progress;
   final double topPadding;
+  final int treeAt;
 
-  static int stageOf(int progress) =>
-      progress < 34 ? 0 : (progress < 67 ? 1 : 2);
+  static int stageOf(int progress, {int treeAt = 67}) =>
+      progress < 34 ? 0 : (progress < treeAt ? 1 : 2);
 
   @override
   State<GrowthTimeline> createState() => _GrowthTimelineState();
@@ -71,9 +79,9 @@ class _GrowthTimelineState extends State<GrowthTimeline>
   @override
   Widget build(BuildContext context) {
     final p = widget.progress.clamp(0, 100);
-    final stage = GrowthTimeline.stageOf(p);
+    final stage = GrowthTimeline.stageOf(p, treeAt: widget.treeAt);
     final seg1 = (p / 34).clamp(0.0, 1.0);
-    final seg2 = ((p - 34) / 33).clamp(0.0, 1.0);
+    final seg2 = ((p - 34) / (widget.treeAt - 34)).clamp(0.0, 1.0);
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Padding(

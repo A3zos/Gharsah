@@ -9,9 +9,8 @@ import { buttonClass } from '../../components/ui/Button';
 import { C } from '../../components/ui/color';
 import { CheckIcon, ClockIcon, ForwardIcon, PlusIcon } from '../../components/ui/icons';
 import { pairingActive, removeChild, type ChildProfile } from '../../data/children';
-import { PlanBar, PlanTimeline, StageBadge } from '../../components/parent/PlanTimeline';
-import { planProgress } from '../../data/planProgress';
-import { ageLabel, childrenCount, headline } from '../../data/stats';
+import { planProgress, planSentence } from '../../data/planProgress';
+import { ageLabel, childrenCount, headline, STAGE_LABEL } from '../../data/stats';
 import { PILOT_PRICE } from '../../content/pilot';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
@@ -113,12 +112,26 @@ function Desktop({ kids }: { kids: ChildProfile[] | null }) {
                 <StatusPill linked={c.linked} />
               </div>
               <div className="flex flex-col gap-[8px]">
-                <span className="flex items-center gap-[8px] text-[13px] font-bold text-text-muted">
-                  {plan.plan.name} · {PILOT_PRICE}
-                  <StageBadge stage={plan.stage} />
-                </span>
-                <PlanTimeline progress={plan} unscored={c.pilotUnscored} compact />
-                <PlanBar progress={plan} />
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[13px] font-bold text-text-muted">
+                    {plan.plan.name} · {PILOT_PRICE} — المرحلة:{' '}
+                    <span className="text-deep-green">{STAGE_LABEL[plan.stage]}</span>
+                  </span>
+                  <span className="font-heading text-[16px] font-extrabold text-deep-green">
+                    {toArabicDigits(plan.pct)}٪
+                  </span>
+                </div>
+                <div
+                  className="h-[9px] overflow-hidden rounded-px-5 bg-border-soft"
+                  role="progressbar"
+                  aria-valuenow={plan.pct}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`من ${plan.plan.name}`}
+                >
+                  <span className="block h-[9px] rounded-px-5 bg-primary" style={{ width: `${plan.pct}%` }} />
+                </div>
+                <span className="text-[12.5px] font-bold text-text-muted">{planSentence(plan)}</span>
               </div>
               <div className="flex gap-[10px]">
                 {(

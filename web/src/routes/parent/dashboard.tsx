@@ -3,7 +3,8 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { ChildAvatar } from '../../components/child/ChildAvatar';
-import { PlanTimeline, StageBadge } from '../../components/parent/PlanTimeline';
+import { GrowthPath } from '../../components/child/GrowthPath';
+import { GrowthHero } from '../../components/parent/GrowthHero';
 import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage, SettingsButton } from '../../components/parent/ParentShell';
 import { projectTitle, Recordings } from '../../components/parent/Recordings';
@@ -11,8 +12,8 @@ import { C } from '../../components/ui/color';
 import { ForwardIcon, PlusIcon } from '../../components/ui/icons';
 import { projectValue } from '../../content/library';
 import { reviewDayNames, type ChildProfile } from '../../data/children';
-import { planProgress, planSubtitle } from '../../data/planProgress';
-import { ageLabel, headline, STAGE_LABEL, type Headline } from '../../data/stats';
+import { planProgress, planSentence, planSubtitle } from '../../data/planProgress';
+import { ageLabel, headline, pilotChip, STAGE_LABEL, type Headline } from '../../data/stats';
 import { watchSubmissions, type ProjectSubmission } from '../../data/submissions';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
@@ -254,10 +255,7 @@ function Desktop({
           <div className="flex items-center gap-[16px]">
             <ChildAvatar id={child.avatarId} size={58} className="rounded-px-20" />
             <span className="flex grow flex-col gap-[4px]">
-              <span className="flex items-center gap-[10px]">
-                <h2 className="m-0 font-heading text-[24px] font-bold">{child.name}</h2>
-                <StageBadge stage={plan.stage} />
-              </span>
+              <h2 className="m-0 font-heading text-[24px] font-bold">{child.name}</h2>
               <span className="text-[13.5px] text-text-muted">{planSubtitle(ageLabel(child.age), plan)}</span>
             </span>
             {h.streak > 0 && (
@@ -267,7 +265,9 @@ function Desktop({
             )}
           </div>
           <div className="h-[1px] bg-border" />
-          <PlanTimeline progress={plan} unscored={child.pilotUnscored} />
+          {/* the stages by the CURRENT plan's %: بذرة 0–33, غَرْسة 34–99, شجرة 100 */}
+          <GrowthPath stage={plan.stage} pct={plan.pct} size={74} />
+          <span className="text-[13.5px] font-bold text-text-muted">{planSentence(plan)}</span>
         </section>
         {pending && (
           <section
@@ -397,7 +397,7 @@ function Mobile({
           })}
         </nav>
       )}
-      <MobilePlan child={child} />
+      <MobileGrowth child={child} />
       {card ? (
         <DashDetail
           card={card}
@@ -457,25 +457,17 @@ function Mobile({
   );
 }
 
-/** Phones: the child's plan timeline (vertical) under the name, badge and subtitle. */
-function MobilePlan({ child }: { child: ChildProfile }) {
+/** Phones: the growth hero (stages + bar) by the CURRENT plan's %. */
+function MobileGrowth({ child }: { child: ChildProfile }) {
   const plan = planProgress(child);
   return (
-    <section
-      aria-label={`نموّ ${child.name}`}
-      className="flex flex-col gap-[14px] rounded-px-28 bg-surface px-[18px] py-[20px] shadow-card"
-    >
-      <div className="flex items-center gap-[12px]">
-        <ChildAvatar id={child.avatarId} size={52} className="rounded-px-18" />
-        <span className="flex min-w-0 grow flex-col gap-[3px]">
-          <span className="flex items-center gap-[8px]">
-            <h2 className="m-0 font-heading text-[20px] font-bold">{child.name}</h2>
-            <StageBadge stage={plan.stage} />
-          </span>
-          <span className="text-[12.5px] text-text-muted">{planSubtitle(ageLabel(child.age), plan)}</span>
-        </span>
-      </div>
-      <PlanTimeline progress={plan} vertical unscored={child.pilotUnscored} />
-    </section>
+    <GrowthHero
+      name={child.name}
+      subtitle={planSubtitle(ageLabel(child.age), plan)}
+      stage={plan.stage}
+      pct={plan.pct}
+      planChip={pilotChip(child.pilotDaysDone)}
+      sentence={planSentence(plan)}
+    />
   );
 }
