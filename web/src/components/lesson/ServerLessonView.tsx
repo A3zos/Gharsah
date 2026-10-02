@@ -60,6 +60,8 @@ export function ServerLessonView({
         ? s.caption
         : '';
   const prompt = s.micPrompt ? 'mic' : s.playbackBlocked ? 'sound' : null;
+  // The reciter or the child is on the ayat: the card gets the room, the teacher a small avatar.
+  const onAyat = s.ayat.length > 0 && (s.reciting || s.expects === 'repeat' || s.repeat !== 'idle');
   return (
     <CallFrame desktop={desktop}>
       <LiveHeader elapsedMs={elapsedMs} onEnd={actions.exit} />
@@ -72,6 +74,7 @@ export function ServerLessonView({
         // a repeat accepted, a part or the lesson finished
         cheerKey={s.cheer}
         mouth={mouth}
+        compact={onAyat}
       >
         {caption && (
           <p
@@ -93,7 +96,7 @@ export function ServerLessonView({
         </div>
       )}
       <div className="flex min-h-0 grow flex-col">
-        <Middle state={s} />
+        <Middle state={s} onAyat={onAyat} />
       </div>
       {!starting && <Bottom state={s} actions={actions} gender={gender} />}
       {prompt && <AllowPrompt reason={prompt} gender={gender} onAllow={actions.allowTapped} />}
@@ -112,20 +115,29 @@ function useElapsed(): number {
 }
 
 /** The ayah card (verified text) or the hadith card — the child reads along. */
-function Middle({ state: s }: { state: ServerLessonState }) {
+function Middle({ state: s, onAyat }: { state: ServerLessonState; onAyat: boolean }) {
   if (s.phase === 'finished') return null;
   if (s.ayat.length && s.surahName) {
+    // shrinks away when the recitation ends (the teacher grows back at the same time)
     return (
-      <SurahCard
-        surahName={s.surahName}
-        ayat={s.ayat}
-        currentAyah={s.currentAyah}
-        reciting={s.reciting}
-        playbackBlocked={false}
-        label={`سورة ${s.surahName}`}
-        onTap={() => {}}
-        onPlay={() => {}}
-      />
+      <div
+        aria-hidden={!onAyat}
+        className={cx(
+          'flex min-h-0 origin-top flex-col transition-[flex-grow,opacity,transform] duration-500 ease-out motion-reduce:transition-none',
+          onAyat ? 'grow opacity-100' : 'pointer-events-none grow-0 scale-95 opacity-0',
+        )}
+      >
+        <SurahCard
+          surahName={s.surahName}
+          ayat={s.ayat}
+          currentAyah={s.currentAyah}
+          reciting={s.reciting}
+          playbackBlocked={false}
+          label={`سورة ${s.surahName}`}
+          onTap={() => {}}
+          onPlay={() => {}}
+        />
+      </div>
     );
   }
   if (s.hadith) {

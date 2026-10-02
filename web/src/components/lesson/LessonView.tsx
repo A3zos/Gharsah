@@ -165,7 +165,7 @@ export function CallFrame({ desktop, children }: { desktop: boolean; children: R
           <SproutMark size={30} />
           <span className="font-heading text-[21px] font-bold text-deep-green">غَرْسة</span>
         </div>
-        <div className="relative z-1 flex h-full max-h-[720px] w-[560px] max-w-full flex-col gap-[12px] rounded-px-40 border-[1.5px] border-border bg-surface px-[28px] pt-[22px] pb-[20px] shadow-dark-30-70-10">
+        <div className="relative z-1 flex h-full max-h-[860px] w-[560px] max-w-full flex-col gap-[12px] rounded-px-40 border-[1.5px] border-border bg-surface px-[28px] pt-[22px] pb-[20px] shadow-dark-30-70-10">
           {children}
         </div>
       </main>
@@ -241,6 +241,7 @@ function Teacher({
       talking={speaking && state.teacherSpeaking}
       // a praise moment, and the end of the lesson
       happy={state.happy || state.screen === 'lessonEnd'}
+      compact={state.screen === 'ayah'}
       mouth={mouth}
       onTap={onTap}
     >
@@ -264,6 +265,7 @@ export function TeacherStage({
   mouth,
   onTap,
   children,
+  compact = false,
 }: {
   gender: TeacherGender;
   desktop: boolean;
@@ -271,13 +273,20 @@ export function TeacherStage({
   talking: boolean;
   happy: boolean;
   cheerKey?: number;
+  /** The reciter / the child is on the ayat: a small avatar at the top, the card gets the room. */
+  compact?: boolean;
   mouth?: MouthSource;
   onTap?: () => void;
   children?: React.ReactNode;
 }) {
   return (
     <div className="flex shrink-0 flex-col items-center gap-[8px]">
-      <div className={cx('relative w-full', desktop ? 'h-[260px]' : 'h-[clamp(180px,32dvh,320px)]')}>
+      <div
+        className={cx(
+          'relative w-full transition-[height] duration-500 ease-out motion-reduce:transition-none',
+          compact ? 'h-[90px]' : desktop ? 'h-[260px]' : 'h-[clamp(180px,32dvh,320px)]',
+        )}
+      >
         <TeacherSprite
           gender={gender}
           pose={pose}
@@ -299,9 +308,11 @@ export function TeacherStage({
           }
         />
       </div>
-      <span className="rounded-pill bg-green-tint px-[14px] py-[4px] text-[16px] font-extrabold text-deep-green">
-        {TEACHER_NAME[gender]}
-      </span>
+      {!compact && (
+        <span className="rounded-pill bg-green-tint px-[14px] py-[4px] text-[16px] font-extrabold text-deep-green">
+          {TEACHER_NAME[gender]}
+        </span>
+      )}
       {children}
     </div>
   );
@@ -536,40 +547,67 @@ export function SurahCard({
   onPlay: () => void;
 }) {
   const current = useRef<HTMLSpanElement>(null);
+  // the current ayah stays in view when the surah is longer than the card
   useEffect(() => {
     current.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
   }, [currentAyah]);
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onTap}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onTap();
+        }
+      }}
       aria-label={label}
       className={cx(
-        'flex min-h-0 grow cursor-pointer flex-col overflow-y-auto rounded-px-28 bg-surface px-[18px] py-[14px] text-right font-body text-text-dark shadow-lesson-ayah-card',
+        'flex min-h-0 grow cursor-pointer flex-col rounded-px-28 bg-surface text-text-dark shadow-lesson-ayah-card',
         reciting ? 'border-[2px] border-primary' : 'border-[1.5px] border-border',
       )}
     >
-      <span className="mb-[6px] text-center text-[16px] font-bold text-text-muted">سورة {surahName}</span>
-      <span className="font-ayah text-[28px] leading-[2.1]">
-        {ayat.map((a) => {
-          const on = a.ayah === currentAyah;
-          return (
-            <span
-              key={a.ayah}
-              ref={on ? current : undefined}
-              className={cx('rounded-px-12 px-[4px] transition-colors', on && 'bg-gold-tint text-deep-green')}
-            >
-              {a.text}
-              <span className="text-ayah-bracket" aria-hidden="true">
-                {' '}
-                ﴿{toArabicDigits(a.ayah)}﴾{' '}
-              </span>
-            </span>
-          );
-        })}
+      <span className="shrink-0 pt-[12px] text-center text-[16px] font-bold text-text-muted">
+        سورة {surahName}
       </span>
+      {/* Scrolls only if the surah is longer than the card — no visible scrollbar. */}
+      <div className="min-h-0 grow [scrollbar-width:none] overflow-x-hidden overflow-y-auto px-[18px] pt-[4px] pb-[16px] [&::-webkit-scrollbar]:hidden">
+        {/* Uthmani text wraps naturally (RTL, right-aligned); ~30 px phones, 38 px desktop, ≥26 px. */}
+        <p
+          dir="rtl"
+          className="m-0 text-right font-ayah text-[clamp(26px,7.7vw,30px)] leading-[2.1] break-normal whitespace-normal lg:text-[38px]"
+        >
+          {ayat.map((a) => {
+            const on = a.ayah === currentAyah;
+            const past = currentAyah !== null && a.ayah < currentAyah;
+            const words = a.text.split(' ');
+            const last = words.pop() ?? '';
+            return (
+              <span
+                key={a.ayah}
+                ref={on ? current : undefined}
+                className={cx(
+                  'rounded-px-12 [box-decoration-break:clone] px-[6px] py-[2px] transition-[background-color,color,opacity] duration-300 [-webkit-box-decoration-break:clone]',
+                  on && 'bg-green-tint text-deep-green [text-shadow:0_0_0.7px_currentColor]',
+                  past && 'opacity-60',
+                )}
+              >
+                {words.length > 0 && `${words.join(' ')} `}
+                {/* the ayah's last word and its number ornament never split */}
+                <span className="whitespace-nowrap">
+                  {last}
+                  <span className="text-ayah-bracket" aria-hidden="true">
+                    {'\u00a0'}﴿{toArabicDigits(a.ayah)}﴾
+                  </span>
+                </span>{' '}
+              </span>
+            );
+          })}
+        </p>
+      </div>
       {playbackBlocked && <PlayFallback onTap={onPlay} />}
-    </button>
+    </div>
   );
 }
 
