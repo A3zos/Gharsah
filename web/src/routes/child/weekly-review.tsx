@@ -169,7 +169,7 @@ export default function WeeklyReviewRoute() {
             </svg>
           </span>
           <span className="flex min-w-0 grow flex-col gap-[4px]">
-            <span className="text-[15px] font-extrabold text-text-subtle">بقية خطة السنة</span>
+            <span className="text-[15px] font-extrabold text-text-subtle">بعد الباقة التجريبية</span>
             <span className="text-[12px] text-text-muted">تُفتح بقية السور والأحاديث في التحديث القادم</span>
           </span>
           <span className="rounded-pill bg-border-soft px-[10px] py-[5px] text-[11px] font-extrabold whitespace-nowrap text-text-muted">

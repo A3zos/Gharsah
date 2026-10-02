@@ -10,6 +10,7 @@ import {
   RATE_LIMIT_BACKOFF_MS,
   ServerLesson,
   type PresenceListener,
+  type LessonPlan,
   type ServerLessonDeps,
   type ServerLessonState,
   type UrlPlayer,
@@ -26,6 +27,16 @@ interface Setup {
   sleeps: number[];
 }
 
+/** Pilot day 1 (the fake server teaches الإخلاص + برّ الوالدين). */
+const PLAN: LessonPlan = {
+  lessonId: 'pilot-day-1',
+  surahNo: 112,
+  surahName: 'الإخلاص',
+  hadithTopic: 'برّ الوالدين',
+  hadithStepIndex: 9,
+  lastStepIndex: 10,
+};
+
 function setup(o: Partial<ServerLessonDeps> & { server?: FakeAgentServer; childName?: string } = {}): Setup {
   const server = o.server ?? new FakeAgentServer();
   const spoken: string[] = [];
@@ -38,6 +49,7 @@ function setup(o: Partial<ServerLessonDeps> & { server?: FakeAgentServer; childN
     player: { play: async (u) => void played.push(u), stop: () => {} },
     presence: { waitForSpeech: async () => 'spoke' },
     sink: { record: async (u) => void updates.push(u) },
+    plan: PLAN,
     deviceId: 'dev-1',
     gender: 'boy',
     consent: false,
@@ -77,11 +89,11 @@ describe('ServerLesson — mocked end-to-end', () => {
     expect(lesson.state.value.canSpeak).toBe(false);
     lesson.answer('الحمد لله بخير');
 
-    // name — answered on the device with a nickname, its question never voiced
-    await at(lesson, 'surah', 'choice');
-    expect(server.messages()).toEqual(['الحمد لله بخير', 'بطل']);
+    // name and «which surah?» — answered on the device (بطل / today's surah), never voiced
+    await at(lesson, 'lesson_intro', 'continue');
+    expect(server.messages()).toEqual(['الحمد لله بخير', 'بطل', 'الإخلاص']);
     expect(t.spoken).not.toContain('وش اسمك؟');
-    lesson.answer('الإخلاص');
+    expect(t.spoken.some((x) => x.includes('نحفظ سورة'))).toBe(false);
 
     await at(lesson, 'lesson_intro', 'continue');
     lesson.continueTapped();
@@ -108,10 +120,16 @@ describe('ServerLesson — mocked end-to-end', () => {
     // done (expects none) → the next session is offered
     await until(lesson, (s) => s.phase === 'segmentDone');
     expect(lesson.state.value.nextSegment).toBe('hadith');
-    const q = last(t.updates, 'surah-112');
-    expect(q).toMatchObject({ stage: 'done', doneRefs: ['112:1', '112:2', '112:3', '112:4'] });
+    // today's row: the surah part done → «hadith», resume point = the built-in hadith step
+    expect(lesson.state.value.quranDone).toBe(true);
+    expect(last(t.updates, 'pilot-day-1')).toMatchObject({
+      stage: 'hadith',
+      stepIndex: PLAN.hadithStepIndex,
+      doneRefs: ['112:1', '112:2', '112:3', '112:4'],
+    });
+    expect(new Set(t.updates.map((u) => u.lessonId))).toEqual(new Set(['pilot-day-1']));
     // stages only ever move forward
-    const ranks = t.updates.filter((u) => u.lessonId === 'surah-112').map((u) => u.stage);
+    const ranks = t.updates.map((u) => u.stage);
     expect(ranks).toEqual([...ranks].sort((a, b) => order(a) - order(b)));
 
     // ── hadith ──
@@ -146,7 +164,8 @@ describe('ServerLesson — mocked end-to-end', () => {
     expect(lesson.state.value.projects[0]).toMatchObject({ hadithId: 9, done: false });
     await lesson.markProjectDone(9);
     expect(lesson.state.value.projects[0]!.done).toBe(true);
-    expect(last(t.updates, 'hadith-birr-alwalidayn')).toMatchObject({ stage: 'done' });
+    expect(last(t.updates, 'pilot-day-1')).toMatchObject({ stage: 'done', stepIndex: PLAN.lastStepIndex });
+    expect(new Set(t.updates.map((u) => u.lessonId))).toEqual(new Set(['pilot-day-1']));
 
     // privacy: two /agent/start calls, neither with a name; only the random device id
     const starts = server.calls.filter((c) => c.path === '/agent/start');
@@ -158,24 +177,33 @@ describe('ServerLesson — mocked end-to-end', () => {
     expect(server.calls.some((c) => c.path.includes('taseem'))).toBe(false);
   });
 
-  it('a hadith whose id never appears is matched through /agent/progress', async () => {
-    const { HADITH_STAGES, QURAN_STAGES } = await import('./testing/fakeServer');
-    const server = new FakeAgentServer(
-      QURAN_STAGES.slice(-1), // quran: straight to done
-      HADITH_STAGES.map((s) => (s.id === 'memorize' ? { ...s, extra: {} } : s)).filter((s) =>
-        ['greet', 'intro', 'memorize', 'done'].includes(s.id),
-      ),
-    );
-    const t = setup({ server });
+  it('the server teaching another surah → the built-in lesson (which follows the plan)', async () => {
+    const t = setup({ plan: { ...PLAN, lessonId: 'pilot-day-2', surahNo: 114, surahName: 'الناس' } });
     void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('تمام');
+    await until(t.lesson, (s) => s.phase === 'fallback');
+    expect(t.server.messages()).toEqual(['تمام', 'بطل', 'الناس']);
+  });
+
+  it("a hadith that isn't today's topic → the built-in lesson from the hadith", async () => {
+    const t = setup({ plan: { ...PLAN, hadithTopic: 'الكذب' } });
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('تمام');
+    for (const stage of ['lesson_intro', 'tafsir', 'fadl', 'tajweed', 'plan']) {
+      await at(t.lesson, stage, 'continue');
+      t.lesson.continueTapped();
+    }
     await until(t.lesson, (s) => s.phase === 'segmentDone');
     t.lesson.continueTapped();
     await at(t.lesson, 'greet', 'text');
     t.lesson.answer('تمام');
     await at(t.lesson, 'intro', 'continue');
     t.lesson.continueTapped();
-    await until(t.lesson, (s) => s.phase === 'finished');
-    expect(last(t.updates, 'hadith-birr-alwalidayn')).toMatchObject({ stage: 'done' });
+    // the «text» turn names the hadith (برّ الوالدين ≠ الكذب)
+    await until(t.lesson, (s) => s.phase === 'fallback');
+    expect(t.lesson.state.value.quranDone).toBe(true);
   });
 });
 
@@ -186,8 +214,7 @@ describe('ServerLesson — repeat and consent', () => {
     void t.lesson.start();
     await at(t.lesson, 'greet', 'text');
     t.lesson.answer('تمام');
-    await at(t.lesson, 'surah', 'choice');
-    t.lesson.answer('الإخلاص');
+    await at(t.lesson, 'lesson_intro', 'continue');
     await at(t.lesson, 'lesson_intro', 'continue');
     t.lesson.continueTapped();
     await at(t.lesson, 'tafsir', 'continue');
@@ -262,7 +289,7 @@ describe('ServerLesson — repeat and consent', () => {
   });
 
   it('like a call: after the line, the mic listens by itself and the answer is sent', async () => {
-    const said = ['بخير والحمد لله', 'أبي سورة الإخلاص'];
+    const said = ['بخير والحمد لله'];
     const listen = vi.fn(async () => said.shift() ?? null);
     const t = setup({ speechInput: { listen }, consent: true });
     void t.lesson.start();
@@ -273,16 +300,25 @@ describe('ServerLesson — repeat and consent', () => {
   });
 
   it('a spoken choice that matches no button is not sent; the mic then waits for a tap', async () => {
-    const said = ['تمام', 'ما أدري', 'ولا شي'];
+    const { QURAN_STAGES } = await import('./testing/fakeServer');
+    // a multiple-choice greeting (the surah question is answered automatically now)
+    const server = new FakeAgentServer(
+      QURAN_STAGES.map((st) =>
+        st.id === 'greet' ? { ...st, expects: 'choice' as const, quick: ['بخير', 'تعبان'] } : st,
+      ),
+    );
+    const said = ['ما أدري', 'ولا شي'];
     const listen = vi.fn(async () => said.shift() ?? null);
-    const t = setup({ speechInput: { listen }, consent: true });
+    const t = setup({ server, speechInput: { listen }, consent: true });
     void t.lesson.start();
-    await at(t.lesson, 'surah', 'choice');
-    await until(t.lesson, (s) => !s.hearing && listen.mock.calls.length === 3);
-    expect(t.server.messages()).toEqual(['تمام', 'بطل']);
-    // a chip still works
-    t.lesson.answer('الإخلاص');
+    await at(t.lesson, 'greet', 'choice');
+    await until(t.lesson, (s) => !s.hearing && listen.mock.calls.length === AUTO_LISTEN_TRIES);
+    expect(t.server.messages()).toEqual([]);
+    // «أنا بخير الحمد لله» matches the «بخير» button
+    said.push('أنا بخير الحمد لله');
+    await t.lesson.speakAnswer();
     await at(t.lesson, 'lesson_intro', 'continue');
+    expect(t.server.messages()).toEqual(['بخير', 'بطل', 'الإخلاص']);
   });
 
   it('silence: listens AUTO_LISTEN_TRIES times, then the mic tap listens again', async () => {
@@ -296,7 +332,7 @@ describe('ServerLesson — repeat and consent', () => {
     );
     expect(t.server.messages()).toEqual([]);
     await t.lesson.speakAnswer();
-    await at(t.lesson, 'surah', 'choice');
+    await at(t.lesson, 'lesson_intro', 'continue');
     expect(t.server.messages()[0]).toBe('تمام');
   });
 
@@ -313,9 +349,9 @@ describe('ServerLesson — repeat and consent', () => {
       surah_no: 112,
       chunk: 0,
     });
+    expect(t.updates).toEqual([]); // reviews don't write progress
     t.lesson.continueTapped();
     await at(t.lesson, 'greet', 'text');
-    expect(t.updates).toEqual([]); // reviews don't write progress
   });
 });
 
@@ -326,7 +362,7 @@ describe('ServerLesson — errors and fallback', () => {
     await at(t.lesson, 'greet', 'text');
     t.server.failures.push(['/agent/message', 429], ['/agent/message', 429]);
     t.lesson.answer('تمام');
-    await at(t.lesson, 'surah', 'choice');
+    await at(t.lesson, 'lesson_intro', 'continue');
     expect(t.sleeps.slice(0, 2)).toEqual(RATE_LIMIT_BACKOFF_MS.slice(0, 2));
     expect(t.lesson.state.value.notice).toBeNull();
   });
@@ -398,8 +434,7 @@ describe('ServerLesson — stages bar, autoplay, pause', () => {
     void t.lesson.start();
     await at(t.lesson, 'greet', 'text');
     t.lesson.answer('تمام');
-    await at(t.lesson, 'surah', 'choice');
-    t.lesson.answer('الإخلاص');
+    await at(t.lesson, 'lesson_intro', 'continue');
     await at(t.lesson, 'lesson_intro', 'continue');
     t.lesson.continueTapped();
     await at(t.lesson, 'tafsir', 'continue');
@@ -432,8 +467,7 @@ describe('ServerLesson — stages bar, autoplay, pause', () => {
     void t.lesson.start();
     await at(t.lesson, 'greet', 'text');
     t.lesson.answer('تمام');
-    await at(t.lesson, 'surah', 'choice');
-    t.lesson.answer('الإخلاص');
+    await at(t.lesson, 'lesson_intro', 'continue');
     await at(t.lesson, 'lesson_intro', 'continue');
     t.lesson.continueTapped();
     await at(t.lesson, 'tafsir', 'continue');
@@ -482,7 +516,7 @@ describe('ServerLesson — stages bar, autoplay, pause', () => {
     await until(t.lesson, (s) => s.paused && !s.busy);
     expect(t.spoken.some((s) => s.startsWith('وش رأيك'))).toBe(false);
     t.lesson.resume();
-    await at(t.lesson, 'surah', 'choice');
+    await at(t.lesson, 'lesson_intro', 'continue');
   });
 
   it('ignores empty answers and answers while busy', async () => {
@@ -493,8 +527,8 @@ describe('ServerLesson — stages bar, autoplay, pause', () => {
     expect(t.server.messages()).toEqual([]);
     t.lesson.answer('تمام');
     t.lesson.answer('تمام مرة ثانية');
-    await at(t.lesson, 'surah', 'choice');
-    expect(t.server.messages()).toEqual(['تمام', 'بطل']);
+    await at(t.lesson, 'lesson_intro', 'continue');
+    expect(t.server.messages()).toEqual(['تمام', 'بطل', 'الإخلاص']);
   });
 
   it('the name stage gets the neutral «بطل» for girls too', async () => {
@@ -502,7 +536,7 @@ describe('ServerLesson — stages bar, autoplay, pause', () => {
     void t.lesson.start();
     await at(t.lesson, 'greet', 'text');
     t.lesson.answer('تمام');
-    await at(t.lesson, 'surah', 'choice');
+    await at(t.lesson, 'lesson_intro', 'continue');
     expect(t.server.messages()[1]).toBe('بطل');
     expect(t.server.calls[0]!.body).toMatchObject({ gender: 'girl' });
   });
@@ -518,7 +552,7 @@ describe("ServerLesson — the child's name never leaves the device", () => {
 
   it("no request body or query ever contains the child's name — typed, spoken or chosen", async () => {
     // Consent + speech: the child SAYS their name in answers; also types it.
-    const said = ['أنا أَحمد', 'الإخلاص'];
+    const said = ['أنا أَحمد'];
     const listen = vi.fn(async () => said.shift() ?? null);
     const t = setup({ consent: true, speechInput: { listen }, childName: NAME });
     void t.lesson.start();
@@ -624,8 +658,7 @@ describe('ServerLesson — voice first', () => {
     void t.lesson.start();
     await at(t.lesson, 'greet', 'text');
     t.lesson.answer('تمام');
-    await at(t.lesson, 'surah', 'choice');
-    t.lesson.answer('الإخلاص');
+    await at(t.lesson, 'lesson_intro', 'continue');
     await at(t.lesson, 'lesson_intro', 'continue');
     t.lesson.continueTapped();
     await at(t.lesson, 'tafsir', 'continue');

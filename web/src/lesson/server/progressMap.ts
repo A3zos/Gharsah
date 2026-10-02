@@ -5,7 +5,12 @@
 import type { ProgressStage } from '../web/progressSink';
 import type { ServerTurn } from './parse';
 
-/** Server quran stages (greet → … → done) in our 5-stage ladder. */
+/**
+ * The day's lesson (a pilot day: one surah + one hadith) on our 5-stage ladder —
+ * the same row the built-in lesson writes. The surah part fills the first three
+ * stages; finishing it moves the day to «hadith» (the surah's star); finishing the
+ * hadith session finishes the day.
+ */
 const QURAN: Record<string, ProgressStage> = {
   greet: 'listen_full',
   name: 'listen_full',
@@ -16,60 +21,43 @@ const QURAN: Record<string, ProgressStage> = {
   recitation: 'ayah_repeat',
   tajweed: 'full_twice',
   plan: 'hadith',
-  done: 'done',
+  done: 'hadith',
 };
 
-/** Server hadith stages. Leaving `action`/`project` → the hadith counts on the dashboard. */
-const HADITH: Record<string, ProgressStage> = {
-  greet: 'listen_full',
-  name: 'listen_full',
-  intro: 'listen_full',
-  text: 'listen_full',
-  words: 'listen_full',
-  meaning: 'listen_full',
-  example: 'listen_full',
-  memorize: 'ayah_repeat',
-  quiz: 'full_twice',
-  action: 'hadith',
-  project: 'hadith',
-  done: 'done',
-};
+/** Hadith session stages: the day stays on «hadith» until the session is done. */
+const HADITH_DONE = 'done';
 
 const RANK: readonly ProgressStage[] = ['listen_full', 'ayah_repeat', 'full_twice', 'hadith', 'done'];
 export const stageRank = (s: ProgressStage): number => RANK.indexOf(s);
 export const maxStage = (a: ProgressStage, b: ProgressStage): ProgressStage =>
   stageRank(a) >= stageRank(b) ? a : b;
 
-/** Server hadith id → our catalogue lesson (supabase/migrations …lessons_catalogue.sql). */
-export const HADITH_LESSON: Readonly<Record<number, string>> = {
-  9: 'hadith-birr-alwalidayn',
-  10: 'hadith-al-kadhib',
-  6: 'hadith-al-ghadab',
-};
-/** Surahs the server teaches (pilot + the Fatiha intro) → our catalogue lesson. */
-export const SURAH_LESSONS: readonly number[] = [1, 112, 113, 114];
-
-export function quranLessonId(surahNo: number | null): string | null {
-  return surahNo !== null && SURAH_LESSONS.includes(surahNo) ? `surah-${surahNo}` : null;
-}
-
-export function hadithLessonId(hadithId: number | null): string | null {
-  return hadithId !== null ? (HADITH_LESSON[hadithId] ?? null) : null;
-}
-
-/** The furthest stage this turn has reached, in our ladder (an unknown stage id → null). */
+/** The furthest stage this turn has reached, in our ladder (review sessions → null). */
 export function mappedStage(turn: ServerTurn): ProgressStage | null {
-  if (turn.kind !== 'quran' && turn.kind !== 'hadith') return null; // taseem: review only
-  const table = turn.kind === 'quran' ? QURAN : HADITH;
+  if (turn.kind === 'hadith') {
+    const reached = turn.stages.slice(0, turn.maxStageIndex + 1).some((s) => s.id === HADITH_DONE);
+    return reached || turn.stage === HADITH_DONE ? 'done' : 'hadith';
+  }
+  if (turn.kind !== 'quran') return null;
   let best: ProgressStage | null = null;
   // Everything up to max_stage_index was reached; take the highest mapped one.
   for (let i = 0; i <= turn.maxStageIndex && i < turn.stages.length; i++) {
-    const s = table[turn.stages[i]!.id];
+    const s = QURAN[turn.stages[i]!.id];
     if (s) best = best ? maxStage(best, s) : s;
   }
-  const current = table[turn.stage];
+  const current = QURAN[turn.stage];
   if (current) best = best ? maxStage(best, current) : current;
   return best;
+}
+
+/** Matches the server's hadith title to the day's topic (any spelling; «لا تغضب» ~ «الغضب»). */
+export function hadithMatchesTopic(title: string, topic: string, normalize: (t: string) => string): boolean {
+  const t = normalize(title);
+  const words = normalize(topic)
+    .split(' ')
+    .map((w) => w.replace(/^ال/, ''))
+    .filter((w) => w.length >= 3);
+  return words.length > 0 && words.every((w) => t.includes(w));
 }
 
 export interface ProgressUpdate {
@@ -86,14 +74,17 @@ export interface ServerProgressSink {
   record(update: ProgressUpdate): Promise<void>;
 }
 
-/** All ayat of the surah once the quran lesson is done; before that the recited ones. */
+/** The whole day's surah once its part is done; before that the recited ayat. */
 export function doneRefsOf(
   turn: ServerTurn,
   stage: ProgressStage,
+  surah: number,
   ayahCount: (surah: number) => number,
 ): string[] {
-  if (turn.kind !== 'quran' || turn.surahNo === null) return [];
-  const s = turn.surahNo;
-  const ayat = stage === 'done' ? Array.from({ length: ayahCount(s) }, (_, i) => i + 1) : turn.recitedAyat;
-  return [...new Set(ayat)].filter((a) => a >= 1 && a <= 300).map((a) => `${s}:${a}`);
+  if (turn.kind !== 'quran' && stage !== 'done') return [];
+  const ayat =
+    stage === 'hadith' || stage === 'done'
+      ? Array.from({ length: ayahCount(surah) }, (_, i) => i + 1)
+      : turn.recitedAyat;
+  return [...new Set(ayat)].filter((a) => a >= 1 && a <= 300).map((a) => `${surah}:${a}`);
 }

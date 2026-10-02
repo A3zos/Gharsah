@@ -12,9 +12,10 @@ import {
 import { ConfirmSheet } from '../../components/ui/ConfirmSheet';
 import { C } from '../../components/ui/color';
 import { Note } from '../../components/ui/Note';
-import { hadithRepo, lessonScripts, quranMeta } from '../../content/library';
+import { hadithRepo, hadithStepIndex, lessonScripts, quranMeta } from '../../content/library';
+import { pilotDay } from '../../content/pilot';
 import { WEEK_DAYS, type ChildProfile, type WeekDay } from '../../data/children';
-import { pickTodayLesson } from '../../data/student';
+import { pickTodayLesson, progressFromRow } from '../../data/student';
 import type { LessonScript } from '../../lesson/script';
 import { initialLessonState, type LessonProgress, type LessonState } from '../../lesson/state';
 import { PreviewProgressSink } from '../../dev/childPreview';
@@ -95,8 +96,9 @@ export default function LessonRoute() {
   const [entry, setEntry] = useState<{ lessonId: string; resume: LessonProgress | null } | 'denied' | null>(
     null,
   );
-  // VITE_AI_AGENT=1: the AI server runs the lesson; any failure → today's built-in lesson.
-  const [builtIn, setBuiltIn] = useState(false);
+  // VITE_AI_AGENT=1: the AI server runs the lesson; any failure → today's built-in lesson
+  // (from the hadith when the AI already finished today's surah).
+  const [builtIn, setBuiltIn] = useState<false | { resume: LessonProgress | null }>(false);
   const script = lessonScripts.get(lessonId);
   const ready = child !== undefined && progress !== undefined;
   if (script && ready && child && (entry === null || (entry !== 'denied' && entry.lessonId !== lessonId))) {
@@ -111,18 +113,42 @@ export default function LessonRoute() {
   if (!script || entry === 'denied' || (ready && !child)) return <Navigate to={paths.child.home} replace />;
   if (!child || !entry || entry.lessonId !== lessonId) return <Busy />;
   const agentUrl = agentBaseUrl();
-  if (agentUrl && !builtIn && session.childId !== 'preview') {
+  const day = pilotDay(lessonId);
+  if (agentUrl && day && !builtIn && session.childId !== 'preview') {
+    const hIdx = hadithStepIndex(script);
     return (
       <ServerLessonCall
         key={lessonId}
         baseUrl={agentUrl}
+        plan={{
+          lessonId,
+          surahNo: day.surah,
+          surahName: day.surahName,
+          hadithTopic: day.hadithTopic,
+          hadithStepIndex: hIdx,
+          lastStepIndex: script.steps.length - 1,
+        }}
         child={child}
         session={session}
-        onFallback={() => setBuiltIn(true)}
+        onFallback={(quranDone) =>
+          setBuiltIn({
+            resume: quranDone
+              ? progressFromRow(lessonId, {
+                  stage: 'hadith',
+                  step_index: hIdx,
+                  done_refs: Array.from(
+                    { length: quranMeta.ayahCount(day.surah) },
+                    (_, i) => `${day.surah}:${i + 1}`,
+                  ),
+                })
+              : entry.resume,
+          })
+        }
       />
     );
   }
-  return <LessonCall key={lessonId} script={script} child={child} session={session} resume={entry.resume} />;
+  const resume = builtIn ? builtIn.resume : entry.resume;
+  return <LessonCall key={lessonId} script={script} child={child} session={session} resume={resume} />;
 }
 
 function Busy() {

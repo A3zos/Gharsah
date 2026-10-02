@@ -13,7 +13,7 @@ import { C } from '../../components/ui/color';
 import { ForwardIcon, PlusIcon } from '../../components/ui/icons';
 import { projectValue } from '../../content/library';
 import { reviewDayNames, type ChildProfile } from '../../data/children';
-import { ageLabel, headline, STAGE_LABEL, type Headline } from '../../data/stats';
+import { ageLabel, headline, pilotChip, STAGE_LABEL, type Headline } from '../../data/stats';
 import { watchSubmissions, type ProjectSubmission } from '../../data/submissions';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
@@ -31,20 +31,11 @@ const TINT_BG: Record<string, string> = {
   borderSoft: 'bg-border-soft',
 };
 
-/** «الشهر ٢ · الأسبوع ١» of the child's plan, counted from when the child was added. */
-function planChip(created: Date | null, now = new Date()): string {
-  if (!created) return 'الشهر ١ · الأسبوع ١';
-  const days = Math.max(0, Math.floor((now.getTime() - created.getTime()) / 86_400_000));
-  const month = Math.floor(days / 30) + 1;
-  const week = Math.min(4, Math.max(1, Math.floor((days % 30) / 7) + 1));
-  return `الشهر ${toArabicDigits(month)} · الأسبوع ${toArabicDigits(week)}`;
-}
-
 /** «باقٍ ١٤٪ ليصير شجرة» */
 function toNextStage(h: Headline): string {
   if (h.stage === 'tree') return 'وصل إلى الشجرة — ما شاء الله.';
   const next = h.stage === 'seed' ? { at: 34, name: 'غَرْسة' } : { at: 67, name: 'شجرة' };
-  return `أتمّ ${toArabicDigits(h.planPct)}٪ من خطة السنة — باقٍ ${toArabicDigits(next.at - h.planPct)}٪ ليصير ${next.name}.`;
+  return `أتمّ ${toArabicDigits(h.planPct)}٪ من الباقة التجريبية — باقٍ ${toArabicDigits(next.at - h.planPct)}٪ ليصير ${next.name}.`;
 }
 
 function useSubmissions(uid: string, childId: string | undefined) {
@@ -443,7 +434,12 @@ function Mobile({
           })}
         </nav>
       )}
-      <GrowthHero name={child.name} stage={h.stage} pct={h.planPct} planChip={planChip(child.createdAt)} />
+      <GrowthHero
+        name={child.name}
+        stage={h.stage}
+        pct={h.planPct}
+        planChip={pilotChip(child.pilotDaysDone)}
+      />
       {card ? (
         <DashDetail
           card={card}

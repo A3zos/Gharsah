@@ -12,6 +12,7 @@ import { CardIcon, ChildrenIcon, GearIcon, GridIcon, LogoutIcon, SproutMark } fr
 import { Blob } from '../ui/Page';
 import { initialOf, useParentData } from './ParentData';
 import { useSignOut } from './SignOut';
+import { PILOT_NAME } from '../../content/pilot';
 
 export type ParentTab = 'home' | 'children' | 'plans' | 'settings' | null;
 
@@ -83,13 +84,7 @@ function Sidebar({ tab }: { tab: ParentTab }) {
           <span className="flex min-w-0 grow flex-col gap-[2px]">
             <span className="truncate text-[14.5px] font-extrabold">{name}</span>
             {subscription && isSubscribed(subscription) ? (
-              <span className="text-[12px] text-text-muted">
-                {subscription.plan === 'annual'
-                  ? 'الباقة السنوية'
-                  : subscription.plan === 'monthly'
-                    ? 'الباقة الشهرية'
-                    : 'الباقة التجريبية'}
-              </span>
+              <span className="text-[12px] text-text-muted">{PILOT_NAME}</span>
             ) : (
               <Link to={paths.parent.plans} className="text-[12px] font-extrabold text-deep-green">
                 اشترك الآن

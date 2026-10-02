@@ -3,6 +3,9 @@
 import hadithJson from '@content/hadith/hadith.json';
 import day2 from '@content/lessons/m01-w03-day2.json';
 import ikhlas from '@content/lessons/m01-w03-ikhlas.json';
+import pilot1 from '@content/lessons/pilot-day-1.json';
+import pilot2 from '@content/lessons/pilot-day-2.json';
+import pilot3 from '@content/lessons/pilot-day-3.json';
 import projectsJson from '@content/projects/projects.json';
 import metaJson from '@content/quran/quran_meta.json';
 
@@ -16,8 +19,11 @@ export const quranMeta = QuranMeta.fromJson(metaJson);
 export const hadithRepo = HadithRepository.fromJson(hadithJson as { hadith: Record<string, unknown>[] });
 export const projectRepo = ProjectRepository.fromJson(projectsJson);
 
+/** Every lesson JSON the web knows (the pilot days are the ones a child gets — content/pilot.ts). */
+const LESSON_JSON = [pilot1, pilot2, pilot3, ikhlas, day2];
+
 export const lessonScripts: ReadonlyMap<string, LessonScript> = new Map(
-  [ikhlas, day2].map((j) => {
+  LESSON_JSON.map((j) => {
     // Expanded once here (the three stages), so resume, progress and the home all see the same steps.
     const s = expandLesson(parseLessonScript(j as Record<string, unknown>));
     return [s.lessonId, s];
@@ -28,7 +34,7 @@ export const lessonScripts: ReadonlyMap<string, LessonScript> = new Map(
 export const hadithStepIndex = (s: LessonScript): number =>
   s.steps.findIndex((x) => x.type === 'hadith_loop');
 
-const VALUES = new Map([ikhlas, day2].map((j) => [j.lessonId, (j as { value?: string }).value ?? '']));
+const VALUES = new Map(LESSON_JSON.map((j) => [j.lessonId, (j as { value?: string }).value ?? '']));
 
 /** The lesson's value («برّ الوالدين»), from the lesson JSON. */
 export const lessonValue = (lessonId: string): string => VALUES.get(lessonId) ?? '';

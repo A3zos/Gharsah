@@ -9,21 +9,24 @@ import { paths } from '../../app/paths';
 import type { ChildProfile } from '../../data/children';
 import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
 import { createServerLesson, type WebServerLesson } from '../../lesson/web/createServerLesson';
-import { initialServerState } from '../../lesson/server/serverLesson';
+import { initialServerState, type LessonPlan } from '../../lesson/server/serverLesson';
 import { DESKTOP, useMedia } from '../../lib/useMedia';
 import { ConfirmSheet } from '../ui/ConfirmSheet';
 import { ServerLessonView, type ServerLessonActions } from './ServerLessonView';
 
 export function ServerLessonCall({
   baseUrl,
+  plan,
   child,
   session,
   onFallback,
 }: {
   baseUrl: string;
+  plan: LessonPlan;
   child: ChildProfile;
   session: { parentUid: string; childId: string };
-  onFallback: () => void;
+  /** `quranDone`: today's surah part is finished → the built-in lesson resumes at the hadith. */
+  onFallback: (quranDone: boolean) => void;
 }) {
   const navigate = useNavigate();
   const desktop = useMedia(DESKTOP);
@@ -32,6 +35,7 @@ export function ServerLessonCall({
   const leaving = useRef(false);
   // Read once on entry: a consent change applies from the next lesson.
   const consent = useRef(child.aiVoiceConsent);
+  const planRef = useRef(plan);
   // Only for scrubbing the child's own words — never sent (read once, like consent).
   const childName = useRef(child.name);
   const fallbackRef = useRef(onFallback);
@@ -45,6 +49,7 @@ export function ServerLessonCall({
     const onVis = () => made?.lesson.setForeground(document.visibilityState === 'visible');
     void createServerLesson({
       baseUrl,
+      plan: planRef.current,
       session: { parentUid: session.parentUid, childId: session.childId },
       gender: child.gender,
       childName: childName.current,
@@ -57,10 +62,10 @@ export function ServerLessonCall({
         document.addEventListener('visibilitychange', onVis);
         w.lesson.start().catch((e: unknown) => {
           console.warn('[gharsah] AI lesson failed to start', e);
-          if (alive) fallbackRef.current();
+          if (alive) fallbackRef.current(false);
         });
       },
-      () => alive && fallbackRef.current(),
+      () => alive && fallbackRef.current(false),
     );
     return () => {
       alive = false;
@@ -86,9 +91,9 @@ export function ServerLessonCall({
   }, [navigate]);
 
   useEffect(() => {
-    if (state.phase === 'fallback') fallbackRef.current();
+    if (state.phase === 'fallback') fallbackRef.current(state.quranDone);
     if (state.phase === 'ended') goHome();
-  }, [state.phase, goHome]);
+  }, [state.phase, state.quranDone, goHome]);
 
   const blocker = useBlocker(() => !leaving.current && state.phase !== 'fallback');
   const blocked = blocker.state === 'blocked';

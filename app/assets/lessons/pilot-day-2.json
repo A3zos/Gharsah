@@ -1,0 +1,78 @@
+{
+  "contractVersion": "0.1",
+  "lessonId": "pilot-day-2",
+  "title": "سورة الناس + حديث عن الكذب",
+  "value": "الصدق",
+  "_note": "PILOT PLAN day 2 of 3 (product-owner decision 2026-10-02): one surah + one hadith, one lesson per day, no choosing. Quran by surah:ayah only; hadith by id (placeholder until approved). No home project in the pilot.",
+  "pilotDay": 2,
+  "steps": [
+    {
+      "type": "intro",
+      "surah": 114,
+      "surahInfoRef": "surahInfo/114",
+      "lines": ["greet", "intro.surah", "intro.count", "intro.ready"]
+    },
+    {
+      "type": "ayah_loop",
+      "ref": {
+        "surah": 114,
+        "ayah": 1
+      },
+      "repeats": 3
+    },
+    {
+      "type": "ayah_loop",
+      "ref": {
+        "surah": 114,
+        "ayah": 2
+      },
+      "repeats": 3
+    },
+    {
+      "type": "ayah_loop",
+      "ref": {
+        "surah": 114,
+        "ayah": 3
+      },
+      "repeats": 3
+    },
+    {
+      "type": "ayah_loop",
+      "ref": {
+        "surah": 114,
+        "ayah": 4
+      },
+      "repeats": 3
+    },
+    {
+      "type": "ayah_loop",
+      "ref": {
+        "surah": 114,
+        "ayah": 5
+      },
+      "repeats": 3
+    },
+    {
+      "type": "ayah_loop",
+      "ref": {
+        "surah": 114,
+        "ayah": 6
+      },
+      "repeats": 3
+    },
+    {
+      "type": "surah_done",
+      "lines": ["surah.done", "surah.proud"],
+      "question": "surah.next_hadith"
+    },
+    {
+      "type": "hadith_loop",
+      "hadithId": "PLACEHOLDER-al-kadhib",
+      "repeats": 3
+    },
+    {
+      "type": "lesson_end",
+      "lines": ["end.praise"]
+    }
+  ]
+}

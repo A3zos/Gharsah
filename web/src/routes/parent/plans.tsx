@@ -5,7 +5,6 @@ import { paths } from '../../app/paths';
 import {
   ChildrenIcon,
   CheckIcon,
-  PlayGlyph,
   PlusIcon,
   ShieldIcon,
   SproutBadge,
@@ -30,7 +29,9 @@ import { childrenCount } from '../../data/stats';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { hijriDate, hijriDayMonth } from '../../lib/dates';
 import { PlanList } from '../../components/landing/shared';
-import { MONTHLY_MAX_CHILDREN, PLANS, PRICE } from '../../content/plans';
+import { MONTHLY_MAX_CHILDREN } from '../../content/plans';
+import { PILOT_DAYS, PILOT_ITEMS, PILOT_NAME } from '../../content/pilot';
+import { cx } from '../../lib/cx';
 import type { Route } from './+types/plans';
 
 export const meta: Route.MetaFunction = () => [{ title: 'الباقات — غَرْسة' }];
@@ -47,7 +48,10 @@ export default function PlansRoute() {
   const sub = subscription && isSubscribed(subscription) ? subscription : null;
   const count = children?.length ?? 0;
   // design/v3 PackagesLimit: shown when the add-child flow sent a monthly parent here.
-  const limit = params.get('limit') === '1' && sub?.plan === 'monthly' && count >= MONTHLY_MAX_CHILDREN;
+  const limit =
+    params.get('limit') === '1' &&
+    (sub?.plan === 'monthly' || sub?.plan === 'trial') &&
+    count >= MONTHLY_MAX_CHILDREN;
   return (
     <ParentPage
       tab="plans"
@@ -61,7 +65,7 @@ export default function PlansRoute() {
 function Desktop({ sub, count, limit }: { sub: Subscription | null; count: number; limit: boolean }) {
   return (
     <div className="flex grow flex-col gap-[24px]">
-      <DesktopHeader title="الباقات" subtitle="الشهرية لابن واحد، والسنوية لكل أبنائك" />
+      <DesktopHeader title="الباقات" subtitle="الباقة التجريبية: ثلاثة أيام، حصة واحدة كل يوم" />
       {limit && <LimitBanner />}
       {sub && (
         <div className="flex items-center gap-[20px] rounded-px-28 bg-surface px-[30px] py-[24px] shadow-dark-14-30-5">
@@ -72,20 +76,11 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
             <CheckIcon size={28} />
           </span>
           <span className="flex grow flex-col gap-[5px]">
-            <span className="text-[19px] font-extrabold">باقتك الحالية — {PLAN_LABEL[sub.plan]}</span>
+            <span className="text-[19px] font-extrabold">باقتك الحالية — {PILOT_NAME}</span>
             <span className="text-[14px] text-text-muted">
-              تتجدّد في {hijriDate(sub.expiresAt)} ·{' '}
-              {sub.plan === 'trial'
-                ? 'فترة تجريبية'
-                : `${PRICE[sub.plan]} ريال ${sub.plan === 'annual' ? 'في السنة' : 'في الشهر'}`}
+              تنتهي في {hijriDate(sub.expiresAt)} · {PILOT_ITEMS[2]}
             </span>
           </span>
-          {sub.plan !== 'trial' && (
-            <SubscribeButton plan={sub.plan} className={buttonClass('gold', 'md', 'gap-[9px] px-[24px]')}>
-              <PlayGlyph color="onGold" />
-              تجديد
-            </SubscribeButton>
-          )}
           <a
             href="https://play.google.com/store/account/subscriptions"
             target="_blank"
@@ -100,71 +95,9 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
           </a>
         </div>
       )}
-      <div className="flex gap-[20px]">
-        {(['annual', 'monthly'] as const).map((plan) => {
-          const current = sub?.plan === plan;
-          const annual = plan === 'annual';
-          return (
-            <div
-              key={plan}
-              className={
-                annual
-                  ? 'relative flex grow basis-0 flex-col gap-[16px] rounded-px-32 border-[2.5px] border-primary bg-surface px-[32px] pt-[34px] pb-[28px] shadow-primary-16-34-12'
-                  : 'flex grow basis-0 flex-col gap-[16px] rounded-px-32 border-[1.5px] border-border bg-surface px-[32px] pt-[34px] pb-[28px]'
-              }
-            >
-              {annual && (
-                <span className="absolute -top-[15px] right-[32px] rounded-pill bg-primary px-[18px] py-[8px] text-[13px] font-extrabold text-surface">
-                  الأفضل قيمة
-                </span>
-              )}
-              <h2 className="m-0 font-heading text-[25px] font-bold">
-                {annual ? 'الباقة السنوية' : 'الباقة الشهرية'}
-              </h2>
-              <span className="flex items-baseline gap-[9px]">
-                <span
-                  className={`font-heading text-[58px] leading-[1] font-extrabold ${annual ? 'text-deep-green' : 'text-text-dark'}`}
-                >
-                  {PRICE[plan]}
-                </span>
-                <span className="text-[17px] font-bold text-text-muted">
-                  {annual ? 'ريال / سنة' : 'ريال / شهر'}
-                </span>
-              </span>
-              {annual ? (
-                <span className="self-start rounded-pill bg-gold-tint px-[14px] py-[8px] text-[13.5px] font-bold text-warning-text">
-                  أقل من ١٠ ريالات في الشهر
-                </span>
-              ) : (
-                <span className="self-start py-[8px] text-[13.5px] font-bold text-text-muted">
-                  تجربة مرنة للبداية
-                </span>
-              )}
-              <div className="h-[1px] bg-border" />
-              <PlanList items={PLANS[plan]} text="text-[15px]" />
-              {current ? (
-                <span className="mt-auto flex h-[58px] items-center justify-center rounded-px-20 bg-green-tint font-heading text-[18px] font-bold text-deep-green">
-                  باقتك الحالية
-                </span>
-              ) : (
-                <SubscribeButton
-                  plan={plan}
-                  className={buttonClass(
-                    annual ? 'primary' : 'plain',
-                    'custom',
-                    'mt-auto h-[58px] gap-[10px] rounded-px-20 font-heading text-[18px] font-bold',
-                  )}
-                >
-                  اشترك
-                </SubscribeButton>
-              )}
-            </div>
-          );
-        })}
+      <div className="max-w-[560px]">
+        <PilotCard current={!!sub} large />
       </div>
-      <p className="m-0 text-center text-[14.5px] leading-[1.8] font-extrabold text-deep-green">
-        يمكنك الترقية من الشهرية إلى السنوية في أي وقت
-      </p>
       <div className="flex grow items-end gap-[20px]">
         <Link
           to={paths.parent.children}
@@ -218,7 +151,7 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
           />
           <div className="relative flex items-center justify-between gap-[10px]">
             <span className="font-heading text-[19px] leading-[1.5] font-bold text-surface">
-              باقتك الحالية — {PLAN_LABEL[sub.plan]}
+              باقتك الحالية — {PILOT_NAME}
             </span>
             <span className="rounded-pill bg-gold px-[12px] py-[5px] text-[12px] font-extrabold whitespace-nowrap text-on-gold">
               نشطة
@@ -238,82 +171,13 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
               />
             </div>
             <span className="text-[12.5px] text-on-deep-green-muted">
-              تتجدّد في {hijriDayMonth(sub.expiresAt)} — تلقائيًا عبر Google Play
+              تنتهي في {hijriDayMonth(sub.expiresAt)}
             </span>
           </div>
         </div>
       )}
 
-      <div className="flex items-baseline justify-between gap-[10px]">
-        <h2 className="m-0 font-heading text-[20px] leading-[1.5] font-bold">الباقات</h2>
-        <span className="text-[12.5px] text-text-muted">الشهرية لابن واحد، والسنوية لكل أبنائك</span>
-      </div>
-
-      <div className="relative flex flex-col gap-[15px] rounded-px-28 border-[2.5px] border-primary bg-surface px-[20px] pt-[26px] pb-[20px] shadow-lesson-done-card">
-        <span className="absolute -top-[13px] right-[22px] rounded-pill bg-primary px-[15px] py-[6px] text-[12px] font-extrabold text-surface">
-          الأفضل قيمة
-        </span>
-        <h3 className="m-0 font-heading text-[22px] leading-[1.4] font-bold">الباقة السنوية</h3>
-        <span className="flex items-baseline gap-[8px]">
-          <span className="font-heading text-[46px] leading-[1] font-extrabold text-deep-green">
-            {PRICE.annual}
-          </span>
-          <span className="text-[15px] font-bold text-text-muted">ريال / سنة</span>
-        </span>
-        <span className="self-start rounded-pill bg-gold-tint px-[13px] py-[7px] text-[13px] font-bold text-warning-text">
-          أقل من ١٠ ريالات في الشهر
-        </span>
-        <span className="h-[1px] bg-border" />
-        <PlanList items={PLANS.annual} text="text-[14.5px]" />
-        {current === 'annual' ? (
-          <CurrentChip />
-        ) : (
-          <SubscribeButton
-            plan="annual"
-            className={buttonClass(
-              'primary',
-              'custom',
-              'h-[56px] gap-[9px] rounded-px-19 font-heading text-[18px] font-bold',
-            )}
-          >
-            {current === 'monthly' ? 'الترقية للسنوية' : 'اشترك'}
-            <ForwardIcon size={20} />
-          </SubscribeButton>
-        )}
-      </div>
-
-      <div className="relative flex flex-col gap-[15px] rounded-px-28 border-[1.5px] border-border bg-surface px-[20px] pt-[26px] pb-[20px] shadow-lesson-done-card">
-        <h3 className="m-0 font-heading text-[22px] leading-[1.4] font-bold">الباقة الشهرية</h3>
-        <span className="flex items-baseline gap-[8px]">
-          <span className="font-heading text-[46px] leading-[1] font-extrabold text-text-dark">
-            {PRICE.monthly}
-          </span>
-          <span className="text-[15px] font-bold text-text-muted">ريال / شهر</span>
-        </span>
-        <span className="self-start rounded-pill bg-gold-tint px-[13px] py-[7px] text-[13px] font-bold text-warning-text">
-          تجربة مرنة للبداية
-        </span>
-        <span className="h-[1px] bg-border" />
-        <PlanList items={PLANS.monthly} text="text-[14.5px]" />
-        {current === 'monthly' ? (
-          <CurrentChip muted />
-        ) : (
-          <SubscribeButton
-            plan="monthly"
-            className={buttonClass(
-              'plain',
-              'custom',
-              'h-[56px] rounded-px-19 font-heading text-[17px] font-bold',
-            )}
-          >
-            {current === 'annual' ? 'التحويل إلى الشهرية' : 'اشترك'}
-          </SubscribeButton>
-        )}
-      </div>
-
-      <p className="m-0 text-center text-[13.5px] leading-[1.8] font-extrabold text-deep-green">
-        يمكنك الترقية من الشهرية إلى السنوية في أي وقت
-      </p>
+      <PilotCard current={!!current} />
 
       <Link
         to={paths.parent.addChildFrom('plans')}
@@ -344,7 +208,7 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
   );
 }
 
-/** design/v3 PackagesLimit — a monthly parent tried to add a second child. */
+/** design/v3 PackagesLimit — a one-child plan (the pilot) and a second child was added. */
 function LimitBanner() {
   return (
     <div
@@ -374,24 +238,56 @@ function LimitBanner() {
         </span>
         <span className="flex min-w-0 grow flex-col gap-[6px]">
           <span className="font-heading text-[19px] leading-[1.45] font-bold text-error-text">
-            الباقة الشهرية لابن واحد
+            {PILOT_NAME} لابن واحد
           </span>
           <span className="text-[14px] leading-[1.8] text-error-text">
-            رقِّ إلى السنوية لتضيف كل أبنائك — بلا حدّ، وعلى نفس الاشتراك.
+            التجربة متاحة الآن لابن واحد — نخبرك حين تتوفّر الباقات لكل الأبناء.
           </span>
         </span>
       </div>
-      <SubscribeButton
-        plan="annual"
-        className={buttonClass(
-          'primary',
-          'custom',
-          'h-[56px] gap-[9px] rounded-px-19 font-heading text-[18px] font-bold',
-        )}
-      >
-        الترقية للسنوية
-        <ForwardIcon size={20} />
-      </SubscribeButton>
+    </div>
+  );
+}
+
+/** «الباقة التجريبية»: the three pilot days — 3 surahs, 3 hadiths, one lesson a day. */
+function PilotCard({ current, large }: { current: boolean; large?: boolean }) {
+  return (
+    <div
+      className={cx(
+        'relative flex flex-col gap-[15px] rounded-px-28 border-[2.5px] border-primary bg-surface shadow-lesson-done-card',
+        large ? 'px-[32px] pt-[30px] pb-[26px]' : 'px-[20px] pt-[26px] pb-[20px]',
+      )}
+    >
+      <h2 className={cx('m-0 font-heading leading-[1.4] font-bold', large ? 'text-[25px]' : 'text-[22px]')}>
+        {PILOT_NAME}
+      </h2>
+      <span className="self-start rounded-pill bg-gold-tint px-[13px] py-[7px] text-[13px] font-bold text-warning-text">
+        {toArabicDigits(PILOT_DAYS.length)} أيام — يومًا بعد يوم، بالترتيب
+      </span>
+      <span className="h-[1px] bg-border" />
+      <PlanList items={PILOT_ITEMS} text={large ? 'text-[15px]' : 'text-[14.5px]'} />
+      <ol className="m-0 flex flex-col gap-[6px] ps-[20px] text-[13.5px] leading-[1.7] text-text-muted">
+        {PILOT_DAYS.map((d) => (
+          <li key={d.lessonId}>
+            اليوم {toArabicDigits(d.day)}: سورة {d.surahName} + {d.hadithTitle}
+          </li>
+        ))}
+      </ol>
+      {current ? (
+        <CurrentChip />
+      ) : (
+        <SubscribeButton
+          plan="trial"
+          className={buttonClass(
+            'primary',
+            'custom',
+            'h-[56px] gap-[9px] rounded-px-19 font-heading text-[18px] font-bold',
+          )}
+        >
+          ابدأ التجربة
+          <ForwardIcon size={20} />
+        </SubscribeButton>
+      )}
     </div>
   );
 }
@@ -421,7 +317,7 @@ function SubscribeButton({
   className,
   children,
 }: {
-  plan: PlanId;
+  plan: PlanId | 'trial';
   className: string;
   children: React.ReactNode;
 }) {
@@ -467,8 +363,7 @@ function SubscribeButton({
       </button>
       {state === 'done' && (
         <span role="status" className="text-center text-[13px] font-bold text-deep-green">
-          تم تفعيل {PLAN_LABEL[plan] === 'سنوية' ? 'الباقة السنوية' : 'الباقة الشهرية'} — ننتقل إلى لوحة
-          التحكم…
+          تم تفعيل {plan === 'trial' ? PILOT_NAME : `الباقة ${PLAN_LABEL[plan]}`} — ننتقل إلى لوحة التحكم…
         </span>
       )}
       {error && (

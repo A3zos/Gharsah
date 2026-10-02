@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseTurn } from './parse';
-import { doneRefsOf, hadithLessonId, mappedStage, quranLessonId } from './progressMap';
+import { normalizeArabic } from './serverLesson';
+import { doneRefsOf, hadithMatchesTopic, mappedStage } from './progressMap';
 import { HADITH_STAGES, QURAN_STAGES } from './testing/fakeServer';
 
 const turn = (mode: 'quran' | 'hadith', stage: string, max: string, extra: Record<string, unknown> = {}) => {
@@ -19,22 +20,23 @@ const turn = (mode: 'quran' | 'hadith', stage: string, max: string, extra: Recor
   );
 };
 
-describe('mappedStage', () => {
+// One row per pilot day: the surah part fills the first stages, then «hadith»; the
+// hadith session finishes the day.
+describe('mappedStage (the day ladder)', () => {
   it.each([
     ['greet', 'listen_full'],
     ['tafsir', 'listen_full'],
     ['recitation', 'ayah_repeat'],
     ['tajweed', 'full_twice'],
     ['plan', 'hadith'],
-    ['done', 'done'],
+    ['done', 'hadith'],
   ])('quran %s → %s', (stage, want) => {
     expect(mappedStage(turn('quran', stage, stage))).toBe(want);
   });
 
   it.each([
-    ['text', 'listen_full'],
-    ['memorize', 'ayah_repeat'],
-    ['quiz', 'full_twice'],
+    ['greet', 'hadith'],
+    ['memorize', 'hadith'],
     ['project', 'hadith'],
     ['done', 'done'],
   ])('hadith %s → %s', (stage, want) => {
@@ -43,6 +45,7 @@ describe('mappedStage', () => {
 
   it('after a jump back, the furthest stage reached is kept (stages never go backwards)', () => {
     expect(mappedStage(turn('quran', 'fadl', 'tajweed'))).toBe('full_twice');
+    expect(mappedStage(turn('hadith', 'text', 'done'))).toBe('done');
   });
 
   it('review sessions write nothing', () => {
@@ -54,39 +57,33 @@ describe('mappedStage', () => {
   });
 });
 
-describe('lesson ids', () => {
-  it('pilot surahs and the Fatiha intro; others none', () => {
-    expect([1, 112, 113, 114, 2, null].map(quranLessonId)).toEqual([
-      'surah-1',
-      'surah-112',
-      'surah-113',
-      'surah-114',
-      null,
-      null,
-    ]);
+describe('hadithMatchesTopic', () => {
+  const m = (title: string, topic: string) => hadithMatchesTopic(title, topic, normalizeArabic);
+  it('matches the day topic in any spelling or form', () => {
+    expect(m('بر الوالدين', 'برّ الوالدين')).toBe(true);
+    expect(m('حديث: برّ الوالدين', 'برّ الوالدين')).toBe(true);
+    expect(m('الكذب', 'الكذب')).toBe(true);
+    expect(m('لا تغضب', 'الغضب')).toBe(true);
   });
-  it('pilot hadith ids → our catalogue', () => {
-    expect([9, 10, 6, 1, null].map(hadithLessonId)).toEqual([
-      'hadith-birr-alwalidayn',
-      'hadith-al-kadhib',
-      'hadith-al-ghadab',
-      null,
-      null,
-    ]);
+  it('rejects another topic', () => {
+    expect(m('الكذب', 'برّ الوالدين')).toBe(false);
+    expect(m('بر الوالدين', 'الغضب')).toBe(false);
+    expect(m('الصدقة', 'الكذب')).toBe(false);
   });
 });
 
 describe('doneRefsOf', () => {
-  it('the recited ayat while learning, the whole surah once done', () => {
+  it('the recited ayat while learning, the whole surah once its part is done', () => {
     const t = turn('quran', 'recitation', 'recitation', {
       surah_no: 112,
       recitation_scores: [{ ayah: 1 }, { ayah: 2 }],
     });
-    expect(doneRefsOf(t, 'ayah_repeat', () => 4)).toEqual(['112:1', '112:2']);
-    expect(doneRefsOf(t, 'done', () => 4)).toEqual(['112:1', '112:2', '112:3', '112:4']);
+    expect(doneRefsOf(t, 'ayah_repeat', 112, () => 4)).toEqual(['112:1', '112:2']);
+    expect(doneRefsOf(t, 'hadith', 112, () => 4)).toEqual(['112:1', '112:2', '112:3', '112:4']);
   });
-  it('nothing for hadith or an unknown surah', () => {
-    expect(doneRefsOf(turn('hadith', 'done', 'done'), 'done', () => 4)).toEqual([]);
-    expect(doneRefsOf(turn('quran', 'greet', 'greet'), 'listen_full', () => 4)).toEqual([]);
+  it('the hadith session keeps the day surah; before recitation nothing', () => {
+    expect(doneRefsOf(turn('hadith', 'memorize', 'memorize'), 'hadith', 114, () => 6)).toEqual([]);
+    expect(doneRefsOf(turn('hadith', 'done', 'done'), 'done', 114, () => 6)).toHaveLength(6);
+    expect(doneRefsOf(turn('quran', 'greet', 'greet'), 'listen_full', 112, () => 4)).toEqual([]);
   });
 });

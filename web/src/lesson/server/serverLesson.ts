@@ -21,13 +21,7 @@ import { Observable } from '../observable';
 import { PlaybackBlocked } from '../ports';
 import { AgentUnavailable, RateLimited, SessionExpired, type AgentApi, type Gender } from './api';
 import type { ActionItem, AgentAction, AgentMode, AgentStage, Expects, ServerTurn, TurnKind } from './parse';
-import {
-  doneRefsOf,
-  hadithLessonId,
-  mappedStage,
-  quranLessonId,
-  type ServerProgressSink,
-} from './progressMap';
+import { doneRefsOf, hadithMatchesTopic, mappedStage, type ServerProgressSink } from './progressMap';
 
 // ── ports ──
 
@@ -65,8 +59,23 @@ export interface SpeechInput {
   listen(signal: AbortSignal): Promise<string | null>;
 }
 
+/** Today's lesson in the pilot plan — the server must teach exactly this (no choosing). */
+export interface LessonPlan {
+  /** Our progress row (pilot-day-N). */
+  lessonId: string;
+  surahNo: number;
+  /** «الإخلاص» — the answer to the server's «which surah?» stage. */
+  surahName: string;
+  /** «برّ الوالدين» — the server's hadith title must match it. */
+  hadithTopic: string;
+  /** The built-in script's hadith step / last step (so a fallback resumes in the right place). */
+  hadithStepIndex: number;
+  lastStepIndex: number;
+}
+
 export interface ServerLessonDeps {
   api: AgentApi;
+  plan: LessonPlan;
   voice: TeacherVoice;
   player: UrlPlayer;
   presence: PresenceListener;
@@ -133,6 +142,8 @@ export interface ServerLessonState {
   readonly projects: readonly ActionItem[];
   readonly saveFailed: boolean;
   readonly paused: boolean;
+  /** Today's surah part is finished — a fallback resumes the built-in lesson at the hadith. */
+  readonly quranDone: boolean;
 }
 
 export const initialServerState: ServerLessonState = {
@@ -165,6 +176,7 @@ export const initialServerState: ServerLessonState = {
   projects: [],
   saveFailed: false,
   paused: false,
+  quranDone: false,
 };
 
 /** The hadith text placeholder until a vetted source is approved (CLAUDE.md §3). */
@@ -210,9 +222,7 @@ export class ServerLesson {
   /** What the child is asked to repeat (play_ayah text / the hadith), sent without consent. */
   private reference: string | null = null;
   private segSurah: number | null = null;
-  private segHadithId: number | null = null;
-  private hadithBefore: number[] | null = null;
-  private pendingStage: ServerTurn | null = null;
+  private surahAnswers = 0;
   private unblock: (() => void) | null = null;
   private pausedByBackground = false;
 
@@ -261,14 +271,9 @@ export class ServerLesson {
   private async startSegment(restarted: boolean): Promise<void> {
     const seg = this.segments[this.segIndex]!;
     this.nameAnswers = 0;
+    this.surahAnswers = 0;
     this.reference = null;
-    if (!restarted) {
-      this.segSurah = seg.kind === 'taseem' ? seg.surahNo : null;
-      this.segHadithId = seg.kind === 'htaseem' ? seg.hadithId : null;
-      this.pendingStage = null;
-      this.hadithBefore =
-        seg.kind === 'hadith' ? await this.d.api.completedHadith(this.d.deviceId).catch(() => null) : null;
-    }
+    this.segSurah = seg.kind === 'taseem' ? seg.surahNo : seg.kind === 'quran' ? this.d.plan.surahNo : null;
     this.set({
       busy: true,
       expects: null,
@@ -352,8 +357,15 @@ export class ServerLesson {
     this.turnAbort = abort;
     this.turn = turn;
     this.restarts = turn.stageIndex > 0 ? 0 : this.restarts;
-    if (turn.surahNo !== null) this.segSurah = turn.surahNo;
-    if (turn.hadithIds[0] !== undefined) this.segHadithId ??= turn.hadithIds[0];
+    // The pilot plan: the server must teach today's surah and hadith — otherwise the
+    // built-in lesson (which follows the same plan) takes over.
+    if (turn.kind === 'quran' && turn.surahNo !== null && turn.surahNo !== this.d.plan.surahNo) {
+      return this.fallback(new Error(`server surah ${turn.surahNo} ≠ today's ${this.d.plan.surahNo}`));
+    }
+    const title = turn.kind === 'hadith' ? hadithTitleOf(turn) : null;
+    if (title && !hadithMatchesTopic(title, this.d.plan.hadithTopic, normalizeArabic)) {
+      return this.fallback(new Error(`server hadith «${title}» ≠ today's «${this.d.plan.hadithTopic}»`));
+    }
     this.saveProgress(turn);
 
     // The name stays on the device: the name stage is never shown to the child —
@@ -364,6 +376,13 @@ export class ServerLesson {
       this.nameAnswers++;
       this.set({ busy: true, expects: null });
       return this.send(NAME_STAND_IN);
+    }
+    // No choosing: «which surah?» is answered with today's surah, silently.
+    if (turn.kind === 'quran' && turn.stage === 'surah' && turn.expects !== 'none') {
+      if (this.surahAnswers >= MAX_NAME_ANSWERS) return this.fallback(new Error('surah stage repeats'));
+      this.surahAnswers++;
+      this.set({ busy: true, expects: null });
+      return this.send(this.d.plan.surahName);
     }
     // Arrived while ExitConfirm is open — resume() plays it.
     if (this.state.value.paused) {
@@ -579,7 +598,6 @@ export class ServerLesson {
   }
 
   private async segmentEnded(): Promise<void> {
-    await this.flushHadithProgress();
     this.set({ expects: null, quickReplies: [], repeat: 'idle' });
     const next = this.segments[this.segIndex + 1];
     if (next) {
@@ -593,41 +611,24 @@ export class ServerLesson {
 
   // ── progress ──
 
+  /** Today's progress row — the same one the built-in lesson writes. */
   private saveProgress(turn: ServerTurn): void {
     const stage = mappedStage(turn);
     if (!stage) return;
-    const lessonId = turn.kind === 'quran' ? quranLessonId(this.segSurah) : hadithLessonId(this.segHadithId);
-    if (!lessonId) {
-      if (turn.kind === 'hadith') this.pendingStage = turn; // the hadith id may come later
-      return;
-    }
+    const { plan } = this.d;
+    if (turn.kind === 'quran' && stage === 'hadith' && !this.state.value.quranDone)
+      this.set({ quranDone: true });
     const update = {
-      lessonId,
+      lessonId: plan.lessonId,
       stage,
-      stepIndex: turn.stageIndex,
-      doneRefs: doneRefsOf({ ...turn, surahNo: this.segSurah }, stage, this.d.ayahCount),
+      // Where the built-in lesson would resume: the start, the hadith, or the end.
+      stepIndex: stage === 'done' ? plan.lastStepIndex : stage === 'hadith' ? plan.hadithStepIndex : 0,
+      doneRefs: doneRefsOf(turn, stage, plan.surahNo, this.d.ayahCount),
     };
     void this.d.sink.record(update).then(
       () => this.state.value.saveFailed && this.set({ saveFailed: false }),
       () => this.set({ saveFailed: true }),
     );
-  }
-
-  /** A hadith whose id never appeared: find it in /agent/progress (new since the start). */
-  private async flushHadithProgress(): Promise<void> {
-    const t = this.pendingStage;
-    this.pendingStage = null;
-    if (!t || this.segHadithId !== null) {
-      if (t) this.saveProgress(this.turn ?? t);
-      return;
-    }
-    const before = this.hadithBefore;
-    const after = await this.d.api.completedHadith(this.d.deviceId).catch(() => null);
-    const fresh = before && after ? after.filter((h) => !before.includes(h)) : [];
-    if (fresh.length === 1) {
-      this.segHadithId = fresh[0]!;
-      this.saveProgress(this.turn ?? t);
-    }
   }
 
   // ── child input ──
@@ -784,4 +785,10 @@ export function normalizeArabic(t: string): string {
     .replace(/[^\p{L}\p{N}\s]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** The hadith title the server sent with this turn (field or show_ayat), if any. */
+function hadithTitleOf(turn: ServerTurn): string | null {
+  for (const a of turn.actions) if (a.type === 'show_ayat' && a.hadithTitle) return a.hadithTitle;
+  return turn.hadithTitle;
 }

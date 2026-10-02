@@ -78,6 +78,8 @@ export interface ChildProfile {
   schedule: ChildSchedule | null;
   /** The parent allowed sending the child's voice to the AI teacher server (default off). */
   aiVoiceConsent: boolean;
+  /** Pilot plan days finished (0–3), from the `progress` rows (parent views). */
+  pilotDaysDone: number;
 }
 
 // Days are stored as integers 0 = السبت … 6 = الجمعة (WEEK_DAYS order).
@@ -140,7 +142,10 @@ export function scheduleToRow(s: ChildSchedule) {
 
 const date = (v: unknown): Date | null => (typeof v === 'string' ? new Date(v) : null);
 
-export function childFromRow(r: Row, extra: { pairing?: Row | null; stats?: Row | null } = {}): ChildProfile {
+export function childFromRow(
+  r: Row,
+  extra: { pairing?: Row | null; stats?: Row | null; pilotDaysDone?: number } = {},
+): ChildProfile {
   const p = extra.pairing;
   return {
     id: String(r.id),
@@ -158,6 +163,7 @@ export function childFromRow(r: Row, extra: { pairing?: Row | null; stats?: Row 
     leader: null,
     schedule: scheduleFromRow(r),
     aiVoiceConsent: r.ai_voice_consent === true,
+    pilotDaysDone: extra.pilotDaysDone ?? 0,
   };
 }
 
@@ -168,13 +174,20 @@ async function withServerFields(rows: Row[]): Promise<ChildProfile[]> {
   const db = supabase();
   return Promise.all(
     rows.map(async (r) => {
-      const [pairing, stats] = await Promise.all([
+      const [pairing, stats, pilot] = await Promise.all([
         db.rpc('child_pairing', { p_child: r.id }),
         db.rpc('child_stats', { c: r.id }),
+        db
+          .from('progress')
+          .select('lesson_id')
+          .eq('child_id', r.id)
+          .like('lesson_id', 'pilot-day-%')
+          .eq('stage', 'done'),
       ]);
       return childFromRow(r, {
         pairing: (pairing.data as Row | null) ?? null,
         stats: (stats.data as Row | null) ?? null,
+        pilotDaysDone: pilot.data?.length ?? 0,
       });
     }),
   );

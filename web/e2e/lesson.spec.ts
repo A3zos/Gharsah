@@ -66,11 +66,7 @@ test('child code → home → full lesson L1→L10 → back home', async ({ page
   // L7: hadith = the marked placeholder (never real text until approved).
   await expect(page.getByText(/يُعتمد لاحقًا/).first()).toBeVisible();
   await repeatAyah(page);
-  await tapUntil(page, () => page.getByText('مشروع هذا الأسبوع').isVisible());
-
-  // L8: project + hints → «إن شاء الله».
-  await tapUntil(page, () => page.getByRole('button', { name: 'افتح الميكروفون وأجب بصوتك' }).isEnabled());
-  await page.getByRole('button', { name: 'افتح الميكروفون وأجب بصوتك' }).click();
+  // Pilot day 1 is surah + hadith only (no home project) → straight to the end.
   await tapUntil(page, () => page.getByRole('heading', { name: 'أكملت حصة اليوم!' }).isVisible());
 
   // L10: done → home.
@@ -78,7 +74,7 @@ test('child code → home → full lesson L1→L10 → back home', async ({ page
   await page.getByRole('button', { name: 'عودة للرئيسية' }).click();
   await page.waitForURL(/\/child\/home/);
   await expect
-    .poll(async () => (await getRow('progress', { child_id: childId, lesson_id: 'm01-w03-ikhlas' }))?.stage)
+    .poll(async () => (await getRow('progress', { child_id: childId, lesson_id: 'pilot-day-1' }))?.stage)
     .toBe('done');
 });
 

@@ -37,6 +37,7 @@ export const previewChild: ChildProfile = {
   stats: { streak: 0, surahs: 0, ayat: 0, hadith: 0, projects: 0, planPct: 0, stage: 'seed' },
   leader: null,
   aiVoiceConsent: false,
+  pilotDaysDone: 0,
   schedule: {
     days: ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'],
     time: 17 * 60,

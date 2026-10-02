@@ -1,5 +1,6 @@
 // The server-written `stats` on a child document (functions/src/progress.ts) —
 // headline numbers only here; the dashboard parses the detail lists.
+import { PILOT_DAYS } from '../content/pilot';
 import { toArabicDigits } from '../lib/arabicDigits';
 import type { ChildProfile } from './children';
 
@@ -8,6 +9,7 @@ export const STAGE_LABEL: Record<Stage, string> = { seed: 'بذرة', sprout: '�
 
 export interface Headline {
   started: boolean;
+  /** Of the pilot package (days finished ÷ days) — the plan in force (2026-10-02). */
   planPct: number;
   stage: Stage;
   surahs: number;
@@ -24,7 +26,7 @@ export const stageOf = (pct: number): Stage => (pct >= 67 ? 'tree' : pct >= 34 ?
 
 export function headline(child: ChildProfile): Headline {
   const s = child.stats;
-  const planPct = Math.min(100, num(s?.planPct));
+  const planPct = pilotPct(child.pilotDaysDone);
   return {
     started: !!s,
     planPct,
@@ -35,6 +37,16 @@ export function headline(child: ChildProfile): Headline {
     projects: num(s?.projects),
     streak: num(s?.streak),
   };
+}
+
+/** Share of the pilot package finished, 0–100. */
+export const pilotPct = (daysDone: number): number =>
+  Math.round((Math.min(PILOT_DAYS.length, Math.max(0, daysDone)) * 100) / PILOT_DAYS.length);
+
+/** «اليوم ٢ من ٣» — the day the child is on; «أتمّ الباقة التجريبية» after the last one. */
+export function pilotChip(daysDone: number): string {
+  if (daysDone >= PILOT_DAYS.length) return 'أتمّ الباقة التجريبية ✓';
+  return `اليوم ${toArabicDigits(daysDone + 1)} من ${toArabicDigits(PILOT_DAYS.length)}`;
 }
 
 /** «١٠ سنوات» / «١٢ سنة» */

@@ -8,9 +8,11 @@ import { toArabicDigits } from '../lib/arabicDigits';
 import { supabase } from '../supabase/client';
 import { watch } from '../supabase/live';
 import { CHILD_COLUMNS, childFromRow, type ChildProfile } from './children';
+import { PILOT_DAYS } from '../content/pilot';
+import { riyadhDay } from '../lib/dates';
 
-/** The lesson sequence (interim until the yearly plan is delivered). */
-export const LESSON_SEQUENCE = ['m01-w03-ikhlas', 'm01-w03-day2'] as const;
+/** The lesson sequence: the pilot plan's three days, in order (content/pilot.ts). */
+export const LESSON_SEQUENCE: readonly string[] = PILOT_DAYS.map((d) => d.lessonId);
 
 export interface ChildRef {
   parentUid: string;
@@ -81,8 +83,19 @@ export function watchStudent(
         .maybeSingle();
       if (e) throw e;
       if (!data) return null;
-      const stats = await db.rpc('child_stats', { c: s.childId });
-      return childFromRow(data, { stats: (stats.data as Row | null) ?? null });
+      const [stats, pilot] = await Promise.all([
+        db.rpc('child_stats', { c: s.childId }),
+        db
+          .from('progress')
+          .select('lesson_id')
+          .eq('child_id', s.childId)
+          .like('lesson_id', 'pilot-day-%')
+          .eq('stage', 'done'),
+      ]);
+      return childFromRow(data, {
+        stats: (stats.data as Row | null) ?? null,
+        pilotDaysDone: pilot.data?.length ?? 0,
+      });
     },
     next,
     error,
@@ -92,6 +105,8 @@ export function watchStudent(
 export interface StoredProgress {
   progress: LessonProgress;
   updatedAt: Date | null;
+  /** Set by the database when the lesson reached «done» (server time). */
+  completedAt?: Date | null;
 }
 
 /** A progress row → the LessonAgent's checkpoint (same meaning as the Firestore one). */
@@ -131,7 +146,9 @@ export function watchProgress(
     async () => {
       const { data, error: e } = await supabase()
         .from('progress')
-        .select('lesson_id, stage, step_index, done_refs, project_assigned, reported_project, updated_at')
+        .select(
+          'lesson_id, stage, step_index, done_refs, project_assigned, reported_project, updated_at, completed_at',
+        )
         .eq('child_id', s.childId)
         .in('lesson_id', [...LESSON_SEQUENCE]);
       if (e) throw e;
@@ -141,6 +158,7 @@ export function watchProgress(
           {
             progress: progressFromRow(String(r.lesson_id), r),
             updatedAt: typeof r.updated_at === 'string' ? new Date(r.updated_at) : null,
+            completedAt: typeof r.completed_at === 'string' ? new Date(r.completed_at) : null,
           },
         ]),
       );
@@ -153,28 +171,40 @@ export function watchProgress(
 // ── Today's lesson ──────────────────────────────────────────────────────────
 
 export type TodayLesson =
-  | { kind: 'available'; lessonId: string; resume: LessonProgress | null }
-  /** Finished today; the next lesson opens tomorrow. TODO(design): no designed «done for today» hero. */
-  | { kind: 'doneToday'; lessonId: string };
+  | { kind: 'available'; lessonId: string; day: number; resume: LessonProgress | null }
+  /** Today's lesson is finished; the next day opens tomorrow (Riyadh). TODO(design): no designed «done for today» hero. */
+  | { kind: 'doneToday'; lessonId: string; day: number }
+  /** All pilot days are finished. TODO(design): no designed plan-complete hero. */
+  | { kind: 'planDone'; lessonId: string; day: number };
 
-const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-
-/** The first unfinished lesson; one that follows a lesson finished *today* waits until tomorrow. */
+/**
+ * The pilot plan: one lesson a day, in order, no choosing. Day N opens only once
+ * day N-1 is completed AND on a later Riyadh calendar day (the database enforces
+ * the same rule — pilot_day_guard). A started day stays open until finished.
+ */
 export function pickTodayLesson(stored: Map<string, StoredProgress>, now = new Date()): TodayLesson {
-  let lastDone: Date | null = null;
-  let lastId: string = LESSON_SEQUENCE[0];
-  for (const id of LESSON_SEQUENCE) {
+  const today = riyadhDay(now);
+  let prevDoneOn: string | null = null;
+  for (let i = 0; i < LESSON_SEQUENCE.length; i++) {
+    const id = LESSON_SEQUENCE[i]!;
     const s = stored.get(id);
     if (s?.progress.completed) {
-      lastDone = s.updatedAt;
-      lastId = id;
+      const at = s.completedAt ?? s.updatedAt;
+      prevDoneOn = at ? riyadhDay(at) : today;
       continue;
     }
-    if (lastDone && sameDay(lastDone, now)) return { kind: 'doneToday', lessonId: lastId };
-    return { kind: 'available', lessonId: id, resume: s && s.progress.stepIndex > 0 ? s.progress : null };
+    if (i > 0 && prevDoneOn === today && !(s && s.progress.stepIndex > 0)) {
+      return { kind: 'doneToday', lessonId: LESSON_SEQUENCE[i - 1]!, day: i };
+    }
+    return {
+      kind: 'available',
+      lessonId: id,
+      day: i + 1,
+      resume: s && s.progress.stepIndex > 0 ? s.progress : null,
+    };
   }
-  return { kind: 'doneToday', lessonId: lastId };
+  const last = LESSON_SEQUENCE.length;
+  return { kind: 'planDone', lessonId: LESSON_SEQUENCE[last - 1]!, day: last };
 }
 
 const MEMORIZE = new Set(['intro', 'stage_intro', 'listen_surah', 'ayah_loop', 'full_surah']);

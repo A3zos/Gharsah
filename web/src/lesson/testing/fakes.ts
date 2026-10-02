@@ -2,6 +2,9 @@
 import hadithJson from '@content/hadith/hadith.json';
 import ikhlas from '@content/lessons/m01-w03-ikhlas.json';
 import day2 from '@content/lessons/m01-w03-day2.json';
+import pilot1 from '@content/lessons/pilot-day-1.json';
+import pilot2 from '@content/lessons/pilot-day-2.json';
+import pilot3 from '@content/lessons/pilot-day-3.json';
 import projectsJson from '@content/projects/projects.json';
 import manifestJson from '@content/audio/quran/manifest.json';
 import metaJson from '@content/quran/quran_meta.json';
@@ -228,6 +231,9 @@ export function realContent(o: { hadith?: HadithRepository } = {}): LessonConten
 export const SCRIPTS: Record<string, Record<string, unknown>> = {
   'm01-w03-ikhlas': ikhlas,
   'm01-w03-day2': day2,
+  'pilot-day-1': pilot1,
+  'pilot-day-2': pilot2,
+  'pilot-day-3': pilot3,
 };
 
 export const loadScript = (id: string): LessonScript => parseLessonScript(SCRIPTS[id]!);

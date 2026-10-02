@@ -80,8 +80,12 @@ export default function AddChildRoute() {
   if (editId && !editing) return <ParentPage tab={null} desktop={<NotFound />} />;
   // design/v3 PackagesLimit: the monthly plan covers one child (UI-only for now,
   // see TODO(child-limit) in firestore.rules).
-  const monthly = !!subscription && isSubscribed(subscription) && subscription.plan === 'monthly';
-  if (!editId && monthly && children.length >= MONTHLY_MAX_CHILDREN) {
+  // One child on the monthly plan and on the pilot (trial) package.
+  const oneChild =
+    !!subscription &&
+    isSubscribed(subscription) &&
+    (subscription.plan === 'monthly' || subscription.plan === 'trial');
+  if (!editId && oneChild && children.length >= MONTHLY_MAX_CHILDREN) {
     return <Navigate to={`${paths.parent.plans}?limit=1`} replace />;
   }
   return <Flow key={editId ?? 'new'} editing={editing} />;

@@ -1,0 +1,62 @@
+{
+  "contractVersion": "0.1",
+  "lessonId": "pilot-day-1",
+  "title": "سورة الإخلاص + حديث برّ الوالدين",
+  "value": "برّ الوالدين",
+  "_note": "PILOT PLAN day 1 of 3 (product-owner decision 2026-10-02): one surah + one hadith, one lesson per day, no choosing. Quran by surah:ayah only; hadith by id (placeholder until approved). No home project in the pilot.",
+  "pilotDay": 1,
+  "steps": [
+    {
+      "type": "intro",
+      "surah": 112,
+      "surahInfoRef": "surahInfo/112",
+      "lines": ["greet", "intro.surah", "intro.count", "intro.ready"]
+    },
+    {
+      "type": "ayah_loop",
+      "ref": {
+        "surah": 112,
+        "ayah": 1
+      },
+      "repeats": 3
+    },
+    {
+      "type": "ayah_loop",
+      "ref": {
+        "surah": 112,
+        "ayah": 2
+      },
+      "repeats": 3
+    },
+    {
+      "type": "ayah_loop",
+      "ref": {
+        "surah": 112,
+        "ayah": 3
+      },
+      "repeats": 3
+    },
+    {
+      "type": "ayah_loop",
+      "ref": {
+        "surah": 112,
+        "ayah": 4
+      },
+      "repeats": 3
+    },
+    {
+      "type": "surah_done",
+      "lines": ["surah.done", "surah.proud"],
+      "question": "surah.next_hadith"
+    },
+    {
+      "type": "hadith_loop",
+      "hadithId": "PLACEHOLDER-birr-alwalidayn",
+      "repeats": 3
+    },
+    {
+      "type": "lesson_end",
+      "lines": ["end.praise"]
+    }
+  ]
+}

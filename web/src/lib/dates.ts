@@ -32,3 +32,13 @@ export function toDateOrNull(v: unknown): Date | null {
     return (v as { toDate: () => Date }).toDate();
   return null;
 }
+
+const riyadhYmd = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Riyadh',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/** The calendar day in Riyadh, «2026-10-02» — the pilot's one-lesson-a-day clock. */
+export const riyadhDay = (d: Date): string => riyadhYmd.format(d);

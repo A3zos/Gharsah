@@ -9,7 +9,8 @@ import { BackButton } from '../../components/ui/BackButton';
 import { C } from '../../components/ui/color';
 import { AlertIcon } from '../../components/ui/icons';
 import { updateSchedule } from '../../data/children';
-import { deleteAccount, isSubscribed, PLAN_LABEL, updateParentName } from '../../data/parent';
+import { PILOT_NAME } from '../../content/pilot';
+import { deleteAccount, isSubscribed, updateParentName } from '../../data/parent';
 import { cx } from '../../lib/cx';
 import type { Route } from './+types/settings';
 
@@ -265,7 +266,8 @@ export default function SettingsRoute() {
         <Row
           icon={icons.play}
           label="إدارة الاشتراك"
-          value={sub ? PLAN_LABEL[sub.plan] : 'بلا اشتراك'}
+          // The pilot: one package for everyone (product-owner decision 2026-10-02).
+          value={sub ? PILOT_NAME : 'بلا اشتراك'}
           to={paths.parent.plans}
           last
         />

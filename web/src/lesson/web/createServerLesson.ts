@@ -16,7 +16,7 @@ import {
 } from './serverPorts';
 import { agentDeviceId } from '../server/device';
 import type { ServerProgressSink } from '../server/progressMap';
-import { ServerLesson } from '../server/serverLesson';
+import { ServerLesson, type LessonPlan } from '../server/serverLesson';
 import { SupabaseServerProgressSink } from './serverProgressSink';
 
 const verified = QuranText.fromJson(textJson);
@@ -28,6 +28,8 @@ export interface WebServerLesson {
 
 export async function createServerLesson(o: {
   baseUrl: string;
+  /** Today's pilot-plan lesson (no choosing). */
+  plan: LessonPlan;
   session: ChildRef;
   gender: Gender;
   /** The child's real name: shown on screen only — scrubbed from anything sent to the AI server. */
@@ -42,6 +44,7 @@ export async function createServerLesson(o: {
   const player = new HtmlUrlPlayer();
   const lesson = new ServerLesson({
     api,
+    plan: o.plan,
     voice,
     player,
     presence: new MicPresenceListener(mic),

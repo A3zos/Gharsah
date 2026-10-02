@@ -142,7 +142,7 @@ function Desktop({ kids }: { kids: ChildProfile[] | null }) {
                   aria-valuenow={h.planPct}
                   aria-valuemin={0}
                   aria-valuemax={100}
-                  aria-label="من الخطة السنوية"
+                  aria-label="من الباقة التجريبية"
                 >
                   <span
                     className="block h-[9px] rounded-px-5 bg-primary"

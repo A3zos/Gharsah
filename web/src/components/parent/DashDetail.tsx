@@ -107,7 +107,7 @@ function Lock({ size = 16 }: { size?: number }) {
   );
 }
 
-/** «بقية خطة السنة — قريبًا» (launch content: 3 surahs, 3 hadith topics). */
+/** «بعد الباقة التجريبية — قريبًا» (launch content: 3 surahs, 3 hadith topics). */
 function ComingSoonRow() {
   return (
     <div className="flex items-center gap-[11px] rounded-px-18 border-[1.5px] border-dashed border-border-strong bg-transparent p-[14px]">
@@ -117,7 +117,7 @@ function ComingSoonRow() {
       >
         <Lock />
       </span>
-      <span className="grow text-[14px] font-bold text-text-subtle">بقية خطة السنة</span>
+      <span className="grow text-[14px] font-bold text-text-subtle">بعد الباقة التجريبية</span>
       <span className="rounded-pill bg-border-soft px-[10px] py-[5px] text-[11.5px] font-extrabold whitespace-nowrap text-text-muted">
         قريبًا
       </span>
@@ -377,7 +377,7 @@ function AyatPanel({ s, h, onClose }: { s: Record<string, unknown>; h: Headline;
           </span>
         ))}
         <span className="rounded-pill border border-dashed border-border-strong bg-transparent px-[13px] py-[8px] text-[12.5px] font-bold text-text-subtle">
-          بقية خطة السنة · قريبًا
+          بعد الباقة التجريبية · قريبًا
         </span>
       </div>
       {week && (

@@ -70,7 +70,7 @@ export function watchSubscription(
  * Starts (or renews) a plan through the mock provider. The database fills in the
  * dates (subscriptions_guard); the monthly one-child limit is enforced by a trigger.
  */
-export async function startTrial(plan: PlanId): Promise<void> {
+export async function startTrial(plan: PlanId | 'trial'): Promise<void> {
   const { data } = await supabase().auth.getUser();
   const uid = data.user?.id;
   if (!uid) throw toAuthFailure({ code: 'permission-denied' });

@@ -133,11 +133,11 @@ export function GrowthHero({
           aria-valuenow={pct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label="من الخطة السنوية"
+          aria-label="من الباقة التجريبية"
         >
           <div className="h-full rounded-px-6 bg-primary" style={{ width: `${pct}%` }} />
         </div>
-        <span className="text-[11.5px] text-text-muted">من الخطة السنوية</span>
+        <span className="text-[11.5px] text-text-muted">من الباقة التجريبية</span>
       </div>
       <div className="relative flex items-start px-[2px] pt-[6px] [direction:ltr]" aria-hidden="true">
         {ORDER.map((s, i) => (

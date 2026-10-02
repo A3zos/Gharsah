@@ -94,7 +94,7 @@ export function GrowthPath({ stage, pct, size = 52 }: { stage: Stage; pct: numbe
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label="من خطة السنة"
+        aria-label="من الباقة التجريبية"
       >
         <span
           className={cx('block rounded-px-5 bg-primary', big ? 'h-[10px]' : 'h-[9px]')}

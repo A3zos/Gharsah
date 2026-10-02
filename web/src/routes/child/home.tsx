@@ -10,6 +10,7 @@ import { C } from '../../components/ui/color';
 import { ForwardIcon } from '../../components/ui/icons';
 import { HadithIcon, ProjectIcon, QuranIcon } from '../../components/child/childIcons';
 import { lessonChips, lessonScripts, lessonValue } from '../../content/library';
+import { PILOT_DAYS, PILOT_NAME } from '../../content/pilot';
 import { reviewItems } from '../../content/review';
 import { nextReviewDay } from '../../data/children';
 import { headline, STAGE_LABEL } from '../../data/stats';
@@ -41,31 +42,41 @@ export default function ChildHome() {
   const script = lessonScripts.get(today.lessonId);
   const groups = script ? lessonStepGroups(script) : [];
   const done =
-    today.kind === 'doneToday'
+    today.kind !== 'available'
       ? groups.length
       : today.resume
         ? Math.min(groups.length, Math.max(0, groups.filter((g) => g < today.resume!.stepIndex).length - 1))
         : 0;
   const started = today.kind === 'available' && done > 0;
-  const finished = today.kind === 'doneToday';
+  const finished = today.kind !== 'available';
+  const planDone = today.kind === 'planDone';
+  const dayLabel = `اليوم ${toArabicDigits(today.day)} من ${toArabicDigits(PILOT_DAYS.length)}`;
   const reportFirst = script?.steps[0]?.type === 'project_report';
   const reviewDay = nextReviewDay(child.schedule)?.label;
   const reviewLine = reviewItems(child, progress)
     .map((i) => i.label)
     .join(' · ');
 
-  const badge = finished
-    ? 'أكملت حصة اليوم'
-    : started
-      ? 'بدأتها اليوم'
-      : reportFirst
-        ? 'اليوم الثاني'
-        : 'جديدة';
+  const badge = planDone
+    ? 'أتممت الباقة ✓'
+    : finished
+      ? 'أكملت حصة اليوم'
+      : started
+        ? 'بدأتها اليوم'
+        : reportFirst
+          ? 'اليوم الثاني'
+          : 'جديدة';
   const progressText =
     finished || started
       ? `أنجزت ${toArabicDigits(done)} من ${toArabicDigits(groups.length)} خطوات`
       : `${toArabicDigits(groups.length)} خطوات في انتظارك${reportFirst ? ' — تبدأ بتقريرك' : ''}`;
-  const cta = finished ? 'إلى اللقاء غدًا' : started ? 'أكمل الحصة' : 'ابدأ الحصة';
+  const cta = planDone
+    ? 'ما شاء الله!'
+    : finished
+      ? 'إلى اللقاء غدًا'
+      : started
+        ? 'أكمل الحصة'
+        : 'ابدأ الحصة';
   const pct = groups.length ? Math.round((done / groups.length) * 100) : 0;
   const report = script?.steps[0]?.type === 'project_report' ? script.steps[0] : null;
 
@@ -124,34 +135,55 @@ export default function ChildHome() {
           </svg>
         </span>
         <div className="relative flex items-center justify-between gap-[10px]">
-          <h2 id="today-title" className="m-0 font-heading text-[24px] leading-[1.4] font-bold text-surface">
-            حصة اليوم
-          </h2>
+          <span className="flex flex-col gap-[2px]">
+            <h2
+              id="today-title"
+              className="m-0 font-heading text-[24px] leading-[1.4] font-bold text-surface"
+            >
+              {planDone ? PILOT_NAME : 'حصة اليوم'}
+            </h2>
+            {!planDone && (
+              <span className="text-[13px] font-bold text-on-deep-green-muted">
+                {PILOT_NAME} · {dayLabel}
+              </span>
+            )}
+          </span>
           <span className="rounded-pill bg-gold px-[12px] py-[6px] text-[11.5px] font-extrabold whitespace-nowrap text-on-gold">
             {badge}
           </span>
         </div>
+        {planDone && (
+          // TODO(design): no designed plan-complete hero.
+          <p role="status" className="relative m-0 text-[16px] leading-[1.8] font-bold text-surface">
+            أتممت الأيام الثلاثة — حفظت {toArabicDigits(PILOT_DAYS.length)} سور وتعلّمت{' '}
+            {toArabicDigits(PILOT_DAYS.length)} أحاديث. بارك الله فيك!
+          </p>
+        )}
         {report && !finished && (
           <p className="relative m-0 text-[16px] leading-[1.8] font-bold text-surface">
             نبدأ بتقرير مشروعك: {lessonValue(today.lessonId)}
           </p>
         )}
         <div className="relative flex flex-wrap gap-[8px]">
-          {script &&
-            lessonChips(script).map((c) => (
-              <span
-                key={c.label}
-                className={cx(
-                  'flex items-center gap-[7px] rounded-px-14 px-[13px] py-[9px] text-[13.5px]',
-                  c.kind === 'report'
-                    ? 'bg-gold font-extrabold text-on-gold'
-                    : 'bg-hero-chip font-bold text-surface',
-                )}
-              >
-                <ChipIcon kind={c.kind} />
-                {c.label}
-              </span>
-            ))}
+          {(planDone
+            ? PILOT_DAYS.map((d) => ({ label: `سورة ${d.surahName}`, kind: 'surah' as const }))
+            : script
+              ? lessonChips(script)
+              : []
+          ).map((c) => (
+            <span
+              key={c.label}
+              className={cx(
+                'flex items-center gap-[7px] rounded-px-14 px-[13px] py-[9px] text-[13.5px]',
+                c.kind === 'report'
+                  ? 'bg-gold font-extrabold text-on-gold'
+                  : 'bg-hero-chip font-bold text-surface',
+              )}
+            >
+              <ChipIcon kind={c.kind} />
+              {c.label}
+            </span>
+          ))}
         </div>
         <div className="relative flex flex-col gap-[7px]">
           <div className="flex items-baseline justify-between">
@@ -252,7 +284,7 @@ export default function ChildHome() {
               </svg>
             </span>
             <span className="flex grow flex-col gap-[3px]">
-              <span className="text-[14.5px] font-extrabold text-text-subtle">بقية خطة السنة</span>
+              <span className="text-[14.5px] font-extrabold text-text-subtle">بعد الباقة التجريبية</span>
               <span className="text-[12px] text-text-subtle">
                 ٣ سور و٣ أحاديث متاحة الآن — والبقية تُفتح في التحديث القادم
               </span>

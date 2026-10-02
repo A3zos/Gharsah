@@ -72,20 +72,21 @@ test('«أبنائي» lists children with their state; plans never sell on the 
   await expect(page.locator('input[autocomplete*="cc-"]')).toHaveCount(0);
 });
 
-// Review notes B6 + B4: «اشترك» writes the trial plan → dashboard; the sidebar shows it.
-test('trial subscribe → dashboard with the plan in the sidebar', async ({ page }) => {
+// Review notes B6 + B4 + the pilot (2026-10-02): «ابدأ التجربة» writes the trial plan → dashboard.
+test('pilot package subscribe → dashboard with «الباقة التجريبية» in the sidebar', async ({ page }) => {
   const p = await seedParent({ plan: null });
   await page.setViewportSize({ width: 1366, height: 768 });
   await loginParent(page, p.email, p.password);
   const sidebar = page.getByRole('complementary');
   await expect(sidebar.getByRole('link', { name: 'اشترك الآن' })).toBeVisible();
   await page.goto('/parent/plans');
-  await expect(page.getByText('الشهرية لابن واحد، والسنوية لكل أبنائك')).toBeVisible();
-  await page.getByRole('button', { name: 'اشترك' }).first().click(); // the annual card comes first
+  await expect(page.getByRole('heading', { name: 'الباقة التجريبية' })).toBeVisible();
+  await expect(page.getByText('حصة واحدة كل يوم').first()).toBeVisible();
+  await page.getByRole('button', { name: 'ابدأ التجربة' }).click();
   await expect(page.getByText('تم تفعيل الباقة').first()).toBeVisible();
   await page.waitForURL(/\/parent\/dashboard/);
-  await expect(sidebar.getByText('الباقة السنوية')).toBeVisible();
-  expect((await getRow('subscriptions', { parent_id: p.uid }))?.plan).toBe('annual');
+  await expect(sidebar.getByText('الباقة التجريبية')).toBeVisible();
+  expect((await getRow('subscriptions', { parent_id: p.uid }))?.plan).toBe('trial');
 });
 
 // Review notes B5: 1–3 review days, each a lesson day.
