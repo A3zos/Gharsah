@@ -35,7 +35,7 @@ import {
   type WeekDay,
   MAX_REVIEW_DAYS,
 } from '../../data/children';
-import { MONTHLY_MAX_CHILDREN } from '../../content/plans';
+import { maxChildren } from '../../content/plans';
 import { isSubscribed } from '../../data/parent';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
@@ -80,12 +80,9 @@ export default function AddChildRoute() {
   if (editId && !editing) return <ParentPage tab={null} desktop={<NotFound />} />;
   // design/v3 PackagesLimit: the monthly plan covers one child (UI-only for now,
   // see TODO(child-limit) in firestore.rules).
-  // One child on the monthly plan and on the pilot (trial) package.
-  const oneChild =
-    !!subscription &&
-    isSubscribed(subscription) &&
-    (subscription.plan === 'monthly' || subscription.plan === 'trial');
-  if (!editId && oneChild && children.length >= MONTHLY_MAX_CHILDREN) {
+  // The plan's children limit (monthly 1, the pilot 3) → PackagesLimit instead of a refused save.
+  const lim = subscription && isSubscribed(subscription) ? maxChildren(subscription.plan) : null;
+  if (!editId && lim !== null && children.length >= lim) {
     return <Navigate to={`${paths.parent.plans}?limit=1`} replace />;
   }
   return <Flow key={editId ?? 'new'} editing={editing} />;

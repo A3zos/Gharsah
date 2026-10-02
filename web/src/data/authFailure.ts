@@ -56,7 +56,7 @@ export function authFailure(rawCode: string): AuthFailure {
     case 'confirm-email':
       return new AuthFailure('افتح رابط التأكيد الذي أرسلناه إلى بريدك، ثم سجّل الدخول.', 'general', code);
     case 'plan-child-limit':
-      return new AuthFailure('الباقة الشهرية لابن واحد — رقِّ إلى السنوية لإضافة ابن آخر.', 'general', code);
+      return new AuthFailure('وصلت إلى عدد الأبناء الذي تشمله باقتك.', 'general', code);
     case 'permission-denied':
     case '42501':
       return new AuthFailure('تعذّر حفظ بيانات الحساب — حاول مرة أخرى.', 'general', code);

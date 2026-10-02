@@ -5,8 +5,8 @@ import { paths } from '../../app/paths';
 import { buttonClass } from '../ui/Button';
 import { BookIcon, CheckIcon, CodeIcon, ForwardIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
-import { PLANS } from '../../content/plans';
-import { DashboardPreview, PhoneDownloadIcon, PhoneMock, PlanList, SourceIcons } from './shared';
+import { PLANS, PRICE } from '../../content/plans';
+import { ComingSoonPlan, DashboardPreview, PhoneMock, PilotOffer, SourceIcons } from './shared';
 import { StoreBadges } from '../ui/StoreBadges';
 
 const COL = 'mx-auto w-full max-w-[1200px] px-[24px] min-[1248px]:px-0';
@@ -261,65 +261,26 @@ export function LandingDesktop() {
               <div className="flex flex-col items-center gap-[10px]">
                 <h2 className="m-0 font-heading text-[40px] font-bold text-text-dark">الباقات</h2>
                 <p className="m-0 text-[17px] text-text-muted">
-                  اشتراك واحد يكفي جميع أبنائك · الدفع عبر Google Play
+                  ابدأ بالباقة التجريبية — الباقتان الشهرية والسنوية قريبًا
                 </p>
               </div>
-              <div className="flex items-stretch gap-[22px]">
-                <div className="relative flex w-[420px] flex-col gap-[18px] rounded-px-32 border-[2.5px] border-primary bg-background px-[32px] pt-[38px] pb-[32px]">
-                  <span className="absolute -top-[15px] right-[32px] rounded-pill bg-primary px-[18px] py-[8px] text-[13px] font-extrabold text-surface">
-                    الأفضل قيمة
-                  </span>
-                  <h3 className="m-0 font-heading text-[24px] font-bold">الباقة السنوية</h3>
-                  <span className="flex items-baseline gap-[8px]">
-                    <span className="font-heading text-[62px] leading-[1] font-extrabold text-deep-green">
-                      ١١٩
-                    </span>
-                    <span className="text-[18px] font-bold text-text-muted">ريال / سنة</span>
-                  </span>
-                  <span className="self-start rounded-pill bg-gold-tint px-[14px] py-[8px] text-[14px] font-bold text-warning-text">
-                    أقل من ١٠ ريالات في الشهر
-                  </span>
-                  <div className="h-[1px] bg-border" />
-                  <PlanList items={PLANS.annual} />
-                  <a
-                    href="#get-app"
-                    className={buttonClass(
-                      'primary',
-                      'custom',
-                      'mt-auto h-[62px] gap-[10px] rounded-px-22 font-heading text-[19px] font-bold shadow-lesson-home-button',
-                    )}
-                  >
-                    <PhoneDownloadIcon />
-                    اشترك من التطبيق
-                  </a>
-                </div>
-                <div className="flex w-[420px] flex-col gap-[18px] rounded-px-32 border-[1.5px] border-border bg-background px-[32px] pt-[38px] pb-[32px]">
-                  <h3 className="m-0 font-heading text-[24px] font-bold">الباقة الشهرية</h3>
-                  <span className="flex items-baseline gap-[8px]">
-                    <span className="font-heading text-[62px] leading-[1] font-extrabold text-text-dark">
-                      ٢٩
-                    </span>
-                    <span className="text-[18px] font-bold text-text-muted">ريال / شهر</span>
-                  </span>
-                  <span className="py-[8px] text-[14px] font-bold text-text-muted">تجربة مرنة للبداية</span>
-                  <div className="h-[1px] bg-border" />
-                  <PlanList items={PLANS.monthly} />
-                  <a
-                    href="#get-app"
-                    className={buttonClass(
-                      'plain',
-                      'custom',
-                      'mt-auto h-[62px] gap-[10px] rounded-px-22 font-heading text-[19px] font-bold',
-                    )}
-                  >
-                    <PhoneDownloadIcon color="textDark" />
-                    اشترك من التطبيق
-                  </a>
+              <div className="flex w-full max-w-[862px] flex-col gap-[30px]">
+                <PilotOffer />
+                <div className="flex items-stretch gap-[22px]">
+                  <ComingSoonPlan
+                    title="الباقة الشهرية"
+                    price={PRICE.monthly}
+                    per="ريال / شهر"
+                    items={PLANS.monthly}
+                  />
+                  <ComingSoonPlan
+                    title="الباقة السنوية"
+                    price={PRICE.annual}
+                    per="ريال / سنة"
+                    items={PLANS.annual}
+                  />
                 </div>
               </div>
-              <p className="m-0 text-center text-[16px] leading-[1.8] font-extrabold text-deep-green">
-                يمكنك الترقية من الشهرية إلى السنوية في أي وقت
-              </p>
               <div
                 id="get-app"
                 className="flex w-full items-center gap-[24px] rounded-px-28 border-[1.5px] border-border bg-background px-[32px] py-[24px]"

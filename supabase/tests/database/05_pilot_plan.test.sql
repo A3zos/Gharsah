@@ -1,7 +1,7 @@
 -- غَرْسة — the pilot plan: catalogue rows + one day at a time (pgTAP). Run: npx supabase test db
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(10);
+select plan(14);
 
 insert into auth.users (id, email, is_anonymous, raw_user_meta_data) values
   ('50000000-0000-0000-0000-00000000000a', 'pilot-a@test.local', false, '{"name":"أبو سعد"}'),
@@ -52,6 +52,19 @@ select throws_ok($$insert into public.progress (child_id, lesson_id) values ('51
   'P0001', 'pilot-day-locked', 'day 3 waits for day 2');
 select is((public.child_stats('51000000-0000-0000-0000-0000000000a1') ->> 'surahs')::int, 1,
   'the dashboard counts the finished pilot surah');
+
+-- the pilot package: up to 3 children per family
+select is((select max_children from public.plan_catalog where plan = 'trial'), 3, 'the pilot covers 3 children');
+select pg_temp.act_as('50000000-0000-0000-0000-00000000000a', false);
+select lives_ok($$insert into public.children (parent_id, name, age, gender, avatar, schedule_days, schedule_time, review_days)
+  values ('50000000-0000-0000-0000-00000000000a', 'نورة', 8, 'girl', 'g1', '{0}', 900, '{0}')$$,
+  'a 2nd child on the pilot');
+select lives_ok($$insert into public.children (parent_id, name, age, gender, avatar, schedule_days, schedule_time, review_days)
+  values ('50000000-0000-0000-0000-00000000000a', 'فهد', 12, 'boy', 'b2', '{1}', 900, '{1}')$$,
+  'a 3rd child on the pilot');
+select throws_ok($$insert into public.children (parent_id, name, age, gender, avatar, schedule_days, schedule_time, review_days)
+  values ('50000000-0000-0000-0000-00000000000a', 'ريم', 9, 'girl', 'g2', '{2}', 900, '{2}')$$,
+  'P0001', 'plan-child-limit', 'a 4th child is refused');
 
 select * from finish();
 rollback;

@@ -10,8 +10,8 @@ import { C } from '../ui/color';
 import { BookIcon, CodeIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
 import { StoreBadges } from '../ui/StoreBadges';
-import { PLANS } from '../../content/plans';
-import { DashboardPreview, PhoneDownloadIcon, PhoneMock, PlanList, SourceIcons } from './shared';
+import { PLANS, PRICE } from '../../content/plans';
+import { ComingSoonPlan, DashboardPreview, PhoneMock, PilotOffer, SourceIcons } from './shared';
 
 const MENU = [
   ['#m-how', 'كيف تعمل'],
@@ -253,58 +253,23 @@ export function LandingMobile() {
         >
           <h2 className="m-0 text-center font-heading text-[27px] font-bold">الباقات</h2>
           <p className="m-0 mb-[4px] text-center text-[14px] text-text-muted">
-            اشتراك واحد يكفي جميع أبنائك · الدفع عبر Google Play
+            ابدأ بالباقة التجريبية — الباقتان الشهرية والسنوية قريبًا
           </p>
-          <div className="relative flex flex-col gap-[14px] rounded-px-28 border-[2.5px] border-primary bg-surface px-[22px] pt-[28px] pb-[22px]">
-            <span className="absolute -top-[14px] right-[24px] rounded-pill bg-primary px-[15px] py-[7px] text-[12px] font-extrabold text-surface">
-              الأفضل قيمة
-            </span>
-            <h3 className="m-0 font-heading text-[21px] font-bold">الباقة السنوية</h3>
-            <span className="flex items-baseline gap-[7px]">
-              <span className="font-heading text-[48px] leading-[1] font-extrabold text-deep-green">١١٩</span>
-              <span className="text-[16px] font-bold text-text-muted">ريال / سنة</span>
-            </span>
-            <span className="self-start rounded-pill bg-gold-tint px-[13px] py-[7px] text-[13px] font-bold text-warning-text">
-              أقل من ١٠ ريالات في الشهر
-            </span>
-            <span className="h-[1px] bg-border" />
-            <PlanList items={PLANS.annual} text="text-[14px]" gap="gap-[10px]" />
-            <a
-              href="#m-get-app"
-              className={buttonClass(
-                'primary',
-                'custom',
-                'mt-auto h-[58px] gap-[10px] rounded-px-20 font-heading text-[17px] font-bold shadow-lesson-home-button',
-              )}
-            >
-              <PhoneDownloadIcon />
-              اشترك من التطبيق
-            </a>
-          </div>
-          <div className="flex flex-col gap-[14px] rounded-px-28 border-[1.5px] border-border bg-surface px-[22px] pt-[24px] pb-[22px]">
-            <h3 className="m-0 font-heading text-[21px] font-bold">الباقة الشهرية</h3>
-            <span className="flex items-baseline gap-[7px]">
-              <span className="font-heading text-[48px] leading-[1] font-extrabold text-text-dark">٢٩</span>
-              <span className="text-[16px] font-bold text-text-muted">ريال / شهر</span>
-            </span>
-            <span className="text-[13px] font-bold text-text-muted">تجربة مرنة للبداية</span>
-            <span className="h-[1px] bg-border" />
-            <PlanList items={PLANS.monthly} text="text-[14px]" gap="gap-[10px]" />
-            <a
-              href="#m-get-app"
-              className={buttonClass(
-                'plain',
-                'custom',
-                'mt-auto h-[58px] gap-[10px] rounded-px-20 font-heading text-[17px] font-bold',
-              )}
-            >
-              <PhoneDownloadIcon color="textDark" />
-              اشترك من التطبيق
-            </a>
-          </div>
-          <p className="m-0 text-center text-[13.5px] leading-[1.8] font-extrabold text-deep-green">
-            يمكنك الترقية من الشهرية إلى السنوية في أي وقت
-          </p>
+          <PilotOffer compact />
+          <ComingSoonPlan
+            compact
+            title="الباقة الشهرية"
+            price={PRICE.monthly}
+            per="ريال / شهر"
+            items={PLANS.monthly}
+          />
+          <ComingSoonPlan
+            compact
+            title="الباقة السنوية"
+            price={PRICE.annual}
+            per="ريال / سنة"
+            items={PLANS.annual}
+          />
           <div
             id="m-get-app"
             className="flex flex-col gap-[13px] rounded-px-24 border-[1.5px] border-border bg-surface p-[18px]"

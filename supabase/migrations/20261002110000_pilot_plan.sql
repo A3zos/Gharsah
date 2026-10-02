@@ -45,3 +45,27 @@ end $$;
 create trigger pilot_day_guard
   before insert on public.progress
   for each row execute function public.pilot_day_guard();
+
+-- The pilot package (plan 'trial') covers up to 3 children per family.
+update public.plan_catalog set max_children = 3 where plan = 'trial';
+
+-- Same limit check as before; only the message no longer assumes the monthly plan.
+create or replace function public.children_plan_limit()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  lim int;
+  n int;
+begin
+  -- Serialize concurrent inserts for the same parent.
+  perform 1 from public.parents where id = new.parent_id for update;
+  select max_children into lim from public.plan_catalog where plan = public.active_plan(new.parent_id);
+  if lim is null then
+    return new;
+  end if;
+  select count(*) into n from public.children where parent_id = new.parent_id;
+  if n >= lim then
+    raise exception 'plan-child-limit' using errcode = 'P0001',
+      hint = 'وصلت إلى عدد الأبناء الذي تشمله باقتك.';
+  end if;
+  return new;
+end $$;

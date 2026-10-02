@@ -29,7 +29,7 @@ import { childrenCount } from '../../data/stats';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { hijriDate, hijriDayMonth } from '../../lib/dates';
 import { PlanList } from '../../components/landing/shared';
-import { MONTHLY_MAX_CHILDREN } from '../../content/plans';
+import { maxChildren } from '../../content/plans';
 import { PILOT_DAYS, PILOT_ITEMS, PILOT_NAME } from '../../content/pilot';
 import { cx } from '../../lib/cx';
 import type { Route } from './+types/plans';
@@ -48,25 +48,23 @@ export default function PlansRoute() {
   const sub = subscription && isSubscribed(subscription) ? subscription : null;
   const count = children?.length ?? 0;
   // design/v3 PackagesLimit: shown when the add-child flow sent a monthly parent here.
-  const limit =
-    params.get('limit') === '1' &&
-    (sub?.plan === 'monthly' || sub?.plan === 'trial') &&
-    count >= MONTHLY_MAX_CHILDREN;
+  const max = sub ? maxChildren(sub.plan) : null;
+  const limit = params.get('limit') === '1' && max !== null && count >= max;
   return (
     <ParentPage
       tab="plans"
-      desktop={<Desktop sub={sub} count={count} limit={limit} />}
-      mobile={<Mobile sub={sub} count={count} limit={limit} />}
+      desktop={<Desktop sub={sub} count={count} limit={limit ? max : null} />}
+      mobile={<Mobile sub={sub} count={count} limit={limit ? max : null} />}
       mobileDecor={false}
     />
   );
 }
 
-function Desktop({ sub, count, limit }: { sub: Subscription | null; count: number; limit: boolean }) {
+function Desktop({ sub, count, limit }: { sub: Subscription | null; count: number; limit: number | null }) {
   return (
     <div className="flex grow flex-col gap-[24px]">
       <DesktopHeader title="الباقات" subtitle="الباقة التجريبية: ثلاثة أيام، حصة واحدة كل يوم" />
-      {limit && <LimitBanner />}
+      {limit !== null && <LimitBanner max={limit} />}
       {sub && (
         <div className="flex items-center gap-[20px] rounded-px-28 bg-surface px-[30px] py-[24px] shadow-dark-14-30-5">
           <span
@@ -128,7 +126,7 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
   );
 }
 
-function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number; limit: boolean }) {
+function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number; limit: number | null }) {
   const current = sub?.plan;
   return (
     <div className="flex flex-col gap-[18px] pt-[4px]">
@@ -140,7 +138,7 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
         <SettingsButton />
       </div>
 
-      {limit && <LimitBanner />}
+      {limit !== null && <LimitBanner max={limit} />}
 
       {/* TODO(design): no designed "no subscription yet" hero; the card only shows with an active plan. */}
       {sub && (
@@ -209,7 +207,7 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
 }
 
 /** design/v3 PackagesLimit — a one-child plan (the pilot) and a second child was added. */
-function LimitBanner() {
+function LimitBanner({ max }: { max: number }) {
   return (
     <div
       role="alert"
@@ -238,10 +236,10 @@ function LimitBanner() {
         </span>
         <span className="flex min-w-0 grow flex-col gap-[6px]">
           <span className="font-heading text-[19px] leading-[1.45] font-bold text-error-text">
-            {PILOT_NAME} لابن واحد
+            {max === 1 ? 'باقتك لابن واحد' : `${PILOT_NAME} حتى ${toArabicDigits(max)} أبناء`}
           </span>
           <span className="text-[14px] leading-[1.8] text-error-text">
-            التجربة متاحة الآن لابن واحد — نخبرك حين تتوفّر الباقات لكل الأبناء.
+            وصلت إلى عدد الأبناء الذي تشمله باقتك — نخبرك حين تتوفّر الباقات لكل الأبناء.
           </span>
         </span>
       </div>
