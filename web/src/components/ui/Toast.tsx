@@ -1,7 +1,7 @@
 import { CheckIcon } from './icons';
 
 /** A short confirmation at the bottom of the screen («تم النسخ»). No design frame — styled with the app's pills. */
-export function Toast({ message }: { message: string | null }) {
+export function Toast({ message, icon }: { message: string | null; icon?: React.ReactNode }) {
   return (
     <div
       role="status"
@@ -10,7 +10,7 @@ export function Toast({ message }: { message: string | null }) {
     >
       {message && (
         <span className="flex animate-[gh-rise_.25s_ease-out_both] items-center gap-[8px] rounded-pill bg-deep-green px-[18px] py-[11px] text-[14.5px] font-extrabold text-surface shadow-green-12-24-26">
-          <CheckIcon size={16} color="surface" />
+          {icon ?? <CheckIcon size={16} color="surface" />}
           {message}
         </span>
       )}

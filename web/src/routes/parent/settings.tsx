@@ -11,6 +11,7 @@ import { AlertIcon } from '../../components/ui/icons';
 import { updateSchedule } from '../../data/children';
 import { PILOT_NAME, PILOT_PRICE } from '../../content/pilot';
 import { deleteAccount, isSubscribed, updateParentName } from '../../data/parent';
+import { LanguageSettings } from '../../components/ui/LanguageSwitcher';
 import { cx } from '../../lib/cx';
 import type { Route } from './+types/settings';
 
@@ -298,6 +299,9 @@ export default function SettingsRoute() {
             <span className="h-[24px] w-[24px] rounded-full bg-surface" />
           </button>
         </div>
+      </Group>
+      <Group title="اللغة">
+        <LanguageSettings />
       </Group>
       <Group title="عن التطبيق">
         <Row icon={icons.doc} label="الشروط والأحكام" to={paths.terms} />

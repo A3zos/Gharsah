@@ -8,6 +8,7 @@ import { Blob } from '../ui/Page';
 import { DashboardPreview, PhoneMock, SourceIcons } from './shared';
 import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
 import { StoreBadges } from '../ui/StoreBadges';
+import { LanguageMenu } from '../ui/LanguageSwitcher';
 
 const COL = 'mx-auto w-full max-w-[1200px] px-[24px] min-[1248px]:px-0';
 
@@ -54,22 +55,27 @@ export function LandingDesktop() {
                 ['#privacy', 'الخصوصية'],
                 ['#plans', 'الباقات'],
               ].map(([href, label]) => (
-                <a key={href} href={href} className="text-[15px] font-bold text-text-dark no-underline">
+                <a
+                  key={href}
+                  href={href}
+                  className="text-[15px] font-bold whitespace-nowrap text-text-dark no-underline"
+                >
                   {label}
                 </a>
               ))}
             </div>
-            {/* Below 1280 the header has no room for the badges; the hero keeps them. */}
-            <StoreBadges size={44} className="hidden xl:flex" />
+            {/* Below 1536 the header has no room for the badges (with the language menu); the hero keeps them. */}
+            <StoreBadges size={44} className="hidden 2xl:flex" />
+            <LanguageMenu />
             <Link
               to={paths.login}
-              className="flex h-[48px] items-center justify-center rounded-px-16 border-[1.5px] border-input-border bg-surface px-[24px] text-[15px] font-extrabold text-deep-green no-underline"
+              className="flex h-[48px] items-center justify-center rounded-px-16 border-[1.5px] border-input-border bg-surface px-[24px] text-[15px] font-extrabold whitespace-nowrap text-deep-green no-underline"
             >
               تسجيل الدخول
             </Link>
             <Link
               to={paths.signup}
-              className="flex h-[48px] items-center justify-center rounded-px-16 bg-deep-green px-[24px] text-[15px] font-extrabold text-surface no-underline hover:text-surface"
+              className="flex h-[48px] items-center justify-center rounded-px-16 bg-deep-green px-[24px] text-[15px] font-extrabold whitespace-nowrap text-surface no-underline hover:text-surface"
             >
               إنشاء حساب
             </Link>
