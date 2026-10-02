@@ -761,13 +761,20 @@ function AvatarGrid({
             onClick={() => onChange(a.key)}
             className={cx(
               'relative flex items-center justify-center p-0',
-              compact ? 'h-[78px] rounded-px-26' : 'h-[112px] rounded-px-24',
+              compact ? 'h-[110px] rounded-px-26' : 'h-[90px] rounded-px-24',
               on
                 ? 'border-[2.5px] border-deep-green bg-green-tint'
                 : 'border-[1.5px] border-border bg-surface',
             )}
           >
-            <ChildAvatar id={a.key} size={compact ? 54 : 74} circle={false} />
+            {/* ~85% of the card's height, never wider than the card — head and shoulders whole */}
+            <ChildAvatar
+              id={a.key}
+              size={compact ? 94 : 76}
+              circle={false}
+              fluid
+              className="aspect-square h-[88%] max-w-[calc(100%-6px)]"
+            />
             {on && (
               <span
                 className="absolute top-[8px] left-[8px] flex h-[26px] w-[26px] items-center justify-center rounded-full bg-deep-green"

@@ -6,19 +6,22 @@ import { C } from '../ui/color';
 
 /**
  * A child's avatar by key. `circle` = on its tinted circle (cards, chips, rows); off =
- * the picker grid. `className` reshapes the circle (e.g. a rounded square). An unknown
- * key ('neutral' from an older board) → a neutral silhouette.
+ * the picker grid. `className` reshapes the circle (e.g. a rounded square). `fluid` =
+ * sized by `className` instead of `size` (`size` still picks the image file). An
+ * unknown key ('neutral' from an older board) → a neutral silhouette.
  */
 export function ChildAvatar({
   id,
   size = 56,
   circle = true,
   className,
+  fluid = false,
 }: {
   id: string;
   size?: number;
   circle?: boolean;
   className?: string;
+  fluid?: boolean;
 }) {
   const a = avatarByKey(id);
   if (!a) return <NeutralAvatar size={size} />;
@@ -30,7 +33,7 @@ export function ChildAvatar({
         circle && cx('rounded-full', a.gender === 'girl' ? 'bg-berry-tint' : 'bg-green-tint'),
         className,
       )}
-      style={{ width: size, height: size }}
+      style={fluid ? undefined : { width: size, height: size }}
     >
       <img
         src={avatarSrc(a, size)}
