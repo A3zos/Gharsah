@@ -677,3 +677,25 @@ describe('ServerLesson — voice first', () => {
     expect(normalizeArabic('  سورةُ  الناسِ؟ ')).toBe('سوره الناس');
   });
 });
+
+describe('ServerLesson — cheers (the teacher looks happy)', () => {
+  it('each accepted repeat and the end of a part cheer', async () => {
+    const t = setup();
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    expect(t.lesson.state.value.cheer).toBe(0);
+    t.lesson.answer('تمام');
+    for (const stage of ['lesson_intro', 'tafsir', 'fadl']) {
+      await at(t.lesson, stage, 'continue');
+      t.lesson.continueTapped();
+    }
+    await at(t.lesson, 'tajweed', 'continue');
+    expect(t.lesson.state.value.cheer).toBe(4); // the 4 ayat repeated
+    for (const stage of ['tajweed', 'plan']) {
+      await at(t.lesson, stage, 'continue');
+      t.lesson.continueTapped();
+    }
+    await until(t.lesson, (s) => s.phase === 'segmentDone');
+    expect(t.lesson.state.value.cheer).toBe(5);
+  });
+});

@@ -5,6 +5,7 @@ import textJson from '@content/quran/quran_text.json';
 import { quranMeta } from '../../content/library';
 import type { ChildRef } from '../../data/student';
 import { QuranText, quranRef } from '../quran';
+import { LipSync } from './lipSync';
 import { LessonMicrophone } from './microphone';
 import { AgentApi, type Gender } from '../server/api';
 import {
@@ -23,6 +24,8 @@ const verified = QuranText.fromJson(textJson);
 
 export interface WebServerLesson {
   lesson: ServerLesson;
+  /** The teacher's mouth (lip-sync) for the character. */
+  mouth: LipSync['frame'];
   dispose(): void;
 }
 
@@ -40,7 +43,8 @@ export async function createServerLesson(o: {
 }): Promise<WebServerLesson> {
   const api = new AgentApi(o.baseUrl, undefined, [o.childName]);
   const mic = new LessonMicrophone();
-  const voice = new ServerTeacherVoice(api, o.gender);
+  const lip = new LipSync();
+  const voice = new ServerTeacherVoice(api, o.gender, undefined, undefined, lip);
   const player = new HtmlUrlPlayer();
   const lesson = new ServerLesson({
     api,
@@ -60,11 +64,13 @@ export async function createServerLesson(o: {
   });
   return {
     lesson,
+    mouth: lip.frame,
     dispose() {
       lesson.dispose();
       voice.stop();
       player.stop();
       mic.close();
+      lip.dispose();
     },
   };
 }

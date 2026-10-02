@@ -12,6 +12,8 @@ import { isMicLive, isTeacherListening, isTeacherQuiet, type LessonState } from 
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
 import { TeacherArt } from '../child/TeacherArt';
+import { TEACHER_NAME, TEACHER_TEXT, type TeacherGender } from '../child/teacherCharacter';
+import { TeacherSprite, type MouthSource } from '../child/TeacherSprite';
 import { C } from '../ui/color';
 import { SproutMark } from '../ui/icons';
 
@@ -70,6 +72,8 @@ export function LessonView({
   level,
   desktop,
   voiceMissing = false,
+  gender = 'boy',
+  mouth,
 }: {
   state: LessonState;
   plan: LessonPlanInfo;
@@ -79,27 +83,30 @@ export function LessonView({
   desktop: boolean;
   /** Neither the server voice nor a browser Arabic voice — the teacher is captions only. */
   voiceMissing?: boolean;
+  /** The child's stored gender → المعلم عبدالله (boys) / المعلمة سارة (girls). */
+  gender?: TeacherGender;
+  /** The teacher's lip-sync. */
+  mouth?: MouthSource;
 }) {
   const body = (
     <>
       <LiveHeader elapsedMs={s.elapsedMs} onEnd={actions.exit} />
-      <div className="flex shrink-0 items-center gap-[12px]">
-        <Teacher state={s} size={desktop ? 200 : 160} onTap={actions.tapTeacher} />
+      <Teacher state={s} gender={gender} mouth={mouth} desktop={desktop} onTap={actions.tapTeacher}>
         <p
           aria-live="polite"
           className={cx(
-            'm-0 min-w-0 grow text-[18px] leading-[1.7] font-bold',
+            'm-0 line-clamp-3 w-full text-center text-[18px] leading-[1.7] font-bold',
             s.happy ? 'text-deep-green' : 'text-text-dark',
           )}
         >
           {s.caption}
         </p>
-      </div>
-      <Problems state={s} actions={actions} voiceMissing={voiceMissing} />
+      </Teacher>
+      <Problems state={s} actions={actions} voiceMissing={voiceMissing} gender={gender} />
       <div className="flex min-h-0 grow flex-col">
         <Middle state={s} plan={plan} glance={glance} actions={actions} />
       </div>
-      <Bottom state={s} actions={actions} level={level} />
+      <Bottom state={s} actions={actions} level={level} gender={gender} />
     </>
   );
 
@@ -172,19 +179,96 @@ export function LiveHeader({ elapsedMs, onEnd }: { elapsedMs: number; onEnd: () 
   );
 }
 
-/** The SAME teacher on every frame: talking (bob + arcs), listening (leans in), quiet while the reciter plays. */
-function Teacher({ state, size, onTap }: { state: LessonState; size: number; onTap: () => void }) {
+/** The SAME teacher on every frame: talking (lip-sync), listening (leans in), quiet while the reciter plays. */
+function Teacher({
+  state,
+  gender,
+  mouth,
+  desktop,
+  onTap,
+  children,
+}: {
+  state: LessonState;
+  gender: TeacherGender;
+  mouth?: MouthSource;
+  desktop: boolean;
+  onTap: () => void;
+  children?: React.ReactNode;
+}) {
   const quiet = isTeacherQuiet(state);
   const listening = isTeacherListening(state);
   const speaking = !quiet && !listening;
   return (
-    <TeacherAvatar
-      size={size}
-      onTap={onTap}
+    <TeacherStage
+      gender={gender}
+      desktop={desktop}
       pose={quiet ? 'quiet' : listening ? 'listening' : 'speaking'}
       talking={speaking && state.teacherSpeaking}
-      happy={state.happy}
-    />
+      // a praise moment, and the end of the lesson
+      happy={state.happy || state.screen === 'lessonEnd'}
+      mouth={mouth}
+      onTap={onTap}
+    >
+      {children}
+    </TeacherStage>
+  );
+}
+
+/**
+ * The hero of the call: the teacher character, large, centered and bottom-anchored
+ * (waist up), with the teacher's name — shared with the AI-server lesson. The old
+ * SVG teacher stays as the fallback when a sprite frame can't load.
+ */
+export function TeacherStage({
+  gender,
+  desktop,
+  pose,
+  talking,
+  happy,
+  cheerKey,
+  mouth,
+  onTap,
+  children,
+}: {
+  gender: TeacherGender;
+  desktop: boolean;
+  pose: 'speaking' | 'listening' | 'quiet';
+  talking: boolean;
+  happy: boolean;
+  cheerKey?: number;
+  mouth?: MouthSource;
+  onTap?: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex shrink-0 flex-col items-center gap-[8px]">
+      <div className={cx('relative w-full', desktop ? 'h-[260px]' : 'h-[clamp(180px,32dvh,320px)]')}>
+        <TeacherSprite
+          gender={gender}
+          pose={pose}
+          talking={talking}
+          happy={happy}
+          cheerKey={cheerKey}
+          mouth={mouth}
+          onTap={onTap}
+          fallback={
+            <span className="flex h-full items-end justify-center">
+              <TeacherAvatar
+                size={desktop ? 200 : 170}
+                onTap={onTap}
+                pose={pose}
+                talking={talking}
+                happy={happy}
+              />
+            </span>
+          }
+        />
+      </div>
+      <span className="rounded-pill bg-green-tint px-[14px] py-[4px] text-[16px] font-extrabold text-deep-green">
+        {TEACHER_NAME[gender]}
+      </span>
+      {children}
+    </div>
   );
 }
 
@@ -248,10 +332,12 @@ function Problems({
   state: s,
   actions,
   voiceMissing,
+  gender,
 }: {
   state: LessonState;
   actions: LessonActions;
   voiceMissing: boolean;
+  gender: TeacherGender;
 }) {
   const text =
     s.progressSaveFailed || s.saveFailed
@@ -262,7 +348,7 @@ function Problems({
           ? 'لا يوجد اتصال لتحميل التلاوة — اتصل بالإنترنت وحاول مجددًا.'
           : voiceMissing
             ? // TODO(design): no designed state — the teacher's voice is unavailable.
-              'صوت المعلّم غير متاح الآن — اقرأ كلامه المكتوب بجانبه.'
+              TEACHER_TEXT[gender].voiceMissing
             : null;
   if (!text) return null;
   const retry = s.beat === 'saveFailed' || (s.beat === 'recorded' && s.saveFailed);
@@ -714,10 +800,12 @@ function Bottom({
   state: s,
   actions,
   level,
+  gender,
 }: {
   state: LessonState;
   actions: LessonActions;
   level: LevelSource;
+  gender: TeacherGender;
 }) {
   if (s.beat === 'done') {
     return (
@@ -745,7 +833,7 @@ function Bottom({
         ? 'القارئ يقرأ… استمع'
         : s.beat === 'saving' || s.beat === 'saveFailed'
           ? 'نحفظ تقدّمك…'
-          : 'المعلّم يتكلم…';
+          : TEACHER_TEXT[gender].talking;
   return (
     <MicIndicator
       live={live}

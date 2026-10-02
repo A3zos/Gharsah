@@ -273,6 +273,8 @@ function LessonCall({
         level={agent.level}
         desktop={desktop}
         voiceMissing={voiceMissing}
+        gender={child.gender}
+        mouth={lesson?.mouth}
       />
       <ConfirmSheet
         open={sheetOpen}

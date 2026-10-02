@@ -5,6 +5,7 @@
 import { PresenceDetector } from '../presenceDetector';
 import { PlaybackBlocked } from '../ports';
 import { lessonAudio } from './audioUnlock';
+import type { LipSync } from './lipSync';
 import { estimatedSpeechMs } from './speechTeacher';
 import type { LessonMicrophone } from './microphone';
 import type { AgentApi, Gender } from '../server/api';
@@ -63,6 +64,8 @@ export class ServerTeacherVoice implements TeacherVoice {
       ? null
       : speechSynthesis,
     private readonly audio: HTMLAudioElement = lessonAudio('voice'),
+    /** The character's mouth follows the voice (optional). */
+    private readonly lip: LipSync | null = null,
   ) {}
 
   warm(): void {
@@ -92,6 +95,7 @@ export class ServerTeacherVoice implements TeacherVoice {
 
   stop(): void {
     this.token = null;
+    this.lip?.end();
     this.audio.pause();
     try {
       this.synth?.cancel();
@@ -117,6 +121,7 @@ export class ServerTeacherVoice implements TeacherVoice {
       return this.token !== token;
     }
     onStart();
+    this.lip?.begin(audio); // the server MP3: real lip-sync from its sound
     await new Promise<void>((resolve) => {
       const done = () => {
         if (this.finish !== done) return;
@@ -124,6 +129,7 @@ export class ServerTeacherVoice implements TeacherVoice {
         clearTimeout(timer);
         audio.onended = null;
         audio.onerror = null;
+        this.lip?.end();
         URL.revokeObjectURL(url);
         resolve();
       };
@@ -158,9 +164,14 @@ export class ServerTeacherVoice implements TeacherVoice {
       u.voice = voice;
       u.lang = voice.lang;
       u.rate = 0.9;
-      u.onend = done;
-      u.onerror = done;
-      timer = setTimeout(done, estimatedSpeechMs(text) * 2 + 3000);
+      const finish = () => {
+        this.lip?.end();
+        done();
+      };
+      u.onstart = () => this.lip?.begin(null); // speechSynthesis can't be analysed → syllable rhythm
+      u.onend = finish;
+      u.onerror = finish;
+      timer = setTimeout(finish, estimatedSpeechMs(text) * 2 + 3000);
       this.synth.cancel();
       this.synth.speak(u);
     });

@@ -20,6 +20,7 @@ import { Emitter } from '../observable';
 import { PresenceDetector } from '../presenceDetector';
 import type { TeacherLine } from '../teacherLines';
 import type { LessonMicrophone } from './microphone';
+import type { LipSync } from './lipSync';
 import type { ServerVoice } from './serverVoice';
 
 const MS_PER_CHAR = 70;
@@ -55,6 +56,8 @@ export class SpeechTeacher implements AiTeacher {
       ? null
       : speechSynthesis,
     private readonly server: ServerVoice | null = null,
+    /** The character's mouth follows the voice (optional). */
+    private readonly lip: LipSync | null = null,
   ) {}
 
   get isVoiceMissing(): boolean {
@@ -88,6 +91,7 @@ export class SpeechTeacher implements AiTeacher {
         this.finishSpeech = null;
         this.speaking = false;
         clearTimeout(timer);
+        this.lip?.end();
         resolve();
       };
       this.finishSpeech = done;
@@ -100,6 +104,7 @@ export class SpeechTeacher implements AiTeacher {
       u.lang = voice.lang;
       u.rate = 0.9;
       u.volume = this.volume;
+      u.onstart = () => this.lip?.begin(null); // speechSynthesis can't be analysed → syllable rhythm
       u.onend = done;
       u.onerror = done;
       // Some engines never fire `end` (Chrome drops long utterances) — never hang the lesson.
@@ -118,6 +123,7 @@ export class SpeechTeacher implements AiTeacher {
       // nothing to stop
     }
     this.finishSpeech?.();
+    this.lip?.end();
     this.speaking = false; // also when stopped while the server voice was loading
   }
 
@@ -176,12 +182,14 @@ export class SpeechTeacher implements AiTeacher {
       if (this.audio === audio) this.audio = null;
       return this.speakToken !== token; // stopped meanwhile → nothing more to say
     }
+    this.lip?.begin(audio); // the server MP3: real lip-sync from its sound
     await new Promise<void>((resolve) => {
       const done = () => {
         if (this.finishSpeech !== done) return;
         this.finishSpeech = null;
         this.speaking = false;
         clearTimeout(timer);
+        this.lip?.end();
         audio.pause();
         URL.revokeObjectURL(url);
         if (this.audio === audio) this.audio = null;

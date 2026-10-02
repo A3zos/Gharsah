@@ -35,6 +35,16 @@
     transform: scale(1.02);
   }
 }
+/* The teacher character's breathing (subtle; off under prefers-reduced-motion below). */
+@keyframes gh-teacher-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.008);
+  }
+}
 @keyframes gh-fade {
   from {
     opacity: 0;

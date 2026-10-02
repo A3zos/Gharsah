@@ -39,11 +39,25 @@ describe('ServerLessonView — the live call', () => {
     view(live({ expects: 'text', quickReplies: ['تمام'], speaking: true }));
     expect(screen.getByText('مباشر')).toBeInTheDocument();
     expect(screen.getByRole('timer')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'المعلّم' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'المعلم عبدالله' })).toBeInTheDocument();
+    expect(screen.getByText('المعلم عبدالله')).toBeInTheDocument(); // the name under the character
     expect(screen.queryByText('كيف حالك يا بطل؟')).toBeNull();
     expect(screen.queryByRole('navigation')).toBeNull();
     expect(screen.queryByText('الترحيب')).toBeNull();
     expect(screen.queryByText('اختيار السورة')).toBeNull();
+  });
+
+  it('a girl gets المعلمة سارة (the stored gender)', () => {
+    render(
+      <ServerLessonView
+        state={live({ expects: 'text' })}
+        actions={actions()}
+        desktop={false}
+        gender="girl"
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'المعلمة سارة' })).toBeInTheDocument();
+    expect(document.querySelector('img[src="/characters/teacher-girl/idle.webp"]')).not.toBeNull();
   });
 
   it('the line shows as text only when no voice could say it', () => {

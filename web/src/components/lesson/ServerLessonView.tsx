@@ -9,6 +9,8 @@ import { useEffect, useState } from 'react';
 
 import type { ServerLessonState } from '../../lesson/server/serverLesson';
 import { cx } from '../../lib/cx';
+import { TEACHER_TEXT, type TeacherGender } from '../child/teacherCharacter';
+import type { MouthSource } from '../child/TeacherSprite';
 import {
   CallFrame,
   Card,
@@ -17,7 +19,7 @@ import {
   MicIndicator,
   PlayFallback,
   SurahCard,
-  TeacherAvatar,
+  TeacherStage,
   type LevelSource,
 } from './LessonView';
 
@@ -46,10 +48,16 @@ export function ServerLessonView({
   state: s,
   actions,
   desktop,
+  gender = 'boy',
+  mouth,
 }: {
   state: ServerLessonState;
   actions: ServerLessonActions;
   desktop: boolean;
+  /** The child's stored gender → المعلم عبدالله / المعلمة سارة (also the server voice). */
+  gender?: TeacherGender;
+  /** The teacher's lip-sync. */
+  mouth?: MouthSource;
 }) {
   const elapsedMs = useElapsed();
   const starting = s.phase === 'starting' || s.phase === 'warming';
@@ -59,7 +67,7 @@ export function ServerLessonView({
   // lesson never goes silent with nothing on screen. Status lines (warming, done) stay.
   const caption = starting
     ? s.phase === 'warming'
-      ? 'المعلّم يتجهّز… لحظات ونبدأ'
+      ? TEACHER_TEXT[gender].readying
       : 'نبدأ الحصة…'
     : s.phase === 'finished'
       ? 'أكملت درس اليوم ✓'
@@ -69,30 +77,33 @@ export function ServerLessonView({
   return (
     <CallFrame desktop={desktop}>
       <LiveHeader elapsedMs={elapsedMs} onEnd={actions.exit} />
-      <div className={cx('flex shrink-0 items-center gap-[12px]', !caption && 'justify-center')}>
-        <TeacherAvatar
-          size={desktop ? 200 : 160}
-          pose={s.reciting || starting ? 'quiet' : listening ? 'listening' : 'speaking'}
-          talking={s.speaking}
-          happy={s.phase === 'finished' || s.phase === 'segmentDone'}
-        />
+      <TeacherStage
+        gender={gender}
+        desktop={desktop}
+        pose={s.reciting || starting ? 'quiet' : listening ? 'listening' : 'speaking'}
+        talking={s.speaking}
+        happy={false}
+        // a repeat accepted, a part or the lesson finished
+        cheerKey={s.cheer}
+        mouth={mouth}
+      >
         {caption && (
           <p
             aria-live="polite"
             className={cx(
-              'm-0 line-clamp-5 min-w-0 grow text-[18px] leading-[1.7] font-bold',
+              'm-0 line-clamp-3 w-full text-center text-[18px] leading-[1.7] font-bold',
               s.phase === 'finished' ? 'text-deep-green' : 'text-text-dark',
             )}
           >
             {caption}
           </p>
         )}
-      </div>
-      <Notices state={s} onPlay={actions.playTapped} />
+      </TeacherStage>
+      <Notices state={s} onPlay={actions.playTapped} gender={gender} />
       <div className="flex min-h-0 grow flex-col">
         <Middle state={s} actions={actions} />
       </div>
-      {!starting && <Bottom state={s} actions={actions} />}
+      {!starting && <Bottom state={s} actions={actions} gender={gender} />}
     </CallFrame>
   );
 }
@@ -108,10 +119,18 @@ function useElapsed(): number {
 }
 
 /** The built-in lesson's gold note: rate limit, restart, save, mic, and the teacher's blocked voice. */
-function Notices({ state: s, onPlay }: { state: ServerLessonState; onPlay: () => void }) {
+function Notices({
+  state: s,
+  onPlay,
+  gender,
+}: {
+  state: ServerLessonState;
+  onPlay: () => void;
+  gender: TeacherGender;
+}) {
   const text =
     s.notice === 'rateLimited'
-      ? 'المعلّم يأخذ نفَسًا… لحظات ونكمل.'
+      ? TEACHER_TEXT[gender].resting
       : s.notice === 'restarted'
         ? 'خلّنا نبدأ من جديد — نجومك محفوظة.'
         : s.saveFailed
@@ -134,7 +153,7 @@ function Notices({ state: s, onPlay }: { state: ServerLessonState; onPlay: () =>
           onClick={onPlay}
           className="h-[48px] shrink-0 cursor-pointer rounded-px-14 border-0 bg-deep-green px-[16px] text-[16px] font-extrabold text-surface"
         >
-          اضغط لتسمع المعلّم
+          {TEACHER_TEXT[gender].tapToHear}
         </button>
       )}
     </div>
@@ -236,7 +255,15 @@ const chip =
 const repeatButton =
   'h-[48px] shrink-0 cursor-pointer rounded-px-14 border-0 bg-deep-green px-[18px] text-[17px] font-extrabold text-surface disabled:opacity-60';
 
-function Bottom({ state: s, actions }: { state: ServerLessonState; actions: ServerLessonActions }) {
+function Bottom({
+  state: s,
+  actions,
+  gender,
+}: {
+  state: ServerLessonState;
+  actions: ServerLessonActions;
+  gender: TeacherGender;
+}) {
   if (s.phase === 'finished') {
     return (
       <div className="flex shrink-0 flex-col gap-[8px]">
@@ -255,7 +282,7 @@ function Bottom({ state: s, actions }: { state: ServerLessonState; actions: Serv
     );
   }
   if (s.paused || s.busy || !s.expects) {
-    const label = s.reciting ? 'القارئ يقرأ… استمع' : s.speaking ? 'المعلّم يتكلم…' : 'لحظة…';
+    const label = s.reciting ? 'القارئ يقرأ… استمع' : s.speaking ? TEACHER_TEXT[gender].talking : 'لحظة…';
     return <MicIndicator live={false} label={label} />;
   }
   if (s.expects === 'repeat') {
@@ -265,7 +292,11 @@ function Bottom({ state: s, actions }: { state: ServerLessonState; actions: Serv
         live={live}
         level={STEADY_LEVEL}
         label={
-          s.repeat === 'sending' ? 'المعلّم يسمع تلاوتك…' : live ? 'دورك… ردّد وأنا أسمعك' : 'ردّد ثم اضغط'
+          s.repeat === 'sending'
+            ? TEACHER_TEXT[gender].hearing
+            : live
+              ? 'دورك… ردّد وأنا أسمعك'
+              : 'ردّد ثم اضغط'
         }
         trailing={
           // TODO(design): «ردّدت» — the same fallback as the built-in lesson; never a dead end.

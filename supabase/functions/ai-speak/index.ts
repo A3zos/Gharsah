@@ -23,17 +23,21 @@ const ALLOWED_SLOTS = slots as Record<string, string[]>;
 const AI_BASE_URL = (Deno.env.get('AI_BASE_URL') ?? '').replace(/\/+$/, '');
 const SPEAK_TIMEOUT_MS = 20_000;
 const WARM_TIMEOUT_MS = 45_000;
-// /speak: anything without "girl"/"female" = the male teacher «عبدالله» — our teacher
-// character is the same man on every screen (CLAUDE.md §8), so it's always 'boy'.
-const TEACHER_VOICE = 'boy';
+// /speak's voice follows the paired child's STORED gender (never a client value):
+// boys hear المعلم عبدالله ('boy'), girls المعلمة سارة ('girl') — the same teacher
+// the lesson screen shows.
 
-async function isPairedDevice(uid: string): Promise<boolean> {
-  const { data, error } = await admin()
+/** The paired device's child gender → the teacher voice; null when not a paired device. */
+async function pairedVoice(uid: string): Promise<'boy' | 'girl' | null> {
+  const db = admin();
+  const { data, error } = await db
     .from('child_sessions')
     .select('child_id')
     .eq('device_uid', uid)
     .maybeSingle();
-  return !error && !!data;
+  if (error || !data) return null;
+  const { data: child } = await db.from('children').select('gender').eq('id', data.child_id).maybeSingle();
+  return child?.gender === 'girl' ? 'girl' : 'boy';
 }
 
 Deno.serve(async (req) => {
@@ -41,7 +45,8 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(req, 405, { error: 'method-not-allowed' });
   const user = await caller(req);
   if (!user) return json(req, 401, { error: 'unauthenticated' });
-  if (!user.is_anonymous || !(await isPairedDevice(user.id))) return json(req, 403, { error: 'not-paired' });
+  const voice = user.is_anonymous ? await pairedVoice(user.id) : null;
+  if (!voice) return json(req, 403, { error: 'not-paired' });
   if (!AI_BASE_URL) return json(req, 503, { error: 'ai-not-configured' });
 
   const body = await req.json().catch(() => ({}));
@@ -66,7 +71,7 @@ Deno.serve(async (req) => {
     r = await fetch(`${AI_BASE_URL}/speak`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, gender: TEACHER_VOICE }),
+      body: JSON.stringify({ text, gender: voice }),
       signal: AbortSignal.timeout(SPEAK_TIMEOUT_MS),
     });
   } catch (e) {

@@ -116,9 +116,11 @@ the `TextTheme` an explicit `fontSize` on every style (prevents the `fontSize !=
 
 ## 5. Reusable widgets (build before screens)
 
-`TeacherCharacter` (human Muslim teacher: white thobe + head cover + book, large & centered; states
+`TeacherCharacter` (human Muslim teacher, large & centered, waist up; states
 `speaking` = talking + sound-wave/glow, `listening` = quiet/leans-in; SAME character across all
-lesson screens); `LiveMicButton` (one persistent listening control — open = mic no slash + pulse,
+lesson screens). Web: sprite frames in `web/public/characters/teacher-{boy,girl}/` — المعلم عبدالله
+for boys, المعلمة سارة for girls (the child's stored gender; the server voice follows it), lip-synced
+to the teacher audio (`TeacherSprite`; the old SVG is the fallback); `LiveMicButton` (one persistent listening control — open = mic no slash + pulse,
 muted = mic with slash; not tapped per repeat); `LiveBadge` («● مباشر»); `AyahCard` (﴿ … ﴾ Amiri,
 gold brackets + reference, no visible play button, card tappable as silent fallback); `GPrimaryButton`
 (gold CTA); `GHeroCard` (deep-green card + hero shadow); `GStatCard`; `GPill`; `GrowthTimeline`

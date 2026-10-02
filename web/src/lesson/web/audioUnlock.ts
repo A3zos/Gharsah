@@ -11,9 +11,28 @@ export function lessonAudio(kind: 'voice' | 'reciter'): HTMLAudioElement {
   return (elements[kind] ??= new Audio());
 }
 
+let ctx: AudioContext | null = null;
+
+/** The shared Web Audio context for the teacher's lip-sync (created and resumed on a tap). */
+export function lessonAudioContext(): AudioContext | null {
+  if (ctx) return ctx;
+  try {
+    const Ctor =
+      globalThis.AudioContext ??
+      (globalThis as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    ctx = Ctor ? new Ctor() : null;
+  } catch {
+    ctx = null;
+  }
+  return ctx;
+}
+
 /** Call from a tap handler (start / resume / the small play button). Never throws. */
 export function unlockLessonAudio(): void {
   try {
+    void lessonAudioContext()
+      ?.resume()
+      .catch(() => {});
     for (const kind of ['voice', 'reciter'] as const) {
       const el = lessonAudio(kind);
       if (el.src && !el.paused) continue; // already playing

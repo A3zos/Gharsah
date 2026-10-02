@@ -133,7 +133,13 @@ export function ServerLessonCall({
   }
   return (
     <>
-      <ServerLessonView state={state} actions={actions} desktop={desktop} />
+      <ServerLessonView
+        state={state}
+        actions={actions}
+        desktop={desktop}
+        gender={child.gender}
+        mouth={web?.mouth}
+      />
       <ConfirmSheet
         open={exitOpen || blocked}
         title="تخرج من الحصة؟"

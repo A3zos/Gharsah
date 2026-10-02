@@ -13,6 +13,7 @@ import type { LessonProgressSink } from '../ports';
 import { QuranText } from '../quran';
 import type { LessonScript } from '../script';
 import type { LessonProgress } from '../state';
+import { LipSync } from './lipSync';
 import { LessonMicrophone } from './microphone';
 import { SupabaseProgressSink } from './progressSink';
 import { HtmlRecitationPlayer } from './recitationPlayer';
@@ -85,6 +86,8 @@ export interface WebLesson {
   progressFrom: LessonProgress | undefined;
   /** True while the teacher's lines can't be voiced at all (captions only). */
   voiceMissing: { readonly value: boolean; subscribe: SpeechTeacher['voiceMissing'] };
+  /** The teacher's mouth (lip-sync) for the character. */
+  mouth: LipSync['frame'];
   dispose(): Promise<void>;
 }
 
@@ -115,7 +118,8 @@ export function createWebLesson(o: {
   // The DEV preview (a local sink) has no paired session — browser voice only there.
   const server = serverVoiceEnabled() && !o.sink ? new ServerVoice(aiSpeakPost) : null;
   server?.warm();
-  const teacher = new SpeechTeacher(mic, undefined, server);
+  const lip = new LipSync();
+  const teacher = new SpeechTeacher(mic, undefined, server, lip);
   const recorder = new WavProjectRecorder(mic);
   const agent = new LessonAgent({
     script: o.script,
@@ -132,6 +136,7 @@ export function createWebLesson(o: {
   return {
     agent,
     progressFrom: o.progressFrom,
+    mouth: lip.frame,
     voiceMissing: {
       get value() {
         return teacher.isVoiceMissing;
@@ -145,6 +150,7 @@ export function createWebLesson(o: {
       await Promise.all([teacher.dispose(), recorder.dispose(), player.dispose()]).catch(() => {});
       mic.close();
       cache.dispose();
+      lip.dispose();
     },
   };
 }

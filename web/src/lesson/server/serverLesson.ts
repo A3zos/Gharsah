@@ -144,6 +144,8 @@ export interface ServerLessonState {
   readonly paused: boolean;
   /** Today's surah part is finished — a fallback resumes the built-in lesson at the hadith. */
   readonly quranDone: boolean;
+  /** Counts the cheers (a repeat accepted, a part or the lesson finished) — the teacher looks happy. */
+  readonly cheer: number;
 }
 
 export const initialServerState: ServerLessonState = {
@@ -177,6 +179,7 @@ export const initialServerState: ServerLessonState = {
   saveFailed: false,
   paused: false,
   quranDone: false,
+  cheer: 0,
 };
 
 /** The hadith text placeholder until a vetted source is approved (CLAUDE.md §3). */
@@ -578,6 +581,7 @@ export class ServerLesson {
           return { available: false, transcription: null };
         });
         // Groq's transcription as the child's answer; else the presence-only path below.
+        this.cheer();
         return this.send(score.available && score.transcription ? score.transcription : this.repeatText());
       }
       if (abort.signal.aborted) throw new Cancelled();
@@ -585,12 +589,19 @@ export class ServerLesson {
     // On-device presence only (nothing stored or sent). «ردّدت» also works any time.
     for (;;) {
       const heard = await this.guard(abort, this.d.presence.waitForSpeech(abort.signal));
-      if (heard === 'spoke') return this.send(this.repeatText());
+      if (heard === 'spoke') {
+        this.cheer();
+        return this.send(this.repeatText());
+      }
       if (heard === 'denied') {
         this.set({ micDenied: true });
         return; // only «ردّدت» now
       }
     }
+  }
+
+  private cheer(): void {
+    this.set({ cheer: this.state.value.cheer + 1 });
   }
 
   private repeatText(): string {
@@ -599,6 +610,7 @@ export class ServerLesson {
 
   private async segmentEnded(): Promise<void> {
     this.set({ expects: null, quickReplies: [], repeat: 'idle' });
+    this.cheer();
     const next = this.segments[this.segIndex + 1];
     if (next) {
       this.set({ phase: 'segmentDone', nextSegment: next.kind });
@@ -667,6 +679,7 @@ export class ServerLesson {
   /** «ردّدت» — one repeat without the mic (or without consent). */
   repeatTapped(): void {
     if (this.state.value.expects !== 'repeat' || this.state.value.busy) return;
+    this.cheer();
     void this.send(this.repeatText());
   }
 
