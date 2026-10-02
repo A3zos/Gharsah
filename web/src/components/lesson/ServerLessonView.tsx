@@ -66,9 +66,7 @@ export function ServerLessonView({
   // text only when no voice could say it (server and browser both failed), so the
   // lesson never goes silent with nothing on screen. Status lines (warming, done) stay.
   const caption = starting
-    ? s.phase === 'warming'
-      ? TEACHER_TEXT[gender].readying
-      : 'نبدأ الحصة…'
+    ? TEACHER_TEXT[gender].readying
     : s.phase === 'finished'
       ? 'أكملت درس اليوم ✓'
       : s.voiceMissing

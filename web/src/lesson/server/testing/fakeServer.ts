@@ -263,7 +263,12 @@ export class FakeAgentServer {
       child_name: 'يا بطل',
       llm: true,
       recitation_scores: [],
-      ...(s.mode === 'quran' && s.idx >= 3 ? { surah_no: SURAH, lesson_title: 'سورة الإخلاص' } : {}),
+      // like the real server: its default surah_no 1 until «which surah?» is answered
+      ...(s.mode === 'quran'
+        ? s.idx >= 3
+          ? { surah_no: SURAH, lesson_title: 'سورة الإخلاص' }
+          : { surah_no: 1 }
+        : {}),
       ...(spec.extra ?? {}),
     };
   }

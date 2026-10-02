@@ -1,4 +1,4 @@
-// The teacher's lip-sync: the voice that is playing → a mouth frame ~12 times a
+// The teacher's lip-sync: the voice that is playing → a mouth frame ~8 times a
 // second (mouth.ts maps the readings). Server MP3s play on an <audio> element, read
 // through a Web Audio AnalyserNode; the browser's speechSynthesis plays outside the
 // page (no web page can read it), so then the mouth follows a syllable rhythm.

@@ -24,6 +24,8 @@ import type { LipSync } from './lipSync';
 import type { ServerVoice } from './serverVoice';
 
 const MS_PER_CHAR = 70;
+/** Quiet between the teacher's lines. */
+const LINE_GAP_MS = 350;
 const MIN_SILENT_MS = 1200;
 const VOICES_WAIT_MS = 1500;
 
@@ -47,6 +49,7 @@ export class SpeechTeacher implements AiTeacher {
   private finishSpeech: (() => void) | null = null;
   private volume = 1;
   private voice: Promise<SpeechSynthesisVoice | null> | null = null;
+  private lastLineEnd = 0;
   private detector: PresenceDetector | null = null;
   private speakToken: object | null = null;
 
@@ -70,6 +73,9 @@ export class SpeechTeacher implements AiTeacher {
 
   async speak(line: TeacherLine, text: string): Promise<void> {
     this.finishSpeech?.();
+    // a natural pause (~350 ms) since the previous line ended
+    const gap = this.lastLineEnd + LINE_GAP_MS - Date.now();
+    if (gap > 0) await new Promise((r) => setTimeout(r, gap));
     this.speaking = true; // deaf from now — also while the server voice loads
     const mine = {};
     this.speakToken = mine;
@@ -77,6 +83,7 @@ export class SpeechTeacher implements AiTeacher {
     if (this.speakToken !== mine) return; // stopped or replaced meanwhile
     if (blob && (await this.playServer(blob, text, mine))) {
       this.setMissing(false);
+      this.lastLineEnd = Date.now();
       return;
     }
     if (this.speakToken !== mine) return;
@@ -112,6 +119,7 @@ export class SpeechTeacher implements AiTeacher {
       this.synth.cancel();
       this.synth.speak(u);
     });
+    this.lastLineEnd = Date.now();
   }
 
   async stopSpeaking(): Promise<void> {
@@ -171,6 +179,7 @@ export class SpeechTeacher implements AiTeacher {
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
     audio.volume = this.volume;
+    audio.playbackRate = 1; // the server voice at its natural speed
     this.audio = audio;
     const started = await audio.play().then(
       () => true,

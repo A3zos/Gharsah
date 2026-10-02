@@ -19,6 +19,8 @@ import type {
 
 /** /speak cuts at 1200 characters; pieces this short also make the live caption. */
 export const CAPTION_CHARS = 140;
+/** Quiet between the teacher's sentences. */
+export const LINE_GAP_MS = 350;
 /** Silence before a repeat window gives up and listens again (the «ردّدت» stays offered). */
 const LISTEN_WINDOW_MS = 25_000;
 const MAX_RECITATION_MS = 20_000;
@@ -69,7 +71,13 @@ export class ServerTeacherVoice implements TeacherVoice {
   ) {}
 
   warm(): void {
-    this.available ??= this.api.speakAvailable();
+    this.available ??= this.api.speakReady();
+  }
+
+  /** Resolves when the server voice is ready (≤ ~45 s); false → the browser's voice. */
+  ready(): Promise<boolean> {
+    this.warm();
+    return this.available!;
   }
 
   async speak(text: string, onPiece?: (piece: string, voiced: boolean) => void): Promise<void> {
@@ -83,6 +91,9 @@ export class ServerTeacherVoice implements TeacherVoice {
       server && pieces[i] ? this.api.speak(pieces[i], this.gender) : Promise.resolve(null);
     let next = fetchPiece(0);
     for (let i = 0; i < pieces.length; i++) {
+      // a natural pause between sentences
+      if (i > 0) await new Promise((r) => setTimeout(r, LINE_GAP_MS));
+      if (this.token !== mine) return;
       const blob = await next;
       if (this.token !== mine) return;
       next = fetchPiece(i + 1);
@@ -110,6 +121,9 @@ export class ServerTeacherVoice implements TeacherVoice {
     const url = URL.createObjectURL(blob);
     const audio = this.audio;
     audio.src = url;
+    // ElevenLabs at its natural speed — never sped up
+    audio.defaultPlaybackRate = 1;
+    audio.playbackRate = 1;
     const refused = await audio.play().then(
       () => null,
       (e: unknown) => e as DOMException,

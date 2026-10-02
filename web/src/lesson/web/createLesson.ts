@@ -88,6 +88,8 @@ export interface WebLesson {
   voiceMissing: { readonly value: boolean; subscribe: SpeechTeacher['voiceMissing'] };
   /** The teacher's mouth (lip-sync) for the character. */
   mouth: LipSync['frame'];
+  /** Resolves when the teacher's server voice is ready (or failed) — start after it. */
+  voiceReady(): Promise<unknown>;
   dispose(): Promise<void>;
 }
 
@@ -128,7 +130,8 @@ export function createWebLesson(o: {
     player,
     recorder,
     sink: o.sink ?? new SupabaseProgressSink(o.session, o.script),
-    timings: { maxRecordingMs: MAX_REPORT_MS },
+    // ~600 ms of quiet after a question before the mic listens (a natural pause)
+    timings: { maxRecordingMs: MAX_REPORT_MS, echoGuardMs: 600 },
     childFirstName: o.childFirstName,
     debugTapCountsRepeat: import.meta.env.DEV,
   });
@@ -137,6 +140,7 @@ export function createWebLesson(o: {
     agent,
     progressFrom: o.progressFrom,
     mouth: lip.frame,
+    voiceReady: () => server?.whenReady() ?? Promise.resolve(false),
     voiceMissing: {
       get value() {
         return teacher.isVoiceMissing;

@@ -92,15 +92,18 @@ export function LessonView({
     <>
       <LiveHeader elapsedMs={s.elapsedMs} onEnd={actions.exit} />
       <Teacher state={s} gender={gender} mouth={mouth} desktop={desktop} onTap={actions.tapTeacher}>
-        <p
-          aria-live="polite"
-          className={cx(
-            'm-0 line-clamp-3 w-full text-center text-[18px] leading-[1.7] font-bold',
-            s.happy ? 'text-deep-green' : 'text-text-dark',
-          )}
-        >
-          {s.caption}
-        </p>
+        {/* Only the teacher talks — the line is written ONLY when no voice can say it. */}
+        {voiceMissing && s.caption && (
+          <p
+            aria-live="polite"
+            className={cx(
+              'm-0 line-clamp-3 w-full text-center text-[18px] leading-[1.7] font-bold',
+              s.happy ? 'text-deep-green' : 'text-text-dark',
+            )}
+          >
+            {s.caption}
+          </p>
+        )}
       </Teacher>
       <Problems state={s} actions={actions} voiceMissing={voiceMissing} gender={gender} />
       <div className="flex min-h-0 grow flex-col">
@@ -111,6 +114,31 @@ export function LessonView({
   );
 
   return <CallFrame desktop={desktop}>{body}</CallFrame>;
+}
+
+/**
+ * «المعلم يتجهز…»: the call screen before the lesson starts — the character idle,
+ * breathing and blinking — while the server voice and the frames get ready.
+ */
+export function ReadyingCall({
+  gender,
+  desktop,
+  onExit,
+}: {
+  gender: TeacherGender;
+  desktop: boolean;
+  onExit: () => void;
+}) {
+  return (
+    <CallFrame desktop={desktop}>
+      <LiveHeader elapsedMs={0} onEnd={onExit} />
+      <TeacherStage gender={gender} desktop={desktop} pose="quiet" talking={false} happy={false}>
+        <p role="status" className="m-0 text-center text-[17px] font-bold text-text-muted">
+          {TEACHER_TEXT[gender].readying}
+        </p>
+      </TeacherStage>
+    </CallFrame>
+  );
 }
 
 /** The call's page: phone column, or the centered card on desktop (LessonDesktop). Shared with the AI-server lesson. */

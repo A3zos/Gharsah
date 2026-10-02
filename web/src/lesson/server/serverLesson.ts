@@ -36,6 +36,8 @@ export interface TeacherVoice {
   stop(): void;
   /** Wakes the voice service at lesson start (optional). */
   warm?(): void;
+  /** Resolves once the real voice is ready (or has failed) — the lesson waits for it. */
+  ready?(): Promise<boolean>;
 }
 
 export interface UrlPlayer {
@@ -93,6 +95,8 @@ export interface ServerLessonDeps {
   surahName: (surah: number) => string;
   blobToBase64?: (b: Blob) => Promise<string>;
   sleep?: (ms: number) => Promise<void>;
+  /** Natural pauses in the conversation (tests pass an instant one). */
+  beat?: (ms: number) => Promise<void>;
   /** After this long without the first answer, show «المعلّم يتجهّز…». */
   warmingAfterMs?: number;
 }
@@ -146,6 +150,8 @@ export interface ServerLessonState {
   readonly quranDone: boolean;
   /** Counts the cheers (a repeat accepted, a part or the lesson finished) — the teacher looks happy. */
   readonly cheer: number;
+  /** Why the lesson handed over to the built-in one (logged; for support). */
+  readonly fallbackReason: string | null;
 }
 
 export const initialServerState: ServerLessonState = {
@@ -180,6 +186,7 @@ export const initialServerState: ServerLessonState = {
   paused: false,
   quranDone: false,
   cheer: 0,
+  fallbackReason: null,
 };
 
 /** The hadith text placeholder until a vetted source is approved (CLAUDE.md §3). */
@@ -191,9 +198,15 @@ export const RATE_LIMIT_BACKOFF_MS = [4000, 8000, 16000, 30000];
 const UNAVAILABLE_RETRY_MS = [1500, 4000];
 const MAX_RESTARTS = 2;
 const CONTINUE_TEXT = 'أكمل';
+/** ~350 ms between the teacher's line and what follows (a recitation). */
+export const LINE_GAP_MS = 350;
+/** ~600 ms after a question before the child's turn opens. */
+export const QUESTION_PAUSE_MS = 600;
 /** What the name stage gets instead of the child's name. */
 export const NAME_STAND_IN = 'بطل';
 const MAX_NAME_ANSWERS = 2;
+/** Stages before the surah is chosen — their surah_no is the server's default (1). */
+const BEFORE_SURAH = new Set(['greet', 'name', 'surah']);
 /** Automatic listening rounds after each line before the mic waits for a tap. */
 export const AUTO_LISTEN_TRIES = 2;
 const REPEATED_TEXT = 'ردّدت';
@@ -214,6 +227,7 @@ export class ServerLesson {
   readonly state = new Observable<ServerLessonState>(initialServerState);
 
   private readonly sleep: (ms: number) => Promise<void>;
+  private readonly beat: (ms: number) => Promise<void>;
   private segments: Segment[] = [];
   private segIndex = 0;
   private turn: ServerTurn | null = null;
@@ -231,6 +245,7 @@ export class ServerLesson {
 
   constructor(private readonly d: ServerLessonDeps) {
     this.sleep = d.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    this.beat = d.beat ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   }
 
   private set(patch: Partial<ServerLessonState>): void {
@@ -246,6 +261,10 @@ export class ServerLesson {
       if (this.state.value.phase === 'starting') this.set({ phase: 'warming' });
     }, this.d.warmingAfterMs ?? 3000);
     try {
+      // Never start with the browser voice while the server voice is waking up:
+      // «المعلم يتجهز…» until it is ready (≤ ~45 s) — the browser's only if it fails.
+      await this.d.voice.ready?.();
+      if (this.disposed) return;
       this.segments = await this.plan();
       this.segIndex = 0;
       await this.startSegment(false);
@@ -339,9 +358,10 @@ export class ServerLesson {
   }
 
   private fallback(e: unknown): void {
-    console.warn('[gharsah] AI lesson → built-in lesson', (e as Error)?.message ?? e);
+    const reason = String((e as Error)?.message ?? e);
+    console.warn('[gharsah] AI lesson → built-in lesson:', reason);
     this.cancelTurn();
-    this.set({ phase: 'fallback', busy: false, expects: null });
+    this.set({ phase: 'fallback', busy: false, expects: null, fallbackReason: reason });
   }
 
   // ── a turn ──
@@ -362,7 +382,13 @@ export class ServerLesson {
     this.restarts = turn.stageIndex > 0 ? 0 : this.restarts;
     // The pilot plan: the server must teach today's surah and hadith — otherwise the
     // built-in lesson (which follows the same plan) takes over.
-    if (turn.kind === 'quran' && turn.surahNo !== null && turn.surahNo !== this.d.plan.surahNo) {
+    // (the server's turns carry its default surah_no 1 until «which surah?» is answered)
+    if (
+      turn.kind === 'quran' &&
+      !BEFORE_SURAH.has(turn.stage) &&
+      turn.surahNo !== null &&
+      turn.surahNo !== this.d.plan.surahNo
+    ) {
       return this.fallback(new Error(`server surah ${turn.surahNo} ≠ today's ${this.d.plan.surahNo}`));
     }
     const title = turn.kind === 'hadith' ? hadithTitleOf(turn) : null;
@@ -412,6 +438,8 @@ export class ServerLesson {
     try {
       for (const a of turn.actions) this.show(a, turn);
       if (turn.say.trim()) await this.say(turn.say, abort);
+      const plays = turn.actions.some((a) => a.type === 'play_all' || a.type === 'play_ayah');
+      if (turn.say.trim() && plays) await this.guard(abort, this.beat(LINE_GAP_MS));
       for (const a of turn.actions) {
         if (a.type === 'play_all') for (const u of a.urls) await this.recite(u, abort);
         if (a.type === 'play_ayah') {
@@ -419,6 +447,8 @@ export class ServerLesson {
           await this.recite(a.url, abort);
         }
       }
+      // a natural pause after the teacher's question, before listening
+      if (turn.expects !== 'none') await this.guard(abort, this.beat(QUESTION_PAUSE_MS));
       await this.await(turn, abort);
     } catch (e) {
       if (e instanceof Cancelled) return;

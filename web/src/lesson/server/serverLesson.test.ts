@@ -58,6 +58,7 @@ function setup(o: Partial<ServerLessonDeps> & { server?: FakeAgentServer; childN
     surahName: () => 'الإخلاص',
     blobToBase64: async () => 'QUJD',
     sleep: async (ms) => void sleeps.push(ms),
+    beat: async () => {},
     warmingAfterMs: 10_000,
     ...o,
   });
@@ -697,5 +698,43 @@ describe('ServerLesson — cheers (the teacher looks happy)', () => {
     }
     await until(t.lesson, (s) => s.phase === 'segmentDone');
     expect(t.lesson.state.value.cheer).toBe(5);
+  });
+});
+
+describe('ServerLesson — voice first, no early browser voice', () => {
+  it('waits for the server voice before starting — nothing asked or said meanwhile', async () => {
+    let release = (_ok: boolean) => {};
+    const spoken: string[] = [];
+    const t = setup({
+      voice: {
+        ready: () => new Promise<boolean>((r) => (release = r)),
+        speak: async (text) => void spoken.push(text),
+        stop: () => {},
+      },
+      warmingAfterMs: 1,
+    });
+    void t.lesson.start();
+    await until(t.lesson, (s) => s.phase === 'warming'); // «المعلم يتجهز…»
+    expect(t.server.calls.filter((c) => c.path === '/agent/start')).toHaveLength(0);
+    expect(spoken).toEqual([]);
+    release(true);
+    await at(t.lesson, 'greet', 'text');
+    expect(spoken[0]).toMatch(/^السلام عليكم/);
+  });
+
+  it('the surah check ignores the server default (1) before «which surah?», and logs a real mismatch', async () => {
+    const ok = setup(); // the fake server sends surah_no 1 on greet/surah, like the real one
+    void ok.lesson.start();
+    await at(ok.lesson, 'greet', 'text');
+    ok.lesson.answer('تمام');
+    await at(ok.lesson, 'lesson_intro', 'continue');
+    expect(ok.lesson.state.value.phase).toBe('live');
+
+    const bad = setup({ plan: { ...PLAN, lessonId: 'pilot-day-2', surahNo: 114, surahName: 'الناس' } });
+    void bad.lesson.start();
+    await at(bad.lesson, 'greet', 'text');
+    bad.lesson.answer('تمام');
+    await until(bad.lesson, (s) => s.phase === 'fallback');
+    expect(bad.lesson.state.value.fallbackReason).toMatch(/surah 112 ≠ today's 114/);
   });
 });

@@ -2,12 +2,13 @@
 // browser part, web/lipSync.ts, feeds it Web Audio analyser readings).
 //   silence → idle · low → mouth-small · mid → mouth-open · high → mouth-wide
 //   strong low-frequency energy → now and then mouth-o
-// ~12 fps with a little smoothing so the mouth doesn't jitter.
+// ~8 fps, fast attack / slow release, closed in pauses (a threshold from the line's
+// own loudness), mouth-wide only on real peaks.
 
 export type MouthFrame = 'idle' | 'mouth-small' | 'mouth-open' | 'mouth-wide' | 'mouth-o';
 
-/** Frames per second of the mouth. */
-export const MOUTH_FPS = 12;
+/** ~8 fps: each mouth frame is held ≥110 ms (125 ms) — slower reads as real speech. */
+export const MOUTH_FPS = 8;
 export const MOUTH_FRAME_MS = Math.round(1000 / MOUTH_FPS);
 
 /** One analyser reading: loudness 0..1 and the share of energy in the low band (≈80–400 Hz). */
@@ -16,34 +17,47 @@ export interface VoiceReading {
   readonly lowRatio: number;
 }
 
-const SMOOTH = 0.45; // weight of the new reading
-const SILENT = 0.08;
-const LOW = 0.25;
-const MID = 0.5;
+const ATTACK = 0.65; // opening follows the voice fast…
+const RELEASE = 0.25; // …closing eases off
+const PEAK_DECAY = 0.985; // the line's own loudness, remembered for a few seconds
+const PEAK_FLOOR = 0.12;
+const SILENCE_SHARE = 0.22; // below 22% of the line's peak = a pause → closed
+const SILENCE_MIN = 0.04;
+const WIDE_SHARE = 0.85; // mouth-wide only on real peaks…
+const WIDE_MIN = 0.45;
+const OPEN_SHARE = 0.5;
 const O_LOW_RATIO = 0.6;
-const O_MIN_LEVEL = 0.2;
-const O_COOLDOWN = 5; // frames before another «o»
+const O_SHARE = 0.4;
+const O_COOLDOWN = 6; // frames before another «o»
 
 export class MouthShaper {
   private smoothed = 0;
+  private peak = PEAK_FLOOR;
   private oCooldown = 0;
 
   reset(): void {
     this.smoothed = 0;
+    this.peak = PEAK_FLOOR;
     this.oCooldown = 0;
   }
 
   next(r: VoiceReading): MouthFrame {
     const level = Math.min(1, Math.max(0, r.level));
-    this.smoothed = this.smoothed * (1 - SMOOTH) + level * SMOOTH;
+    const k = level > this.smoothed ? ATTACK : RELEASE;
+    this.smoothed += (level - this.smoothed) * k;
+    this.peak = Math.max(level, this.peak * PEAK_DECAY, PEAK_FLOOR);
     if (this.oCooldown > 0) this.oCooldown--;
-    const s = this.smoothed;
-    if (s < SILENT) return 'idle';
-    if (r.lowRatio >= O_LOW_RATIO && s >= O_MIN_LEVEL && this.oCooldown === 0) {
+    // Pauses between words and sentences: the raw level drops under the line's own
+    // threshold → closed at once (the smoothing must not keep it open).
+    const silence = Math.max(SILENCE_MIN, this.peak * SILENCE_SHARE);
+    if (level < silence) return 'idle';
+    const rel = this.smoothed / this.peak;
+    if (r.lowRatio >= O_LOW_RATIO && rel >= O_SHARE && this.oCooldown === 0) {
       this.oCooldown = O_COOLDOWN;
       return 'mouth-o';
     }
-    return s < LOW ? 'mouth-small' : s < MID ? 'mouth-open' : 'mouth-wide';
+    if (rel >= WIDE_SHARE && this.smoothed >= WIDE_MIN) return 'mouth-wide';
+    return rel >= OPEN_SHARE ? 'mouth-open' : 'mouth-small';
   }
 }
 
@@ -81,9 +95,9 @@ export class SyllableMouth {
 
   next(): MouthFrame {
     this.step++;
-    // a short closed beat every ~4–6 frames (between syllables)
-    if (this.step % 5 === 0 || this.random() < 0.12) return 'idle';
+    // a closed beat between syllables (every ~3–4 frames at 8 fps)
+    if (this.step % 4 === 0 || this.random() < 0.15) return 'idle';
     const r = this.random();
-    return r < 0.4 ? 'mouth-small' : r < 0.8 ? 'mouth-open' : r < 0.94 ? 'mouth-wide' : 'mouth-o';
+    return r < 0.45 ? 'mouth-small' : r < 0.88 ? 'mouth-open' : r < 0.96 ? 'mouth-wide' : 'mouth-o';
   }
 }

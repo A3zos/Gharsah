@@ -5,6 +5,7 @@ import { paths } from '../../app/paths';
 import { useChildData } from '../../components/child/ChildData';
 import {
   LessonView,
+  ReadyingCall,
   type ChildGlance,
   type LessonActions,
   type LessonPlanInfo,
@@ -19,7 +20,8 @@ import { pickTodayLesson, progressFromRow } from '../../data/student';
 import type { LessonScript } from '../../lesson/script';
 import { initialLessonState, type LessonProgress, type LessonState } from '../../lesson/state';
 import { PreviewProgressSink } from '../../dev/childPreview';
-import { agentBaseUrl } from '../../lesson/server/api';
+import { agentBaseUrl, SPEAK_WARM_TIMEOUT_MS } from '../../lesson/server/api';
+import { preloadTeacher } from '../../components/child/teacherCharacter';
 import { createWebLesson, type WebLesson } from '../../lesson/web/createLesson';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { DESKTOP, useMedia } from '../../lib/useMedia';
@@ -175,6 +177,8 @@ function LessonCall({
   const firstName = child.name.trim().split(/\s+/)[0] ?? child.name;
   // The resume point is read once per call (later checkpoints must not restart it).
   const resumeRef = useRef(resume);
+  const gender = child.gender;
+  const [readyFor, setReadyFor] = useState<number | null>(null);
 
   useEffect(() => {
     const l = createWebLesson({
@@ -186,14 +190,24 @@ function LessonCall({
       sink: import.meta.env.DEV && session.childId === 'preview' ? new PreviewProgressSink() : undefined,
     });
     setLesson(l);
-    void l.agent.start(l.progressFrom);
+    // «المعلم يتجهز…» first: the server voice (≤ ~45 s) and the character's frames —
+    // never the browser voice or the old SVG while they are still coming.
+    let disposed = false;
+    const timeout = new Promise((r) => setTimeout(r, SPEAK_WARM_TIMEOUT_MS));
+    void Promise.race([Promise.all([l.voiceReady(), preloadTeacher(gender)]), timeout]).then(() => {
+      if (disposed) return;
+      setReadyFor(attempt);
+      void l.agent.start(l.progressFrom);
+    });
     const onVis = () => l.agent.setForeground(document.visibilityState === 'visible');
     document.addEventListener('visibilitychange', onVis);
     return () => {
+      disposed = true;
       document.removeEventListener('visibilitychange', onVis);
       void l.dispose();
     };
-  }, [script, session.parentUid, session.childId, firstName, attempt]);
+  }, [script, session.parentUid, session.childId, firstName, attempt, gender]);
+  const readying = readyFor !== attempt;
 
   const agent = lesson?.agent;
   const voiceMissing = useSyncExternalStore(
@@ -251,6 +265,7 @@ function LessonCall({
   const plan = useMemo(() => planOf(script), [script]);
   const glance = glanceOf(child);
 
+  if (agent && readying) return <ReadyingCall gender={gender} desktop={desktop} onExit={goHome} />;
   if (!agent || state.screen === 'loading' || state.screen === 'ended') return <Busy />;
   if (state.screen === 'failed') {
     return (

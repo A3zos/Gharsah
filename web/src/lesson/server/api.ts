@@ -64,6 +64,9 @@ const TURN_TIMEOUT_MS = 45_000;
 const SCORE_TIMEOUT_MS = 30_000;
 const SPEAK_TIMEOUT_MS = 20_000;
 const READ_TIMEOUT_MS = 20_000;
+/** How long the lesson waits for the server voice before using the browser's. */
+export const SPEAK_WARM_TIMEOUT_MS = 45_000;
+const speakReadiness = new Map<string, Promise<boolean>>();
 
 export class AgentApi {
   private readonly base: string;
@@ -174,13 +177,30 @@ export class AgentApi {
   // ── voice ──
 
   /** False when the server can't voice at all (then the browser's voice is used). */
-  async speakAvailable(): Promise<boolean> {
+  async speakAvailable(timeoutMs = READ_TIMEOUT_MS): Promise<boolean> {
     try {
-      const j = (await this.get('/speak/status')) as { elevenlabs?: unknown } | null;
+      const r = await this.request('/speak/status', { timeoutMs });
+      const j = (await this.json(r)) as { elevenlabs?: unknown } | null;
       return j?.elevenlabs === true;
     } catch {
       return false;
     }
+  }
+
+  /**
+   * The server voice is ready (shared per server for the page: the child home starts
+   * it, the lesson reuses it). Waits up to ~45 s for a cold start; a failure is not
+   * cached, so the next lesson tries again.
+   */
+  speakReady(): Promise<boolean> {
+    const known = speakReadiness.get(this.base);
+    if (known) return known;
+    const p = this.speakAvailable(SPEAK_WARM_TIMEOUT_MS).then((ok) => {
+      if (!ok) speakReadiness.delete(this.base);
+      return ok;
+    });
+    speakReadiness.set(this.base, p);
+    return p;
   }
 
   /** The teacher's line as MP3, or null (any non-audio answer → the browser's voice). */
@@ -267,7 +287,9 @@ export function warmAgent(): void {
   const url = agentBaseUrl();
   if (!url || warmed) return;
   warmed = true;
-  void new AgentApi(url).status();
+  const api = new AgentApi(url);
+  void api.status();
+  void api.speakReady(); // so the first line is the teacher's real voice, not the browser's
 }
 
 /** Replaces the child's name in their own words with «بطل». */

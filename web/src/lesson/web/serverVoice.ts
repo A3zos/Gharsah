@@ -33,16 +33,24 @@ export class ServerVoice {
     private readonly now: () => number = Date.now,
   ) {}
 
+  private warming: Promise<boolean> | null = null;
+
   /** Wakes the server at lesson load; if it can't voice (e.g. no key), skip it for a while. */
   warm(): void {
+    if (this.warming) return;
     this.busy++;
-    void this.post({ warm: true })
-      .then((r) => (r.ok ? (r.json() as Promise<{ ready?: boolean }>) : null))
-      .then((j) => {
-        if (j?.ready !== true) this.markDown();
+    this.warming = warmAiSpeak(this.post)
+      .then((ready) => {
+        if (!ready) this.markDown();
+        return ready;
       })
-      .catch(() => this.markDown())
       .finally(() => this.busy--);
+  }
+
+  /** Resolves when the warm-up is over (ready or not) — the lesson waits for it. */
+  whenReady(): Promise<boolean> {
+    this.warm();
+    return this.warming!;
   }
 
   /** The line's MP3, or null → use the browser's voice for it. */
@@ -127,9 +135,29 @@ export const aiSpeakPost: VoicePost = async (body) => {
       Authorization: `Bearer ${data.session?.access_token ?? anon}`,
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(50_000), // a Render cold start takes ~50 s
   });
 };
 
 /** VITE_AI_VOICE=1 turns the server voice on; otherwise the browser's voice only. */
 export const serverVoiceEnabled = () => import.meta.env.VITE_AI_VOICE === '1';
+
+let aiSpeakWarm: Promise<boolean> | null = null;
+
+/**
+ * Wakes ai-speak (and the AI server behind it) once per page — the child home starts
+ * it, the lesson reuses it. A failed warm-up is not cached.
+ */
+export function warmAiSpeak(post: VoicePost = aiSpeakPost): Promise<boolean> {
+  if (aiSpeakWarm) return aiSpeakWarm;
+  const p = post({ warm: true })
+    .then((r) => (r.ok ? (r.json() as Promise<{ ready?: boolean }>) : null))
+    .then((j) => j?.ready === true)
+    .catch(() => false)
+    .then((ready) => {
+      if (!ready) aiSpeakWarm = null;
+      return ready;
+    });
+  aiSpeakWarm = p;
+  return p;
+}

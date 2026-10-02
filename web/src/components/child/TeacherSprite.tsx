@@ -2,7 +2,7 @@
 // for boys, المعلمة سارة for girls (the child's stored gender). The SAME character on
 // every lesson screen (CLAUDE.md §5). All frames are loaded up front and stacked;
 // only opacity changes, so there is no flicker or layout shift.
-//   speaking → the mouth follows the voice (lip-sync, ~12 fps)
+//   speaking → the mouth follows the voice (lip-sync, ~8 fps)
 //   quiet    → blinks every 2–6 s; «happy» for ~1.5 s on a cue
 //   listening → no image change: a ~3° tilt with a soft scale (not under reduced motion)
 // Any frame that fails to load → `fallback` (the old SVG teacher).
@@ -63,6 +63,9 @@ export function TeacherSprite({
   fallback: React.ReactNode;
 }) {
   const [failed, setFailed] = useState(false);
+  // Frames that have loaded, and frames already retried once (a second failure → SVG).
+  const [loaded, setLoaded] = useState<ReadonlySet<Frame>>(() => new Set());
+  const [retried, setRetried] = useState<ReadonlySet<Frame>>(() => new Set());
   const mouthFrame = useSyncExternalStore(
     mouth.subscribe,
     () => mouth.value,
@@ -115,7 +118,10 @@ export function TeacherSprite({
 
   if (failed) return <>{fallback}</>;
 
-  const shown: Frame = cheering ? 'happy' : talking ? mouthFrame : blinking ? 'blink' : 'idle';
+  const wanted: Frame = cheering ? 'happy' : talking ? mouthFrame : blinking ? 'blink' : 'idle';
+  // Never switch to a frame that isn't there yet (it would blank the character).
+  const shown: Frame = loaded.has(wanted) ? wanted : 'idle';
+  const jaw = shown === 'mouth-open' || shown === 'mouth-wide' || shown === 'mouth-o';
   const listening = pose === 'listening';
   return (
     <button
@@ -143,22 +149,38 @@ export function TeacherSprite({
         style={{ aspectRatio: ASPECT[gender] }}
       >
         <span className="absolute inset-0 origin-bottom animate-[gh-teacher-breathe_4.2s_ease-in-out_infinite]">
-          {FRAMES.map((f) => (
-            <img
-              key={f}
-              src={teacherFrameSrc(gender, f)}
-              alt=""
+          {/* Until the idle frame is in: a soft placeholder (never the old SVG while loading). */}
+          {!loaded.has('idle') && (
+            <span
               aria-hidden="true"
-              draggable={false}
-              loading="eager"
-              decoding="async"
-              onError={() => setFailed(true)}
-              className={cx(
-                'pointer-events-none absolute inset-0 h-full w-full object-contain object-bottom select-none',
-                f === shown ? 'opacity-100' : 'opacity-0',
-              )}
+              className="absolute inset-x-[18%] top-[6%] bottom-0 animate-[gh-breathe_2.4s_ease-in-out_infinite] rounded-t-full bg-green-tint"
             />
-          ))}
+          )}
+          {/* a tiny jaw-like ease (1–2 px) when the mouth opens */}
+          <span
+            className={cx(
+              'absolute inset-0 transition-transform duration-100 ease-out motion-reduce:transition-none',
+              jaw && 'translate-y-[1.5px]',
+            )}
+          >
+            {FRAMES.map((f) => (
+              <img
+                key={f}
+                src={retried.has(f) ? `${teacherFrameSrc(gender, f)}?retry=1` : teacherFrameSrc(gender, f)}
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+                loading="eager"
+                decoding="async"
+                onLoad={() => setLoaded((s) => (s.has(f) ? s : new Set(s).add(f)))}
+                onError={() => (retried.has(f) ? setFailed(true) : setRetried((s) => new Set(s).add(f)))}
+                className={cx(
+                  'pointer-events-none absolute inset-0 h-full w-full object-contain object-bottom select-none',
+                  f === shown && loaded.has(f) ? 'opacity-100' : 'opacity-0',
+                )}
+              />
+            ))}
+          </span>
         </span>
       </span>
     </button>

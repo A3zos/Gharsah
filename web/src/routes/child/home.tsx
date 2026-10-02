@@ -15,6 +15,8 @@ import { reviewItems } from '../../content/review';
 import { nextReviewDay } from '../../data/children';
 import { headline, STAGE_LABEL } from '../../data/stats';
 import { agentEnabled, warmAgent } from '../../lesson/server/api';
+import { serverVoiceEnabled, warmAiSpeak } from '../../lesson/web/serverVoice';
+import { preloadTeacher } from '../../components/child/teacherCharacter';
 import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
 import { lessonStepGroups, pickTodayLesson } from '../../data/student';
 import { toArabicDigits } from '../../lib/arabicDigits';
@@ -27,8 +29,16 @@ export const meta: Route.MetaFunction = () => [{ title: 'الرئيسية — غ
 /** design/v3 StudentHome (+ StudentHomeDay2 when today's lesson starts with the project report). */
 export default function ChildHome() {
   const { child, progress, board } = useChildData();
-  // VITE_AI_AGENT=1: wake the AI server (Render cold start ~50 s) before «ابدأ الحصة».
+  // Before «ابدأ الحصة»: wake the AI server and its voice (Render cold start ~50 s),
+  // and load the teacher's frames — so the call opens with the real teacher.
   useEffect(warmAgent, []);
+  useEffect(() => {
+    if (serverVoiceEnabled()) void warmAiSpeak();
+  }, []);
+  const gender = child?.gender;
+  useEffect(() => {
+    if (gender) void preloadTeacher(gender);
+  }, [gender]);
   if (child === undefined || progress === undefined || !child) {
     return (
       <ChildPage tab="home">

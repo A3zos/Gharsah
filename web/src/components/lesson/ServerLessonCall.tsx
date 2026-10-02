@@ -91,9 +91,20 @@ export function ServerLessonCall({
   }, [navigate]);
 
   useEffect(() => {
-    if (state.phase === 'fallback') fallbackRef.current(state.quranDone);
+    if (state.phase === 'fallback') {
+      // Kept for support: open the console, or sessionStorage «gharsah.aiFallback».
+      try {
+        sessionStorage.setItem(
+          'gharsah.aiFallback',
+          JSON.stringify({ at: new Date().toISOString(), reason: state.fallbackReason }),
+        );
+      } catch {
+        // storage blocked — the console warning is still there
+      }
+      fallbackRef.current(state.quranDone);
+    }
     if (state.phase === 'ended') goHome();
-  }, [state.phase, state.quranDone, goHome]);
+  }, [state.phase, state.quranDone, state.fallbackReason, goHome]);
 
   const blocker = useBlocker(() => !leaving.current && state.phase !== 'fallback');
   const blocked = blocker.state === 'blocked';
