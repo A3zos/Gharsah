@@ -9,7 +9,8 @@
 //   comes only from the server's everyayah URLs; no ayah is ever sent to TTS by us.
 // * Hadith text stays the approved placeholder until it's vetted (CLAUDE.md §3).
 // * The child's name never leaves the device: no child_name, and the `name`
-//   stage is answered with a neutral «بطل/بطلة».
+//   stage is never asked: it is answered with the neutral «بطل» (the teacher keeps
+//   saying «يا بطل»); the child's own words are scrubbed of their name (api.ts).
 // * Child audio goes to the server (which stores it) only with the parent's
 //   consent: the recitation upload, and the browser's speech recognition. Without
 //   consent, a repeat is counted on the device (presence only, nothing sent) or
@@ -170,6 +171,9 @@ export const RATE_LIMIT_BACKOFF_MS = [4000, 8000, 16000, 30000];
 const UNAVAILABLE_RETRY_MS = [1500, 4000];
 const MAX_RESTARTS = 2;
 const CONTINUE_TEXT = 'أكمل';
+/** What the name stage gets instead of the child's name. */
+export const NAME_STAND_IN = 'بطل';
+const MAX_NAME_ANSWERS = 2;
 /** Automatic listening rounds after each line before the mic waits for a tap. */
 export const AUTO_LISTEN_TRIES = 2;
 const REPEATED_TEXT = 'ردّدت';
@@ -197,7 +201,7 @@ export class ServerLesson {
   private turnAbort: AbortController | null = null;
   private disposed = false;
   private restarts = 0;
-  private nameAnswered = false;
+  private nameAnswers = 0;
   /** What the child is asked to repeat (play_ayah text / the hadith), sent without consent. */
   private reference: string | null = null;
   private segSurah: number | null = null;
@@ -251,7 +255,7 @@ export class ServerLesson {
 
   private async startSegment(restarted: boolean): Promise<void> {
     const seg = this.segments[this.segIndex]!;
-    this.nameAnswered = false;
+    this.nameAnswers = 0;
     this.reference = null;
     if (!restarted) {
       this.segSurah = seg.kind === 'taseem' ? seg.surahNo : null;
@@ -347,11 +351,14 @@ export class ServerLesson {
     if (turn.hadithIds[0] !== undefined) this.segHadithId ??= turn.hadithIds[0];
     this.saveProgress(turn);
 
-    // The name stays on the device: answer the name stage with a neutral nickname, silently.
-    if (turn.stage === 'name' && turn.expects === 'text' && !this.nameAnswered) {
-      this.nameAnswered = true;
+    // The name stays on the device: the name stage is never shown to the child —
+    // answered with the neutral «بطل», silently; if the server keeps asking, the
+    // built-in lesson takes over rather than asking the child.
+    if (turn.stage === 'name' && turn.expects !== 'none') {
+      if (this.nameAnswers >= MAX_NAME_ANSWERS) return this.fallback(new Error('name stage repeats'));
+      this.nameAnswers++;
       this.set({ busy: true, expects: null });
-      return this.send(this.d.gender === 'girl' ? 'بطلة' : 'بطل');
+      return this.send(NAME_STAND_IN);
     }
     // Arrived while ExitConfirm is open — resume() plays it.
     if (this.state.value.paused) {

@@ -32,6 +32,8 @@ export function ServerLessonCall({
   const leaving = useRef(false);
   // Read once on entry: a consent change applies from the next lesson.
   const consent = useRef(child.aiVoiceConsent);
+  // Only for scrubbing the child's own words — never sent (read once, like consent).
+  const childName = useRef(child.name);
   const fallbackRef = useRef(onFallback);
   useEffect(() => {
     fallbackRef.current = onFallback;
@@ -45,6 +47,7 @@ export function ServerLessonCall({
       baseUrl,
       session: { parentUid: session.parentUid, childId: session.childId },
       gender: child.gender,
+      childName: childName.current,
       consent: consent.current,
     }).then(
       (w) => {

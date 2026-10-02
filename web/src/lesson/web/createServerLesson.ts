@@ -30,11 +30,13 @@ export async function createServerLesson(o: {
   baseUrl: string;
   session: ChildRef;
   gender: Gender;
+  /** The child's real name: shown on screen only — scrubbed from anything sent to the AI server. */
+  childName: string;
   /** The parent's switch (children.ai_voice_consent). */
   consent: boolean;
   sink?: ServerProgressSink;
 }): Promise<WebServerLesson> {
-  const api = new AgentApi(o.baseUrl);
+  const api = new AgentApi(o.baseUrl, undefined, [o.childName]);
   const mic = new LessonMicrophone();
   const voice = new ServerTeacherVoice(api, o.gender);
   const player = new HtmlUrlPlayer();

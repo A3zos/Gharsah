@@ -68,11 +68,16 @@ const READ_TIMEOUT_MS = 20_000;
 export class AgentApi {
   private readonly base: string;
 
+  private readonly redact: (text: string) => string;
+
   constructor(
     baseUrl: string,
     private readonly fetchImpl: FetchLike = (u, i) => fetch(u, i),
+    /** The child's real name (and its parts) — scrubbed from everything the child says or types. */
+    privateNames: readonly string[] = [],
   ) {
     this.base = baseUrl.replace(/\/+$/, '');
+    this.redact = nameRedactor(privateNames);
   }
 
   // ── lesson sessions ──
@@ -83,7 +88,8 @@ export class AgentApi {
   }
 
   message(sessionId: string, text: string, mode: AgentMode): Promise<ServerTurn> {
-    return this.turn('/agent/message', { session_id: sessionId, text, mode: null }, mode);
+    // The child's words are the only free text we send: never with their name in it.
+    return this.turn('/agent/message', { session_id: sessionId, text: this.redact(text), mode: null }, mode);
   }
 
   jump(sessionId: string, stage: string, mode: AgentMode): Promise<ServerTurn> {
@@ -262,4 +268,44 @@ export function warmAgent(): void {
   if (!url || warmed) return;
   warmed = true;
   void new AgentApi(url).status();
+}
+
+/** Replaces the child's name in their own words with «بطل». */
+export const NAME_REPLACEMENT = 'بطل';
+
+/** Arabic diacritics and tatweel (regex source). */
+const MARK_CLASS = String.raw`[ً-ٰٟـ]`;
+const LETTER: Record<string, string> = {
+  ا: '[اأإآٱ]',
+  أ: '[اأإآٱ]',
+  إ: '[اأإآٱ]',
+  آ: '[اأإآٱ]',
+  ٱ: '[اأإآٱ]',
+  ي: '[يى]',
+  ى: '[يى]',
+  ة: '[ةه]',
+  ه: '[ةه]',
+};
+
+/**
+ * A function that removes the given names (whole words, any diacritics or
+ * hamza/ya/ta-marbuta spelling, an attached و/ب/ل/ف/ك prefix) from a text.
+ */
+export function nameRedactor(names: readonly string[]): (text: string) => string {
+  const words = [
+    ...new Set(
+      names
+        .flatMap((n) => [n, ...n.split(/\s+/)])
+        .map((w) => w.replace(new RegExp(MARK_CLASS, 'gu'), '').trim())
+        .filter((w) => [...w].length >= 2),
+    ),
+  ].sort((a, b) => b.length - a.length);
+  if (!words.length) return (t) => t;
+  const esc = (c: string) => LETTER[c] ?? c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const between = `${MARK_CLASS}*`;
+  const pattern = words
+    .map((w) => [...w].map((c) => (/\s/.test(c) ? String.raw`\s+` : esc(c))).join(between))
+    .join('|');
+  const re = new RegExp(String.raw`(?<![\p{L}\p{M}])([وبلفك]?)(?:${pattern})(?![\p{L}\p{M}])`, 'giu');
+  return (t) => t.replace(re, `$1${NAME_REPLACEMENT}`);
 }

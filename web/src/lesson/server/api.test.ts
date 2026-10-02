@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AgentApi, AgentUnavailable, RateLimited, SessionExpired, type FetchLike } from './api';
+import { AgentApi, AgentUnavailable, nameRedactor, RateLimited, SessionExpired, type FetchLike } from './api';
 import { FakeAgentServer } from './testing/fakeServer';
 
 const BASE = 'https://ai.test/';
@@ -109,5 +109,35 @@ describe('AgentApi', () => {
     const server = new FakeAgentServer();
     await new AgentApi('https://ai.test///', server.fetch).status();
     expect(server.calls[0]!.path).toBe('/agent/status');
+  });
+});
+
+describe('nameRedactor', () => {
+  const r = nameRedactor(['أحمد علي']);
+
+  it('replaces the name and its parts with «بطل», in any spelling', () => {
+    expect(r('أنا أحمد')).toBe('أنا بطل');
+    expect(r('اسمي أَحْمَد عَلِي')).toBe('اسمي بطل');
+    expect(r('احمد')).toBe('بطل');
+    expect(r('وأحمد وعلي هنا')).toBe('وبطل وبطل هنا');
+    expect(r('علي!')).toBe('بطل!');
+  });
+
+  it('leaves other words alone (whole words only)', () => {
+    expect(r('السلام عليكم يا أستاذ')).toBe('السلام عليكم يا أستاذ');
+    expect(r('الحمد لله')).toBe('الحمد لله');
+  });
+
+  it('no names → unchanged; one-letter parts are ignored', () => {
+    expect(nameRedactor([])('أحمد')).toBe('أحمد');
+    expect(nameRedactor(['  ', 'ن'])('ن نعم')).toBe('ن نعم');
+  });
+
+  it('/agent/message never carries the name', async () => {
+    const server = new FakeAgentServer();
+    const api = new AgentApi(BASE, server.fetch, ['سارة']);
+    const t = await api.start({ mode: 'quran', gender: 'girl', deviceId: 'd' });
+    await api.message(t.sessionId, 'أنا ساره', 'quran');
+    expect(server.calls.at(-1)!.body).toMatchObject({ text: 'أنا بطل' });
   });
 });

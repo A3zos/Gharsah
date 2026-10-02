@@ -26,14 +26,14 @@ interface Setup {
   sleeps: number[];
 }
 
-function setup(o: Partial<ServerLessonDeps> & { server?: FakeAgentServer } = {}): Setup {
+function setup(o: Partial<ServerLessonDeps> & { server?: FakeAgentServer; childName?: string } = {}): Setup {
   const server = o.server ?? new FakeAgentServer();
   const spoken: string[] = [];
   const played: string[] = [];
   const updates: ProgressUpdate[] = [];
   const sleeps: number[] = [];
   const lesson = new ServerLesson({
-    api: new AgentApi('https://ai.test', server.fetch),
+    api: new AgentApi('https://ai.test', server.fetch, o.childName ? [o.childName] : []),
     voice: { speak: async (t) => void spoken.push(t), stop: () => {} },
     player: { play: async (u) => void played.push(u), stop: () => {} },
     presence: { waitForSpeech: async () => 'spoke' },
@@ -497,14 +497,63 @@ describe('ServerLesson — stages bar, autoplay, pause', () => {
     expect(t.server.messages()).toEqual(['تمام', 'بطل']);
   });
 
-  it('a girl gets «بطلة» for the name stage', async () => {
+  it('the name stage gets the neutral «بطل» for girls too', async () => {
     const t = setup({ gender: 'girl' });
     void t.lesson.start();
     await at(t.lesson, 'greet', 'text');
     t.lesson.answer('تمام');
     await at(t.lesson, 'surah', 'choice');
-    expect(t.server.messages()[1]).toBe('بطلة');
+    expect(t.server.messages()[1]).toBe('بطل');
     expect(t.server.calls[0]!.body).toMatchObject({ gender: 'girl' });
+  });
+});
+
+describe("ServerLesson — the child's name never leaves the device", () => {
+  const NAME = 'أحمد علي';
+  /** Any spelling of either name part (diacritics, hamza forms) in what was sent. */
+  const leaks = (server: FakeAgentServer) =>
+    server.calls
+      .map((c) => `${c.path}?${new URLSearchParams(c.query).toString()} ${JSON.stringify(c.body)}`)
+      .filter((sent) => /[اأإآ]حمد|(?<![\p{L}])علي(?![\p{L}])/u.test(normalizeArabic(sent)));
+
+  it("no request body or query ever contains the child's name — typed, spoken or chosen", async () => {
+    // Consent + speech: the child SAYS their name in answers; also types it.
+    const said = ['أنا أَحمد', 'الإخلاص'];
+    const listen = vi.fn(async () => said.shift() ?? null);
+    const t = setup({ consent: true, speechInput: { listen }, childName: NAME });
+    void t.lesson.start();
+    await at(t.lesson, 'lesson_intro', 'continue');
+    t.lesson.answer('اسمي أحمد علي ويناديني بابا علي');
+    await at(t.lesson, 'tafsir', 'continue');
+    t.lesson.continueTapped();
+    await at(t.lesson, 'fadl', 'continue');
+    t.lesson.answer('وأحمد يحب السورة');
+    await at(t.lesson, 'tajweed', 'continue');
+
+    expect(t.server.calls.length).toBeGreaterThan(5);
+    expect(leaks(t.server)).toEqual([]);
+    for (const c of t.server.calls) {
+      expect(Object.keys(c.body ?? {})).not.toContain('child_name');
+      expect(Object.keys(c.body ?? {})).not.toContain('name');
+    }
+    // what the child said still arrives — with «بطل» in place of the name
+    expect(t.server.messages()).toEqual(
+      expect.arrayContaining(['أنا بطل', 'بطل', 'اسمي بطل ويناديني بابا بطل', 'وبطل يحب السورة']),
+    );
+  });
+
+  it('the name stage is never shown: asked again → «بطل» again; a third time → the built-in lesson', async () => {
+    const { QURAN_STAGES } = await import('./testing/fakeServer');
+    const server = new FakeAgentServer(QURAN_STAGES.map((s) => (s.id === 'name' ? { ...s, turns: 3 } : s)));
+    const seen: (string | null)[] = [];
+    const t = setup({ server });
+    t.lesson.state.subscribe((s) => seen.push(s.stages[s.stageIndex]?.id === 'name' ? s.expects : null));
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('تمام');
+    await until(t.lesson, (s) => s.phase === 'fallback');
+    expect(t.server.messages()).toEqual(['تمام', 'بطل', 'بطل']);
+    expect(seen.filter((e) => e !== null)).toEqual([]); // never waited for the child there
   });
 });
 
