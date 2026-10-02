@@ -33,11 +33,12 @@ import {
 
 export interface TeacherVoice {
   /**
-   * Says the line (in short pieces; `onPiece` fires as each one starts — the live
-   * caption). Resolves when said or skipped; rejects with PlaybackBlocked when the
-   * browser refuses audio before a tap.
+   * Says the line in short pieces; `onPiece` fires as each one starts, with
+   * `voiced: false` when neither the server nor the browser could voice it (the
+   * screen then shows it as text). Resolves when said or skipped; rejects with
+   * PlaybackBlocked when the browser refuses audio before a tap.
    */
-  speak(text: string, onPiece?: (piece: string) => void): Promise<void>;
+  speak(text: string, onPiece?: (piece: string, voiced: boolean) => void): Promise<void>;
   stop(): void;
   /** Wakes the voice service at lesson start (optional). */
   warm?(): void;
@@ -106,7 +107,10 @@ export interface ServerLessonState {
   readonly stages: readonly AgentStage[];
   readonly stageIndex: number;
   readonly maxStageIndex: number;
+  /** The piece being said — shown ONLY while `voiceMissing` (the teacher only talks). */
   readonly caption: string;
+  /** Neither the server voice nor a browser voice could say the current piece. */
+  readonly voiceMissing: boolean;
   readonly speaking: boolean;
   readonly reciting: boolean;
   readonly playbackBlocked: boolean;
@@ -140,6 +144,7 @@ export const initialServerState: ServerLessonState = {
   stageIndex: 0,
   maxStageIndex: 0,
   caption: '',
+  voiceMissing: false,
   speaking: false,
   reciting: false,
   playbackBlocked: false,
@@ -407,7 +412,10 @@ export class ServerLesson {
         try {
           await this.guard(
             abort,
-            this.d.voice.speak(text, (piece) => !abort.signal.aborted && this.set({ caption: piece })),
+            this.d.voice.speak(
+              text,
+              (piece, voiced) => !abort.signal.aborted && this.set({ caption: piece, voiceMissing: !voiced }),
+            ),
           );
           return;
         } catch (e) {

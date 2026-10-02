@@ -35,15 +35,32 @@ const view = (s: ServerLessonState, a = actions()) => {
 };
 
 describe('ServerLessonView — the live call', () => {
-  it('is the built-in call: «مباشر», timer, the teacher and only the current line — no stages bar', () => {
-    view(live({ expects: 'text', quickReplies: ['تمام'] }));
+  it('is the built-in call: «مباشر», timer, the teacher — nothing he says is written, no stages bar', () => {
+    view(live({ expects: 'text', quickReplies: ['تمام'], speaking: true }));
     expect(screen.getByText('مباشر')).toBeInTheDocument();
     expect(screen.getByRole('timer')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'المعلّم' })).toBeInTheDocument();
-    expect(screen.getByText('كيف حالك يا بطل؟')).toBeInTheDocument();
+    expect(screen.queryByText('كيف حالك يا بطل؟')).toBeNull();
     expect(screen.queryByRole('navigation')).toBeNull();
     expect(screen.queryByText('الترحيب')).toBeNull();
     expect(screen.queryByText('اختيار السورة')).toBeNull();
+  });
+
+  it('the line shows as text only when no voice could say it', () => {
+    view(live({ expects: 'text', voiceMissing: true }));
+    expect(screen.getByText('كيف حالك يا بطل؟')).toBeInTheDocument();
+  });
+
+  it('show_words: the words table under the hadith card', () => {
+    view(
+      live({
+        segment: 'hadith',
+        hadith: { title: 'الكذب', source: null },
+        words: [{ word: 'الصدق', meaning: 'قول الحق' }],
+      }),
+    );
+    expect(screen.getByText('كلمات جديدة')).toBeInTheDocument();
+    expect(screen.getByText('قول الحق')).toBeInTheDocument();
   });
 
   it('with consent + speech: the mic is the answer, replies are small chips', () => {

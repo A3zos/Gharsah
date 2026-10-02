@@ -69,7 +69,7 @@ export class ServerTeacherVoice implements TeacherVoice {
     this.available ??= this.api.speakAvailable();
   }
 
-  async speak(text: string, onPiece?: (piece: string) => void): Promise<void> {
+  async speak(text: string, onPiece?: (piece: string, voiced: boolean) => void): Promise<void> {
     this.stop();
     const mine = {};
     this.token = mine;
@@ -83,10 +83,10 @@ export class ServerTeacherVoice implements TeacherVoice {
       const blob = await next;
       if (this.token !== mine) return;
       next = fetchPiece(i + 1);
-      onPiece?.(pieces[i]!);
-      if (blob && (await this.playBlob(blob, pieces[i]!, mine))) continue;
+      const piece = pieces[i]!;
+      if (blob && (await this.playBlob(blob, piece, mine, () => onPiece?.(piece, true)))) continue;
       if (this.token !== mine) return;
-      await this.browserSay(pieces[i]!, mine);
+      await this.browserSay(piece, mine, (voiced) => onPiece?.(piece, voiced));
     }
   }
 
@@ -102,7 +102,7 @@ export class ServerTeacherVoice implements TeacherVoice {
   }
 
   /** True when played (or stopped meanwhile); false → use the browser's voice. */
-  private async playBlob(blob: Blob, text: string, token: object): Promise<boolean> {
+  private async playBlob(blob: Blob, text: string, token: object, onStart: () => void): Promise<boolean> {
     const url = URL.createObjectURL(blob);
     const audio = this.audio;
     audio.src = url;
@@ -116,6 +116,7 @@ export class ServerTeacherVoice implements TeacherVoice {
       if (refused?.name === 'NotAllowedError' && this.token === token) throw new PlaybackBlocked();
       return this.token !== token;
     }
+    onStart();
     await new Promise<void>((resolve) => {
       const done = () => {
         if (this.finish !== done) return;
@@ -134,7 +135,8 @@ export class ServerTeacherVoice implements TeacherVoice {
     return true;
   }
 
-  private async browserSay(text: string, token: object): Promise<void> {
+  /** `onStart(false)` = no voice at all: the lesson shows the line as text instead. */
+  private async browserSay(text: string, token: object, onStart: (voiced: boolean) => void): Promise<void> {
     const voice = await this.arabicVoice();
     if (this.token !== token) return;
     await new Promise<void>((resolve) => {
@@ -147,9 +149,11 @@ export class ServerTeacherVoice implements TeacherVoice {
       };
       this.finish = done;
       if (!this.synth || !voice) {
-        timer = setTimeout(done, estimatedSpeechMs(text)); // captions pace the lesson
+        onStart(false);
+        timer = setTimeout(done, estimatedSpeechMs(text)); // the caption paces the lesson
         return;
       }
+      onStart(true);
       const u = new SpeechSynthesisUtterance(text);
       u.voice = voice;
       u.lang = voice.lang;

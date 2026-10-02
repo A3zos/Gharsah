@@ -54,32 +54,39 @@ export function ServerLessonView({
   const elapsedMs = useElapsed();
   const starting = s.phase === 'starting' || s.phase === 'warming';
   const listening = s.repeat === 'listening' || s.hearing;
+  // Only the teacher talks — nothing of what he says is written. The line appears as
+  // text only when no voice could say it (server and browser both failed), so the
+  // lesson never goes silent with nothing on screen. Status lines (warming, done) stay.
   const caption = starting
     ? s.phase === 'warming'
       ? 'المعلّم يتجهّز… لحظات ونبدأ'
       : 'نبدأ الحصة…'
     : s.phase === 'finished'
       ? 'أكملت درس اليوم ✓'
-      : s.caption;
+      : s.voiceMissing
+        ? s.caption
+        : '';
   return (
     <CallFrame desktop={desktop}>
       <LiveHeader elapsedMs={elapsedMs} onEnd={actions.exit} />
-      <div className="flex shrink-0 items-center gap-[12px]">
+      <div className={cx('flex shrink-0 items-center gap-[12px]', !caption && 'justify-center')}>
         <TeacherAvatar
           size={desktop ? 200 : 160}
           pose={s.reciting || starting ? 'quiet' : listening ? 'listening' : 'speaking'}
           talking={s.speaking}
           happy={s.phase === 'finished' || s.phase === 'segmentDone'}
         />
-        <p
-          aria-live="polite"
-          className={cx(
-            'm-0 line-clamp-5 min-w-0 grow text-[18px] leading-[1.7] font-bold',
-            s.phase === 'finished' ? 'text-deep-green' : 'text-text-dark',
-          )}
-        >
-          {caption}
-        </p>
+        {caption && (
+          <p
+            aria-live="polite"
+            className={cx(
+              'm-0 line-clamp-5 min-w-0 grow text-[18px] leading-[1.7] font-bold',
+              s.phase === 'finished' ? 'text-deep-green' : 'text-text-dark',
+            )}
+          >
+            {caption}
+          </p>
+        )}
       </div>
       <Notices state={s} onPlay={actions.playTapped} />
       <div className="flex min-h-0 grow flex-col">
@@ -152,7 +159,12 @@ function Middle({ state: s, actions }: { state: ServerLessonState; actions: Serv
   }
   if (s.hadith) {
     // The server's hadith text is never shown until vetted — the built-in «قيد المراجعة» card.
-    return <HadithPendingCard topic={s.hadith.title ?? 'حديث اليوم'} />;
+    return (
+      <>
+        <HadithPendingCard topic={s.hadith.title ?? 'حديث اليوم'} />
+        {s.words.length > 0 && <WordsTable words={s.words} />}
+      </>
+    );
   }
   if (s.playbackBlocked && s.reciting) {
     return (
@@ -162,6 +174,23 @@ function Middle({ state: s, actions }: { state: ServerLessonState; actions: Serv
     );
   }
   return null;
+}
+
+/** show_words — the hadith's new words and their meanings (filled only once the hadith is approved). */
+function WordsTable({ words }: { words: ServerLessonState['words'] }) {
+  return (
+    <Card className="mt-[10px] shrink-0 grow-0 gap-[6px]">
+      <span className="text-[16px] font-extrabold text-text-muted">كلمات جديدة</span>
+      <dl className="m-0 flex flex-col gap-[6px]">
+        {words.map((w) => (
+          <div key={w.word} className="flex gap-[8px] text-[16px] leading-[1.6]">
+            <dt className="font-classical font-bold">{w.word}</dt>
+            <dd className="m-0 text-text-muted">{w.meaning}</dd>
+          </div>
+        ))}
+      </dl>
+    </Card>
+  );
 }
 
 /** L10Done-style: done + «مشاريعي» from /agent/actions. TODO(design): the projects list. */

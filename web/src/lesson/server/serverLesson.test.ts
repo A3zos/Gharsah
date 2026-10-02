@@ -558,24 +558,41 @@ describe("ServerLesson — the child's name never leaves the device", () => {
 });
 
 describe('ServerLesson — voice first', () => {
-  it('warms the voice at the start and captions the piece being said', async () => {
+  it('warms the voice at the start; a voiced line is not marked for text', async () => {
     const warm = vi.fn();
-    const captions: string[] = [];
     const t = setup({
       voice: {
         warm,
         speak: async (text, onPiece) => {
-          for (const piece of text.split('! ')) onPiece?.(piece);
+          for (const piece of text.split('! ')) onPiece?.(piece, true);
         },
         stop: () => {},
       },
     });
-    t.lesson.state.subscribe((s) => captions.push(s.caption));
     void t.lesson.start();
     await at(t.lesson, 'greet', 'text');
     expect(warm).toHaveBeenCalledOnce();
-    expect(captions).toContain('السلام عليكم');
-    expect(t.lesson.state.value.caption).toBe('أنا المعلم عبدالله. كيف حالك يا بطل؟');
+    expect(t.lesson.state.value.voiceMissing).toBe(false);
+  });
+
+  it('no voice at all → the piece being said is marked for text (never silent and blank)', async () => {
+    const seen: [string, boolean][] = [];
+    const t = setup({
+      voice: {
+        speak: async (text, onPiece) => {
+          for (const piece of text.split('! ')) onPiece?.(piece, false);
+        },
+        stop: () => {},
+      },
+    });
+    t.lesson.state.subscribe((s) => seen.push([s.caption, s.voiceMissing]));
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    expect(seen).toContainEqual(['السلام عليكم', true]);
+    expect(t.lesson.state.value).toMatchObject({
+      caption: 'أنا المعلم عبدالله. كيف حالك يا بطل؟',
+      voiceMissing: true,
+    });
   });
 
   it('the first line refused before a tap → the play button, then the line plays', async () => {
