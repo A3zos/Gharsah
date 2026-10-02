@@ -1,9 +1,9 @@
-// The three plans, side by side (RTL: the pilot first, on the right → monthly →
+// The three plans in ONE row (RTL: the pilot first, on the right → monthly →
 // yearly) — shared by the landing pricing section and the parent plans page so
-// they never drift. Equal widths (≤360px) and heights, one internal layout
-// (badge, title, price, tag pill, features, button at the bottom). The row needs
-// ~720px of its container (a container query, so the parent page's sidebar is
-// accounted for); narrower → stacked, pilot first.
+// they never drift. A grid of three equal columns (gap 24px, ≤1100px, centered)
+// whenever its container is ≥900px wide (a container query, so the parent page's
+// sidebar is accounted for); narrower → stacked, pilot first. One internal layout
+// (badge, title, price, tag pill, features, button at the bottom); equal heights.
 import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
@@ -17,7 +17,7 @@ import { PlanList } from '../landing/shared';
 export function PlanCards({ pilotAction }: { pilotAction: React.ReactNode }) {
   return (
     <div className="@container w-full">
-      <div className="mx-auto flex w-full flex-col items-center gap-[24px] @min-[720px]:flex-row @min-[720px]:items-stretch @min-[720px]:justify-center">
+      <div className="mx-auto grid w-full max-w-[1100px] grid-cols-1 justify-items-center gap-[24px] @min-[900px]:grid-cols-[repeat(3,minmax(0,1fr))] @min-[900px]:justify-items-stretch">
         <PlanCard
           featured
           badge="متاحة الآن"
@@ -85,7 +85,7 @@ function PlanCard({
       aria-label={title}
       aria-disabled={featured ? undefined : true}
       className={cx(
-        'relative flex w-full max-w-[360px] min-w-0 flex-col gap-[14px] rounded-px-28 bg-surface px-[24px] pt-[32px] pb-[24px] @min-[720px]:flex-1 @min-[720px]:basis-0',
+        'relative flex w-full max-w-[360px] min-w-0 flex-col gap-[14px] rounded-px-28 bg-surface px-[22px] pt-[32px] pb-[22px] @min-[900px]:max-w-none',
         featured
           ? 'border-[1.5px] border-primary shadow-primary-16-34-12 ring-1 ring-primary'
           : 'border-[1.5px] border-border opacity-80',
@@ -100,10 +100,10 @@ function PlanCard({
         {badge}
       </span>
       <h3 className="m-0 font-heading text-[22px] leading-[1.4] font-bold">{title}</h3>
-      <span className="flex min-h-[46px] items-baseline gap-[8px]">
+      <span className="flex min-h-[40px] flex-wrap items-baseline gap-x-[8px] gap-y-[2px]">
         <span
           className={cx(
-            'font-heading text-[46px] leading-[1] font-extrabold',
+            'font-heading text-[40px] leading-[1] font-extrabold',
             featured ? 'text-deep-green' : 'text-text-dark',
           )}
         >
@@ -111,11 +111,12 @@ function PlanCard({
         </span>
         {per && <span className="text-[15px] font-bold text-text-muted">{per}</span>}
       </span>
-      <span className="self-start rounded-pill bg-gold-tint px-[13px] py-[7px] text-[13px] font-bold text-warning-text">
+      {/* Wraps neatly in a narrow column (rounded box, not a stretched pill). */}
+      <span className="max-w-full self-start rounded-px-14 bg-gold-tint px-[13px] py-[6px] text-[13px] leading-[1.6] font-bold text-warning-text">
         {tag}
       </span>
       <span className="h-[1px] bg-border" aria-hidden="true" />
-      <PlanList items={items} text="text-[14.5px]" gap="gap-[10px]" />
+      <PlanList items={items} text="text-[15px]" gap="gap-[10px]" />
       {extra}
       <div className="mt-auto flex flex-col pt-[6px]">{action}</div>
     </section>

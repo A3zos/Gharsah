@@ -15,10 +15,8 @@ import { buttonClass } from '../../components/ui/Button';
 import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage, SettingsButton } from '../../components/parent/ParentShell';
 import {
-  daysLeft,
   isSubscribed,
   PLAN_LABEL,
-  remainingFraction,
   startTrial,
   trialSubscribeEnabled,
   type PlanId,
@@ -27,11 +25,11 @@ import {
 import { AuthFailure } from '../../data/authFailure';
 import { childrenCount } from '../../data/stats';
 import { toArabicDigits } from '../../lib/arabicDigits';
-import { hijriDate, hijriDayMonth } from '../../lib/dates';
+import { hijriDayMonth } from '../../lib/dates';
 import { PlanCards } from '../../components/plans/PlanCards';
 import { PILOT_BUTTON } from '../../components/plans/pilotButton';
 import { maxChildren } from '../../content/plans';
-import { PILOT_CTA, PILOT_ITEMS, PILOT_NAME, PILOT_PRICE } from '../../content/pilot';
+import { PILOT_CTA, PILOT_NAME } from '../../content/pilot';
 import type { Route } from './+types/plans';
 
 export const meta: Route.MetaFunction = () => [{ title: 'الباقات — غَرْسة' }];
@@ -65,37 +63,7 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
     <div className="flex grow flex-col gap-[24px]">
       <DesktopHeader title="الباقات" subtitle="الباقة التجريبية: ثلاثة أيام، حصة واحدة كل يوم" />
       {limit !== null && <LimitBanner max={limit} />}
-      {sub && (
-        <div className="flex items-center gap-[20px] rounded-px-28 bg-surface px-[30px] py-[24px] shadow-dark-14-30-5">
-          <span
-            className="flex h-[58px] w-[58px] items-center justify-center rounded-px-20 bg-green-tint"
-            aria-hidden="true"
-          >
-            <CheckIcon size={28} />
-          </span>
-          <span className="flex grow flex-col gap-[5px]">
-            <span className="text-[19px] font-extrabold">
-              باقتك الحالية — {PILOT_NAME} · {PILOT_PRICE}
-            </span>
-            <span className="text-[14px] text-text-muted">
-              تنتهي في {hijriDate(sub.expiresAt)} · {PILOT_ITEMS[2]}
-            </span>
-          </span>
-          <a
-            href="https://play.google.com/store/account/subscriptions"
-            target="_blank"
-            rel="noreferrer"
-            className={buttonClass(
-              'quiet',
-              'custom',
-              'h-[52px] rounded-px-18 px-[22px] text-[15px] font-bold',
-            )}
-          >
-            إدارة الاشتراك في Play
-          </a>
-        </div>
-      )}
-      <PlanCards pilotAction={<PilotAction current={!!sub} />} />
+      <PlanCards pilotAction={<PilotAction sub={sub} />} />
       <div className="flex grow items-end gap-[20px]">
         <Link
           to={paths.parent.children}
@@ -127,7 +95,6 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
 }
 
 function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number; limit: number | null }) {
-  const current = sub?.plan;
   return (
     <div className="flex flex-col gap-[18px] pt-[4px]">
       <div className="flex items-center gap-[12px]">
@@ -140,42 +107,7 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
 
       {limit !== null && <LimitBanner max={limit} />}
 
-      {/* TODO(design): no designed "no subscription yet" hero; the card only shows with an active plan. */}
-      {sub && (
-        <div className="relative flex flex-col gap-[14px] overflow-hidden rounded-px-28 bg-deep-green px-[20px] pt-[22px] pb-[20px]">
-          <div
-            aria-hidden="true"
-            className="absolute -top-[40px] -left-[30px] h-[150px] w-[150px] rounded-full bg-hero-circle"
-          />
-          <div className="relative flex items-center justify-between gap-[10px]">
-            <span className="font-heading text-[19px] leading-[1.5] font-bold text-surface">
-              باقتك الحالية — {PILOT_NAME} · {PILOT_PRICE}
-            </span>
-            <span className="rounded-pill bg-gold px-[12px] py-[5px] text-[12px] font-extrabold whitespace-nowrap text-on-gold">
-              نشطة
-            </span>
-          </div>
-          <div className="relative flex items-baseline gap-[8px]">
-            <span className="font-heading text-[42px] leading-[1.1] font-extrabold text-gold">
-              {toArabicDigits(daysLeft(sub))}
-            </span>
-            <span className="text-[15px] font-medium text-on-deep-green-muted">يومًا متبقية</span>
-          </div>
-          <div className="relative flex flex-col gap-[8px]">
-            <div className="h-[10px] overflow-hidden rounded-px-6 bg-hero-track">
-              <div
-                className="h-full rounded-px-6 bg-gold"
-                style={{ width: `${Math.round(remainingFraction(sub) * 100)}%` }}
-              />
-            </div>
-            <span className="text-[12.5px] text-on-deep-green-muted">
-              تنتهي في {hijriDayMonth(sub.expiresAt)}
-            </span>
-          </div>
-        </div>
-      )}
-
-      <PlanCards pilotAction={<PilotAction current={!!current} />} />
+      <PlanCards pilotAction={<PilotAction sub={sub} />} />
 
       <Link
         to={paths.parent.addChildFrom('plans')}
@@ -247,9 +179,21 @@ function LimitBanner({ max }: { max: number }) {
   );
 }
 
-/** The pilot card's button: «باقتك الحالية» when on it, else «ابدأ مجانًا» (free — no payment). */
-function PilotAction({ current }: { current: boolean }) {
-  if (current) return <CurrentChip />;
+/**
+ * The pilot card's button: «باقتك الحالية» (+ when it ends) when on it, else
+ * «ابدأ مجانًا» (free — no payment). No separate «current plan» block above the cards.
+ */
+function PilotAction({ sub }: { sub: Subscription | null }) {
+  if (sub) {
+    return (
+      <span className="flex flex-col gap-[6px]">
+        <CurrentChip />
+        <span className="text-center text-[13px] text-text-muted">
+          تنتهي في {hijriDayMonth(sub.expiresAt)}
+        </span>
+      </span>
+    );
+  }
   return (
     <SubscribeButton plan="trial" className={PILOT_BUTTON}>
       {PILOT_CTA}
