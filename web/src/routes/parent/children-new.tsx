@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { paths } from '../../app/paths';
 import { agentEnabled } from '../../lesson/server/api';
 import { ChildAvatar } from '../../components/child/ChildAvatar';
-import { avatarKey, avatarsFor, defaultAvatar } from '../../content/avatars';
+import { AVATARS, defaultAvatar } from '../../content/avatars';
 import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage } from '../../components/parent/ParentShell';
 import { BackButton } from '../../components/ui/BackButton';
@@ -137,10 +137,10 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     // A day that stops being a lesson day stops being a review day too.
     setSchedule({ days, reviewDays: draft.schedule.reviewDays.filter((x) => days.includes(x)) });
   };
-  const pickGender = (g: Gender) => {
-    // keeps the chosen avatar when it is of that gender, else that gender's first
-    set({ gender: g, avatarId: avatarKey(draft.avatarId, g) });
-  };
+  // «الجنس» preselects avatar 1 of that gender; an avatar sets the gender (boy-N → ولد, girl-N → بنت).
+  const pickGender = (g: Gender) => set({ gender: g, avatarId: defaultAvatar(g) });
+  const pickAvatar = (avatarId: string) =>
+    set({ avatarId, gender: AVATARS.find((a) => a.key === avatarId)?.gender ?? draft.gender });
 
   const exit = () => navigate(origin);
   // Review days: 1–3 of the lesson days (the database enforces the same rule).
@@ -315,12 +315,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                     )}
                   >
                     <h2 className="m-0 font-heading text-[23px] font-bold">شخصية الابن</h2>
-                    <AvatarGrid
-                      gender={draft.gender}
-                      value={draft.avatarId}
-                      onChange={(avatarId) => set({ avatarId })}
-                      compact
-                    />
+                    <AvatarGrid value={draft.avatarId} onChange={pickAvatar} compact />
                   </section>
                 )}
                 {!editing && lastStep === 3 && (
@@ -496,11 +491,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
               <p className="m-0 text-[13.5px] leading-[1.8] text-text-muted">
                 شخصيات محتشمة ولطيفة — يراها طفلك في تطبيقه مع كل إنجاز.
               </p>
-              <AvatarGrid
-                gender={draft.gender}
-                value={draft.avatarId}
-                onChange={(avatarId) => set({ avatarId })}
-              />
+              <AvatarGrid value={draft.avatarId} onChange={pickAvatar} />
               <div className="flex items-center gap-[12px] rounded-px-20 bg-surface px-[16px] py-[14px] shadow-child-card">
                 <svg width="24" height="24" viewBox="0 0 76 76" fill="none" aria-hidden="true">
                   <path d="M38 60 V34" stroke={C.deepGreen} strokeWidth="6" strokeLinecap="round" />
@@ -735,21 +726,19 @@ function GenderField({ value, onChange }: { value: Gender; onChange: (g: Gender)
   );
 }
 
-/** «شخصية الابن»: the four avatars of the chosen gender. */
+/** «شخصية الابن»: all eight — a row of 4 boys, then a row of 4 girls. */
 function AvatarGrid({
-  gender,
   value,
   onChange,
   compact,
 }: {
-  gender: Gender;
   value: string;
   onChange: (id: string) => void;
   compact?: boolean;
 }) {
   return (
     <div role="radiogroup" aria-label="الشخصية" className="grid grid-cols-4 gap-[12px]">
-      {avatarsFor(gender).map((a) => {
+      {AVATARS.map((a) => {
         const on = a.key === value;
         return (
           <button
