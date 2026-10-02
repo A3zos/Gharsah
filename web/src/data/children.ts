@@ -76,6 +76,8 @@ export interface ChildProfile {
   stats: Record<string, unknown> | null;
   leader: Record<string, unknown> | null;
   schedule: ChildSchedule | null;
+  /** The parent allowed sending the child's voice to the AI teacher server (default off). */
+  aiVoiceConsent: boolean;
 }
 
 // Days are stored as integers 0 = السبت … 6 = الجمعة (WEEK_DAYS order).
@@ -155,11 +157,12 @@ export function childFromRow(r: Row, extra: { pairing?: Row | null; stats?: Row 
     stats: extra.stats ?? null,
     leader: null,
     schedule: scheduleFromRow(r),
+    aiVoiceConsent: r.ai_voice_consent === true,
   };
 }
 
 export const CHILD_COLUMNS =
-  'id, name, age, gender, avatar, schedule_days, schedule_time, schedule_custom, session_duration, reminder, review_days, created_at';
+  'id, name, age, gender, avatar, schedule_days, schedule_time, schedule_custom, session_duration, reminder, review_days, ai_voice_consent, created_at';
 
 async function withServerFields(rows: Row[]): Promise<ChildProfile[]> {
   const db = supabase();
@@ -259,6 +262,16 @@ export async function addChild(draft: ChildDraft): Promise<{ id: string; pairing
 export async function updateSchedule(childId: string, schedule: ChildSchedule): Promise<void> {
   await uidOrThrow();
   const { error } = await supabase().from('children').update(scheduleToRow(schedule)).eq('id', childId);
+  if (error) throw toAuthFailure(error);
+}
+
+/**
+ * The parent's consent for the AI teacher to receive the child's voice (the AI
+ * server stores recitation audio). Off by default; the database stamps the time.
+ */
+export async function setAiVoiceConsent(childId: string, on: boolean): Promise<void> {
+  await uidOrThrow();
+  const { error } = await supabase().from('children').update({ ai_voice_consent: on }).eq('id', childId);
   if (error) throw toAuthFailure(error);
 }
 

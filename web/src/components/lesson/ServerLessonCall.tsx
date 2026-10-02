@@ -1,0 +1,149 @@
+// The lesson on the AI server (VITE_AI_AGENT=1): wires a ServerLesson to the
+// browser and to navigation. ✕ and the browser back open ExitConfirm; «خروج» →
+// child home. When the server can't run the lesson, `onFallback` hands over to
+// today's built-in lesson so the child is never stuck.
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useBlocker, useNavigate } from 'react-router';
+
+import { paths } from '../../app/paths';
+import type { ChildProfile } from '../../data/children';
+import { createServerLesson, type WebServerLesson } from '../../lesson/web/createServerLesson';
+import { initialServerState } from '../../lesson/server/serverLesson';
+import { DESKTOP, useMedia } from '../../lib/useMedia';
+import { ConfirmSheet } from '../ui/ConfirmSheet';
+import { ServerLessonView, type ServerLessonActions } from './ServerLessonView';
+
+export function ServerLessonCall({
+  baseUrl,
+  child,
+  session,
+  onFallback,
+}: {
+  baseUrl: string;
+  child: ChildProfile;
+  session: { parentUid: string; childId: string };
+  onFallback: () => void;
+}) {
+  const navigate = useNavigate();
+  const desktop = useMedia(DESKTOP);
+  const [web, setWeb] = useState<WebServerLesson | null>(null);
+  const [exitOpen, setExitOpen] = useState(false);
+  const leaving = useRef(false);
+  // Read once on entry: a consent change applies from the next lesson.
+  const consent = useRef(child.aiVoiceConsent);
+  const fallbackRef = useRef(onFallback);
+  useEffect(() => {
+    fallbackRef.current = onFallback;
+  }, [onFallback]);
+
+  useEffect(() => {
+    let alive = true;
+    let made: WebServerLesson | null = null;
+    const onVis = () => made?.lesson.setForeground(document.visibilityState === 'visible');
+    void createServerLesson({
+      baseUrl,
+      session: { parentUid: session.parentUid, childId: session.childId },
+      gender: child.gender,
+      consent: consent.current,
+    }).then(
+      (w) => {
+        if (!alive) return w.dispose();
+        made = w;
+        setWeb(w);
+        document.addEventListener('visibilitychange', onVis);
+        w.lesson.start().catch((e: unknown) => {
+          console.warn('[gharsah] AI lesson failed to start', e);
+          if (alive) fallbackRef.current();
+        });
+      },
+      () => alive && fallbackRef.current(),
+    );
+    return () => {
+      alive = false;
+      document.removeEventListener('visibilitychange', onVis);
+      made?.dispose();
+    };
+  }, [baseUrl, session.parentUid, session.childId, child.gender]);
+
+  const lesson = web?.lesson;
+  const subscribe = useCallback(
+    (cb: () => void) => (lesson ? lesson.state.subscribe(cb) : () => {}),
+    [lesson],
+  );
+  const state = useSyncExternalStore(
+    subscribe,
+    () => lesson?.state.value ?? initialServerState,
+    () => initialServerState,
+  );
+
+  const goHome = useCallback(() => {
+    leaving.current = true;
+    navigate(paths.child.home, { replace: true });
+  }, [navigate]);
+
+  useEffect(() => {
+    if (state.phase === 'fallback') fallbackRef.current();
+    if (state.phase === 'ended') goHome();
+  }, [state.phase, goHome]);
+
+  const blocker = useBlocker(() => !leaving.current && state.phase !== 'fallback');
+  const blocked = blocker.state === 'blocked';
+  useEffect(() => {
+    if (blocked) lesson?.pause();
+  }, [blocked, lesson]);
+  const closeSheet = () => {
+    setExitOpen(false);
+    if (blocker.state === 'blocked') blocker.reset();
+  };
+
+  const actions: ServerLessonActions = useMemo(
+    () => ({
+      answer: (t) => lesson?.answer(t),
+      continueTapped: () => lesson?.continueTapped(),
+      repeatTapped: () => lesson?.repeatTapped(),
+      speakAnswer: () => void lesson?.speakAnswer(),
+      jumpTo: (i) => lesson?.jumpTo(i),
+      playTapped: () => lesson?.playTapped(),
+      markProjectDone: (id) => void lesson?.markProjectDone(id).catch(() => {}),
+      exit: () => {
+        lesson?.pause();
+        setExitOpen(true);
+      },
+      goHome: () => {
+        lesson?.end();
+        goHome();
+      },
+    }),
+    [lesson, goHome],
+  );
+
+  if (state.phase === 'fallback' || state.phase === 'ended') {
+    return <main className="min-h-dvh bg-background" aria-busy="true" aria-label="جارٍ تجهيز الحصة" />;
+  }
+  return (
+    <>
+      <ServerLessonView state={state} actions={actions} desktop={desktop} />
+      <ConfirmSheet
+        open={exitOpen || blocked}
+        title="تخرج من الحصة؟"
+        body="نجومك وتقدّمك محفوظة، وتكمل الحصة لاحقًا."
+        confirmLabel="أكمل الحصة"
+        cancelLabel="خروج"
+        onConfirm={() => {
+          closeSheet();
+          lesson?.resume();
+        }}
+        onDismiss={() => {
+          closeSheet();
+          lesson?.resume();
+        }}
+        onCancel={() => {
+          leaving.current = true;
+          closeSheet();
+          lesson?.end();
+          goHome();
+        }}
+      />
+    </>
+  );
+}

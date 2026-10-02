@@ -18,9 +18,11 @@ import { pickTodayLesson } from '../../data/student';
 import type { LessonScript } from '../../lesson/script';
 import { initialLessonState, type LessonProgress, type LessonState } from '../../lesson/state';
 import { PreviewProgressSink } from '../../dev/childPreview';
+import { agentBaseUrl } from '../../lesson/server/api';
 import { createWebLesson, type WebLesson } from '../../lesson/web/createLesson';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { DESKTOP, useMedia } from '../../lib/useMedia';
+import { ServerLessonCall } from '../../components/lesson/ServerLessonCall';
 import type { Route } from './+types/lesson';
 
 export const meta: Route.MetaFunction = () => [{ title: 'الحصة — غَرْسة' }];
@@ -93,6 +95,8 @@ export default function LessonRoute() {
   const [entry, setEntry] = useState<{ lessonId: string; resume: LessonProgress | null } | 'denied' | null>(
     null,
   );
+  // VITE_AI_AGENT=1: the AI server runs the lesson; any failure → today's built-in lesson.
+  const [builtIn, setBuiltIn] = useState(false);
   const script = lessonScripts.get(lessonId);
   const ready = child !== undefined && progress !== undefined;
   if (script && ready && child && (entry === null || (entry !== 'denied' && entry.lessonId !== lessonId))) {
@@ -106,6 +110,18 @@ export default function LessonRoute() {
   }
   if (!script || entry === 'denied' || (ready && !child)) return <Navigate to={paths.child.home} replace />;
   if (!child || !entry || entry.lessonId !== lessonId) return <Busy />;
+  const agentUrl = agentBaseUrl();
+  if (agentUrl && !builtIn && session.childId !== 'preview') {
+    return (
+      <ServerLessonCall
+        key={lessonId}
+        baseUrl={agentUrl}
+        child={child}
+        session={session}
+        onFallback={() => setBuiltIn(true)}
+      />
+    );
+  }
   return <LessonCall key={lessonId} script={script} child={child} session={session} resume={entry.resume} />;
 }
 

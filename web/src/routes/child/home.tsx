@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
@@ -12,6 +13,7 @@ import { lessonChips, lessonScripts, lessonValue } from '../../content/library';
 import { reviewItems } from '../../content/review';
 import { nextReviewDay } from '../../data/children';
 import { headline, STAGE_LABEL } from '../../data/stats';
+import { warmAgent } from '../../lesson/server/api';
 import { lessonStepGroups, pickTodayLesson } from '../../data/student';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
@@ -23,6 +25,8 @@ export const meta: Route.MetaFunction = () => [{ title: 'الرئيسية — غ
 /** design/v3 StudentHome (+ StudentHomeDay2 when today's lesson starts with the project report). */
 export default function ChildHome() {
   const { child, progress, board } = useChildData();
+  // VITE_AI_AGENT=1: wake the AI server (Render cold start ~50 s) before «ابدأ الحصة».
+  useEffect(warmAgent, []);
   if (child === undefined || progress === undefined || !child) {
     return (
       <ChildPage tab="home">

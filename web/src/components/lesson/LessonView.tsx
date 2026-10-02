@@ -135,7 +135,7 @@ export function LessonView({
   );
 }
 
-function LiveHeader({ elapsedMs, onEnd }: { elapsedMs: number; onEnd: () => void }) {
+export function LiveHeader({ elapsedMs, onEnd }: { elapsedMs: number; onEnd: () => void }) {
   return (
     <div className="flex w-full shrink-0 items-center gap-[11px]">
       <button
