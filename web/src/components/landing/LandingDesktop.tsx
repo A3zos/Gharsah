@@ -7,7 +7,6 @@ import { BookIcon, CheckIcon, CodeIcon, ForwardIcon, MicIcon, PersonIcon, Sprout
 import { Blob } from '../ui/Page';
 import { DashboardPreview, PhoneMock, SourceIcons } from './shared';
 import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
-import { StoreBadges } from '../ui/StoreBadges';
 import { LanguageMenu } from '../ui/LanguageSwitcher';
 
 const COL = 'mx-auto w-full max-w-[1200px] px-[24px] min-[1248px]:px-0';
@@ -64,8 +63,6 @@ export function LandingDesktop() {
                 </a>
               ))}
             </div>
-            {/* Below 1536 the header has no room for the badges (with the language menu); the hero keeps them. */}
-            <StoreBadges size={44} className="hidden 2xl:flex" />
             <LanguageMenu />
             <Link
               to={paths.login}
@@ -123,10 +120,6 @@ export function LandingDesktop() {
                   دخول الطفل برمز
                 </Link>
               </div>
-              <StoreBadges size={68} />
-              <span className="text-[14px] text-text-muted">
-                بلا إعلانات · بلا بيانات من الطفل · يعمل على المتصفّح والجوال
-              </span>
             </div>
             <PhoneMock desktop />
           </section>
@@ -288,7 +281,6 @@ export function LandingDesktop() {
                     المتصفح للاستعراض والمتابعة فقط.
                   </span>
                 </span>
-                <StoreBadges size={72} />
               </div>
               <span className="text-[13.5px] text-text-muted">
                 لا نطلب بيانات بطاقة داخل التطبيق · يمكنك الإلغاء في أي وقت من إعدادات الاشتراكات في Play

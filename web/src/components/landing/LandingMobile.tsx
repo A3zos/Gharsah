@@ -9,7 +9,6 @@ import { buttonClass } from '../ui/Button';
 import { C } from '../ui/color';
 import { BookIcon, CodeIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
-import { StoreBadges } from '../ui/StoreBadges';
 import { LanguageSheetButton } from '../ui/LanguageSwitcher';
 import { DashboardPreview, PhoneMock, SourceIcons } from './shared';
 import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
@@ -144,10 +143,6 @@ export function LandingMobile() {
                 دخول الطفل برمز
               </Link>
             </div>
-            <StoreBadges size={50} className="justify-center" />
-            <span className="text-center text-[12.5px] text-text-muted">
-              بلا إعلانات · بلا بيانات من الطفل
-            </span>
           </section>
 
           <div className="flex justify-center px-[20px] pb-[40px]">
@@ -266,7 +261,6 @@ export function LandingMobile() {
             <span className="text-[13.5px] leading-[1.8] text-text-muted">
               Google Play لا يتيح الشراء من المتصفح — حمّل التطبيق لإكمال الاشتراك.
             </span>
-            <StoreBadges size={50} className="justify-center" />
           </div>
         </section>
 
