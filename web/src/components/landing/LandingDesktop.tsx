@@ -135,7 +135,7 @@ export function LandingDesktop() {
                     {s.title}
                   </h3>
                   <p className="m-0 text-[15.5px] leading-[1.95] text-text-muted">{s.body}</p>
-                  <HowExample step={s} desktop />
+                  <HowExample step={s} />
                 </div>
               ))}
             </div>

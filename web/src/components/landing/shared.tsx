@@ -2,10 +2,12 @@
 // same art, different sizes, so sizes are props with the frames' exact values.
 import { useEffect, useRef, useState } from 'react';
 
-import { toArabicDigits } from '../../lib/arabicDigits';
 import { C } from '../ui/color';
 import { PlayGlyph } from '../ui/icons';
 import { cx } from '../../lib/cx';
+
+/** One voice note: who speaks, the caption, its (pretend) length in seconds. */
+type VoiceLine = { from: 'teacher' | 'child'; text: string; sec: number };
 
 /** «كيف تعمل غَرْسة»: the three cards. Examples are descriptive on purpose — no ayah, hadith or answer text. */
 export const HOW_STEPS = [
@@ -20,8 +22,8 @@ export const HOW_STEPS = [
     accent: 'primary',
     accentBg: 'bg-primary',
     chat: [
-      { from: 'teacher', text: 'اليوم سورة الإخلاص 🌱 اسمعها من القارئ، ثم ردّدها معي آية آية.' },
-      { from: 'child', text: 'جاهز!' },
+      { from: 'teacher', text: 'اليوم سورة الإخلاص… ردّدها معي آية آية', sec: 5 },
+      { from: 'child', text: 'جاهز!', sec: 1 },
     ],
   },
   {
@@ -35,8 +37,8 @@ export const HOW_STEPS = [
     accent: 'goldDeep',
     accentBg: 'bg-gold-deep',
     chat: [
-      { from: 'teacher', text: 'حديث اليوم عن برّ الوالدين 💛 ما الشيء الذي ستفعله لأمك اليوم؟' },
-      { from: 'child', text: 'سأساعدها في ترتيب البيت' },
+      { from: 'teacher', text: 'حديث اليوم عن برّ الوالدين 💛 ما الذي ستفعله لأمك؟', sec: 4 },
+      { from: 'child', text: 'سأساعدها في ترتيب البيت', sec: 2 },
     ],
   },
   {
@@ -50,10 +52,9 @@ export const HOW_STEPS = [
     accent: 'berry',
     accentBg: 'bg-berry',
     chat: [
-      { from: 'child', text: 'ليش خلق الله النار؟' },
-      { from: 'child', text: 'ليش نصلي خمس صلوات في اليوم؟' },
+      { from: 'child', text: 'ليش نصلي خمس صلوات في اليوم؟', sec: 3 },
       // Exactly this — the landing never shows an answer's religious content.
-      { from: 'teacher', text: 'سؤال جميل! خلّنا نفهمه معًا…' },
+      { from: 'teacher', text: 'سؤال جميل! خلّنا نفهمه معًا…', sec: 2 },
     ],
   },
 ] as const satisfies readonly {
@@ -66,7 +67,7 @@ export const HOW_STEPS = [
   childBubble: string;
   accent: 'primary' | 'goldDeep' | 'berry';
   accentBg: string;
-  chat: readonly { from: 'teacher' | 'child'; text: string }[];
+  chat: readonly [VoiceLine, VoiceLine];
 }[];
 
 export type HowStep = (typeof HOW_STEPS)[number];
@@ -80,68 +81,51 @@ export function HowLabel({ step, desktop }: { step: HowStep; desktop?: boolean }
   );
 }
 
-const BARS = 28;
+const BARS = 22;
 
-/** ~28 waveform bar heights (25–100%), fixed per line so every render draws the same note. */
+/** ~22 waveform bar heights (30–100% of 18px), fixed per line so every render draws the same note. */
 function waveform(text: string): number[] {
   let h = 0;
   for (const ch of text) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return Array.from({ length: BARS }, (_, i) => {
     h = (h * 1103515245 + 12345) >>> 0;
     const envelope = Math.sin(((i + 1) / (BARS + 1)) * Math.PI); // louder mid-note
-    return Math.round(25 + 75 * (0.35 * envelope + 0.65 * ((h >>> 16) / 65535)));
+    return Math.round(30 + 70 * (0.35 * envelope + 0.65 * ((h >>> 16) / 65535)));
   });
 }
 
-/** «٠:٠٤» — a plausible length for the line (no real audio). */
-function noteDuration(text: string): string {
-  const sec = Math.min(9, Math.max(1, Math.round(text.length / 13)));
-  return `${toArabicDigits(0)}:${toArabicDigits(0)}${toArabicDigits(sec)}`;
-}
-
-/** One voice note (WhatsApp-style): speaker tag, play button, waveform, duration, then the words. */
-function VoiceNote({
-  step,
-  from,
-  text,
-  playing,
-  desktop,
-}: {
-  step: HowStep;
-  from: 'teacher' | 'child';
-  text: string;
-  playing: boolean;
-  desktop?: boolean;
-}) {
-  const teacher = from === 'teacher';
+/**
+ * A compact WhatsApp-style voice note on one row (play button, waveform, «0:05»), with the
+ * words as a muted caption under it. Teacher: white + accent play button, on the start side;
+ * child: accent-tinted + white play button, on the other side.
+ */
+function VoiceNote({ step, line, playing }: { step: HowStep; line: VoiceLine; playing: boolean }) {
+  const teacher = line.from === 'teacher';
   return (
-    <div
-      className={cx(
-        'flex min-h-[84px] w-[calc(100%-40px)] flex-col gap-[6px] rounded-px-22 px-[14px] pt-[10px] pb-[12px] shadow-soft',
-        teacher ? 'self-start bg-surface' : cx('self-end', step.childBubble),
-      )}
-    >
-      <span className={cx('text-[12px] font-extrabold', step.labelColor)}>
-        {teacher ? 'المعلّم' : 'الطفل'}
-      </span>
-      <span className="flex items-center gap-[10px]">
+    <div className={cx('flex w-full flex-col gap-[2px]', teacher ? 'items-start' : 'items-end')}>
+      <div
+        className={cx(
+          'flex h-[52px] w-full max-w-[260px] items-center gap-[10px] rounded-px-18 px-[12px] py-[8px] shadow-soft',
+          teacher ? 'bg-surface' : step.childBubble,
+        )}
+      >
         <span
           className={cx(
-            'flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full',
-            teacher ? step.accentBg : 'bg-surface shadow-soft',
+            'flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full',
+            teacher ? step.accentBg : 'bg-surface',
           )}
         >
           {/* the play triangle points right in RTL too (media icons are not mirrored) */}
-          <span className="translate-x-[1.5px]">
-            <PlayGlyph size={15} color={teacher ? 'surface' : step.accent} />
+          <span className="translate-x-[1px]">
+            <PlayGlyph size={13} color={teacher ? 'surface' : step.accent} />
           </span>
         </span>
-        <span className="flex h-[28px] min-w-0 grow items-center gap-[2px]" dir="ltr">
-          {waveform(text).map((h, i) => (
+        <span className="flex h-[18px] min-w-0 grow items-center gap-[2px]" dir="ltr">
+          {waveform(line.text).map((h, i) => (
             <span
               key={i}
               className={cx(
-                'w-[3px] min-w-[2px] shrink rounded-pill',
+                'w-[3px] shrink-0 rounded-pill',
                 step.accentBg,
                 playing && 'animate-[gh-wave_.5s_ease-in-out_4_alternate]',
               )}
@@ -149,14 +133,18 @@ function VoiceNote({
             />
           ))}
         </span>
-        <span dir="ltr" className="shrink-0 font-heading text-[12.5px] font-bold text-text-muted">
-          {noteDuration(text)}
+        {/* Latin digits on purpose: at this size the Arabic-Indic zero «٠» reads as a dot */}
+        <span dir="ltr" className="shrink-0 text-[12px] font-bold text-text-muted tabular-nums">
+          0:0{line.sec}
         </span>
-      </span>
+      </div>
       <span
-        className={cx('leading-[1.7] font-bold text-text-dark', desktop ? 'text-[16.5px]' : 'text-[16px]')}
+        className={cx(
+          'line-clamp-2 max-w-full px-[4px] text-[14px] leading-[1.45] text-text-muted',
+          teacher ? 'text-start' : 'text-end',
+        )}
       >
-        {text}
+        {line.text}
       </span>
     </div>
   );
@@ -193,27 +181,16 @@ function usePlayOnView<T extends HTMLElement>() {
  * «مثال»: a soft tinted box with voice notes — the teacher's white notes on the start
  * side, the child's accent-tinted ones on the other. The words are captions; no audio.
  */
-export function HowExample({ step, desktop }: { step: HowStep; desktop?: boolean }) {
+export function HowExample({ step }: { step: HowStep }) {
   const { ref, playing } = usePlayOnView<HTMLDivElement>();
   return (
     <div
       ref={ref}
-      className={cx(
-        'flex flex-col gap-[10px] rounded-px-18',
-        step.tint,
-        desktop ? 'px-[14px] pt-[10px] pb-[14px]' : 'px-[12px] pt-[8px] pb-[12px]',
-      )}
+      className={cx('flex flex-col gap-[6px] rounded-px-18 px-[12px] pt-[8px] pb-[10px]', step.tint)}
     >
       <span className="text-[11.5px] font-extrabold text-text-muted">مثال</span>
-      {step.chat.map((m, i) => (
-        <VoiceNote
-          key={m.text}
-          step={step}
-          from={m.from}
-          text={m.text}
-          playing={playing && i === 0}
-          desktop={desktop}
-        />
+      {step.chat.map((line, i) => (
+        <VoiceNote key={line.text} step={step} line={line} playing={playing && i === 0} />
       ))}
     </div>
   );
