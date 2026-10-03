@@ -2,6 +2,12 @@
 // Defensive: every field is validated, unknown values fall back to safe ones, and
 // a response without a session_id is rejected. Nothing here is shown as religious
 // text — the lesson renders ayat from the verified local asset (see serverLesson).
+//
+// Ayah numbers are normalized HERE and only here. Checked against the live server
+// (2026-10-03, Al-Ikhlas): show_ayat `first` / `current` and play_ayah `ayah` are all
+// 1-based ayah NUMBERS (the first repeat is play_ayah 1 + show_ayat current 1; the
+// whole surah is show_ayat without `current`). The turn's `ayah` is the one ayah the
+// child hears, sees highlighted and is asked to repeat.
 
 export type AgentMode = 'quran' | 'hadith';
 /** Which session the turn belongs to. `kind` is only trusted for taseem/htaseem (it is
@@ -18,9 +24,9 @@ export type AgentAction =
   | {
       readonly type: 'show_ayat';
       readonly ayat: readonly string[];
-      /** Ayah number of ayat[0] (quran; 1 when absent). */
+      /** Ayah number (1-based) of ayat[0] (quran; 1 when absent). */
       readonly first: number;
-      /** The ayah to highlight (an ayah number), if any. */
+      /** The ayah to highlight — a 1-based ayah number; null = the whole passage. */
       readonly current: number | null;
       readonly surahName: string | null;
       readonly hadithTitle: string | null;
@@ -43,6 +49,8 @@ export interface ServerTurn {
   readonly actions: readonly AgentAction[];
   readonly expects: Expects;
   readonly quickReplies: readonly string[];
+  /** The one ayah (1-based) this turn plays, highlights and asks for; null = none / the whole surah. */
+  readonly ayah: number | null;
   readonly surahNo: number | null;
   readonly lessonTitle: string | null;
   readonly hadithTitle: string | null;
@@ -91,12 +99,11 @@ export function parseAction(a: unknown): AgentAction | null {
   switch (a.type) {
     case 'show_ayat': {
       const ayat = Array.isArray(a.ayat) ? a.ayat.map((x) => (typeof x === 'string' ? x : '')) : [];
-      const first = int(a.first) ?? 1;
-      let current = int(a.current);
-      // `current` is documented loosely: an ayah number, or an index into `ayat`.
-      if (current !== null && (current < first || current >= first + ayat.length)) {
-        current = current >= 0 && current < ayat.length ? first + current : null;
-      }
+      const first = Math.max(1, int(a.first) ?? 1);
+      // 1-based ayah number within the passage shown; anything else → no highlight (never guessed).
+      const cur = int(a.current);
+      const current =
+        cur !== null && cur >= first && (ayat.length === 0 || cur < first + ayat.length) ? cur : null;
       return {
         type: 'show_ayat',
         ayat,
@@ -121,8 +128,10 @@ export function parseAction(a: unknown): AgentAction | null {
     }
     case 'play_ayah': {
       const url = safeAudioUrl(a.url);
-      const ayah = int(a.ayah);
-      return url && ayah !== null ? { type: 'play_ayah', ayah, text: str(a.text) ?? '', url } : null;
+      const ayah = int(a.ayah); // 1-based
+      return url && ayah !== null && ayah >= 1
+        ? { type: 'play_ayah', ayah, text: str(a.text) ?? '', url }
+        : null;
     }
     default:
       return null; // set_step (documented as unused) and anything unknown
@@ -159,6 +168,21 @@ export function parseTurn(json: unknown, mode: AgentMode): ServerTurn {
   const stageIndex = clampIdx(int(json.stage_index));
   const maxStageIndex = Math.max(stageIndex, clampIdx(int(json.max_stage_index)));
   const expects = EXPECTS.find((e) => e === json.expects) ?? 'continue';
+  const parsed = (Array.isArray(json.actions) ? json.actions : [])
+    .map(parseAction)
+    .filter((a): a is AgentAction => a !== null);
+  // The ayah played is the ayah highlighted and asked for: show_ayat follows play_ayah.
+  const played = parsed.find((a) => a.type === 'play_ayah')?.ayah ?? null;
+  const actions = parsed.map((a) =>
+    played !== null &&
+    a.type === 'show_ayat' &&
+    a.current !== played &&
+    kind !== 'hadith' &&
+    kind !== 'htaseem'
+      ? { ...a, current: played }
+      : a,
+  );
+  const shown = actions.find((a) => a.type === 'show_ayat');
   return {
     sessionId,
     kind,
@@ -169,11 +193,10 @@ export function parseTurn(json: unknown, mode: AgentMode): ServerTurn {
     maxStageIndex,
     stages,
     say: str(json.say) ?? '',
-    actions: (Array.isArray(json.actions) ? json.actions : [])
-      .map(parseAction)
-      .filter((a): a is AgentAction => a !== null),
+    actions,
     expects,
     quickReplies: strings(json.quick_replies).filter((q) => q.trim()),
+    ayah: played ?? (shown?.type === 'show_ayat' ? shown.current : null),
     surahNo: int(json.surah_no),
     lessonTitle: str(json.lesson_title),
     hadithTitle: str(json.hadith_title),

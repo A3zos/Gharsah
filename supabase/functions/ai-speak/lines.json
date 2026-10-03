@@ -24,6 +24,8 @@
   "nudge.one_left": "باقي مرة، هيا…",
   "nudge.two_left": "باقي مرتين، هيا…",
   "nudge.start": "هيا… ردّد معي.",
+  "nudge.hear_you": "أنا أسمعك… ردّدها بصوتك",
+  "ayah.move_on": "نسمعها مرة ثانية من القارئ ونكمل",
   "praise.first": "أحسنت يا {name}… ننتقل للآية {ordinal}.",
   "praise.next": "ممتاز! ننتقل للآية {ordinal}.",
   "praise.last_left": "رائع… بقيت الآية الأخيرة.",

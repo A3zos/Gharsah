@@ -12,9 +12,16 @@
 //   stage is never asked: it is answered with the neutral «بطل» (the teacher keeps
 //   saying «يا بطل»); the child's own words are scrubbed of their name (api.ts).
 // * Child audio goes to the server (which stores it) only with the parent's
-//   consent: the recitation upload, and the browser's speech recognition. Without
-//   consent, a repeat is counted on the device (presence only, nothing sent) or
-//   by «ردّدت», and the reference text the server gave is sent as the answer.
+//   consent: the recitation upload, and the browser's speech recognition (never for
+//   a recitation). Without consent, a repeat is checked on the device by the
+//   RecitationVerifier (presence only: ≥0.6 s of real speech), and the reference text
+//   the server gave is sent as the answer.
+// * Silence is never praised: a silent repeat → a nudge + the ayah again; silent
+//   again → a neutral line, the ayah once more, and «تخطّي الآية» (no «repeated»
+//   signal); that ayah is «لم يُردَّد» for the parent and is not memorized.
+// * No word-level judgment we can't verify: a server line like «نسيت كلمة» is
+//   replaced by an approved encouragement (only a confident server verifier may
+//   allow word feedback — voice/recitationVerifier.ts).
 // * Any server failure that a restart can't fix → `fallback` (the route then
 //   runs the built-in lesson) so the child is never stuck.
 import { Observable } from '../observable';
@@ -22,23 +29,21 @@ import { PlaybackBlocked } from '../ports';
 import { AgentUnavailable, RateLimited, SessionExpired, type AgentApi, type Gender } from './api';
 import type { ActionItem, AgentAction, AgentMode, AgentStage, Expects, ServerTurn, TurnKind } from './parse';
 import { doneRefsOf, hadithMatchesTopic, mappedStage, type ServerProgressSink } from './progressMap';
+import type { TeacherVoice } from '../voice/tts';
+import {
+  canGiveWordFeedback,
+  ENCOURAGE_RETRY,
+  isWordJudgment,
+  PresenceOnlyVerifier,
+  REPEAT_MIN_SPEECH_MS,
+  type RecitationResult,
+  type RecitationVerifier,
+} from '../voice/recitationVerifier';
+
+/** The lesson-facing voice port (voice/tts.ts — with the swappable TTS provider). */
+export type { TeacherVoice } from '../voice/tts';
 
 // ── ports ──
-
-export interface TeacherVoice {
-  /**
-   * Says the line in short pieces; `onPiece` fires as each one starts, with
-   * `voiced: false` when neither the server nor the browser could voice it (the
-   * screen then shows it as text). Resolves when said or skipped; rejects with
-   * PlaybackBlocked when the browser refuses audio before a tap.
-   */
-  speak(text: string, onPiece?: (piece: string, voiced: boolean) => void): Promise<void>;
-  stop(): void;
-  /** Wakes the voice service at lesson start (optional). */
-  warm?(): void;
-  /** Resolves once the real voice is ready (or has failed) — the lesson waits for it. */
-  ready?(): Promise<boolean>;
-}
 
 export interface UrlPlayer {
   /** Resolves at the end of the audio; rejects with PlaybackBlocked if autoplay is refused. */
@@ -54,7 +59,13 @@ export interface PresenceListener {
    */
   waitForSpeech(
     signal: AbortSignal,
-    opts?: { purpose?: 'repeat' | 'answer'; minMs?: number; timeoutMs?: number },
+    opts?: {
+      purpose?: 'repeat' | 'answer';
+      minMs?: number;
+      timeoutMs?: number;
+      /** How long the child actually spoke (for the recitation verifier). */
+      onVoiced?: (ms: number) => void;
+    },
   ): Promise<'spoke' | 'silent' | 'denied'>;
   /** Ask for the mic again — called inside the «سماح» tap. */
   requestAccess?(): Promise<boolean>;
@@ -97,6 +108,8 @@ export interface ServerLessonDeps {
   consent: boolean;
   /** Present only with consent and a browser that supports it. */
   recorder?: UtteranceRecorder | null;
+  /** Did the child really recite? Presence only by default (voice/recitationVerifier.ts). */
+  verifier?: RecitationVerifier;
   speechInput?: SpeechInput | null;
   /** Verified local Tanzil text (null = not bundled → nothing is shown). */
   verifiedAyah: (surah: number, ayah: number) => string | null;
@@ -245,14 +258,32 @@ export const NUDGE_ANSWER: Record<Gender, string> = {
   girl: 'أنا أسمعكِ يا بطلة، قوليها بصوتكِ',
 };
 export const NUDGE_REPEAT: Record<Gender, string> = {
-  boy: 'أنا أسمعك يا بطل، ردّدها بصوتك',
-  girl: 'أنا أسمعكِ يا بطلة، ردّديها بصوتكِ',
+  boy: 'أنا أسمعك… ردّدها بصوتك',
+  girl: 'أنا أسمعكِ… ردّديها بصوتكِ',
 };
+/** Silent twice on a repeat: said before the ayah plays once more and the lesson moves on (no praise). */
+export const MOVE_ON_UNREPEATED = 'نسمعها مرة ثانية من القارئ ونكمل';
+/** After the reciter played the whole surah, before the repeats: the mic never opens silently. */
+export const REPEATS_START: Record<Gender, string> = {
+  boy: 'الحين نبدأ نردّد الآيات مع بعض… جاهز؟',
+  girl: 'الحين نبدأ نردّد الآيات مع بعض… جاهزة؟',
+};
+/** The child answered REPEATS_START. */
+export const REPEATS_START_REPLY = 'ممتاز! يلا نبدأ بالآية الأولى';
+/** The whole surah was played and the child is asked to recite it. */
+export const WHOLE_SURAH_TURN: Record<Gender, string> = {
+  boy: 'الحين دورك… سمّعني السورة كاملة بصوتك',
+  girl: 'الحين دورك… سمّعيني السورة كاملة بصوتكِ',
+};
+/** The server's own quick reply for moving past an ayah — never a «repeated» signal. */
+export const SKIP_AYAH = 'تخطّي الآية';
 
 /** What one listening window brought: the child spoke (and maybe their words). */
 interface Heard {
   readonly spoke: boolean;
   readonly text: string | null;
+  /** How long the child spoke (on-device presence). */
+  readonly voicedMs?: number;
 }
 const REPEATED_TEXT = 'ردّدت';
 
@@ -289,12 +320,24 @@ export class ServerLesson {
   private speechBroken = false;
   private quizUnscored = false;
   private allowAnswer: ((ok: boolean) => void) | null = null;
+  private readonly verifier: RecitationVerifier;
+  /** The last verifier result (word feedback is allowed only on a confident server one). */
+  private lastVerify: RecitationResult | null = null;
+  /** This segment's ayat the child stayed silent on — «لم يُردَّد», never memorized. */
+  private notRepeated = new Set<number>();
+  /** A repeat turn was already played in this segment (the repeats have started). */
+  private repeatsStarted = false;
+  /** The last message sent answered a repeat (the next line may judge it). */
+  private answeredRepeat = false;
+  /** The reciter URLs of the current turn (replayed after a silence). */
+  private turnAudio: string[] = [];
   private unblock: (() => void) | null = null;
   private pausedByBackground = false;
 
   constructor(private readonly d: ServerLessonDeps) {
     this.sleep = d.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
     this.beat = d.beat ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    this.verifier = d.verifier ?? new PresenceOnlyVerifier();
   }
 
   private set(patch: Partial<ServerLessonState>): void {
@@ -344,6 +387,9 @@ export class ServerLesson {
     this.nameAnswers = 0;
     this.surahAnswers = 0;
     this.reference = null;
+    this.notRepeated = new Set();
+    this.repeatsStarted = false;
+    this.answeredRepeat = false;
     this.segSurah = seg.kind === 'taseem' ? seg.surahNo : seg.kind === 'quran' ? this.d.plan.surahNo : null;
     this.set({
       busy: true,
@@ -484,11 +530,20 @@ export class ServerLesson {
       playbackBlocked: false,
       paused: false,
     });
+    const audio = turn.actions.flatMap((a) =>
+      a.type === 'play_all' ? a.urls : a.type === 'play_ayah' ? [a.url] : [],
+    );
+    // a judgment line arrives without audio: the ayah the child just tried plays again
+    const judged = this.judges(turn);
+    if (audio.length) this.turnAudio = audio;
+    const wholeSurah =
+      turn.kind === 'quran' && turn.actions.some((a) => a.type === 'play_all' && a.urls.length > 1);
     try {
       for (const a of turn.actions) this.show(a, turn);
-      if (turn.say.trim()) await this.say(turn.say, abort);
-      const plays = turn.actions.some((a) => a.type === 'play_all' || a.type === 'play_ayah');
-      if (turn.say.trim() && plays) await this.guard(abort, this.beat(LINE_GAP_MS));
+      const line = judged ? ENCOURAGE_RETRY : turn.say;
+      if (line.trim()) await this.say(line, abort);
+      const plays = audio.length > 0 || (judged && this.turnAudio.length > 0);
+      if (line.trim() && plays) await this.guard(abort, this.beat(LINE_GAP_MS));
       for (const a of turn.actions) {
         if (a.type === 'play_all') for (const u of a.urls) await this.recite(u, abort);
         if (a.type === 'play_ayah') {
@@ -496,13 +551,31 @@ export class ServerLesson {
           await this.recite(a.url, abort);
         }
       }
+      if (judged && !audio.length) for (const u of this.turnAudio) await this.recite(u, abort);
+      // After the reciter played the whole surah the mic never opens silently: the teacher speaks first.
+      let startsRepeats = false;
+      if (wholeSurah && turn.expects === 'repeat') await this.say(WHOLE_SURAH_TURN[this.d.gender], abort);
+      else if (wholeSurah && turn.expects !== 'none' && !this.repeatsStarted) {
+        await this.say(REPEATS_START[this.d.gender], abort);
+        startsRepeats = true;
+      }
+      if (turn.expects === 'repeat') this.repeatsStarted = true;
       // a natural pause after the teacher's question, before listening
       if (turn.expects !== 'none') await this.guard(abort, this.beat(QUESTION_PAUSE_MS));
-      await this.await(turn, abort);
+      await this.await(turn, abort, startsRepeats);
     } catch (e) {
       if (e instanceof Cancelled) return;
       throw e;
     }
+  }
+
+  /**
+   * The server's line judges the child's words («نسيت كلمة», «سنحاول مرة أخرى»…) right
+   * after a repeat, and no confident verifier backs it → the approved encouragement instead.
+   */
+  private judges(turn: ServerTurn): boolean {
+    if (!(turn.expects === 'repeat' || this.answeredRepeat)) return false;
+    return isWordJudgment(turn.say) && !canGiveWordFeedback(this.lastVerify);
   }
 
   /** The teacher's line, voiced; the caption follows the piece being said. */
@@ -570,6 +643,9 @@ export class ServerLesson {
       this.set({ hadith: { title: a.hadithTitle ?? turn.hadithTitle, source: a.source } });
       return;
     }
+    // The whole surah asked for: the server's own text of it is the reference (never «ردّدت»).
+    if (a.current === null && turn.expects === 'repeat' && a.ayat.some((x) => x.trim()))
+      this.reference = a.ayat.filter((x) => x.trim()).join(' ');
     this.showSurah(a.current);
   }
 
@@ -604,18 +680,65 @@ export class ServerLesson {
    *   silence ~6 s -> one gentle nudge; silence again -> the lesson continues by itself
    *   mic blocked -> one «سماح» prompt; still blocked -> listen-only (auto-continue)
    */
-  private async await(turn: ServerTurn, abort: AbortController): Promise<void> {
+  private async await(turn: ServerTurn, abort: AbortController, startsRepeats = false): Promise<void> {
     if (turn.expects === 'none') return this.segmentEnded();
-    const canSpeak =
-      !!this.d.speechInput && this.d.consent && !this.speechBroken && turn.expects !== 'repeat';
+    const repeat = turn.expects === 'repeat';
+    // never the browser's speech recognition for a recitation
+    const canSpeak = !!this.d.speechInput && this.d.consent && !this.speechBroken && !repeat;
     this.set({ expects: turn.expects, quickReplies: turn.quickReplies, canSpeak });
-    for (let silences = 0; ;) {
+    for (let misses = 0; ;) {
       const heard = await this.hear(turn, abort);
-      if (heard !== 'silent') return this.respond(turn, heard);
-      silences++;
-      if (silences >= SILENCES_BEFORE_CONTINUE) return this.respond(turn, { spoke: false, text: null });
+      if (heard !== 'silent' && heard.spoke) {
+        if (!repeat) {
+          if (startsRepeats) await this.say(REPEATS_START_REPLY, abort);
+          return this.respond(turn, heard);
+        }
+        const v = await this.verifyRepeat(turn, heard);
+        if (v.ok) return this.respond(turn, heard);
+        if (++misses >= SILENCES_BEFORE_CONTINUE) return this.moveOnUnrepeated(turn, abort);
+        if (v.by === 'server') {
+          // the verification model heard it but didn't accept it: encourage, the ayah again
+          await this.say(ENCOURAGE_RETRY, abort);
+          await this.replayTurnAudio(abort);
+        } else await this.nudge(turn, abort); // not enough real speech = as if silent (no praise)
+        continue;
+      }
+      // Can't hear at all (mic blocked / listen-only): a repeat is never counted.
+      if (heard !== 'silent') return repeat ? this.moveOnUnrepeated(turn, abort) : this.respond(turn, heard);
+      if (++misses >= SILENCES_BEFORE_CONTINUE)
+        return repeat ? this.moveOnUnrepeated(turn, abort) : this.respond(turn, { spoke: false, text: null });
       await this.nudge(turn, abort);
     }
+  }
+
+  /** The child spoke on a repeat: does it count? (presence only: ≥ REPEAT_MIN_SPEECH_MS of speech) */
+  private async verifyRepeat(turn: ServerTurn, h: Heard): Promise<RecitationResult> {
+    const surah = this.segSurah ?? this.d.plan.surahNo;
+    const r = await this.verifier
+      .verify({ voicedMs: h.voicedMs ?? REPEAT_MIN_SPEECH_MS }, surah, turn.ayah)
+      .catch(() => ({ ok: true, confidence: 0, by: 'presence' as const }));
+    this.lastVerify = r;
+    return r;
+  }
+
+  /**
+   * Silent twice (or the child can't be heard): a neutral line, the ayah once more,
+   * then the server's own «تخطّي الآية» — no «repeated» signal, no praise. The ayah
+   * is «لم يُردَّد» for the parent and doesn't count as memorized.
+   */
+  private async moveOnUnrepeated(turn: ServerTurn, abort: AbortController): Promise<void> {
+    await this.say(MOVE_ON_UNREPEATED, abort);
+    await this.guard(abort, this.beat(LINE_GAP_MS));
+    await this.replayTurnAudio(abort);
+    if ((turn.kind === 'quran' || turn.kind === 'taseem') && turn.ayah !== null) {
+      this.notRepeated.add(turn.ayah);
+      this.saveProgress(turn);
+    }
+    return this.send(SKIP_AYAH, false);
+  }
+
+  private async replayTurnAudio(abort: AbortController): Promise<void> {
+    for (const u of this.turnAudio) await this.recite(u, abort);
   }
 
   /** One listening window: what the child said / that they spoke, or silence. */
@@ -660,15 +783,18 @@ export class ServerLesson {
         if (text === null) return 'silent';
       }
       // On-device voice activity only — measured, never recorded or sent.
+      let voicedMs: number | undefined;
       const r = await this.guard(
         abort,
         this.d.presence.waitForSpeech(abort.signal, {
           purpose: repeat ? 'repeat' : 'answer',
-          minMs: repeat ? undefined : ANSWER_MIN_SPEECH_MS,
+          // a repeat counts only after real speech (energy above the adaptive threshold ≥0.6 s)
+          minMs: repeat ? REPEAT_MIN_SPEECH_MS : ANSWER_MIN_SPEECH_MS,
           timeoutMs: SILENCE_MS,
+          onVoiced: (ms) => (voicedMs = ms),
         }),
       );
-      if (r === 'spoke') return { spoke: true, text: null };
+      if (r === 'spoke') return { spoke: true, text: null, ...(voicedMs !== undefined ? { voicedMs } : {}) };
       if (r === 'silent') return 'silent';
       return (await this.micBlocked(abort)) ? this.hear(turn, abort) : { spoke: false, text: null };
     } finally {
@@ -680,8 +806,8 @@ export class ServerLesson {
   private respond(turn: ServerTurn, h: Heard): Promise<void> {
     if (h.spoke) this.set({ heard: this.state.value.heard + 1 }); // «I heard you» on the mic
     if (turn.expects === 'repeat') {
-      if (h.spoke) this.cheer();
-      return this.send(h.text?.trim() || this.repeatText());
+      this.cheer(); // only ever reached when the child really spoke (see await)
+      return this.send(h.text?.trim() || this.repeatText(), true);
     }
     const first = turn.quickReplies[0];
     if (turn.expects === 'choice') {
@@ -697,8 +823,13 @@ export class ServerLesson {
 
   /** One gentle nudge after a silence (an approved line, in the teacher's voice). */
   private async nudge(turn: ServerTurn, abort: AbortController): Promise<void> {
-    const text = turn.expects === 'repeat' ? NUDGE_REPEAT[this.d.gender] : NUDGE_ANSWER[this.d.gender];
-    await this.say(text, abort);
+    const repeat = turn.expects === 'repeat';
+    await this.say(repeat ? NUDGE_REPEAT[this.d.gender] : NUDGE_ANSWER[this.d.gender], abort);
+    if (repeat) {
+      // «أنا أسمعك… ردّدها بصوتك» → the reciter once more → listen again
+      await this.guard(abort, this.beat(LINE_GAP_MS));
+      await this.replayTurnAudio(abort);
+    }
     await this.guard(abort, this.beat(QUESTION_PAUSE_MS));
   }
 
@@ -782,8 +913,11 @@ export class ServerLesson {
       stage,
       // Where the built-in lesson would resume: the start, the hadith, or the end.
       stepIndex: stage === 'done' ? plan.lastStepIndex : stage === 'hadith' ? plan.hadithStepIndex : 0,
-      doneRefs: doneRefsOf(turn, stage, plan.surahNo, this.d.ayahCount),
+      doneRefs: doneRefsOf(turn, stage, plan.surahNo, this.d.ayahCount, this.notRepeatedOf(plan.surahNo)),
       ...(this.quizUnscored && turn.kind === 'hadith' ? { quizUnscored: true } : {}),
+      ...(this.notRepeated.size && this.segSurah === plan.surahNo
+        ? { notRepeatedRefs: [...this.notRepeated].sort((a, b) => a - b).map((a) => `${plan.surahNo}:${a}`) }
+        : {}),
     };
     void this.d.sink.record(update).then(
       () => this.state.value.saveFailed && this.set({ saveFailed: false }),
@@ -791,11 +925,18 @@ export class ServerLesson {
     );
   }
 
+  /** Today's surah's silent ayat (only while this segment teaches it). */
+  private notRepeatedOf(surah: number): ReadonlySet<number> {
+    return this.segSurah === surah ? this.notRepeated : new Set();
+  }
+
   // ── child input ──
 
-  private async send(text: string): Promise<void> {
+  private async send(text: string, repeated = false): Promise<void> {
     const t = this.turn;
     if (!t || this.disposed) return;
+    // the reply to a repeat (or a skip) may judge it — see judges()
+    this.answeredRepeat = repeated || (t.expects === 'repeat' && text === SKIP_AYAH);
     this.cancelTurn();
     this.set({ busy: true, expects: null, quickReplies: [], repeat: 'idle', hearing: false, notice: null });
     const next = await this.call(() =>
@@ -828,7 +969,7 @@ export class ServerLesson {
   repeatTapped(): void {
     if (this.state.value.expects !== 'repeat' || this.state.value.busy) return;
     this.cheer();
-    void this.send(this.repeatText());
+    void this.send(this.repeatText(), true);
   }
 
   /** A section in the stages bar (only ones already reached). */

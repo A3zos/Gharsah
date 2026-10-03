@@ -158,6 +158,8 @@ export interface LessonProgress {
   /** The step to resume at. */
   readonly stepIndex: number;
   readonly doneRefs: ReadonlySet<string>;
+  /** Ayat the child stayed silent on — moved on without a repeat («لم يُردَّد» for the parent). */
+  readonly notRepeatedRefs?: ReadonlySet<string>;
   readonly surahsCompleted: ReadonlySet<number>;
   readonly hadithDone: ReadonlySet<string>;
   readonly projectAssigned: string | null;

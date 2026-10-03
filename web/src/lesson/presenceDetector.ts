@@ -10,6 +10,8 @@ export interface PresenceOptions {
   onSpeechStart: () => void;
   /** voicedMs = how long the child actually spoke in this utterance. */
   onUtterance: (voicedMs: number) => void;
+  /** Speech started but was too short to count (a cough, «اه») — listeners re-arm their silence timer. */
+  onIgnored?: (voicedMs: number) => void;
   sampleRate?: number;
   /** Speech must be this far above the noise floor… */
   marginDb?: number;
@@ -48,6 +50,7 @@ export class PresenceDetector {
       hangoverMs: 700,
       minUtteranceMs: 350,
       calibrationMs: 250,
+      onIgnored: () => {},
       ...options,
     };
     this.sampleRate = this.o.sampleRate;
@@ -127,6 +130,7 @@ export class PresenceDetector {
       this.voicedUs = 0;
       this.silenceUs = 0;
       if (voicedMs >= this.o.minUtteranceMs) this.o.onUtterance(voicedMs);
+      else this.o.onIgnored(voicedMs);
     }
   }
 }

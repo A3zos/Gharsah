@@ -32,6 +32,8 @@ export type LessonEvent =
 export type TeacherAction =
   /** The child started speaking (the agent holds the silence timer). */
   | { type: 'speechStarted' }
+  /** Speech started but was too short to count — nothing was heard (the silence timer restarts). */
+  | { type: 'speechIgnored' }
   /** The child spoke and stopped — one repeat candidate (presence only). `voicedMs`
    *  = how long they actually spoke (v0.2 §8.5; full-surah passes). */
   | { type: 'repeatDetected'; voicedMs?: number }

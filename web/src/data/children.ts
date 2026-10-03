@@ -85,6 +85,8 @@ export interface ChildProfile {
   pilotDoneAt: Readonly<Record<string, Date>>;
   /** Pilot days whose quiz was answered on the device only — «لم يُقيَّم» (parent views). */
   pilotUnscored: readonly string[];
+  /** «surah:ayah» refs the child stayed silent on in the pilot days — «لم يُردَّد» (parent views). */
+  notRepeatedRefs: readonly string[];
 }
 
 // Days are stored as integers 0 = السبت … 6 = الجمعة (WEEK_DAYS order).
@@ -155,6 +157,7 @@ export function childFromRow(
     pilotDaysDone?: number;
     pilotDoneAt?: Record<string, Date>;
     pilotUnscored?: string[];
+    notRepeatedRefs?: string[];
   } = {},
 ): ChildProfile {
   const p = extra.pairing;
@@ -177,6 +180,7 @@ export function childFromRow(
     pilotDaysDone: extra.pilotDaysDone ?? 0,
     pilotDoneAt: extra.pilotDoneAt ?? {},
     pilotUnscored: extra.pilotUnscored ?? [],
+    notRepeatedRefs: extra.notRepeatedRefs ?? [],
   };
 }
 
@@ -193,11 +197,13 @@ export const AI_VOICE_CONSENT = false;
 export const CHILD_COLUMNS =
   'id, name, age, gender, avatar, schedule_days, schedule_time, schedule_custom, session_duration, reminder, review_days, ai_voice_consent, created_at';
 
-/** The child's pilot-day rows (works before the quiz_unscored migration too). */
+/** The child's pilot-day rows (works before the quiz_unscored / not_repeated_refs migrations too). */
 async function pilotRows(childId: string): Promise<Row[]> {
   const db = supabase();
   const q = (cols: string) =>
     db.from('progress').select(cols).eq('child_id', childId).like('lesson_id', 'pilot-day-%');
+  const all = await q('lesson_id, stage, completed_at, updated_at, quiz_unscored, not_repeated_refs');
+  if (!all.error) return (all.data ?? []) as unknown as Row[];
   const full = await q('lesson_id, stage, completed_at, updated_at, quiz_unscored');
   if (!full.error) return (full.data ?? []) as unknown as Row[];
   const basic = await q('lesson_id, stage, completed_at, updated_at');
@@ -224,6 +230,15 @@ async function withServerFields(rows: Row[]): Promise<ChildProfile[]> {
           }),
         ),
         pilotUnscored: pilot.filter((p) => p.quiz_unscored === true).map((p) => String(p.lesson_id)),
+        notRepeatedRefs: [
+          ...new Set(
+            pilot.flatMap((p) =>
+              Array.isArray(p.not_repeated_refs)
+                ? p.not_repeated_refs.filter((x): x is string => typeof x === 'string')
+                : [],
+            ),
+          ),
+        ],
       });
     }),
   );

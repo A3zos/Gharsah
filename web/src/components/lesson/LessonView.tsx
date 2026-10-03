@@ -526,6 +526,46 @@ function SurahStage({ state: s, actions }: { state: LessonState; actions: Lesson
   );
 }
 
+/** The ayah font: as big as fits, between these (px). */
+const AYAH_FONT_MAX = 30;
+const AYAH_FONT_MIN = 22;
+
+/**
+ * The biggest font (AYAH_FONT_MAX → AYAH_FONT_MIN, 1 px steps) at which the whole text
+ * fits its box without scrolling; AYAH_FONT_MIN when even that doesn't fit (a long
+ * surah then scrolls). Re-fits when the box resizes or the fonts arrive.
+ */
+function useFitFont(
+  box: React.RefObject<HTMLElement | null>,
+  text: React.RefObject<HTMLElement | null>,
+  key: string,
+) {
+  const [px, setPx] = useState(AYAH_FONT_MAX);
+  useEffect(() => {
+    const b = box.current;
+    const t = text.current;
+    if (!b || !t) return;
+    const fit = () => {
+      const cs = getComputedStyle(b);
+      const room = b.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      if (room <= 0) return;
+      let size = AYAH_FONT_MAX;
+      for (; size > AYAH_FONT_MIN; size--) {
+        t.style.fontSize = `${size}px`;
+        if (t.scrollHeight <= room) break;
+      }
+      t.style.fontSize = `${size}px`;
+      setPx(size);
+    };
+    fit();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
+    ro?.observe(b);
+    void document.fonts?.ready.then(fit);
+    return () => ro?.disconnect();
+  }, [box, text, key]);
+  return px;
+}
+
 /** The surah card (verified text, current ayah highlighted, tap = hear again) — shared with the AI-server lesson. */
 export function SurahCard({
   surahName,
@@ -547,7 +587,11 @@ export function SurahCard({
   onPlay: () => void;
 }) {
   const current = useRef<HTMLSpanElement>(null);
-  // the current ayah stays in view when the surah is longer than the card
+  const box = useRef<HTMLDivElement>(null);
+  const text = useRef<HTMLParagraphElement>(null);
+  // the whole surah at the biggest size that fits (22–30 px) — no clipping, no inner scroll
+  const fontPx = useFitFont(box, text, ayat.map((a) => a.ayah).join(','));
+  // only a surah too long for the card scrolls — and keeps the current ayah in view
   useEffect(() => {
     current.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
   }, [currentAyah]);
@@ -571,26 +615,37 @@ export function SurahCard({
       <span className="shrink-0 pt-[12px] text-center text-[16px] font-bold text-text-muted">
         سورة {surahName}
       </span>
-      {/* Scrolls only if the surah is longer than the card — no visible scrollbar. */}
-      <div className="min-h-0 grow [scrollbar-width:none] overflow-x-hidden overflow-y-auto px-[18px] pt-[4px] pb-[16px] [&::-webkit-scrollbar]:hidden">
-        {/* Uthmani text wraps naturally (RTL, right-aligned); ~30 px phones, 38 px desktop, ≥26 px. */}
+      {/* The whole surah fits (font 22–30 px); only a surah too long for the card scrolls — no visible scrollbar. */}
+      <div
+        ref={box}
+        className="min-h-0 grow [scrollbar-width:none] overflow-x-hidden overflow-y-auto px-[16px] pt-[4px] pb-[14px] [&::-webkit-scrollbar]:hidden"
+      >
+        {/* Uthmani text wraps naturally (RTL, right-aligned). */}
         <p
+          ref={text}
           dir="rtl"
-          className="m-0 text-right font-ayah text-[clamp(26px,7.7vw,30px)] leading-[2.1] break-normal whitespace-normal lg:text-[38px]"
+          style={{ fontSize: fontPx }}
+          className="m-0 text-right font-ayah leading-[2] break-normal whitespace-normal"
         >
           {ayat.map((a) => {
             const on = a.ayah === currentAyah;
-            const past = currentAyah !== null && a.ayah < currentAyah;
+            // done: normal; upcoming: a little muted; the whole surah (no current): all normal
+            const upcoming = currentAyah !== null && a.ayah > currentAyah;
             const words = a.text.split(' ');
             const last = words.pop() ?? '';
             return (
               <span
                 key={a.ayah}
                 ref={on ? current : undefined}
+                // the same padding on every ayah, so the highlight moving never reflows the lines;
+                // the background is on the current ayah's own text only (clone: clean across line breaks)
                 className={cx(
-                  'rounded-px-12 [box-decoration-break:clone] px-[6px] py-[2px] transition-[background-color,color,opacity] duration-300 [-webkit-box-decoration-break:clone]',
-                  on && 'bg-green-tint text-deep-green [text-shadow:0_0_0.7px_currentColor]',
-                  past && 'opacity-60',
+                  'rounded-lesson-ayah-highlight [box-decoration-break:clone] px-[6px] py-[2px] transition-[background-color,color,opacity] duration-300 [-webkit-box-decoration-break:clone]',
+                  // a soft band behind the letters (the Uthmani font's box is ~2.5em tall — a full
+                  // background would overlap the lines above and below)
+                  on &&
+                    'bg-[linear-gradient(to_bottom,transparent_20%,var(--color-green-tint)_20%,var(--color-green-tint)_84%,transparent_84%)] text-deep-green',
+                  upcoming && 'opacity-55',
                 )}
               >
                 {words.length > 0 && `${words.join(' ')} `}

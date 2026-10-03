@@ -71,6 +71,22 @@ export async function withRetry<T>(
   }
 }
 
+/** PostgREST: «column not found» — the migration that adds it isn't deployed yet. */
+const COLUMN_MISSING = 'PGRST204';
+
+/**
+ * Writes `flow` plus `optional` columns; if the database doesn't have an optional
+ * column yet, writes `flow` alone (saving progress never fails because of it).
+ */
+export async function writeWithOptional(
+  optional: Record<string, unknown>,
+  run: (extra: Record<string, unknown>) => PromiseLike<{ error: { code?: string } | null }>,
+): Promise<{ error: { code?: string } | null }> {
+  if (Object.keys(optional).length === 0) return run({});
+  const r = await run(optional);
+  return r.error?.code === COLUMN_MISSING ? run({}) : r;
+}
+
 export class SupabaseProgressSink implements LessonProgressSink {
   /** Whether this lesson's row exists (read once, then tracked). */
   private exists: boolean | undefined = undefined;
@@ -100,6 +116,9 @@ export class SupabaseProgressSink implements LessonProgressSink {
       project_assigned: p.projectAssigned,
       reported_project: p.reportedProject,
     };
+    // «لم يُردَّد» — only when there is one (optional column, see writeWithOptional)
+    const notRepeated = [...(p.notRepeatedRefs ?? [])];
+    const optional: Record<string, unknown> = notRepeated.length ? { not_repeated_refs: notRepeated } : {};
     if (this.exists === undefined) {
       const { data } = await db
         .from('progress')
@@ -110,7 +129,9 @@ export class SupabaseProgressSink implements LessonProgressSink {
       this.exists = !!data;
     }
     if (!this.exists) {
-      const { error } = await db.from('progress').insert({ child_id: childId, lesson_id: lessonId, ...flow });
+      const { error } = await writeWithOptional(optional, (extra) =>
+        db.from('progress').insert({ child_id: childId, lesson_id: lessonId, ...flow, ...extra }),
+      );
       if (!error) {
         this.exists = true;
         return;
@@ -119,11 +140,13 @@ export class SupabaseProgressSink implements LessonProgressSink {
       if (error.code !== '23505') throw error;
       this.exists = true;
     }
-    const { error } = await db
-      .from('progress')
-      .update(flow)
-      .eq('child_id', childId)
-      .eq('lesson_id', lessonId);
+    const { error } = await writeWithOptional(optional, (extra) =>
+      db
+        .from('progress')
+        .update({ ...flow, ...extra })
+        .eq('child_id', childId)
+        .eq('lesson_id', lessonId),
+    );
     if (error) throw error;
   }
 

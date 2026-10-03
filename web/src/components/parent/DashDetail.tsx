@@ -255,7 +255,7 @@ export function DashDetail({
           )}
         />
         {card === 'surahs' && <SurahsPanel s={s} h={h} onClose={onClose} />}
-        {card === 'ayat' && <AyatPanel s={s} h={h} onClose={onClose} />}
+        {card === 'ayat' && <AyatPanel s={s} h={h} notRepeated={child.notRepeatedRefs} onClose={onClose} />}
         {card === 'hadith' && <HadithPanel s={s} child={child} onClose={onClose} />}
         {card === 'projects' && <ProjectsPanel child={child} subs={subs} s={s} onClose={onClose} />}
       </section>
@@ -322,7 +322,32 @@ function SurahsPanel({ s, h, onClose }: { s: Record<string, unknown>; h: Headlin
   );
 }
 
-function AyatPanel({ s, h, onClose }: { s: Record<string, unknown>; h: Headline; onClose: () => void }) {
+/** «surah:ayah» refs → grouped per surah, in order (only surahs/ayat that exist). */
+function notRepeatedBySurah(refs: readonly string[]): [number, number[]][] {
+  const by = new Map<number, number[]>();
+  for (const r of refs) {
+    const [s, a] = r.split(':').map(Number);
+    if (!surahOk(s) || !a || a < 1 || a > quranMeta.ayahCount(s!)) continue;
+    by.set(s!, [...(by.get(s!) ?? []), a]);
+  }
+  return [...by.entries()]
+    .sort(([x], [y]) => x - y)
+    .map(([s, a]) => [s, [...new Set(a)].sort((x, y) => x - y)]);
+}
+
+function AyatPanel({
+  s,
+  h,
+  notRepeated,
+  onClose,
+}: {
+  s: Record<string, unknown>;
+  h: Headline;
+  /** «لم يُردَّد»: ayat the child stayed silent on (moved on without a repeat). */
+  notRepeated: readonly string[];
+  onClose: () => void;
+}) {
+  const skipped = notRepeatedBySurah(notRepeated);
   const bySurah = Object.entries((s.ayatBySurah as Record<string, number> | undefined) ?? {})
     .map(([k, v]) => [Number(k), v] as const)
     .filter(([k, v]) => surahOk(k) && typeof v === 'number' && v > 0);
@@ -380,6 +405,26 @@ function AyatPanel({ s, h, onClose }: { s: Record<string, unknown>; h: Headline;
           بعد الباقة التجريبية · قريبًا
         </span>
       </div>
+      {skipped.length > 0 && (
+        <div className="flex flex-col gap-[8px] rounded-px-20 border-[1.5px] border-gold-border bg-gold-tint p-[14px]">
+          <span className="text-[13.5px] font-extrabold text-warning-text">لم يُردَّد</span>
+          <span className="text-[12.5px] leading-[1.7] text-on-gold">
+            بقي طفلك صامتًا عند هذه الآيات، فانتقل المعلّم دون أن يحسبها محفوظة — تستحق مراجعة معه.
+          </span>
+          <div className="flex flex-wrap gap-[6px]">
+            {skipped.map(([surah, ayat]) =>
+              ayat.map((a) => (
+                <span
+                  key={`${surah}:${a}`}
+                  className="rounded-pill border border-gold-border bg-surface px-[11px] py-[5px] text-[12.5px] font-bold text-warning-text"
+                >
+                  {quranMeta.surahName(surah)} · الآية {toArabicDigits(a)}
+                </span>
+              )),
+            )}
+          </div>
+        </div>
+      )}
       {week && (
         <div className="flex flex-col gap-[11px] rounded-px-20 border-[1.5px] border-border bg-background p-[16px]">
           <span className="text-[13.5px] font-extrabold">

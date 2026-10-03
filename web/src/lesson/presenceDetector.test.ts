@@ -78,3 +78,25 @@ test('PCM input: a tone is voiced, zeros are silence; level 0..1', () => {
   expect(d.level).toBe(0);
   expect(utterances).toHaveLength(1);
 });
+
+test('speech too short to count (< 0.6 s) is reported as ignored, never as an utterance', () => {
+  const ignored: number[] = [];
+  const said: number[] = [];
+  const v = new PresenceDetector({
+    onSpeechStart: () => {},
+    onUtterance: (ms) => said.push(ms),
+    onIgnored: (ms) => ignored.push(ms),
+    minUtteranceMs: 600,
+  });
+  const f = (db: number, ms: number) => {
+    for (let t = 0; t < ms; t += CHUNK) v.addLevel(db, CHUNK);
+  };
+  f(-65, 1000);
+  f(-25, 400); // «اه» — speech started, too short
+  f(-65, 800);
+  expect(said).toEqual([]);
+  expect(ignored).toEqual([400]);
+  f(-25, 900); // a real repeat
+  f(-65, 800);
+  expect(said).toEqual([900]);
+});

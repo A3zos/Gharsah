@@ -19,6 +19,8 @@ import { agentDeviceId } from '../server/device';
 import type { ServerProgressSink } from '../server/progressMap';
 import { ServerLesson, type LessonPlan } from '../server/serverLesson';
 import { SupabaseServerProgressSink } from './serverProgressSink';
+import { createTtsProvider } from '../voice/tts';
+import { createRecitationVerifier } from '../voice/recitationVerifier';
 
 const verified = QuranText.fromJson(textJson);
 
@@ -44,7 +46,7 @@ export async function createServerLesson(o: {
   const api = new AgentApi(o.baseUrl, undefined, [o.childName]);
   const mic = new LessonMicrophone();
   const lip = new LipSync();
-  const voice = new ServerTeacherVoice(api, o.gender, undefined, undefined, lip);
+  const voice = new ServerTeacherVoice(createTtsProvider(api), o.gender, undefined, undefined, lip);
   const player = new HtmlUrlPlayer();
   const lesson = new ServerLesson({
     api,
@@ -58,6 +60,7 @@ export async function createServerLesson(o: {
     consent: o.consent,
     recorder: o.consent && MediaUtteranceRecorder.supported() ? new MediaUtteranceRecorder(mic) : null,
     speechInput: o.consent ? BrowserSpeechInput.create() : null,
+    verifier: createRecitationVerifier({ consent: o.consent }),
     verifiedAyah: (s, a) => (verified.has(quranRef(s, a)) ? verified.text(quranRef(s, a)) : null),
     ayahCount: (s) => quranMeta.ayahCount(s),
     surahName: (s) => quranMeta.surahName(s),

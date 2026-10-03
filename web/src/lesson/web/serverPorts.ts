@@ -8,7 +8,8 @@ import { lessonAudio } from './audioUnlock';
 import type { LipSync } from './lipSync';
 import { estimatedSpeechMs } from './speechTeacher';
 import type { LessonMicrophone } from './microphone';
-import type { AgentApi, Gender } from '../server/api';
+import type { Gender } from '../server/api';
+import type { TtsProvider } from '../voice/tts';
 import type {
   PresenceListener,
   SpeechInput,
@@ -61,7 +62,8 @@ export class ServerTeacherVoice implements TeacherVoice {
   private voice: Promise<SpeechSynthesisVoice | null> | null = null;
 
   constructor(
-    private readonly api: AgentApi,
+    /** Who voices the pieces (voice/tts.ts — the one place to switch providers). */
+    private readonly tts: TtsProvider,
     private readonly gender: Gender,
     private readonly synth: SpeechSynthesis | null = typeof speechSynthesis === 'undefined'
       ? null
@@ -72,7 +74,7 @@ export class ServerTeacherVoice implements TeacherVoice {
   ) {}
 
   warm(): void {
-    this.available ??= this.api.speakReady();
+    this.available ??= this.tts.ready();
   }
 
   /** Resolves when the server voice is ready (≤ ~45 s); false → the browser's voice. */
@@ -89,7 +91,7 @@ export class ServerTeacherVoice implements TeacherVoice {
     const server = await this.available!;
     const pieces = speechChunks(text);
     const fetchPiece = (i: number) =>
-      server && pieces[i] ? this.api.speak(pieces[i], this.gender) : Promise.resolve(null);
+      server && pieces[i] ? this.tts.synthesize(pieces[i], this.gender) : Promise.resolve(null);
     let next = fetchPiece(0);
     for (let i = 0; i < pieces.length; i++) {
       // a natural pause between sentences
@@ -269,7 +271,7 @@ export class MicPresenceListener implements PresenceListener {
 
   async waitForSpeech(
     signal: AbortSignal,
-    opts: { minMs?: number; timeoutMs?: number } = {},
+    opts: { minMs?: number; timeoutMs?: number; onVoiced?: (ms: number) => void } = {},
   ): Promise<'spoke' | 'silent' | 'denied'> {
     try {
       await this.mic.open();
@@ -287,15 +289,24 @@ export class MicPresenceListener implements PresenceListener {
         resolve(v);
       };
       const onAbort = () => finish('silent');
+      const windowMs = opts.timeoutMs ?? LISTEN_WINDOW_MS;
       const detector = new PresenceDetector({
         sampleRate: this.mic.sampleRate,
         // the child started speaking: no «silence» while they talk
         onSpeechStart: () => clearTimeout(timer),
-        onUtterance: () => finish('spoke'),
+        onUtterance: (voicedMs) => {
+          opts.onVoiced?.(voicedMs);
+          finish('spoke');
+        },
+        // too short to count (a cough, «اه»): as if nothing was said — a fresh silence window
+        onIgnored: () => {
+          clearTimeout(timer);
+          timer = setTimeout(() => finish('silent'), windowMs);
+        },
         ...(opts.minMs ? { minUtteranceMs: opts.minMs } : {}),
       });
       stop = this.mic.sample((frame, rate) => detector.addSamples(frame, rate));
-      const timer = setTimeout(() => finish('silent'), opts.timeoutMs ?? LISTEN_WINDOW_MS);
+      let timer = setTimeout(() => finish('silent'), windowMs);
       signal.addEventListener('abort', onAbort, { once: true });
     });
   }

@@ -169,7 +169,8 @@ export const tokens = {
     "heroChip": 14,
     "shortcut": 24,
     "shortcutIcon": 18,
-    "profileButton": 15
+    "profileButton": 15,
+    "ayahHighlight": 8
   },
   "webRadii": {
     "px2": 2,

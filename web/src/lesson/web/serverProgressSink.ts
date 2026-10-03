@@ -4,7 +4,7 @@
 // database (progress_guard). Stages only move forward and refs only accumulate.
 import type { ChildRef } from '../../data/student';
 import { supabase } from '../../supabase/client';
-import { withRetry, type ProgressStage } from './progressSink';
+import { withRetry, writeWithOptional, type ProgressStage } from './progressSink';
 import { maxStage, stageRank, type ProgressUpdate, type ServerProgressSink } from '../server/progressMap';
 
 interface Known {
@@ -12,6 +12,7 @@ interface Known {
   refs: Set<string>;
   exists: boolean;
   quizUnscored: boolean;
+  notRepeated: Set<string>;
 }
 
 export class SupabaseServerProgressSink implements ServerProgressSink {
@@ -45,13 +46,25 @@ export class SupabaseServerProgressSink implements ServerProgressSink {
         refs: new Set(row?.done_refs ?? []),
         exists: !!row,
         quizUnscored: false,
+        notRepeated: new Set(),
       };
       this.known.set(u.lessonId, k);
     }
     const stage = maxStage(k.stage, u.stage);
     const refs = new Set([...k.refs, ...u.doneRefs]);
     const unscored = !!u.quizUnscored && !k.quizUnscored;
-    if (k.exists && stageRank(stage) === stageRank(k.stage) && refs.size === k.refs.size && !unscored) return;
+    const notRepeated = new Set([...k.notRepeated, ...(u.notRepeatedRefs ?? [])]);
+    const moreNotRepeated = notRepeated.size > k.notRepeated.size;
+    if (
+      k.exists &&
+      stageRank(stage) === stageRank(k.stage) &&
+      refs.size === k.refs.size &&
+      !unscored &&
+      !moreNotRepeated
+    )
+      return;
+    // «لم يُردَّد» — only when there is one (optional column, see writeWithOptional)
+    const optional: Record<string, unknown> = notRepeated.size ? { not_repeated_refs: [...notRepeated] } : {};
     const flow = {
       stage,
       step_index: Math.min(99, Math.max(0, u.stepIndex)),
@@ -60,9 +73,9 @@ export class SupabaseServerProgressSink implements ServerProgressSink {
       ...(unscored ? { quiz_unscored: true } : {}),
     };
     if (!k.exists) {
-      const { error } = await db
-        .from('progress')
-        .insert({ child_id: childId, lesson_id: u.lessonId, ...flow });
+      const { error } = await writeWithOptional(optional, (extra) =>
+        db.from('progress').insert({ child_id: childId, lesson_id: u.lessonId, ...flow, ...extra }),
+      );
       // 23505 = the row appeared meanwhile (another tab) → update below.
       if (error && error.code !== '23505') throw error;
       k.exists = true;
@@ -70,14 +83,17 @@ export class SupabaseServerProgressSink implements ServerProgressSink {
         k.stage = stage;
         k.refs = refs;
         k.quizUnscored ||= unscored;
+        k.notRepeated = notRepeated;
         return;
       }
     }
-    const { error } = await db
-      .from('progress')
-      .update(flow)
-      .eq('child_id', childId)
-      .eq('lesson_id', u.lessonId);
+    const { error } = await writeWithOptional(optional, (extra) =>
+      db
+        .from('progress')
+        .update({ ...flow, ...extra })
+        .eq('child_id', childId)
+        .eq('lesson_id', u.lessonId),
+    );
     if (error?.code === 'P0001') {
       // progress-stage-backwards: another writer got further — re-read next time.
       this.known.delete(u.lessonId);
@@ -87,5 +103,6 @@ export class SupabaseServerProgressSink implements ServerProgressSink {
     k.stage = stage;
     k.refs = refs;
     k.quizUnscored ||= unscored;
+    k.notRepeated = notRepeated;
   }
 }

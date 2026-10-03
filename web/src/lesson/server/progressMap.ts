@@ -69,6 +69,8 @@ export interface ProgressUpdate {
   readonly stepIndex: number;
   /** The quiz was answered on-device (no words known) — «لم يُقيَّم» for the parent. */
   readonly quizUnscored?: boolean;
+  /** «surah:ayah» refs the child stayed silent on — «لم يُردَّد» for the parent (never in doneRefs). */
+  readonly notRepeatedRefs?: readonly string[];
 }
 
 /** Where server-lesson progress goes (Supabase in the app, a fake in tests). */
@@ -82,11 +84,15 @@ export function doneRefsOf(
   stage: ProgressStage,
   surah: number,
   ayahCount: (surah: number) => number,
+  /** Ayat the child never repeated — not memorized, whatever the stage. */
+  notRepeated: ReadonlySet<number> = new Set(),
 ): string[] {
   if (turn.kind !== 'quran' && stage !== 'done') return [];
   const ayat =
     stage === 'hadith' || stage === 'done'
       ? Array.from({ length: ayahCount(surah) }, (_, i) => i + 1)
       : turn.recitedAyat;
-  return [...new Set(ayat)].filter((a) => a >= 1 && a <= 300).map((a) => `${surah}:${a}`);
+  return [...new Set(ayat)]
+    .filter((a) => a >= 1 && a <= 300 && !notRepeated.has(a))
+    .map((a) => `${surah}:${a}`);
 }

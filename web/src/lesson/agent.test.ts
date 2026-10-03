@@ -649,18 +649,43 @@ test('voice-only: silence before the hadith → one nudge, then the lesson moves
   await r.agent.dispose();
 });
 
-test('voice-only: silence while repeating → one nudge, then the step completes (no replay, no waiting)', async () => {
+/** Lets time pass with a silent child (recitations still finish). */
+async function quietUntil(r: Rig, until: () => boolean, maxMs = 120_000) {
+  for (let t = 0; t < maxMs; t += 100) {
+    if (until()) return;
+    if (r.s.beat === 'reciting' && r.player.playing && !r.player.paused) r.player.finish();
+    await elapse(100);
+  }
+  throw new Error(
+    `timed out at ${JSON.stringify({ screen: r.s.screen, beat: r.s.beat, step: r.s.stepIndex })}`,
+  );
+}
+
+test('voice-only: silent on a repeat → «أنا أسمعك…» + the ayah again; silent again → a neutral line, the ayah, on (no praise)', async () => {
   const r = new Rig({ timings: VOICE });
   await start(r);
   await autopilot(r, () => r.s.stepIndex === 5 && r.s.beat === 'listening' && r.teacher.isListening);
   const step = r.s.stepIndex;
-  await elapse(6000);
-  expect(r.teacher.spoken.at(-1)).toBe('nudge.start');
-  await elapse(LINE + GUARD + 6000 + 100);
-  expect(r.s.repeatsDone).toBe(r.s.repeatsTarget); // completed by itself
-  await autopilot(r, () => r.s.stepIndex > step, 60_000);
-  expect(r.s.stepIndex).toBeGreaterThan(step);
-  expect(r.player.started.filter((a) => a).length).toBeGreaterThan(0);
+  const ref = r.s.ayahRef!;
+  const ayahAudio = JSON.stringify(r.player.started.at(-1));
+  const plays = r.player.started.length;
+  const from = r.teacher.spoken.length;
+  await quietUntil(r, () => r.s.stepIndex > step);
+  const said = r.teacher.spoken.slice(from);
+  expect(said[0]).toBe('nudge.hear_you');
+  expect(said.indexOf('ayah.move_on')).toBeGreaterThan(0);
+  // silence is never praised or counted
+  expect(said.some((id) => id.startsWith('praise') || id.startsWith('count'))).toBe(false);
+  // the same ayah played again after the nudge and after the neutral line
+  expect(r.player.started.slice(plays, plays + 2).map((a) => JSON.stringify(a))).toEqual([
+    ayahAudio,
+    ayahAudio,
+  ]);
+  // «لم يُردَّد» for the parent, and never counted as memorized
+  await flush();
+  const p = r.sink.checkpoints.at(-1)!;
+  expect([...(p.notRepeatedRefs ?? [])]).toContain(refKey(ref));
+  expect([...p.doneRefs]).not.toContain(refKey(ref));
   await r.agent.dispose();
 });
 

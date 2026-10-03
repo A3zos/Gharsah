@@ -17,6 +17,7 @@ import {
   type TeacherAction,
 } from '../aiTeacher';
 import { Emitter } from '../observable';
+import { REPEAT_MIN_SPEECH_MS } from '../voice/recitationVerifier';
 import { PresenceDetector } from '../presenceDetector';
 import type { TeacherLine } from '../teacherLines';
 import type { LessonMicrophone } from './microphone';
@@ -144,6 +145,9 @@ export class SpeechTeacher implements AiTeacher {
     const detector = new PresenceDetector({
       sampleRate: this.mic.sampleRate,
       onSpeechStart: () => this._actions.emit({ type: 'speechStarted' }),
+      onIgnored: () => this._actions.emit({ type: 'speechIgnored' }),
+      // a repeat (or an answer) counts only after real speech (energy above the adaptive threshold)
+      minUtteranceMs: REPEAT_MIN_SPEECH_MS,
       onUtterance: (voicedMs) =>
         this._actions.emit(
           this.mode === 'answer'

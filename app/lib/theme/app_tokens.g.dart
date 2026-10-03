@@ -224,6 +224,7 @@ abstract final class LessonRadii {
   static const double shortcut = 24;
   static const double shortcutIcon = 18;
   static const double profileButton = 15;
+  static const double ayahHighlight = 8; // the current ayah's inline highlight (wraps across lines)
 }
 
 abstract final class AppShadows {

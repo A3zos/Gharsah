@@ -40,6 +40,7 @@ export const previewChild: ChildProfile = {
   pilotDaysDone: 0,
   pilotDoneAt: {},
   pilotUnscored: [],
+  notRepeatedRefs: [],
   schedule: {
     days: ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'],
     time: 17 * 60,

@@ -107,17 +107,25 @@ describe('parseTurn', () => {
 });
 
 describe('parseAction', () => {
-  it('show_ayat: first defaults to 1; current as ayah number or as index', () => {
+  it('show_ayat: first defaults to 1; current is a 1-based ayah number, never an index', () => {
     expect(parseAction({ type: 'show_ayat', ayat: ['a', 'b'] })).toMatchObject({ first: 1, current: null });
     expect(parseAction({ type: 'show_ayat', ayat: ['a', 'b', 'c'], first: 2, current: 3 })).toMatchObject({
       current: 3,
     });
+    // outside the passage shown → no highlight (not re-read as an index)
     expect(parseAction({ type: 'show_ayat', ayat: ['a', 'b', 'c'], first: 5, current: 1 })).toMatchObject({
-      current: 6,
+      current: null,
     });
     expect(parseAction({ type: 'show_ayat', ayat: ['a'], first: 5, current: 40 })).toMatchObject({
       current: null,
     });
+    expect(parseAction({ type: 'show_ayat', ayat: ['a', 'b'], current: 0 })).toMatchObject({ current: null });
+  });
+
+  it('play_ayah: a 1-based ayah number (0 / negative → dropped)', () => {
+    const url = 'https://everyayah.com/data/Alafasy_128kbps/112001.mp3';
+    expect(parseAction({ type: 'play_ayah', ayah: 1, text: 't', url })).toMatchObject({ ayah: 1 });
+    expect(parseAction({ type: 'play_ayah', ayah: 0, text: 't', url })).toBeNull();
   });
 
   it('show_ayat hadith fields', () => {
@@ -212,5 +220,64 @@ describe('other responses', () => {
         items: [{ hadith_id: 6, title: 'الغضب', action: 'اهدأ', done: true }, { title: 'x' }],
       }),
     ).toEqual([{ hadithId: 6, title: 'الغضب', action: 'اهدأ', done: true }]);
+  });
+});
+
+describe('ayah numbering — Al-Ikhlas as the live server sends it (2026-10-03)', () => {
+  const url = (a: number) => `https://everyayah.com/data/Alafasy_128kbps/112${String(a).padStart(3, '0')}.mp3`;
+  /** The recitation turns of a real session: [play_ayah, show_ayat] per attempt, 1-based. */
+  const recitationTurn = (ayah: number) => ({
+    ...base,
+    stage: 'recitation',
+    expects: 'repeat',
+    actions: [
+      { type: 'play_ayah', ayah, text: `T${ayah}`, url: url(ayah) },
+      { type: 'show_ayat', ayat: ['a1', 'a2', 'a3', 'a4'], first: 1, current: ayah },
+      { type: 'set_step', step: 3 },
+    ],
+  });
+
+  it('the repeats go 1 → 2 → 3 → 4, starting at ayah 1', () => {
+    const turns = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4].map((a) =>
+      parseTurn(recitationTurn(a), 'quran'),
+    );
+    const order = turns.map((t) => t.ayah).filter((a, i, all) => a !== all[i - 1]);
+    expect(order).toEqual([1, 2, 3, 4]);
+    expect(turns[0]!.ayah).toBe(1);
+  });
+
+  it('the highlighted ayah is the ayah played and asked for', () => {
+    for (const a of [1, 2, 3, 4]) {
+      const t = parseTurn(recitationTurn(a), 'quran');
+      const play = t.actions.find((x) => x.type === 'play_ayah');
+      const show = t.actions.find((x) => x.type === 'show_ayat');
+      expect(play).toMatchObject({ ayah: a, url: url(a) });
+      expect(show).toMatchObject({ current: a });
+      expect(t.ayah).toBe(a);
+    }
+  });
+
+  it('a show_ayat that disagrees with play_ayah follows the ayah being played', () => {
+    const raw = recitationTurn(1);
+    const t = parseTurn({ ...raw, actions: [raw.actions[0], { ...raw.actions[1], current: 2 }] }, 'quran');
+    expect(t.actions.find((x) => x.type === 'show_ayat')).toMatchObject({ current: 1 });
+    expect(t.ayah).toBe(1);
+  });
+
+  it('the whole surah (play_all, no current) asks for no single ayah', () => {
+    const t = parseTurn(
+      {
+        ...base,
+        stage: 'recitation',
+        expects: 'repeat',
+        actions: [
+          { type: 'show_ayat', ayat: ['a1', 'a2', 'a3', 'a4'], first: 1 },
+          { type: 'play_all', urls: [1, 2, 3, 4].map(url) },
+        ],
+      },
+      'quran',
+    );
+    expect(t.ayah).toBeNull();
+    expect(t.actions.find((x) => x.type === 'show_ayat')).toMatchObject({ current: null });
   });
 });

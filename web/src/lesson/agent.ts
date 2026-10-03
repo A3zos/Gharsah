@@ -189,6 +189,8 @@ export class LessonAgent {
   // Per-step
   private nudges = 0;
   private autoReplayed = false;
+  /** Silent twice: the ayah plays once more, then the lesson moves on (no repeat counted). */
+  private replayThenNext = false;
   /** Voice-only: silences at the go-ahead, mic refusals, listen-only mode. */
   private goAheadSilences = 0;
   private micDenials = 0;
@@ -490,6 +492,7 @@ export class LessonAgent {
     if (i >= this.script.steps.length) return;
     this.nudges = 0;
     this.autoReplayed = false;
+    this.replayThenNext = false;
     this.passVoicedMs = 0;
     clearTimeout(this.passTimer);
     this._progress = { ...this._progress, stepIndex: i };
@@ -845,6 +848,11 @@ export class LessonAgent {
       type: 'recitationFinished',
       ref: this.s.screen === 'hadith' ? null : this.s.ayahRef,
     });
+    if (this.replayThenNext) {
+      this.replayThenNext = false;
+      this.advanceAfterPause();
+      return;
+    }
     if (this.step.type === 'listen_surah') this.nextListenAyah();
     else this.promptRepeat();
   }
@@ -888,20 +896,21 @@ export class LessonAgent {
 
   private onSilence(): void {
     if (this.timings.voiceOnly) {
-      // One gentle nudge; silence again → the step completes by itself (never stuck).
+      // Silence is never praised: «أنا أسمعك… ردّدها بصوتك» + the ayah again; silent
+      // again → a neutral line, the ayah once more, and on — no repeat counted.
       if (++this.nudges >= 2) {
-        this.autoContinue();
+        this.moveOnUnrepeated();
         return;
       }
-      const id =
-        this.step.type === 'full_surah'
-          ? 'nudge.full'
-          : this.s.repeatsTarget - this.s.repeatsDone === 1
-            ? 'nudge.one_left'
-            : this.s.repeatsTarget - this.s.repeatsDone === 2
-              ? 'nudge.two_left'
-              : 'nudge.start';
-      this.say(line(id), { beat: 'nudging', then: () => this.enterListening() });
+      if (this.step.type === 'full_surah') {
+        this.say(line('nudge.full'), { beat: 'nudging', then: () => this.enterListening() });
+        return;
+      }
+      const canReplay = this.s.screen === 'ayah' || this.s.hadith?.canPlay === true;
+      this.say(line('nudge.hear_you'), {
+        beat: 'nudging',
+        then: canReplay ? () => void this.startRecitation() : () => this.enterListening(),
+      });
       return;
     }
     // The mic may not be hearing the child — offer «ردّدت» from now on (this step).
@@ -995,7 +1004,9 @@ export class LessonAgent {
       return;
     }
     // Whole surah recited: memorized (every ayah) and complete.
-    const refs = this.surahAyatOf(step.surah).map((a) => refKey(quranRef(step.surah, a.ayah)));
+    const refs = this.surahAyatOf(step.surah)
+      .map((a) => refKey(quranRef(step.surah, a.ayah)))
+      .filter((k) => !this._progress.notRepeatedRefs?.has(k)); // «لم يُردَّد» ≠ memorized
     this._progress = {
       ...this._progress,
       doneRefs: new Set([...this._progress.doneRefs, ...refs]),
@@ -1026,14 +1037,42 @@ export class LessonAgent {
       this.reportWithoutRecording();
       return;
     }
-    const step = this.step;
-    if (step.type === 'full_surah') {
-      this.set(copy(this.s, { passesDone: Math.max(this.s.passesDone, step.passes - 1) }));
-      this.completePass();
+    // A recitation the child wasn't heard on is never counted (no praise, not memorized).
+    this.moveOnUnrepeated();
+  }
+
+  /**
+   * The child stayed silent (or can't be heard) on a recitation: «نسمعها مرة ثانية من
+   * القارئ ونكمل», the ayah once more, then the next step — no repeat counted, no
+   * praise. The ayah is «لم يُردَّد» for the parent and never counted as memorized.
+   */
+  private moveOnUnrepeated(): void {
+    clearTimeout(this.beatTimer);
+    clearTimeout(this.passTimer);
+    this.fire(this.stopListening());
+    this.nudges = 0;
+    if (this.step.type === 'full_surah') {
+      // the whole surah wasn't recited: not complete, nothing praised
+      this.say(line('ayah.move_on'), { beat: 'advancing', then: () => this.advanceAfterPause() });
       return;
     }
-    this.set(copy(this.s, { repeatsDone: Math.max(this.s.repeatsDone, this.s.repeatsTarget - 1) }));
-    this.countRepeat();
+    if (this.s.screen === 'ayah' && this.s.ayahRef) {
+      const key = refKey(this.s.ayahRef);
+      this._progress = {
+        ...this._progress,
+        notRepeatedRefs: new Set([...(this._progress.notRepeatedRefs ?? []), key]),
+      };
+    }
+    const canReplay = this.s.screen === 'ayah' || this.s.hadith?.canPlay === true;
+    this.say(line('ayah.move_on'), {
+      beat: 'advancing',
+      then: canReplay
+        ? () => {
+            this.replayThenNext = true;
+            void this.startRecitation();
+          }
+        : () => this.advanceAfterPause(),
+    });
   }
 
   private praise(): void {
@@ -1386,6 +1425,11 @@ export class LessonAgent {
   private onAction(a: TeacherAction): void {
     if (this.paused || !this.listening) return;
     switch (a.type) {
+      case 'speechIgnored':
+        // too short to count: as if nothing was said — the silence timer runs again
+        if (this.s.beat === 'listening') this.armSilence(this.gen);
+        else if (this.s.beat === 'hearingAnswer') this.enterGoAhead();
+        break;
       case 'speechStarted':
         if (this.s.beat === 'hearingAnswer') clearTimeout(this.beatTimer);
         if (this.s.beat === 'listening') {

@@ -3,8 +3,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { PlaybackBlocked } from '../ports';
 import { AgentApi } from './api';
 import type { ProgressUpdate } from './progressMap';
+import { ENCOURAGE_RETRY } from '../voice/recitationVerifier';
 import {
   HADITH_PLACEHOLDER,
+  MOVE_ON_UNREPEATED,
+  NUDGE_REPEAT,
+  REPEATS_START,
+  REPEATS_START_REPLY,
+  SKIP_AYAH,
+  WHOLE_SURAH_TURN,
   normalizeArabic,
   RATE_LIMIT_BACKOFF_MS,
   ServerLesson,
@@ -15,7 +22,7 @@ import {
   type UrlPlayer,
   type UtteranceRecorder,
 } from './serverLesson';
-import { EVERYAYAH, FakeAgentServer } from './testing/fakeServer';
+import { EVERYAYAH, FakeAgentServer, QURAN_STAGES, type StageSpec } from './testing/fakeServer';
 
 interface Setup {
   server: FakeAgentServer;
@@ -279,7 +286,9 @@ describe('ServerLesson — repeat and consent', () => {
     t.lesson.allowTapped();
     await until(t.lesson, (s) => s.phase === 'finished');
     expect(t.lesson.state.value).toMatchObject({ listenOnly: true, micPrompt: false });
-    expect(t.server.messages()).toEqual(expect.arrayContaining(['الحمد لله بخير', 'REF-AYAH-4']));
+    // answers go on by themselves; a repeat that can't be heard is never counted — skipped
+    expect(t.server.messages()).toEqual(expect.arrayContaining(['الحمد لله بخير', SKIP_AYAH]));
+    expect(t.server.messages()).not.toContain('REF-AYAH-1');
   });
 
   it('silence: one gentle nudge per turn, then the lesson continues by itself (never stuck)', async () => {
@@ -293,7 +302,10 @@ describe('ServerLesson — repeat and consent', () => {
     expect(spoken[greetAt + 1]).toBe('أنا أسمعك يا بطل، قلها بصوتك');
     expect(spoken[greetAt + 2]).not.toBe('أنا أسمعك يا بطل، قلها بصوتك'); // one nudge, not two
     expect(t.server.messages()[0]).toBe('الحمد لله بخير');
-    expect(spoken).toContain('أنا أسمعك يا بطل، ردّدها بصوتك'); // the repeat nudge
+    expect(spoken).toContain('أنا أسمعك… ردّدها بصوتك'); // the repeat nudge
+    // silence is never praised or sent as a repeat: the neutral line, then «تخطّي الآية»
+    expect(spoken).toContain(MOVE_ON_UNREPEATED);
+    expect(t.server.messages().filter((m) => m.startsWith('REF-AYAH'))).toEqual([]);
   });
 
   it('no consent: speech of ≥0.6 s on the device → the first quick reply; nothing recorded or sent', async () => {
@@ -761,5 +773,198 @@ describe('ServerLesson — voice first, no early browser voice', () => {
     bad.lesson.answer('تمام');
     await until(bad.lesson, (s) => s.phase === 'fallback');
     expect(bad.lesson.state.value.fallbackReason).toMatch(/surah 112 ≠ today's 114/);
+  });
+});
+
+// ── recitation: ayah order, silence, transitions, judgments (real-test fixes) ──
+
+/** The recitation stage as the live server sends it: play_ayah N + show_ayat current N (1-based). */
+const REAL_RECITATION: StageSpec = {
+  id: 'recitation',
+  label: 'التلاوة',
+  say: 'استمع للآية ثم ردّدها.',
+  expects: 'repeat',
+  turns: 4,
+  actions: (n) => [
+    { type: 'play_ayah', ayah: n + 1, text: `REF-AYAH-${n + 1}`, url: EVERYAYAH(n + 1) },
+    { type: 'show_ayat', ayat: ['S1', 'S2', 'S3', 'S4'], first: 1, current: n + 1, surah_name: 'الإخلاص' },
+  ],
+};
+const withStage = (id: string, stage: StageSpec) => QURAN_STAGES.map((s) => (s.id === id ? stage : s));
+
+describe('ServerLesson — recitation', () => {
+  const toRepeats = async (t: Setup) => {
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('تمام');
+    for (const stage of ['lesson_intro', 'tafsir', 'fadl']) {
+      await at(t.lesson, stage, 'continue');
+      t.lesson.continueTapped();
+    }
+  };
+
+  it('Al-Ikhlas: the repeats go 1 → 2 → 3 → 4; highlighted = played = asked', async () => {
+    const asked: { highlighted: number | null; played: string | undefined }[] = [];
+    let t: Setup | null = null;
+    const presence: PresenceListener = {
+      waitForSpeech: async (_s, o) => {
+        if (o?.purpose === 'answer') return new Promise<never>(() => {});
+        asked.push({ highlighted: t!.lesson.state.value.currentAyah, played: t!.played.at(-1) });
+        o?.onVoiced?.(1500);
+        return 'spoke';
+      },
+    };
+    t = setup({ server: new FakeAgentServer(withStage('recitation', REAL_RECITATION)), presence });
+    await toRepeats(t);
+    await at(t.lesson, 'tajweed', 'continue');
+    expect(asked.map((a) => a.highlighted)).toEqual([1, 2, 3, 4]);
+    expect(asked.map((a) => a.played)).toEqual([1, 2, 3, 4].map(EVERYAYAH));
+    expect(t.server.messages().slice(-4)).toEqual(['REF-AYAH-1', 'REF-AYAH-2', 'REF-AYAH-3', 'REF-AYAH-4']);
+  });
+
+  it('silent on a repeat: nudge + the ayah again; silent again: neutral line, the ayah, «تخطّي الآية» — no praise', async () => {
+    const spoken: string[] = [];
+    let calls = 0;
+    const presence: PresenceListener = {
+      waitForSpeech: async (_s, o) => {
+        if (o?.purpose === 'answer') return new Promise<never>(() => {});
+        calls++;
+        // ayah 1: silent twice; the rest: the child repeats
+        if (calls <= 2) return 'silent';
+        o?.onVoiced?.(1200);
+        return 'spoke';
+      },
+    };
+    const t = setup({
+      server: new FakeAgentServer(withStage('recitation', REAL_RECITATION)),
+      presence,
+      voice: { speak: async (x) => void spoken.push(x), stop: () => {} },
+    });
+    await toRepeats(t);
+    await at(t.lesson, 'tajweed', 'continue');
+    // ayah 1 plays: the first time, after the nudge, and after the neutral line (before ayah 2)
+    const beforeAyah2 = t.played.slice(0, t.played.indexOf(EVERYAYAH(2)));
+    expect(beforeAyah2.filter((u) => u === EVERYAYAH(1))).toHaveLength(3);
+    const nudgeAt = spoken.indexOf(NUDGE_REPEAT.boy);
+    const moveAt = spoken.indexOf(MOVE_ON_UNREPEATED);
+    expect(nudgeAt).toBeGreaterThan(-1);
+    expect(moveAt).toBeGreaterThan(nudgeAt);
+    // the server never hears «repeated» for ayah 1 — its own skip reply instead
+    expect(t.server.messages().slice(-4)).toEqual([SKIP_AYAH, 'REF-AYAH-2', 'REF-AYAH-3', 'REF-AYAH-4']);
+    // ayah 1 is «لم يُردَّد» for the parent and is never counted as memorized
+    const withMark = t.updates.filter((u) => u.notRepeatedRefs?.length);
+    expect(withMark.at(-1)?.notRepeatedRefs).toEqual(['112:1']);
+    expect(t.updates.flatMap((u) => u.doneRefs)).not.toContain('112:1');
+  });
+
+  it('too little speech (< 0.6 s) is not a repeat — treated like silence, never praised', async () => {
+    const seen: (number | undefined)[] = [];
+    const t = setup({
+      server: new FakeAgentServer(withStage('recitation', REAL_RECITATION)),
+      presence: {
+        waitForSpeech: async (_s, o) => {
+          if (o?.purpose === 'answer') return new Promise<never>(() => {});
+          seen.push(o?.minMs);
+          o?.onVoiced?.(300);
+          return 'spoke';
+        },
+      },
+    });
+    await toRepeats(t);
+    await at(t.lesson, 'tajweed', 'continue');
+    expect(seen.every((m) => m === 600)).toBe(true);
+    expect(t.server.messages().filter((m) => m.startsWith('REF-AYAH'))).toEqual([]);
+    expect(t.server.messages().filter((m) => m === SKIP_AYAH)).toHaveLength(4);
+  });
+
+  it('after the reciter plays the whole surah, the teacher speaks before the mic opens', async () => {
+    const events: string[] = [];
+    const intro: StageSpec = {
+      id: 'lesson_intro',
+      label: 'المقدمة',
+      say: 'استمع للسورة.',
+      expects: 'continue',
+      quick: ['أكمل الدرس'],
+      extra: { surah_no: 112 },
+      actions: () => [
+        { type: 'show_ayat', ayat: ['S1', 'S2', 'S3', 'S4'], first: 1 },
+        { type: 'play_all', urls: [1, 2, 3, 4].map(EVERYAYAH) },
+      ],
+    };
+    const t = setup({
+      server: new FakeAgentServer(withStage('lesson_intro', intro)),
+      voice: { speak: async (x) => void events.push(`say:${x}`), stop: () => {} },
+      player: { play: async (u) => void events.push(`play:${u}`), stop: () => {} },
+      presence: {
+        waitForSpeech: async (_s, o) => {
+          events.push(`listen:${o?.purpose}`);
+          return 'spoke';
+        },
+      },
+    });
+    void t.lesson.start();
+    await vi.waitFor(() => expect(t.server.messages()).toContain('أكمل الدرس'));
+    const lastPlay = events.indexOf(`play:${EVERYAYAH(4)}`); // the end of the first (whole-surah) recitation
+    expect(events.slice(lastPlay + 1, lastPlay + 4)).toEqual([
+      `say:${REPEATS_START.boy}`,
+      'listen:answer',
+      `say:${REPEATS_START_REPLY}`,
+    ]);
+    expect(t.server.messages()).toContain('أكمل الدرس');
+  });
+
+  it('the whole surah to recite: the teacher asks first, and the server gets its own surah text', async () => {
+    const spoken: string[] = [];
+    const whole: StageSpec = {
+      id: 'recitation',
+      label: 'التلاوة',
+      say: 'سأسمعك السورة كاملة.',
+      expects: 'repeat',
+      actions: () => [
+        { type: 'show_ayat', ayat: ['S1', 'S2', 'S3', 'S4'], first: 1 },
+        { type: 'play_all', urls: [1, 2, 3, 4].map(EVERYAYAH) },
+      ],
+    };
+    const t = setup({
+      server: new FakeAgentServer(withStage('recitation', whole)),
+      voice: { speak: async (x) => void spoken.push(x), stop: () => {} },
+    });
+    await toRepeats(t);
+    await at(t.lesson, 'tajweed', 'continue');
+    expect(spoken).toContain(WHOLE_SURAH_TURN.boy);
+    expect(t.server.messages()).toContain('S1 S2 S3 S4');
+    expect(t.server.messages()).not.toContain('ردّدت');
+  });
+
+  it('a server line judging words we cannot verify → the approved encouragement, and the ayah plays', async () => {
+    const spoken: string[] = [];
+    const judging: StageSpec = { ...REAL_RECITATION, turns: 2, say: 'نسيت كلمة يا بطل! استمع مرة ثانية.' };
+    const t = setup({
+      server: new FakeAgentServer(withStage('recitation', judging)),
+      voice: { speak: async (x) => void spoken.push(x), stop: () => {} },
+    });
+    await toRepeats(t);
+    await at(t.lesson, 'tajweed', 'continue');
+    expect(spoken.some((x) => x.includes('نسيت'))).toBe(false);
+    expect(spoken).toContain(ENCOURAGE_RETRY);
+    expect(t.played).toContain(EVERYAYAH(2));
+  });
+
+  it('never the browser speech recognition for a recitation (even with consent)', async () => {
+    const during: string[] = [];
+    let t: Setup | null = null;
+    const listen = vi.fn(async () => {
+      during.push(String(t!.lesson.state.value.expects));
+      return 'تمام';
+    });
+    t = setup({
+      server: new FakeAgentServer(withStage('recitation', REAL_RECITATION)),
+      consent: true,
+      speechInput: { listen },
+    });
+    void t.lesson.start();
+    await vi.waitFor(() => expect(t!.server.messages()).toContain('REF-AYAH-4'));
+    expect(during.length).toBeGreaterThan(0); // answers do use it (consent)…
+    expect(during).not.toContain('repeat'); // …a recitation never does
   });
 });

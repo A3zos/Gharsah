@@ -559,7 +559,11 @@
           "heroChip": 14,
           "shortcut": 24,
           "shortcutIcon": 18,
-          "profileButton": 15
+          "profileButton": 15,
+          "ayahHighlight": {
+            "value": 8,
+            "note": "the current ayah's inline highlight (wraps across lines)"
+          }
         }
       }
     ],

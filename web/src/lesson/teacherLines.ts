@@ -44,6 +44,9 @@ export const TEACHER_LINES: Readonly<Record<string, string>> = {
   'nudge.one_left': 'باقي مرة، هيا…',
   'nudge.two_left': 'باقي مرتين، هيا…', // REVIEW
   'nudge.start': 'هيا… ردّد معي.', // REVIEW
+  // Silence is never praised: a nudge + the ayah again; silent again → this, the ayah, then on.
+  'nudge.hear_you': 'أنا أسمعك… ردّدها بصوتك', // REVIEW
+  'ayah.move_on': 'نسمعها مرة ثانية من القارئ ونكمل', // REVIEW
   'praise.first': 'أحسنت يا {name}… ننتقل للآية {ordinal}.',
   'praise.next': 'ممتاز! ننتقل للآية {ordinal}.',
   'praise.last_left': 'رائع… بقيت الآية الأخيرة.',
