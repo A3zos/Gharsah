@@ -6,7 +6,6 @@ import {
   ChildrenIcon,
   CheckIcon,
   PlusIcon,
-  ShieldIcon,
   SproutBadge,
   ForwardIcon,
 } from '../../components/ui/icons';
@@ -83,12 +82,6 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
           </span>
           <ForwardIcon size={22} color="deepGreen" strokeWidth={2.4} />
         </Link>
-        <span className="flex items-center gap-[12px] rounded-px-26 border-[1.5px] border-border bg-surface px-[26px] py-[20px]">
-          <ShieldIcon size={22} />
-          <span className="max-w-[240px] text-[13.5px] leading-[1.7] text-text-muted">
-            لا نطلب بيانات بطاقة · الإلغاء من إعدادات الاشتراكات في Play
-          </span>
-        </span>
       </div>
     </div>
   );

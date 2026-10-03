@@ -399,10 +399,4 @@ export const SourceIcons = {
       <circle cx="12" cy="16.9" r="1.2" fill={C.berryDeep} />
     </svg>
   ),
-  phone: (s: number) => (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-      <rect x="6" y="2.5" width="12" height="19" rx="3" stroke={C.warningText} strokeWidth="1.9" />
-      <path d="M10.5 18.5 H13.5" stroke={C.warningText} strokeWidth="1.9" strokeLinecap="round" />
-    </svg>
-  ),
 };

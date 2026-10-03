@@ -250,27 +250,6 @@ export function LandingDesktop() {
                 </p>
               </div>
               <PlanCards pilotAction={<PilotSignupLink />} />
-              <div
-                id="get-app"
-                className="flex w-full items-center gap-[24px] rounded-px-28 border-[1.5px] border-border bg-background px-[32px] py-[24px]"
-              >
-                <span
-                  className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-px-19 bg-gold-tint"
-                  aria-hidden="true"
-                >
-                  {SourceIcons.phone(26)}
-                </span>
-                <span className="flex grow flex-col gap-[5px]">
-                  <span className="text-[18px] font-extrabold">الشراء يتمّ داخل التطبيق</span>
-                  <span className="text-[14.5px] leading-[1.7] text-text-muted">
-                    Google Play لا يتيح الشراء من المتصفح — حمّل التطبيق على جوال وليّ الأمر لإكمال الاشتراك.
-                    المتصفح للاستعراض والمتابعة فقط.
-                  </span>
-                </span>
-              </div>
-              <span className="text-[13.5px] text-text-muted">
-                لا نطلب بيانات بطاقة داخل التطبيق · يمكنك الإلغاء في أي وقت من إعدادات الاشتراكات في Play
-              </span>
             </div>
           </section>
         </main>

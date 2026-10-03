@@ -247,15 +247,6 @@ export function LandingMobile() {
             ابدأ بالباقة التجريبية — الباقتان الشهرية والسنوية قريبًا
           </p>
           <PlanCards pilotAction={<PilotSignupLink />} />
-          <div
-            id="m-get-app"
-            className="flex flex-col gap-[13px] rounded-px-24 border-[1.5px] border-border bg-surface p-[18px]"
-          >
-            <span className="text-[15.5px] font-extrabold">الشراء يتمّ داخل التطبيق</span>
-            <span className="text-[13.5px] leading-[1.8] text-text-muted">
-              Google Play لا يتيح الشراء من المتصفح — حمّل التطبيق لإكمال الاشتراك.
-            </span>
-          </div>
         </section>
 
         <footer className="flex flex-col items-center gap-[14px] border-t border-t-border px-[20px] pt-[28px] pb-[34px]">
