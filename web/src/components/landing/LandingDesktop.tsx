@@ -3,10 +3,10 @@ import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { buttonClass } from '../ui/Button';
-import { BookIcon, CheckIcon, CodeIcon, ForwardIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
+import { BookIcon, CodeIcon, ForwardIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
 import { LivePhone } from './LivePhone';
-import { ParentPreview } from './ParentPreview';
+import { ParentFeatures, ParentPreview } from './ParentPreview';
 import { HOW_STEPS, HowExample, HowLabel, SourceIcons, type HowStep } from './shared';
 import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
 import { LanguageMenu } from '../ui/LanguageSwitcher';
@@ -141,7 +141,7 @@ export function LandingDesktop() {
           </section>
 
           <section className="flex w-full justify-center border-y border-y-border bg-surface py-[80px]">
-            <div className={`${COL} flex items-center gap-[64px]`}>
+            <div className={`${COL} flex items-center gap-[48px]`}>
               <div className="flex grow flex-col gap-[22px]">
                 <span className="self-start rounded-pill bg-green-tint px-[16px] py-[8px] text-[13px] font-extrabold text-deep-green">
                   لوليّ الأمر
@@ -149,22 +149,7 @@ export function LandingDesktop() {
                 <h2 className="m-0 max-w-[480px] font-heading text-[40px] leading-[1.45] font-bold text-text-dark">
                   تتابع تقدّمه… بلا أن تقف فوق رأسه
                 </h2>
-                <p className="m-0 max-w-[500px] text-[17px] leading-[1.95] text-text-muted">
-                  لوحة هادئة تريك ما حفظه، وما استمع إليه، والمشاريع التي أنجزها — وتسمع تسجيل ابنه بصوته. لا
-                  ترتيب ولا مقارنات مُحبِطة.
-                </p>
-                <ul className="m-0 flex list-none flex-col gap-[12px] p-0 pt-[6px]">
-                  {[
-                    'جدول أسبوعي تختاره أنت، ومدّة جلسة محدودة',
-                    'تسجيلات المشاريع تصلك أنت وحدك',
-                    'أكثر من ابن على حساب واحد',
-                  ].map((t) => (
-                    <li key={t} className="flex items-center gap-[11px] text-[15.5px] font-bold">
-                      <CheckIcon />
-                      {t}
-                    </li>
-                  ))}
-                </ul>
+                <ParentFeatures desktop />
               </div>
               <div className="flex w-[540px] shrink-0 flex-col gap-[18px]">
                 <ParentPreview desktop />
