@@ -141,8 +141,8 @@ export function LandingDesktop() {
           </section>
 
           <section className="flex w-full justify-center border-y border-y-border bg-surface py-[80px]">
-            <div className={`${COL} flex items-center gap-[48px]`}>
-              <div className="flex grow flex-col gap-[22px]">
+            <div className={`${COL} grid grid-cols-2 items-center gap-[56px]`}>
+              <div className="flex min-w-0 flex-col gap-[22px]">
                 <span className="self-start rounded-pill bg-green-tint px-[16px] py-[8px] text-[13px] font-extrabold text-deep-green">
                   لوليّ الأمر
                 </span>
@@ -151,7 +151,8 @@ export function LandingDesktop() {
                 </h2>
                 <ParentFeatures desktop />
               </div>
-              <div className="flex w-[540px] shrink-0 flex-col gap-[18px]">
+              {/* the preview sits on the page container's edge, never past it */}
+              <div className="flex min-w-0 justify-end">
                 <ParentPreview desktop />
               </div>
             </div>

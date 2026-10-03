@@ -1,7 +1,6 @@
 // «لوليّ الأمر» on the landing: the copy + feature rows (ParentFeatures) and a live preview
-// of the parent dashboard (ParentPreview) — one card in a light browser frame, four views
-// (overview / today's lesson / the project / his questions) that switch every 5 s with a
-// cross-fade. All names and numbers in the preview are SAMPLE data (no real child).
+// of the parent dashboard (ParentPreview) — one card in a light browser frame, three views
+// (overview / today's lesson / the project) that switch every 5 s with a cross-fade. All names and numbers in the preview are SAMPLE data (no real child).
 import { useEffect, useRef, useState } from 'react';
 
 import { PILOT_MAX_CHILDREN } from '../../content/plans';
@@ -15,7 +14,6 @@ const VIEWS = [
   { key: 'overview', label: 'نظرة عامة' },
   { key: 'today', label: 'حصة اليوم' },
   { key: 'project', label: 'المشروع' },
-  { key: 'questions', label: 'أسئلته' },
 ] as const;
 type ViewKey = (typeof VIEWS)[number]['key'];
 const VIEW_MS = 5000;
@@ -97,20 +95,6 @@ const ICONS = {
         />
       </>,
     ),
-  question: (s: number, c: string) =>
-    svg(
-      s,
-      <>
-        <circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.9" />
-        <path
-          d="M9.4 9.4 C9.4 7.9 10.6 6.9 12 6.9 C13.5 6.9 14.6 7.9 14.6 9.3 C14.6 11.3 12 11.4 12 13.6"
-          stroke={c}
-          strokeWidth="1.9"
-          strokeLinecap="round"
-        />
-        <circle cx="12" cy="16.9" r="1.2" fill={c} />
-      </>,
-    ),
   children: (s: number, c: string) =>
     svg(
       s,
@@ -146,13 +130,6 @@ const FEATURES = [
     text: 'تصلك أنت وحدك، بصوت طفلك',
   },
   {
-    icon: ICONS.question,
-    tint: 'bg-berry-tint',
-    color: C.berryDeep,
-    title: 'أسئلة طفلك',
-    text: 'ترى ما سأل عنه لتكمل الحوار معه',
-  },
-  {
     icon: ICONS.children,
     tint: 'bg-sky-tint',
     color: C.skyText,
@@ -162,7 +139,7 @@ const FEATURES = [
   },
 ];
 
-/** «لوليّ الأمر»: the paragraph and the four feature rows (round tinted icon + title + line). */
+/** «لوليّ الأمر»: the paragraph and the three feature rows (round tinted icon + title + line). */
 export function ParentFeatures({ desktop }: { desktop?: boolean }) {
   return (
     <>
@@ -211,10 +188,6 @@ const COUNTS = [
   { n: 9, label: 'مشاريع', color: 'text-warning-text', icon: ICONS.sprout, c: C.warningText },
 ];
 const PLAN_PCT = 52;
-const QUESTIONS = [
-  { q: 'ليش نصلي خمس صلوات في اليوم؟', when: 'أمس' },
-  { q: 'ليش خلق الله النار؟', when: `قبل ${toArabicDigits(3)} أيام` },
-];
 const HADITH_STEP = HOW_STEPS.find((s) => s.key === 'hadith')!;
 
 function useReducedMotion(): boolean {
@@ -329,8 +302,8 @@ function Overview({ desktop, run, reduce }: { desktop?: boolean; run: boolean; r
       <div
         className={cx(
           TILE,
-          'flex flex-col gap-[12px]',
-          desktop ? 'px-[18px] py-[16px]' : 'px-[14px] py-[14px]',
+          'flex flex-col gap-[10px]',
+          desktop ? 'px-[18px] py-[12px]' : 'px-[14px] py-[12px]',
         )}
       >
         <span className="flex items-center justify-between">
@@ -347,12 +320,12 @@ function Overview({ desktop, run, reduce }: { desktop?: boolean; run: boolean; r
               <span
                 className={cx(
                   'flex items-center justify-center rounded-full',
-                  desktop ? 'h-[48px] w-[48px]' : 'h-[40px] w-[40px]',
+                  desktop ? 'h-[42px] w-[42px]' : 'h-[38px] w-[38px]',
                   s.ring,
                 )}
                 aria-hidden="true"
               >
-                {s.art((desktop ? 24 : 20) + (i === 0 ? 0 : 2))}
+                {s.art((desktop ? 22 : 19) + (i === 0 ? 0 : 2))}
               </span>
               <span className={cx('font-extrabold', desktop ? 'text-[12.5px]' : 'text-[11.5px]', s.text)}>
                 {s.label}
@@ -374,7 +347,7 @@ function Overview({ desktop, run, reduce }: { desktop?: boolean; run: boolean; r
             className={cx(
               TILE,
               'flex flex-col items-center',
-              desktop ? 'gap-[2px] py-[12px]' : 'gap-[1px] py-[10px]',
+              desktop ? 'gap-[1px] py-[9px]' : 'gap-[1px] py-[8px]',
             )}
           >
             {c.icon(desktop ? 18 : 16, c.c)}
@@ -402,7 +375,7 @@ function Done({ children }: { children: React.ReactNode }) {
     <span
       className={cx(
         TILE,
-        'flex items-center gap-[10px] px-[14px] py-[12px] text-[15px] font-bold text-text-dark',
+        'flex h-[52px] items-center gap-[10px] px-[14px] text-[15px] font-bold text-text-dark',
       )}
     >
       <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-green-tint">
@@ -415,10 +388,10 @@ function Done({ children }: { children: React.ReactNode }) {
 
 function Today() {
   return (
-    <div className="flex flex-col gap-[10px]">
+    <div className="flex flex-col gap-[12px]">
       <Done>سورة الإخلاص · {toArabicDigits(4)} آيات</Done>
       <Done>حديث برّ الوالدين</Done>
-      <span className="flex flex-wrap items-center gap-[8px]">
+      <span className="flex items-center gap-[8px] whitespace-nowrap">
         <span className="rounded-pill bg-background px-[12px] py-[6px] text-[13px] font-bold text-text-muted">
           مدة الحصة {toArabicDigits(12)} دقيقة
         </span>
@@ -426,7 +399,7 @@ function Today() {
           ردّد بثقة
         </span>
       </span>
-      <span className="flex flex-col gap-[3px] rounded-px-18 border-[1.5px] border-gold-border bg-gold-tint px-[14px] py-[10px]">
+      <span className="flex w-full flex-col gap-[3px] rounded-px-18 border-[1.5px] border-gold-border bg-gold-tint px-[14px] py-[10px]">
         <span className="text-[12px] font-extrabold text-warning-text">ملاحظة المعلّم</span>
         <span className="text-[14.5px] leading-[1.7] font-bold text-on-gold">
           تفاعل رائع، وأحسن الاستماع للقارئ
@@ -458,26 +431,7 @@ function Project({ playing }: { playing: boolean }) {
   );
 }
 
-function Questions() {
-  return (
-    <div className="flex flex-col gap-[10px]">
-      {QUESTIONS.map((x) => (
-        <span key={x.q} className={cx(TILE, 'flex flex-col gap-[8px] px-[14px] py-[12px]')}>
-          <span className="text-[15px] leading-[1.6] font-bold text-text-dark">«{x.q}»</span>
-          <span className="flex items-center gap-[8px]">
-            <span className="flex items-center gap-[5px] rounded-pill bg-green-tint px-[10px] py-[4px] text-[12.5px] font-extrabold text-deep-green">
-              أجابه المعلّم
-              <CheckIcon size={12} strokeWidth={3.2} />
-            </span>
-            <span className="text-[12.5px] font-bold text-text-subtle">{x.when}</span>
-          </span>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-/** The parent-dashboard preview (sample data) in a light browser frame; four views, every 5 s. */
+/** The parent-dashboard preview (sample data) in a light browser frame; three views, every 5 s. */
 export function ParentPreview({ desktop }: { desktop?: boolean }) {
   const reduce = useReducedMotion();
   const { ref, seen } = useSeen<HTMLDivElement>();
@@ -504,7 +458,7 @@ export function ParentPreview({ desktop }: { desktop?: boolean }) {
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setPaused(false)}
-      className="w-full overflow-hidden rounded-px-28 border border-border bg-surface shadow-dark-30-70-10"
+      className="w-full max-w-[520px] overflow-hidden rounded-px-28 border border-border bg-surface shadow-dark-30-70-10"
     >
       {/* browser bar */}
       <div
@@ -557,7 +511,7 @@ export function ParentPreview({ desktop }: { desktop?: boolean }) {
         <div
           role="tablist"
           aria-label="أقسام اللوحة"
-          className="grid grid-cols-4 gap-[2px] rounded-pill bg-background p-[4px]"
+          className="grid grid-cols-3 gap-[2px] rounded-pill bg-background p-[4px]"
         >
           {VIEWS.map((v) => (
             <button
@@ -581,7 +535,7 @@ export function ParentPreview({ desktop }: { desktop?: boolean }) {
           ))}
         </div>
 
-        {/* all four views share one grid cell: the card keeps the tallest view's height */}
+        {/* the three views share one grid cell: its height is the tallest view's, so tabs never jump */}
         <div className="grid">
           {VIEWS.map((v) => {
             const on = v.key === view;
@@ -601,7 +555,6 @@ export function ParentPreview({ desktop }: { desktop?: boolean }) {
                 {v.key === 'overview' && <Overview desktop={desktop} run={seen && on} reduce={reduce} />}
                 {v.key === 'today' && <Today />}
                 {v.key === 'project' && <Project playing={seen && on && !reduce} />}
-                {v.key === 'questions' && <Questions />}
               </div>
             );
           })}
