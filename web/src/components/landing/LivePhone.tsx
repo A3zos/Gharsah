@@ -1,8 +1,8 @@
 // The landing hero's phone: a modern phone showing our ACTUAL live lesson (the call
-// screen's pill + timer, the sprite teacher talking, the ayah card from the
-// verified Tanzil text, the listening mic), with two floating story cards. Purely
-// decorative (aria-hidden). Desktop: tilted; phones: upright and scaled down.
-import { useEffect, useState } from 'react';
+// screen's pill + timer, the sprite teacher talking, the current ayah from the
+// verified Tanzil text, the listening mic), with a floating parent notification.
+// Purely decorative (aria-hidden). Always upright; scaled down on phones.
+import { useEffect, useRef, useState } from 'react';
 
 import { verifiedAyah } from '../../content/verified';
 import { toArabicDigits } from '../../lib/arabicDigits';
@@ -11,31 +11,25 @@ import { TEACHER_NAME, teacherFrameSrc, type TeacherFrame } from '../child/teach
 import { C } from '../ui/color';
 import { CheckIcon, MicIcon } from '../ui/icons';
 
-// Al-Ikhlas 112:1 (being recited) and 112:2 (next, dimmed) — from the verified asset.
-const AYAT = [1, 2].map((n) => ({ n, text: verifiedAyah(112, n).text }));
+// Al-Ikhlas 112:1, the ayah being recited — from the verified asset.
+const AYAH = verifiedAyah(112, 1);
 
-// A talking loop at ~8 fps: idle / mouth-small / mouth-open, a blink every few seconds.
-const TALK: readonly TeacherFrame[] = [
-  'idle',
-  'mouth-small',
-  'mouth-open',
-  'mouth-small',
-  'idle',
-  'mouth-open',
-  'mouth-small',
+// The talking loop at 8 fps: idle → mouth-small → mouth-open → mouth-small for ~2.5 s,
+// then a ~1 s pause with a blink in the middle, and again.
+const TALK_CYCLE: readonly TeacherFrame[] = ['idle', 'mouth-small', 'mouth-open', 'mouth-small'];
+const LOOP: readonly TeacherFrame[] = [
+  ...Array.from({ length: 5 }, () => TALK_CYCLE).flat(),
   'idle',
   'idle',
-  'mouth-small',
-  'mouth-open',
-  'mouth-open',
-  'mouth-small',
+  'idle',
+  'blink',
+  'idle',
   'idle',
   'idle',
   'idle',
 ];
 const SHOWN: readonly TeacherFrame[] = ['idle', 'mouth-small', 'mouth-open', 'blink'];
 const FRAME_MS = 125;
-const BLINK_EVERY = 30; // frames (~3.75 s)
 
 function useReducedMotion(): boolean {
   const [reduce, setReduce] = useState(
@@ -59,30 +53,27 @@ function TalkingTeacher() {
     const t = setInterval(() => setTick((n) => n + 1), FRAME_MS);
     return () => clearInterval(t);
   }, [reduce]);
-  const frame: TeacherFrame = reduce
-    ? 'idle'
-    : tick % BLINK_EVERY === BLINK_EVERY - 1
-      ? 'blink'
-      : TALK[tick % TALK.length]!;
+  const frame: TeacherFrame = reduce ? 'idle' : LOOP[tick % LOOP.length]!;
   return (
-    <div className="relative h-[228px] w-full shrink-0">
-      <span className="absolute top-[18px] left-1/2 h-[204px] w-[204px] -translate-x-1/2 rounded-full bg-green-tint" />
+    <div className="relative h-[264px] w-full shrink-0">
+      <span className="absolute top-[22px] left-1/2 h-[236px] w-[236px] -translate-x-1/2 rounded-full bg-green-tint" />
       {/* all frames stacked, only one visible — no flicker while switching */}
       {SHOWN.map((f) => (
         <img
           key={f}
           src={teacherFrameSrc('boy', f)}
           alt=""
+          loading="eager"
           draggable={false}
           className={cx(
-            'absolute bottom-0 left-1/2 h-[228px] w-[174px] -translate-x-1/2 object-cover object-top',
+            'absolute bottom-0 left-1/2 h-[264px] w-[202px] -translate-x-1/2 object-cover object-top',
             f === frame ? 'opacity-100' : 'opacity-0',
           )}
         />
       ))}
       {/* the talking glow */}
       {!reduce && (
-        <span className="absolute top-[34px] left-1/2 h-[172px] w-[172px] -translate-x-1/2 animate-[gh-pulse_2.4s_ease-in-out_infinite] rounded-full" />
+        <span className="absolute top-[40px] left-1/2 h-[200px] w-[200px] -translate-x-1/2 animate-[gh-pulse_2.4s_ease-in-out_infinite] rounded-full" />
       )}
     </div>
   );
@@ -137,6 +128,36 @@ function StatusBar() {
   );
 }
 
+const AYAH_PX = 24;
+
+/** «قُلْ هُوَ ٱللَّهُ أَحَدٌ ﴿١﴾» centered on one row; the font shrinks if the row is too wide. */
+function AyahLine() {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [px, setPx] = useState(AYAH_PX);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.fontSize = `${AYAH_PX}px`;
+      const ratio = el.clientWidth / el.scrollWidth;
+      setPx(ratio < 1 ? Math.floor(AYAH_PX * ratio * 10) / 10 : AYAH_PX);
+    };
+    fit();
+    void document.fonts?.ready.then(fit);
+  }, []);
+  return (
+    <p
+      ref={ref}
+      dir="rtl"
+      style={{ fontSize: px }}
+      className="m-0 w-full overflow-hidden text-center font-ayah leading-[1.9] whitespace-nowrap text-text-dark"
+    >
+      {AYAH.text}
+      <span className="text-ayah-bracket"> ﴿{toArabicDigits(1)}﴾</span>
+    </p>
+  );
+}
+
 function CallScreen() {
   return (
     <div className="flex h-full flex-col bg-background">
@@ -169,35 +190,12 @@ function CallScreen() {
         <span className="-mt-[4px] rounded-pill bg-green-tint px-[12px] py-[3px] text-[13px] font-extrabold text-deep-green">
           {TEACHER_NAME.boy}
         </span>
-        {/* the ayah card (SurahCard): the recited ayah highlighted, the next one dimmed */}
-        <div className="flex w-full flex-col gap-[2px] rounded-px-24 border-[2px] border-primary bg-surface px-[12px] pt-[8px] pb-[10px] shadow-lesson-ayah-card">
-          <span className="text-center text-[12px] font-bold text-text-muted">سورة الإخلاص</span>
-          <p
-            dir="rtl"
-            className="m-0 flex flex-col items-start font-ayah text-[19px] leading-[2] text-text-dark"
-          >
-            {AYAT.map((a) => {
-              const words = a.text.split(' ');
-              const last = words.pop();
-              return (
-                <span
-                  key={a.n}
-                  className={cx(
-                    'rounded-px-10 px-[7px] py-[1px]',
-                    a.n === 1 ? 'bg-green-tint text-deep-green' : 'opacity-45',
-                  )}
-                >
-                  {words.join(' ')}{' '}
-                  <span className="whitespace-nowrap">
-                    {last}
-                    <span className="text-ayah-bracket">
-                      {' '}﴿{toArabicDigits(a.n)}﴾
-                    </span>
-                  </span>
-                </span>
-              );
-            })}
-          </p>
+        {/* the ayah card: the current ayah on ONE line (scaled down to fit, never wrapped) */}
+        <div className="flex w-full flex-col items-center gap-[4px] rounded-px-24 border-[2px] border-primary bg-surface px-[12px] pt-[14px] pb-[14px] shadow-lesson-ayah-card">
+          <AyahLine />
+          <span className="text-[12px] font-bold text-text-muted">
+            سورة الإخلاص · الآية {toArabicDigits(1)}
+          </span>
         </div>
         {/* the listening mic (brand green) */}
         <div className="mt-auto flex flex-col items-center gap-[6px]">
@@ -225,15 +223,10 @@ function FloatCard({ className, children }: { className: string; children: React
   );
 }
 
-/** The hero phone. `desktop`: 340×700 with a slight 3D tilt; phones: upright, scaled to ~300 wide. */
+/** The hero phone: 340×700, perfectly upright; on phones scaled to ~300 wide. */
 export function LivePhone({ desktop }: { desktop?: boolean }) {
   const phone = (
-    <div
-      className={cx(
-        'relative h-[700px] w-[340px] rounded-px-44 bg-text-dark p-[10px] shadow-phone-mock',
-        desktop && '[transform:perspective(1800px)_rotateY(8deg)_rotateZ(-4deg)]',
-      )}
-    >
+    <div className="relative h-[700px] w-[340px] rounded-px-44 bg-text-dark p-[10px] shadow-phone-mock">
       {/* side buttons */}
       <span className="absolute top-[150px] -left-[3px] h-[56px] w-[3px] rounded-l-px-3 bg-text-dark" />
       <span className="absolute top-[220px] -left-[3px] h-[56px] w-[3px] rounded-l-px-3 bg-text-dark" />
@@ -243,20 +236,6 @@ export function LivePhone({ desktop }: { desktop?: boolean }) {
         {/* dynamic island */}
         <span className="absolute top-[9px] left-1/2 h-[26px] w-[92px] -translate-x-1/2 rounded-pill bg-text-dark" />
       </div>
-      <FloatCard
-        className={cx(
-          'top-[96px] animate-[gh-float-2_4.6s_ease-in-out_infinite]',
-          desktop ? '-right-[46px]' : '-right-[14px]',
-        )}
-      >
-        <span className="text-[18px]">⭐</span>
-        <span className="flex flex-col">
-          <span className="font-heading text-[15px] font-extrabold text-deep-green">
-            +{toArabicDigits(1)} نجمة
-          </span>
-          <span className="text-[12px] font-bold text-text-muted">أحسنت!</span>
-        </span>
-      </FloatCard>
       <FloatCard
         className={cx(
           'bottom-[110px] animate-[gh-float-3_5.2s_ease-in-out_.8s_infinite]',
