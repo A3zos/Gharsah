@@ -16,6 +16,8 @@ import {
   RATE_LIMIT_BACKOFF_MS,
   ServerLesson,
   shownHadith,
+  todayHadithAnswer,
+  HADITH_LATER,
   type PresenceListener,
   type LessonPlan,
   type ServerLessonDeps,
@@ -194,7 +196,7 @@ describe('ServerLesson — mocked end-to-end', () => {
     expect(t.server.messages()).toEqual(['تمام', 'بطل', 'الناس']);
   });
 
-  it("a hadith that isn't today's topic → the built-in lesson from the hadith", async () => {
+  it("«which hadith?» asks for today's; the server teaching another → a closing line, the call ends (never the built-in hadith card)", async () => {
     const t = setup({ plan: { ...PLAN, hadithTopic: 'الكذب' } });
     void t.lesson.start();
     await at(t.lesson, 'greet', 'text');
@@ -208,9 +210,37 @@ describe('ServerLesson — mocked end-to-end', () => {
     t.lesson.answer('تمام');
     await at(t.lesson, 'intro', 'continue');
     t.lesson.continueTapped();
-    // the «text» turn names the hadith (برّ الوالدين ≠ الكذب)
-    await until(t.lesson, (s) => s.phase === 'fallback');
+    // today's hadith was asked for by name (not the first option)…
+    expect(t.server.messages()).toContain('الكذب');
+    // …but the fake server still teaches برّ الوالدين → graceful end
+    await until(t.lesson, (s) => s.phase === 'ended');
+    expect(t.spoken.at(-1)).toBe(HADITH_LATER);
     expect(t.lesson.state.value.quranDone).toBe(true);
+  });
+
+  it('day 1 starts at the surah — a new child, or no surah finished earlier today', async () => {
+    const t = setup();
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    expect(t.server.calls.find((c) => c.path === '/agent/start')?.body?.mode).toBe('quran');
+    expect(t.lesson.state.value.segment).toBe('quran');
+    expect(t.lesson.state.value.hadith).toBeNull();
+  });
+
+  it("today's surah finished earlier today → the lesson resumes at the hadith", async () => {
+    const t = setup({ startAt: 'hadith' });
+    void t.lesson.start();
+    await until(t.lesson, (s) => s.segment === 'hadith' && s.phase === 'live');
+    const starts = t.server.calls.filter((c) => c.path === '/agent/start').map((c) => c.body?.mode);
+    expect(starts).toEqual(['hadith']);
+    expect(t.lesson.state.value.quranDone).toBe(true);
+  });
+
+  it("todayHadithAnswer: today's option when offered, else its name", () => {
+    expect(todayHadithAnswer(['بر الوالدين', 'الكذب', 'لا تغضب'], 'الغضب')).toBe('لا تغضب');
+    expect(todayHadithAnswer(['بر الوالدين', 'الكذب', 'لا تغضب'], 'برّ الوالدين')).toBe('بر الوالدين');
+    // the server offers only the hadiths this device hasn't finished
+    expect(todayHadithAnswer(['الكذب', 'لا تغضب'], 'برّ الوالدين')).toBe('برّ الوالدين');
   });
 });
 

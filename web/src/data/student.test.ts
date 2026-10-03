@@ -1,5 +1,5 @@
 import { PILOT_DAYS } from '../content/pilot';
-import { parseBoard, pickTodayLesson, progressFromRow, type StoredProgress } from './student';
+import { parseBoard, pickTodayLesson, progressFromRow, surahDoneToday, type StoredProgress } from './student';
 
 const stored = (
   lessonId: string,
@@ -94,4 +94,29 @@ test('parseBoard reads the new payload and the previous one', () => {
   });
   expect(old.top).toEqual([{ rank: 1, points: 7, me: true }]);
   expect(old.me).toEqual({ rank: 1, points: 7, gapToAbove: null, inTop5: true });
+});
+
+describe("surahDoneToday — where today's lesson starts", () => {
+  const row = (step: number, updatedAt: Date | null): StoredProgress => ({
+    progress: progressFromRow('pilot-day-1', {
+      stage: step >= 9 ? 'hadith' : 'ayah_repeat',
+      step_index: step,
+      done_refs: [],
+    }),
+    updatedAt,
+  });
+  const now = utc(5, 10); // 13:00 Riyadh
+
+  it('a new child (no row) or the surah not finished → the surah', () => {
+    expect(surahDoneToday(undefined, 9, now)).toBe(false);
+    expect(surahDoneToday(row(4, utc(5, 9)), 9, now)).toBe(false);
+  });
+
+  it('surah finished earlier today → the hadith; finished on an earlier day → the surah again', () => {
+    expect(surahDoneToday(row(9, utc(5, 8)), 9, now)).toBe(true);
+    expect(surahDoneToday(row(9, utc(4, 8)), 9, now)).toBe(false);
+    // 21:30 UTC on the 4th is already the 5th in Riyadh
+    expect(surahDoneToday(row(9, utc(4, 21, 30)), 9, now)).toBe(true);
+    expect(surahDoneToday(row(9, null), 9, now)).toBe(false);
+  });
 });

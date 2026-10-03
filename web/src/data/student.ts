@@ -114,6 +114,20 @@ export interface StoredProgress {
   completedAt?: Date | null;
 }
 
+/**
+ * Today's surah was finished earlier TODAY (Riyadh day) and the lesson isn't done yet:
+ * the lesson resumes at the hadith. Older progress — or none (a new child) — starts at
+ * the surah again.
+ */
+export function surahDoneToday(
+  stored: StoredProgress | undefined,
+  hadithStepIndex: number,
+  now = new Date(),
+): boolean {
+  if (!stored || stored.progress.completed || stored.progress.stepIndex < hadithStepIndex) return false;
+  return !!stored.updatedAt && riyadhDay(stored.updatedAt) === riyadhDay(now);
+}
+
 /** A progress row → the LessonAgent's checkpoint (same meaning as the Firestore one). */
 export function progressFromRow(lessonId: string, r: Row): LessonProgress {
   const script = lessonScripts.get(lessonId);

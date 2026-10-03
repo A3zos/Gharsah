@@ -114,6 +114,11 @@ export interface ServerLessonDeps {
   gender: Gender;
   /** The session language sent to /agent/start — every start and restart (default "ar"). */
   lang?: AgentLang;
+  /**
+   * Where today's lesson starts: the surah (default), or the hadith when today's surah
+   * was already finished earlier TODAY (the route decides — data/student.ts surahDoneToday).
+   */
+  startAt?: 'quran' | 'hadith';
   /** The parent allowed sending the child's voice to the AI server. */
   consent: boolean;
   /** Present only with consent and a browser that supports it. */
@@ -136,7 +141,7 @@ export interface ServerLessonDeps {
 }
 
 /** Idle (no audio, not listening, no request) this long = stuck → recover. */
-export const WATCHDOG_IDLE_MS = 8000;
+export const WATCHDOG_IDLE_MS = 20_000;
 const WATCHDOG_TICK_MS = 1000;
 /** State fields logged on every transition. */
 const LOGGED: readonly (keyof ServerLessonState)[] = [
@@ -259,7 +264,9 @@ export const HADITH_PLACEHOLDER = '[نص الحديث — يُعتمد لاحق�
 export const SERVER_HADITH_TEXT_APPROVED = false;
 
 export const RATE_LIMIT_BACKOFF_MS = [4000, 8000, 16000, 30000];
-const UNAVAILABLE_RETRY_MS = [1500, 4000];
+// a timeout / 5xx: the last server call is retried ONCE, then the part ends (hadith: a
+// closing line) or the built-in lesson takes over — never minutes of silence
+const UNAVAILABLE_RETRY_MS = [1500];
 const MAX_RESTARTS = 2;
 const CONTINUE_TEXT = 'أكمل';
 /** ~350 ms between the teacher's line and what follows (a recitation). */
@@ -271,6 +278,8 @@ export const NAME_STAND_IN = 'بطل';
 const MAX_NAME_ANSWERS = 2;
 /** Stages before the surah is chosen — their surah_no is the server's default (1). */
 const BEFORE_SURAH = new Set(['greet', 'name', 'surah']);
+/** The hadith path's «which hadith?» stage (ai/API_web.md §1). */
+const HADITH_CHOOSE_STAGE = 'intro';
 /** Silence (no speech) that counts as «the child said nothing». */
 export const SILENCE_MS = 6000;
 /** Two silences: one nudge after the first, the lesson continues after the second. */
@@ -310,6 +319,20 @@ export const WHOLE_SURAH_TURN: Record<Gender, string> = {
 };
 /** The server's own quick reply for moving past an ayah — never a «repeated» signal. */
 export const SKIP_AYAH = 'تخطّي الآية';
+// REVIEW: two fixed teacher lines of the day plan (surah → hadith).
+/** Today's surah is done: said before the hadith part starts. */
+export const TO_HADITH = 'أحسنت يا بطل! الحين نتعلّم حديثًا عن النبي ﷺ';
+/** The hadith part can't be served by the server: said, then the call ends (never a silent card). */
+export const HADITH_LATER = 'أحسنت يا بطل! نكمل الحديث في المرة القادمة إن شاء الله';
+
+/**
+ * The answer to the server's «أي حديث تحب أن نتعلم اليوم؟» (hadith stage `intro`):
+ * today's hadith, never the first option — the server offers only hadiths this device
+ * hasn't finished, and it accepts today's typed by name even when not offered.
+ */
+export function todayHadithAnswer(replies: readonly string[], topic: string): string {
+  return replies.find((r) => hadithMatchesTopic(r, topic, normalizeArabic)) ?? topic;
+}
 
 /** What one listening window brought: the child spoke (and maybe their words). */
 interface Heard {
@@ -358,6 +381,14 @@ export class ServerLesson {
   private lastVerify: RecitationResult | null = null;
   /** This segment's ayat the child stayed silent on — «لم يُردَّد», never memorized. */
   private notRepeated = new Set<number>();
+  /**
+   * Ayat whose repeat the server answered with a comfort interjection instead of the next
+   * repeat — its distress filter reads the ayah's own words («مِن شَرِّ…») as the child's.
+   * The next repeat of such an ayah goes with the server's «تخطّي الآية» (the child DID
+   * repeat it — presence — so it stays memorized on our side).
+   */
+  private interjected = new Set<number>();
+  private lastRepeatAyah: number | null = null;
   /** A repeat turn was already played in this segment (the repeats have started). */
   private repeatsStarted = false;
   /** The last message sent answered a repeat (the next line may judge it). */
@@ -495,7 +526,12 @@ export class ServerLesson {
       const th = h.find((r) => r.hadithId !== undefined);
       if (th) out.push({ kind: 'htaseem', hadithId: th.hadithId! });
     }
-    out.push({ kind: 'quran' }, { kind: 'hadith' });
+    // the day plan, in order: today's surah, then today's hadith
+    if (this.d.startAt === 'hadith') {
+      lessonLog('ai', 'resume at the hadith (surah done earlier today)');
+      this.set({ quranDone: true });
+      out.push({ kind: 'hadith' });
+    } else out.push({ kind: 'quran' }, { kind: 'hadith' });
     return out;
   }
 
@@ -505,6 +541,8 @@ export class ServerLesson {
     this.surahAnswers = 0;
     this.reference = null;
     this.notRepeated = new Set();
+    this.interjected = new Set();
+    this.lastRepeatAyah = null;
     this.repeatsStarted = false;
     this.answeredRepeat = false;
     this.segSurah = seg.kind === 'taseem' ? seg.surahNo : seg.kind === 'quran' ? this.d.plan.surahNo : null;
@@ -571,9 +609,39 @@ export class ServerLesson {
 
   private fallback(e: unknown): void {
     const reason = String((e as Error)?.message ?? e);
+    // The hadith part can't be served (wrong hadith, server down…): never the built-in
+    // lesson's hadith card — a closing line, then the call ends; logged.
+    if (this.segments[this.segIndex]?.kind === 'hadith' && !this.halted && !this.disposed) {
+      void this.endGracefully(reason);
+      return;
+    }
     lessonLog('ai', 'FALLBACK → builtin', { reason });
     this.set({ phase: 'fallback', busy: false, expects: null, fallbackReason: reason });
     // One engine at a time: this one stops for good before the built-in lesson starts.
+    this.halt();
+  }
+
+  private ending = false;
+
+  private async endGracefully(reason: string): Promise<void> {
+    if (this.ending) return;
+    this.ending = true;
+    lessonLog('ai', 'HADITH UNAVAILABLE → graceful end', { reason });
+    this.cancelTurn();
+    this.stopWatchdog();
+    this.set({
+      busy: false,
+      expects: null,
+      quickReplies: [],
+      repeat: 'idle',
+      hearing: false,
+      fallbackReason: reason,
+    });
+    const abort = new AbortController();
+    this.turnAbort = abort;
+    await this.say(HADITH_LATER, abort).catch(() => {});
+    if (this.disposed) return;
+    this.set({ phase: 'ended' });
     this.halt();
   }
 
@@ -610,6 +678,19 @@ export class ServerLesson {
     this.cancelTurn();
     const abort = new AbortController();
     this.turnAbort = abort;
+    // our repeat of an ayah was answered with a comfort line, not the next repeat
+    if (
+      this.answeredRepeat &&
+      this.lastRepeatAyah !== null &&
+      turn.kind === 'quran' &&
+      turn.stage === 'recitation' &&
+      turn.expects !== 'repeat'
+    ) {
+      this.interjected.add(this.lastRepeatAyah);
+      lessonLog('ai', 'server interjected on a repeat → that ayah will be skipped', {
+        ayah: this.lastRepeatAyah,
+      });
+    }
     this.turn = turn;
     this.restarts = turn.stageIndex > 0 ? 0 : this.restarts;
     // The pilot plan: the server must teach today's surah and hadith — otherwise the
@@ -840,6 +921,12 @@ export class ServerLesson {
    *   mic blocked -> one «سماح» prompt; still blocked -> listen-only (auto-continue)
    */
   private async await(turn: ServerTurn, abort: AbortController, startsRepeats = false): Promise<void> {
+    // A part's «done» turn ends it: the server would otherwise offer the next surah /
+    // «حديث آخر» (and «أكتفي اليوم» trips its distress filter) — one surah + one hadith a day.
+    if (turn.stage === 'done' && (turn.kind === 'quran' || turn.kind === 'hadith')) {
+      lessonLog('ai', 'part done', { kind: turn.kind });
+      return this.segmentEnded();
+    }
     if (turn.expects === 'none') return this.segmentEnded();
     const repeat = turn.expects === 'repeat';
     // never the browser's speech recognition for a recitation
@@ -966,6 +1053,10 @@ export class ServerLesson {
     if (h.spoke) this.set({ heard: this.state.value.heard + 1 }); // «I heard you» on the mic
     if (turn.expects === 'repeat') {
       this.cheer(); // only ever reached when the child really spoke (see await)
+      this.lastRepeatAyah = turn.kind === 'quran' ? turn.ayah : null;
+      // the server can't take this ayah's text (see `interjected`): its own skip
+      if (turn.kind === 'quran' && turn.ayah !== null && this.interjected.has(turn.ayah))
+        return this.send(SKIP_AYAH, true);
       return this.send(h.text?.trim() || this.repeatText(), true);
     }
     const first = turn.quickReplies[0];
@@ -977,10 +1068,6 @@ export class ServerLesson {
       return this.send(first ?? DEFAULT_ANSWER);
     }
     if (h.text) return this.send(this.spokenAnswer(h.text) ?? h.text.trim());
-    // The end of today's surah: «ننتقل لسورة الناس، أم تكتفي اليوم؟» — one surah a day
-    // (pilot plan), so never the «next surah» option.
-    if (turn.kind === 'quran' && turn.stage === 'done')
-      return this.send(stopForToday(turn.quickReplies) ?? first ?? DEFAULT_ANSWER);
     return this.send(first ?? DEFAULT_ANSWER);
   }
 
@@ -1053,6 +1140,10 @@ export class ServerLesson {
     const next = this.segments[this.segIndex + 1];
     if (next) {
       this.set({ phase: 'segmentDone', nextSegment: next.kind });
+      if (next.kind === 'hadith') {
+        const abort = this.turnAbort ?? new AbortController();
+        await this.say(TO_HADITH, abort).catch(() => {});
+      }
       // a voice call: no «next» button — the next part starts by itself after a pause
       const abort = this.turnAbort;
       await (abort ? this.guard(abort, this.beat(SEGMENT_PAUSE_MS)) : this.beat(SEGMENT_PAUSE_MS));
@@ -1098,6 +1189,9 @@ export class ServerLesson {
   private async send(text: string, repeated = false): Promise<void> {
     const t = this.turn;
     if (!t || this.disposed || this.halted) return;
+    // «أي حديث؟» — whatever answered it (voice, a tap, the watchdog): today's hadith
+    if (t.kind === 'hadith' && t.stage === HADITH_CHOOSE_STAGE)
+      text = todayHadithAnswer(t.quickReplies, this.d.plan.hadithTopic);
     lessonLog('ai', 'send', { stage: t.stage, expects: t.expects, repeated });
     // the reply to a repeat (or a skip) may judge it — see judges()
     this.answeredRepeat = repeated || (t.expects === 'repeat' && text === SKIP_AYAH);
@@ -1243,11 +1337,6 @@ export function normalizeArabic(t: string): string {
     .replace(/[^\p{L}\p{N}\s]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
-}
-
-/** The «that's enough for today» option of an end-of-surah question, if any. */
-export function stopForToday(replies: readonly string[]): string | null {
-  return replies.find((r) => /أكتفي|اكتفي|نكتفي|يكفي|كفاية|لاحقًا|لاحقا|بكرة|^لا(\s|،|$)/.test(r)) ?? null;
 }
 
 /** The hadith title the server sent with this turn (field or show_ayat), if any. */

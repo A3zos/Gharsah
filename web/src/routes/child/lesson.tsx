@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Navigate, useBlocker, useNavigate, useParams } from 'react-router';
+import { Navigate, useBlocker, useNavigate, useParams, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { useChildData } from '../../components/child/ChildData';
@@ -16,7 +16,7 @@ import { Note } from '../../components/ui/Note';
 import { hadithRepo, hadithStepIndex, lessonScripts, quranMeta } from '../../content/library';
 import { pilotDay } from '../../content/pilot';
 import { WEEK_DAYS, type ChildProfile, type WeekDay } from '../../data/children';
-import { pickTodayLesson, progressFromRow } from '../../data/student';
+import { pickTodayLesson, progressFromRow, surahDoneToday } from '../../data/student';
 import type { LessonScript } from '../../lesson/script';
 import { initialLessonState, type LessonProgress, type LessonState } from '../../lesson/state';
 import { PreviewProgressSink } from '../../dev/childPreview';
@@ -94,6 +94,9 @@ function placeOf(s: LessonState): string {
 export default function LessonRoute() {
   const { lessonId = '' } = useParams();
   const { child, progress, session } = useChildData();
+  // DEV only: ?resetLesson=1 ignores today's saved part progress (start from the surah).
+  const [params] = useSearchParams();
+  const resetLesson = import.meta.env.DEV && params.get('resetLesson') === '1';
   // Decided once on entry: the call keeps running when its own checkpoints
   // later mark the lesson completed (L10 must still show).
   const [entry, setEntry] = useState<{ lessonId: string; resume: LessonProgress | null } | 'denied' | null>(
@@ -117,6 +120,12 @@ export default function LessonRoute() {
   if (!child || !entry || entry.lessonId !== lessonId) return <Busy />;
   const agentUrl = agentBaseUrl();
   const day = pilotDay(lessonId);
+  // The day plan runs in order — surah, then hadith. The surah is skipped only when it
+  // was really finished earlier TODAY; older saved progress starts at the surah again.
+  const hadithIdx = hadithStepIndex(script);
+  const surahDone = !resetLesson && surahDoneToday(progress?.get(lessonId), hadithIdx);
+  const entryResume =
+    resetLesson || (entry.resume && entry.resume.stepIndex >= hadithIdx && !surahDone) ? null : entry.resume;
   if (agentUrl && day && !builtIn && session.childId !== 'preview') {
     const hIdx = hadithStepIndex(script);
     return (
@@ -133,6 +142,7 @@ export default function LessonRoute() {
         }}
         child={child}
         session={session}
+        startAt={surahDone ? 'hadith' : 'quran'}
         onFallback={(quranDone) =>
           setBuiltIn({
             resume: quranDone
@@ -144,13 +154,13 @@ export default function LessonRoute() {
                     (_, i) => `${day.surah}:${i + 1}`,
                   ),
                 })
-              : entry.resume,
+              : entryResume,
           })
         }
       />
     );
   }
-  const resume = builtIn ? builtIn.resume : entry.resume;
+  const resume = builtIn ? builtIn.resume : entryResume;
   return <LessonCall key={lessonId} script={script} child={child} session={session} resume={resume} />;
 }
 

@@ -19,10 +19,13 @@ export function ServerLessonCall({
   plan,
   child,
   session,
+  startAt = 'quran',
   onFallback,
 }: {
   baseUrl: string;
   plan: LessonPlan;
+  /** The surah (default) or the hadith (today's surah finished earlier today). */
+  startAt?: 'quran' | 'hadith';
   child: ChildProfile;
   session: { parentUid: string; childId: string };
   /** `quranDone`: today's surah part is finished → the built-in lesson resumes at the hadith. */
@@ -36,6 +39,7 @@ export function ServerLessonCall({
   // Read once on entry: a consent change applies from the next lesson.
   const consent = useRef(child.aiVoiceConsent);
   const planRef = useRef(plan);
+  const startAtRef = useRef(startAt);
   // Only for scrubbing the child's own words — never sent (read once, like consent).
   const childName = useRef(child.name);
   const fallbackRef = useRef(onFallback);
@@ -50,6 +54,7 @@ export function ServerLessonCall({
     void createServerLesson({
       baseUrl,
       plan: planRef.current,
+      startAt: startAtRef.current,
       session: { parentUid: session.parentUid, childId: session.childId },
       gender: child.gender,
       childName: childName.current,

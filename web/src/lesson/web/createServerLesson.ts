@@ -44,6 +44,8 @@ export async function createServerLesson(o: {
   consent: boolean;
   /** The session language (default: the app's UI language — Arabic today). */
   lang?: AgentLang;
+  /** Where today's lesson starts (the surah unless it was finished earlier today). */
+  startAt?: 'quran' | 'hadith';
   sink?: ServerProgressSink;
 }): Promise<WebServerLesson> {
   const lang = o.lang ?? APP_UI_LANGUAGE;
@@ -69,6 +71,7 @@ export async function createServerLesson(o: {
     deviceId: await agentDeviceId(o.session.childId, browserStorage()),
     gender: o.gender,
     lang,
+    startAt: o.startAt ?? 'quran',
     consent: o.consent,
     recorder: o.consent && MediaUtteranceRecorder.supported() ? new MediaUtteranceRecorder(mic) : null,
     speechInput: o.consent ? BrowserSpeechInput.create() : null,

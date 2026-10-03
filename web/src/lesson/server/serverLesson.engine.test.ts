@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { lessonLogEntries } from '../lessonLog';
 import { AgentApi } from './api';
-import { ServerLesson, stopForToday, type LessonPlan, type ServerLessonDeps } from './serverLesson';
-import { FakeAgentServer, QURAN_STAGES, type StageSpec } from './testing/fakeServer';
+import { ServerLesson, SKIP_AYAH, TO_HADITH, type LessonPlan, type ServerLessonDeps } from './serverLesson';
+import { EVERYAYAH, FakeAgentServer, QURAN_STAGES, type StageSpec } from './testing/fakeServer';
 
 const PLAN: LessonPlan = {
   lessonId: 'pilot-day-1',
@@ -137,25 +137,31 @@ describe('ServerLesson — the end of today’s surah (the live «old behaviour�
       },
     ]);
 
-  it('answers «أكتفي اليوم» (one surah a day) — never the next surah', async () => {
+  it('the «done» turn ends the Quran part — nothing answered (no next surah, no «أكتفي اليوم»)', async () => {
     const t = make({ server: new FakeAgentServer(endAsks(112)) });
     void t.lesson.start();
     await vi.waitFor(() => expect(t.lesson.state.value.expects).toBe('text'));
     t.lesson.answer('تمام');
-    for (const stage of ['lesson_intro', 'tafsir', 'fadl', 'tajweed', 'plan', 'done']) {
+    for (const stage of ['lesson_intro', 'tafsir', 'fadl', 'tajweed', 'plan']) {
       await vi.waitFor(() => {
         const s = t.lesson.state.value;
         expect(s.stages[s.stageIndex]?.id).toBe(stage);
         expect(s.expects).toBe('continue');
       });
-      if (stage !== 'done') t.lesson.continueTapped();
+      t.lesson.continueTapped();
     }
-    expect(stopForToday(['نعم، سورة الناس', 'أكتفي اليوم'])).toBe('أكتفي اليوم');
-    expect(stopForToday(['نعم', 'لا، شكرًا'])).toBe('لا، شكرًا');
-    expect(stopForToday(['نعم، سورة الناس'])).toBeNull();
+    await vi.waitFor(() => expect(t.lesson.state.value.segment).toBe('hadith'), { timeout: 3000 });
+    // the server's «done» turn was answered with nothing
+    expect(t.server.messages()).not.toContain('أكتفي اليوم');
+    expect(t.server.messages()).not.toContain('نعم، سورة الناس');
+    // the transition line, then the hadith session
+    expect(t.spoken).toContain(TO_HADITH);
+    const starts = t.server.calls.filter((c) => c.path === '/agent/start').map((c) => c.body?.mode);
+    expect(starts).toEqual(['quran', 'hadith']);
+    t.lesson.dispose();
   });
 
-  it('the server moving on to another surah after today’s is the end of the Quran part — not a fallback', async () => {
+  it('a voice call: the surah ends → the hadith part follows by itself — not a fallback', async () => {
     const t = make({
       server: new FakeAgentServer(endAsks(114)),
       // every answer is heard at once (the child speaks)
@@ -169,7 +175,69 @@ describe('ServerLesson — the end of today’s surah (the live «old behaviour�
     void t.lesson.start();
     await vi.waitFor(() => expect(t.lesson.state.value.segment).toBe('hadith'), { timeout: 3000 });
     expect(t.lesson.state.value.phase).not.toBe('fallback');
-    expect(t.server.messages()).toContain('أكتفي اليوم');
+    expect(t.server.messages()).not.toContain('أكتفي اليوم');
+    t.lesson.dispose();
+  });
+});
+
+describe("ServerLesson — the server's distress filter on an ayah («مِن شَرِّ…»)", () => {
+  // Live (2026-10-03): repeating An-Nas 4 / Al-Falaq 3 by sending the ayah's text makes
+  // the server answer with a comfort line («تبي نكمل ولا تحتاج دقيقة؟»), forever.
+  const stages = [
+    { id: 'recitation', label: 'التلاوة' },
+    { id: 'done', label: 'الختام' },
+  ];
+  const turn = (o: Record<string, unknown>) => ({
+    session_id: 's1',
+    teacher: 'المعلمة سارة',
+    female: true,
+    stage: 'recitation',
+    stage_index: 0,
+    max_stage_index: 0,
+    stages,
+    surah_no: 112,
+    quick_replies: [],
+    actions: [],
+    ...o,
+  });
+  const repeat2 = turn({
+    say: 'استمع للآية 2 ثم ردّدها',
+    expects: 'repeat',
+    quick_replies: ['تخطّي الآية', 'أعد الآية'],
+    actions: [
+      { type: 'play_ayah', ayah: 2, text: 'نص الآية', url: EVERYAYAH(2) },
+      { type: 'show_ayat', ayat: ['V-1', 'V-2', 'V-3', 'V-4'], first: 1, current: 2 },
+    ],
+  });
+  const comfort = turn({
+    say: 'يا بطل، الله معك… تبي نكمل ولا تحتاج دقيقة؟',
+    expects: 'continue',
+    quick_replies: ['أنا جاهز نكمل', 'أعطني دقيقة'],
+  });
+  const end = turn({ say: 'أحسنت', expects: 'none', stage: 'done', stage_index: 1, max_stage_index: 1 });
+
+  it('an ayah the server answered with a comfort line is skipped with its own «تخطّي الآية» next time', async () => {
+    const sent: string[] = [];
+    const replies = [repeat2, comfort, repeat2, end];
+    const fetchFn = async (url: string, init?: RequestInit) => {
+      const body = init?.body ? (JSON.parse(String(init.body)) as { text?: string }) : {};
+      if (url.endsWith('/agent/message')) sent.push(String(body.text));
+      const j = url.endsWith('/agent/start') ? replies[0] : replies[sent.length];
+      return new Response(JSON.stringify(j ?? end), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    };
+    const t = make({ api: new AgentApi('https://ai.test', fetchFn, []) });
+    void t.lesson.start();
+    // the repeat (presence) → the ayah's text; the comfort line → «أنا جاهز نكمل» (a tap here)
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toBe('نص الآية');
+    await vi.waitFor(() => expect(t.lesson.state.value.expects).toBe('continue'));
+    t.lesson.continueTapped();
+    // the same ayah again → the server's own skip, not the text that trips its filter
+    await vi.waitFor(() => expect(sent.length).toBeGreaterThanOrEqual(3));
+    expect(sent[2]).toBe(SKIP_AYAH);
     t.lesson.dispose();
   });
 });
