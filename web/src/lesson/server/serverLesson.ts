@@ -27,7 +27,14 @@
 import { changed, lessonLog } from '../lessonLog';
 import { Observable } from '../observable';
 import { PlaybackBlocked } from '../ports';
-import { AgentUnavailable, RateLimited, SessionExpired, type AgentApi, type Gender } from './api';
+import {
+  AgentUnavailable,
+  RateLimited,
+  SessionExpired,
+  type AgentApi,
+  type AgentLang,
+  type Gender,
+} from './api';
 import type { ActionItem, AgentAction, AgentMode, AgentStage, Expects, ServerTurn, TurnKind } from './parse';
 import { doneRefsOf, hadithMatchesTopic, mappedStage, type ServerProgressSink } from './progressMap';
 import type { TeacherVoice } from '../voice/tts';
@@ -105,6 +112,8 @@ export interface ServerLessonDeps {
   sink: ServerProgressSink;
   deviceId: string;
   gender: Gender;
+  /** The session language sent to /agent/start — every start and restart (default "ar"). */
+  lang?: AgentLang;
   /** The parent allowed sending the child's voice to the AI server. */
   consent: boolean;
   /** Present only with consent and a browser that supports it. */
@@ -518,7 +527,7 @@ export class ServerLesson {
           ? this.d.api.taseemStart({ deviceId, gender, surahNo: seg.surahNo, chunk: seg.chunk })
           : seg.kind === 'htaseem'
             ? this.d.api.htaseemStart({ deviceId, gender, hadithId: seg.hadithId })
-            : this.d.api.start({ mode: seg.kind, gender, deviceId }),
+            : this.d.api.start({ mode: seg.kind, gender, deviceId, lang: this.d.lang ?? 'ar' }),
       false,
     );
     if (turn) await this.play(turn);
@@ -781,7 +790,14 @@ export class ServerLesson {
     }
     if (turn.kind === 'hadith') {
       if (a.ayat[0]?.trim()) this.reference = a.ayat[0];
-      this.set({ hadith: { title: a.hadithTitle ?? turn.hadithTitle, source: a.source } });
+      this.set({
+        hadith: shownHadith(
+          this.d.lang ?? 'ar',
+          a.hadithTitle ?? turn.hadithTitle,
+          a.source,
+          this.d.plan.hadithTopic,
+        ),
+      });
       return;
     }
     // The whole surah asked for: the server's own text of it is the reference (never «ردّدت»).
@@ -1235,6 +1251,20 @@ export function stopForToday(replies: readonly string[]): string | null {
 }
 
 /** The hadith title the server sent with this turn (field or show_ayat), if any. */
+/**
+ * The hadith card's title / source. In an en / id session the server sends ITS OWN
+ * translation in these fields (not QuranEnc / HadeethEnc; ai/API_web.md 2026-10-03) —
+ * never shown: today's topic from our content, no source.
+ */
+export function shownHadith(
+  lang: AgentLang,
+  title: string | null,
+  source: string | null,
+  topic: string,
+): { title: string | null; source: string | null } {
+  return lang === 'ar' ? { title, source } : { title: topic, source: null };
+}
+
 function hadithTitleOf(turn: ServerTurn): string | null {
   for (const a of turn.actions) if (a.type === 'show_ayat' && a.hadithTitle) return a.hadithTitle;
   return turn.hadithTitle;

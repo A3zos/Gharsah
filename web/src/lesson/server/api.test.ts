@@ -14,13 +14,29 @@ function respond(status: number, body: unknown, type = 'application/json'): Fetc
 }
 
 describe('AgentApi', () => {
-  it('start sends mode, gender and device_id — never a name or our ids', async () => {
+  it('start sends mode, gender, device_id and lang (default ar) — never a name or our ids', async () => {
     const server = new FakeAgentServer();
     const api = new AgentApi(BASE, server.fetch);
     const t = await api.start({ mode: 'hadith', gender: 'girl', deviceId: 'dev-1' });
     expect(t.kind).toBe('hadith');
     expect(server.calls[0]).toMatchObject({ path: '/agent/start', method: 'POST' });
-    expect(server.calls[0]!.body).toEqual({ mode: 'hadith', gender: 'girl', device_id: 'dev-1' });
+    expect(server.calls[0]!.body).toEqual({ mode: 'hadith', gender: 'girl', device_id: 'dev-1', lang: 'ar' });
+    await api.start({ mode: 'quran', gender: 'boy', deviceId: 'dev-1', lang: 'id' });
+    expect(server.calls[1]!.body).toEqual({ mode: 'quran', gender: 'boy', device_id: 'dev-1', lang: 'id' });
+  });
+
+  it('speak sends the session language with the text and the voice', async () => {
+    const bodies: unknown[] = [];
+    const api = new AgentApi(BASE, async (_u, init) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return new Response(new Blob(['mp3']), { status: 200, headers: { 'Content-Type': 'audio/mpeg' } });
+    });
+    expect(await api.speak('Hello, champion!', 'girl', 'en')).toBeInstanceOf(Blob);
+    await api.speak('هلا يا بطل', 'boy');
+    expect(bodies).toEqual([
+      { text: 'Hello, champion!', gender: 'girl', lang: 'en' },
+      { text: 'هلا يا بطل', gender: 'boy', lang: 'ar' },
+    ]);
   });
 
   it('message 404 → SessionExpired; 429 → RateLimited; 5xx / network / bad JSON → AgentUnavailable', async () => {

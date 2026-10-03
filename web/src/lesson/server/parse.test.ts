@@ -224,7 +224,8 @@ describe('other responses', () => {
 });
 
 describe('ayah numbering — Al-Ikhlas as the live server sends it (2026-10-03)', () => {
-  const url = (a: number) => `https://everyayah.com/data/Alafasy_128kbps/112${String(a).padStart(3, '0')}.mp3`;
+  const url = (a: number) =>
+    `https://everyayah.com/data/Alafasy_128kbps/112${String(a).padStart(3, '0')}.mp3`;
   /** The recitation turns of a real session: [play_ayah, show_ayat] per attempt, 1-based. */
   const recitationTurn = (ayah: number) => ({
     ...base,
@@ -279,5 +280,52 @@ describe('ayah numbering — Al-Ikhlas as the live server sends it (2026-10-03)'
     );
     expect(t.ayah).toBeNull();
     expect(t.actions.find((x) => x.type === 'show_ayat')).toMatchObject({ current: null });
+  });
+});
+
+describe('2026-10-03 docs: an en / id session (ai/API_web.md)', () => {
+  // A hadith turn of an `lang: "en"` session: show_ayat's ayat / hadith_title / source and
+  // show_words come as the server's OWN translation (3 pilot hadiths only). There is no
+  // separate translation field — so the app shows none of it (serverLesson keeps today's topic).
+  const enHadith = {
+    session_id: 'en-1',
+    kind: 'hadith',
+    teacher: 'Teacher Sara',
+    female: true,
+    stage: 'text',
+    stage_index: 2,
+    max_stage_index: 9,
+    stages: [
+      { id: 'greet', label: 'Welcome' },
+      { id: 'intro', label: 'Intro' },
+      { id: 'text', label: 'The hadith' },
+    ],
+    say: "Let's read today's hadith together.",
+    actions: [
+      {
+        type: 'show_ayat',
+        ayat: ["Don't get angry."],
+        hadith_title: "Don't get angry.",
+        source: 'Al-Bukhari',
+      },
+      { type: 'show_words', words: [{ word: 'angry', meaning: 'upset' }] },
+    ],
+    expects: 'continue',
+    quick_replies: ['Next'],
+    hadith_title: "Don't get angry.",
+  };
+
+  it('parses the translated turn like any other (fields keep their documented names)', () => {
+    const t = parseTurn(enHadith, 'hadith');
+    expect(t.kind).toBe('hadith');
+    expect(t.say).toBe("Let's read today's hadith together.");
+    expect(t.hadithTitle).toBe("Don't get angry.");
+    expect(t.actions[0]).toMatchObject({
+      type: 'show_ayat',
+      hadithTitle: "Don't get angry.",
+      source: 'Al-Bukhari',
+    });
+    expect(t.actions[1]).toEqual({ type: 'show_words', words: [{ word: 'angry', meaning: 'upset' }] });
+    expect(t.stages.map((x) => x.label)).toEqual(['Welcome', 'Intro', 'The hadith']);
   });
 });

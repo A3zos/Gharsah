@@ -8,7 +8,7 @@ import { lessonAudio } from './audioUnlock';
 import type { LipSync } from './lipSync';
 import { estimatedSpeechMs } from './speechTeacher';
 import type { LessonMicrophone } from './microphone';
-import type { Gender } from '../server/api';
+import type { AgentLang, Gender } from '../server/api';
 import type { TtsProvider } from '../voice/tts';
 import type {
   PresenceListener,
@@ -71,6 +71,8 @@ export class ServerTeacherVoice implements TeacherVoice {
     private readonly audio: HTMLAudioElement = lessonAudio('voice'),
     /** The character's mouth follows the voice (optional). */
     private readonly lip: LipSync | null = null,
+    /** The session language: the browser's fallback voice speaks it. */
+    private readonly lang: AgentLang = 'ar',
   ) {}
 
   warm(): void {
@@ -160,7 +162,7 @@ export class ServerTeacherVoice implements TeacherVoice {
 
   /** `onStart(false)` = no voice at all: the lesson shows the line as text instead. */
   private async browserSay(text: string, token: object, onStart: (voiced: boolean) => void): Promise<void> {
-    const voice = await this.arabicVoice();
+    const voice = await this.browserVoice();
     if (this.token !== token) return;
     await new Promise<void>((resolve) => {
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -194,14 +196,11 @@ export class ServerTeacherVoice implements TeacherVoice {
     });
   }
 
-  private arabicVoice(): Promise<SpeechSynthesisVoice | null> {
+  private browserVoice(): Promise<SpeechSynthesisVoice | null> {
     const synth = this.synth;
     if (!synth) return Promise.resolve(null);
     this.voice ??= new Promise((resolve) => {
-      const pick = () => {
-        const ar = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith('ar'));
-        return ar.find((v) => v.lang.toLowerCase() === 'ar-sa') ?? ar[0] ?? null;
-      };
+      const pick = () => pickBrowserVoice(synth.getVoices(), this.lang);
       if (synth.getVoices().length) return resolve(pick());
       const timer = setTimeout(() => resolve(pick()), 1500);
       synth.addEventListener(
@@ -414,4 +413,14 @@ export class BrowserSpeechInput implements SpeechInput {
       }
     });
   }
+}
+
+/** The browser's voice for the session language: ar-SA / en-US / id-ID first, then any of that language. */
+export function pickBrowserVoice(
+  voices: readonly SpeechSynthesisVoice[],
+  lang: AgentLang,
+): SpeechSynthesisVoice | null {
+  const preferred = { ar: 'ar-sa', en: 'en-us', id: 'id-id' }[lang];
+  const mine = voices.filter((v) => v.lang.toLowerCase().replace('_', '-').startsWith(lang));
+  return mine.find((v) => v.lang.toLowerCase().replace('_', '-') === preferred) ?? mine[0] ?? null;
 }

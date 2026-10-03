@@ -5,7 +5,7 @@
 //                  changing `createTtsProvider` below — one file.
 // Whatever the provider, a piece it can't voice returns null and the browser's own
 // Arabic voice says it, so the lesson never stops in silence.
-import type { AgentApi, Gender } from '../server/api';
+import type { AgentApi, AgentLang, Gender } from '../server/api';
 
 export interface TeacherVoice {
   /**
@@ -31,16 +31,22 @@ export interface TtsProvider {
   synthesize(text: string, gender: Gender): Promise<Blob | null>;
 }
 
-/** The AI server's /speak (ElevenLabs) — ai/API_web.md §3. */
-export function agentServerTts(api: Pick<AgentApi, 'speakReady' | 'speak'>): TtsProvider {
+/** The AI server's /speak (ElevenLabs) — ai/API_web.md §3 — in the session's language. */
+export function agentServerTts(
+  api: Pick<AgentApi, 'speakReady' | 'speak'>,
+  lang: AgentLang = 'ar',
+): TtsProvider {
   return {
     name: 'agent-speak',
     ready: () => api.speakReady(),
-    synthesize: (text, gender) => api.speak(text, gender),
+    synthesize: (text, gender) => api.speak(text, gender, lang),
   };
 }
 
 /** THE switch for the teacher's TTS provider. */
-export function createTtsProvider(api: Pick<AgentApi, 'speakReady' | 'speak'>): TtsProvider {
-  return agentServerTts(api);
+export function createTtsProvider(
+  api: Pick<AgentApi, 'speakReady' | 'speak'>,
+  lang: AgentLang = 'ar',
+): TtsProvider {
+  return agentServerTts(api, lang);
 }

@@ -7,7 +7,8 @@ import type { ChildRef } from '../../data/student';
 import { QuranText, quranRef } from '../quran';
 import { LipSync } from './lipSync';
 import { LessonMicrophone } from './microphone';
-import { AgentApi, type Gender } from '../server/api';
+import { AgentApi, type AgentLang, type Gender } from '../server/api';
+import { APP_UI_LANGUAGE } from '../../i18n/i18n';
 import {
   BrowserSpeechInput,
   HtmlUrlPlayer,
@@ -41,12 +42,22 @@ export async function createServerLesson(o: {
   childName: string;
   /** The parent's switch (children.ai_voice_consent). */
   consent: boolean;
+  /** The session language (default: the app's UI language — Arabic today). */
+  lang?: AgentLang;
   sink?: ServerProgressSink;
 }): Promise<WebServerLesson> {
+  const lang = o.lang ?? APP_UI_LANGUAGE;
   const api = new AgentApi(o.baseUrl, undefined, [o.childName]);
   const mic = new LessonMicrophone();
   const lip = new LipSync();
-  const voice = new ServerTeacherVoice(createTtsProvider(api), o.gender, undefined, undefined, lip);
+  const voice = new ServerTeacherVoice(
+    createTtsProvider(api, lang),
+    o.gender,
+    undefined,
+    undefined,
+    lip,
+    lang,
+  );
   const player = new HtmlUrlPlayer();
   const lesson = new ServerLesson({
     api,
@@ -57,6 +68,7 @@ export async function createServerLesson(o: {
     sink: o.sink ?? new SupabaseServerProgressSink(o.session),
     deviceId: await agentDeviceId(o.session.childId, browserStorage()),
     gender: o.gender,
+    lang,
     consent: o.consent,
     recorder: o.consent && MediaUtteranceRecorder.supported() ? new MediaUtteranceRecorder(mic) : null,
     speechInput: o.consent ? BrowserSpeechInput.create() : null,

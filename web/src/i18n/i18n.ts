@@ -29,6 +29,13 @@ export function fill(lang: UiLanguage, text: string, vars: Record<string, string
   return text.replace(/\{(\w+)\}/g, (_, k: string) => (k in vars ? formatNumber(lang, vars[k]!) : `{${k}}`));
 }
 
+/**
+ * The app's UI language (child + parent pages) — Arabic only for now; the landing has
+ * its own switch (useI18n). The AI lesson's session language follows THIS, so a
+ * landing preference never changes the child's lesson.
+ */
+export const APP_UI_LANGUAGE = 'ar' as const;
+
 /** The hero pill's age range («للأطفال من ٨ إلى ١٣ سنة» / «For children aged 8–13»). */
 export const LANDING_AGES = { min: 8, max: 13 } as const;
 

@@ -15,6 +15,7 @@ import {
   normalizeArabic,
   RATE_LIMIT_BACKOFF_MS,
   ServerLesson,
+  shownHadith,
   type PresenceListener,
   type LessonPlan,
   type ServerLessonDeps,
@@ -177,8 +178,8 @@ describe('ServerLesson — mocked end-to-end', () => {
     // privacy: two /agent/start calls, neither with a name; only the random device id
     const starts = server.calls.filter((c) => c.path === '/agent/start');
     expect(starts.map((c) => c.body)).toEqual([
-      { mode: 'quran', gender: 'boy', device_id: 'dev-1' },
-      { mode: 'hadith', gender: 'boy', device_id: 'dev-1' },
+      { mode: 'quran', gender: 'boy', device_id: 'dev-1', lang: 'ar' },
+      { mode: 'hadith', gender: 'boy', device_id: 'dev-1', lang: 'ar' },
     ]);
     // no consent → the review status endpoints were never asked
     expect(server.calls.some((c) => c.path.includes('taseem'))).toBe(false);
@@ -421,6 +422,31 @@ describe('ServerLesson — errors and fallback', () => {
     await until(t.lesson, (s) => s.notice === 'restarted');
     expect(t.server.calls.filter((c) => c.path === '/agent/start')).toHaveLength(2);
     expect(t.lesson.state.value.phase).toBe('live');
+  });
+
+  it('the session language goes to every /agent/start, the restart included', async () => {
+    const t = setup({ lang: 'en' });
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.server.failures.push(['/agent/message', 404]);
+    t.lesson.answer('ok');
+    await until(t.lesson, (s) => s.notice === 'restarted');
+    const starts = t.server.calls.filter((c) => c.path === '/agent/start');
+    expect(starts).toHaveLength(2);
+    expect(starts.map((c) => c.body?.lang)).toEqual(['en', 'en']);
+  });
+
+  it("en/id session: the server's own hadith title/source are never shown — today's topic instead", () => {
+    // the server's translations are its own (not QuranEnc / HadeethEnc)
+    expect(shownHadith('en', "Don't get angry.", 'Al-Bukhari', 'الغضب')).toEqual({
+      title: 'الغضب',
+      source: null,
+    });
+    expect(shownHadith('id', 'Jangan Marah', 'Al-Bukhari', 'الغضب')).toEqual({
+      title: 'الغضب',
+      source: null,
+    });
+    expect(shownHadith('ar', 'لا تغضب', 'البخاري', 'الغضب')).toEqual({ title: 'لا تغضب', source: 'البخاري' });
   });
 
   it('cold start: «warming» while the first answer is slow', async () => {

@@ -17,6 +17,15 @@ import {
 } from './parse';
 
 export type Gender = 'boy' | 'girl';
+
+/**
+ * The session language (ai/API_web.md, /agent/start `lang`): the teacher's speech and
+ * the server's labels. The Quran and hadith ARABIC text never changes with it — and
+ * this app shows ayat only from the verified local Tanzil text in every language.
+ */
+export type AgentLang = 'ar' | 'en' | 'id';
+export const AGENT_LANGS: readonly AgentLang[] = ['ar', 'en', 'id'];
+export const isAgentLang = (v: unknown): v is AgentLang => AGENT_LANGS.includes(v as AgentLang);
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
 /** 404 «session expired, please start again» — start a new session. */
@@ -85,9 +94,14 @@ export class AgentApi {
 
   // ── lesson sessions ──
 
-  start(o: { mode: AgentMode; gender: Gender; deviceId: string }): Promise<ServerTurn> {
+  start(o: { mode: AgentMode; gender: Gender; deviceId: string; lang?: AgentLang }): Promise<ServerTurn> {
     // No child_name: the server's default «يا بطل» keeps the name on the device.
-    return this.turn('/agent/start', { mode: o.mode, gender: o.gender, device_id: o.deviceId }, o.mode, true);
+    return this.turn(
+      '/agent/start',
+      { mode: o.mode, gender: o.gender, device_id: o.deviceId, lang: o.lang ?? 'ar' },
+      o.mode,
+      true,
+    );
   }
 
   message(sessionId: string, text: string, mode: AgentMode): Promise<ServerTurn> {
@@ -204,11 +218,12 @@ export class AgentApi {
   }
 
   /** The teacher's line as MP3, or null (any non-audio answer → the browser's voice). */
-  async speak(text: string, gender: Gender): Promise<Blob | null> {
+  async speak(text: string, gender: Gender, lang: AgentLang = 'ar'): Promise<Blob | null> {
     try {
       const r = await this.request('/speak', {
         method: 'POST',
-        body: { text, gender },
+        // `lang` is in the server's SpeakIn schema (openapi.json), default "ar"
+        body: { text, gender, lang },
         timeoutMs: SPEAK_TIMEOUT_MS,
       });
       if (!r.ok || !(r.headers.get('content-type') ?? '').includes('audio')) return null;

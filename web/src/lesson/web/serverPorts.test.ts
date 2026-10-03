@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { speechChunks } from './serverPorts';
+import { pickBrowserVoice, speechChunks } from './serverPorts';
 
 describe('speechChunks (/speak cuts at 1200 characters)', () => {
   it('short lines stay whole; empty → nothing', () => {
@@ -20,5 +20,20 @@ describe('speechChunks (/speak cuts at 1200 characters)', () => {
   it('a single huge sentence is hard-cut', () => {
     const pieces = speechChunks('ا'.repeat(2500), 1000);
     expect(pieces.map((p) => p.length)).toEqual([1000, 1000, 500]);
+  });
+});
+
+describe('pickBrowserVoice', () => {
+  const v = (lang: string, name = lang) => ({ lang, name }) as SpeechSynthesisVoice;
+  const voices = [v('en-GB'), v('ar-EG'), v('ar-SA'), v('en-US'), v('id_ID')];
+
+  it('the session language, its main locale first', () => {
+    expect(pickBrowserVoice(voices, 'ar')?.lang).toBe('ar-SA');
+    expect(pickBrowserVoice(voices, 'en')?.lang).toBe('en-US');
+    expect(pickBrowserVoice(voices, 'id')?.lang).toBe('id_ID');
+  });
+
+  it('none for that language → null (the line shows as text, never another language)', () => {
+    expect(pickBrowserVoice([v('fr-FR')], 'en')).toBeNull();
   });
 });
