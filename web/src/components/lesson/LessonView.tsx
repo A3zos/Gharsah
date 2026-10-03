@@ -5,7 +5,7 @@
 // inside itself), and the mic indicator fixed at the bottom. No "next" arrows —
 // the agent moves on by itself; the only control is ✕ → ExitConfirm. No text
 // under 16px. Religious text only from the verified content (never generated).
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 
 import type { Subscribe } from '../../lesson/observable';
 import { isMicLive, isTeacherListening, isTeacherQuiet, type LessonState } from '../../lesson/state';
@@ -16,6 +16,7 @@ import { TEACHER_NAME, TEACHER_TEXT, type TeacherGender } from '../child/teacher
 import { TeacherSprite, type MouthSource } from '../child/TeacherSprite';
 import { C } from '../ui/color';
 import { SproutMark } from '../ui/icons';
+import { MushafSurahCard } from './Mushaf';
 import { AllowPrompt, VoiceMic } from './VoiceCall';
 
 /** What the plan card (L1) and the celebration frames (L6, L10) need beyond the state. */
@@ -526,144 +527,9 @@ function SurahStage({ state: s, actions }: { state: LessonState; actions: Lesson
   );
 }
 
-/** The ayah font: as big as fits, between these (px). */
-const AYAH_FONT_MAX = 30;
-const AYAH_FONT_MIN = 22;
-
-/**
- * The biggest font (AYAH_FONT_MAX → AYAH_FONT_MIN, 1 px steps) at which the whole text
- * fits its box without scrolling; AYAH_FONT_MIN when even that doesn't fit (a long
- * surah then scrolls). Re-fits when the box resizes or the fonts arrive.
- */
-function useFitFont(
-  box: React.RefObject<HTMLElement | null>,
-  text: React.RefObject<HTMLElement | null>,
-  key: string,
-) {
-  const [px, setPx] = useState(AYAH_FONT_MAX);
-  useEffect(() => {
-    const b = box.current;
-    const t = text.current;
-    if (!b || !t) return;
-    const fit = () => {
-      const cs = getComputedStyle(b);
-      const room = b.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-      if (room <= 0) return;
-      let size = AYAH_FONT_MAX;
-      for (; size > AYAH_FONT_MIN; size--) {
-        t.style.fontSize = `${size}px`;
-        if (t.scrollHeight <= room) break;
-      }
-      t.style.fontSize = `${size}px`;
-      setPx(size);
-    };
-    fit();
-    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
-    ro?.observe(b);
-    void document.fonts?.ready.then(fit);
-    return () => ro?.disconnect();
-  }, [box, text, key]);
-  return px;
-}
-
-/** The surah card (verified text, current ayah highlighted, tap = hear again) — shared with the AI-server lesson. */
-export function SurahCard({
-  surahName,
-  ayat,
-  currentAyah,
-  reciting,
-  playbackBlocked,
-  label,
-  onTap,
-  onPlay,
-}: {
-  surahName: string;
-  ayat: readonly { readonly ayah: number; readonly text: string }[];
-  currentAyah: number | null;
-  reciting: boolean;
-  playbackBlocked: boolean;
-  label: string;
-  onTap: () => void;
-  onPlay: () => void;
-}) {
-  const current = useRef<HTMLSpanElement>(null);
-  const box = useRef<HTMLDivElement>(null);
-  const text = useRef<HTMLParagraphElement>(null);
-  // the whole surah at the biggest size that fits (22–30 px) — no clipping, no inner scroll
-  const fontPx = useFitFont(box, text, ayat.map((a) => a.ayah).join(','));
-  // only a surah too long for the card scrolls — and keeps the current ayah in view
-  useEffect(() => {
-    current.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
-  }, [currentAyah]);
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onTap}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onTap();
-        }
-      }}
-      aria-label={label}
-      className={cx(
-        'flex min-h-0 grow cursor-pointer flex-col rounded-px-28 bg-surface text-text-dark shadow-lesson-ayah-card',
-        reciting ? 'border-[2px] border-primary' : 'border-[1.5px] border-border',
-      )}
-    >
-      <span className="shrink-0 pt-[12px] text-center text-[16px] font-bold text-text-muted">
-        سورة {surahName}
-      </span>
-      {/* The whole surah fits (font 22–30 px); only a surah too long for the card scrolls — no visible scrollbar. */}
-      <div
-        ref={box}
-        className="min-h-0 grow [scrollbar-width:none] overflow-x-hidden overflow-y-auto px-[16px] pt-[4px] pb-[14px] [&::-webkit-scrollbar]:hidden"
-      >
-        {/* Uthmani text wraps naturally (RTL, right-aligned). */}
-        <p
-          ref={text}
-          dir="rtl"
-          style={{ fontSize: fontPx }}
-          className="m-0 text-right font-ayah leading-[2] break-normal whitespace-normal"
-        >
-          {ayat.map((a) => {
-            const on = a.ayah === currentAyah;
-            // done: normal; upcoming: a little muted; the whole surah (no current): all normal
-            const upcoming = currentAyah !== null && a.ayah > currentAyah;
-            const words = a.text.split(' ');
-            const last = words.pop() ?? '';
-            return (
-              <span
-                key={a.ayah}
-                ref={on ? current : undefined}
-                // the same padding on every ayah, so the highlight moving never reflows the lines;
-                // the background is on the current ayah's own text only (clone: clean across line breaks)
-                className={cx(
-                  'rounded-lesson-ayah-highlight [box-decoration-break:clone] px-[6px] py-[2px] transition-[background-color,color,opacity] duration-300 [-webkit-box-decoration-break:clone]',
-                  // a soft band behind the letters (the Uthmani font's box is ~2.5em tall — a full
-                  // background would overlap the lines above and below)
-                  on &&
-                    'bg-[linear-gradient(to_bottom,transparent_20%,var(--color-green-tint)_20%,var(--color-green-tint)_84%,transparent_84%)] text-deep-green',
-                  upcoming && 'opacity-55',
-                )}
-              >
-                {words.length > 0 && `${words.join(' ')} `}
-                {/* the ayah's last word and its number ornament never split */}
-                <span className="whitespace-nowrap">
-                  {last}
-                  <span className="text-ayah-bracket" aria-hidden="true">
-                    {'\u00a0'}﴿{toArabicDigits(a.ayah)}﴾
-                  </span>
-                </span>{' '}
-              </span>
-            );
-          })}
-        </p>
-      </div>
-      {playbackBlocked && <PlayFallback onTap={onPlay} />}
-    </div>
-  );
+/** The surah card as a mushaf page (Mushaf.tsx) — shared with the AI-server lesson. */
+export function SurahCard(props: Omit<React.ComponentProps<typeof MushafSurahCard>, 'playFallback'>) {
+  return <MushafSurahCard {...props} playFallback={(onTap) => <PlayFallback onTap={onTap} />} />;
 }
 
 /** Small fallback play when the browser blocked autoplay (the only visible play control). */

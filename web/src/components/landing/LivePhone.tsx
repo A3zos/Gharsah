@@ -12,6 +12,7 @@ import { Hadith } from '../../lesson/hadith';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
 import { TEACHER_NAME, teacherFrameSrc, type TeacherFrame } from '../child/teacherCharacter';
+import { AyahNumber, Basmala, SurahBanner } from '../lesson/Mushaf';
 import { C } from '../ui/color';
 import { MicIcon } from '../ui/icons';
 
@@ -73,8 +74,8 @@ function TalkingTeacher() {
   }, [reduce]);
   const frame: TeacherFrame = reduce ? 'idle' : LOOP[tick % LOOP.length]!;
   return (
-    <div className="relative h-[292px] w-full shrink-0">
-      <span className="absolute top-[24px] left-1/2 h-[262px] w-[262px] -translate-x-1/2 rounded-full bg-green-tint" />
+    <div className="relative h-[258px] w-full shrink-0">
+      <span className="absolute top-[20px] left-1/2 h-[234px] w-[234px] -translate-x-1/2 rounded-full bg-green-tint" />
       {/* all frames stacked, only one visible — no flicker while switching */}
       {SHOWN.map((f) => (
         <img
@@ -84,14 +85,14 @@ function TalkingTeacher() {
           loading="eager"
           draggable={false}
           className={cx(
-            'absolute bottom-0 left-1/2 h-[292px] w-[224px] -translate-x-1/2 object-cover object-top',
+            'absolute bottom-0 left-1/2 h-[258px] w-[198px] -translate-x-1/2 object-cover object-top',
             f === frame ? 'opacity-100' : 'opacity-0',
           )}
         />
       ))}
       {/* the talking glow */}
       {!reduce && (
-        <span className="absolute top-[44px] left-1/2 h-[222px] w-[222px] -translate-x-1/2 animate-[gh-pulse_2.4s_ease-in-out_infinite] rounded-full" />
+        <span className="absolute top-[38px] left-1/2 h-[198px] w-[198px] -translate-x-1/2 animate-[gh-pulse_2.4s_ease-in-out_infinite] rounded-full" />
       )}
     </div>
   );
@@ -146,7 +147,7 @@ function StatusBar() {
   );
 }
 
-const AYAH_PX = 24;
+const AYAH_PX = 22;
 
 /** «قُلْ هُوَ ٱللَّهُ أَحَدٌ ﴿١﴾» centered on one row; the font shrinks if the row is too wide. */
 function AyahLine() {
@@ -170,8 +171,11 @@ function AyahLine() {
       style={{ fontSize: px }}
       className="m-0 w-full overflow-hidden text-center font-ayah leading-[1.9] whitespace-nowrap text-text-dark"
     >
-      {AYAH.text}
-      <span className="text-ayah-bracket"> ﴿{toArabicDigits(1)}﴾</span>
+      {/* the current ayah: the lesson card's soft green line */}
+      <span className="inline-block rounded-lesson-ayah-highlight bg-green-tint px-[10px] text-deep-green">
+        {AYAH.text}
+        <AyahNumber n={1} />
+      </span>
     </p>
   );
 }
@@ -192,9 +196,11 @@ function Fade({ show, children }: { show: boolean; children: React.ReactNode }) 
 
 function QuranCard() {
   return (
-    <div className="flex w-full flex-col items-center gap-[4px] self-center rounded-px-24 border-[2px] border-primary bg-surface px-[12px] pt-[10px] pb-[11px] shadow-lesson-ayah-card">
+    // the lesson's mushaf card: the surah's banner, the basmala, the ayah being recited
+    <div className="flex w-full flex-col gap-[2px] self-center rounded-px-24 border border-primary/40 bg-[color-mix(in_srgb,var(--color-gold-tint)_40%,var(--color-surface))] px-[12px] pt-[10px] pb-[8px] shadow-lesson-ayah-card">
+      <SurahBanner name="الإخلاص" size="sm" />
+      <Basmala surahName="الإخلاص" className="text-[16px] leading-[1.9]" />
       <AyahLine />
-      <span className="text-[12px] font-bold text-text-muted">سورة الإخلاص</span>
     </div>
   );
 }

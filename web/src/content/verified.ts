@@ -15,3 +15,14 @@ export function verifiedAyah(surah: number, ayah: number): { text: string; refer
     reference: `سورة ${meta.surahName(surah)} · الآية ${toArabicDigits(ayah)}`,
   };
 }
+
+/** The basmala, from the verified Tanzil text (1:1) — never typed by hand. */
+export const BASMALA = text.text(quranRef(1, 1));
+
+/**
+ * A surah's page opens with the basmala line — except At-Tawbah (9, none) and
+ * Al-Fatiha (1, where the basmala is its first ayah). By the verified surah names.
+ */
+export function showsBasmala(surahName: string): boolean {
+  return surahName !== meta.surahName(1) && surahName !== meta.surahName(9);
+}
