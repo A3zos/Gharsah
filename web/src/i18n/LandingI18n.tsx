@@ -43,3 +43,20 @@ export function ArabicOnly({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+/** A message with **bold** parts (the source names in «مصادرنا»). */
+export function Rich({ text, bold = 'font-bold text-text-dark' }: { text: string; bold?: string }) {
+  return (
+    <>
+      {text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
+        i % 2 ? (
+          <b key={i} className={bold}>
+            {part}
+          </b>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}

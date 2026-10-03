@@ -15,7 +15,8 @@
     "login": "Log in",
     "signup": "Sign up",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "backToTop": "Back to top"
   },
   "hero": {
     "ages": "For children aged {min}–{max}",
@@ -36,5 +37,160 @@
     "hadithTopic": "Kindness to parents",
     "hadithHint": "Learn the meaning, then live it at home",
     "project": "Today's project"
+  },
+  "how": {
+    "title": "How Gharsah works",
+    "subtitle": "A smart teacher who teaches your child the Quran and Hadith, and answers their questions about their faith",
+    "example": "Example",
+    "steps": {
+      "quran": {
+        "label": "Quran",
+        "title": "Memorize the Quran with a smart teacher",
+        "body": "Your child hears each ayah from a skilled reciter, then repeats it aloud, while the teacher encourages and counts along until they master it.",
+        "teacher": "Today: Surah Al-Ikhlas… repeat it with me, ayah by ayah",
+        "child": "Ready!"
+      },
+      "hadith": {
+        "label": "Hadith",
+        "title": "Understand the Hadith and live it",
+        "body": "Your child learns a short hadith and its meaning in simple words, then turns it into a real deed at home.",
+        "teacher": "Today's hadith is about kindness to parents 💛",
+        "child": "I'll help her tidy the house"
+      },
+      "questions": {
+        "label": "Children's questions",
+        "title": "Answers their questions about Islam",
+        "body": "Your child asks out loud about whatever puzzles them, and the teacher answers in words that suit their age, using answers reviewed by specialists.",
+        "teacher": "Great question! Let's understand it together…",
+        "child": "Why do we pray five times a day?"
+      }
+    }
+  },
+  "parents": {
+    "pill": "For parents",
+    "title": "Follow their progress… without hovering over them",
+    "body": "A calm dashboard that shows what your child has memorized, what they've learned from the Hadith and the projects they've put into practice, and lets you hear their recordings in their own voice.",
+    "features": [
+      {
+        "title": "A report for every lesson",
+        "text": "What they memorized, how long, and the teacher's note"
+      },
+      { "title": "Project recordings", "text": "Sent only to you, in your child's voice" },
+      { "title": "More than one child", "text": "Up to {n} children on one account" }
+    ],
+    "preview": {
+      "label": "Sample parent dashboard (sample data)",
+      "tabsLabel": "Dashboard sections",
+      "name": "Abdullah",
+      "meta": "{age} years · Yearly plan",
+      "streak": "{n}-day streak 🔥",
+      "tabs": { "overview": "Overview", "today": "Today's lesson", "project": "Project" },
+      "growth": "Growth path",
+      "percent": "{n}%",
+      "stages": { "seed": "Seed", "sapling": "Sapling", "tree": "Tree" },
+      "stats": { "surahs": "Surahs", "ayat": "Ayat", "hadith": "Hadiths", "projects": "Projects" },
+      "todaySurah": "Surah Al-Ikhlas · {n} ayat",
+      "todayHadith": "Hadith: Kindness to parents",
+      "duration": "Lesson time: {n} min",
+      "confident": "Repeated with confidence",
+      "noteLabel": "Teacher's note",
+      "note": "Great engagement, and listened well to the reciter",
+      "weekProject": "This week's project",
+      "projectTopic": "Kindness to parents",
+      "projectDetail": "Helped his mother tidy the house",
+      "toldByVoice": "Told it in his own voice",
+      "voiceCaption": "I helped my mom tidy the house"
+    }
+  },
+  "sources": {
+    "pill": "Trust",
+    "title": "Our sources",
+    "subtitle": "Every text your child hears comes from a stated, trusted source — no guesswork, no generation.",
+    "subtitleShort": "Every text your child hears comes from a stated, trusted source — no guesswork, no generation.",
+    "cards": {
+      "quran": {
+        "title": "Quran text",
+        "body": "From the **Tanzil project** — Hafs from Asim, in the verified Uthmani script.",
+        "bodyShort": "From the **Tanzil project** — Hafs from Asim, in the verified Uthmani script."
+      },
+      "recitation": {
+        "title": "Recitation",
+        "body": "In the voice of Sheikh **Mishary Rashid Alafasy** — a clear, measured recitation that suits children.",
+        "bodyShort": "In the voice of Sheikh **Mishary Rashid Alafasy** — a clear, measured recitation that suits children."
+      },
+      "tafsir": {
+        "title": "Tafsir",
+        "body": "From **Al-Tafsir Al-Muyassar** — King Fahd Complex for the Printing of the Holy Quran.",
+        "bodyShort": "From **Al-Tafsir Al-Muyassar** — King Fahd Complex for the Printing of the Holy Quran."
+      },
+      "hadith": {
+        "title": "Hadith",
+        "body": "Every hadith **is approved with its source and grading by a Sharia specialist** before it reaches your child.",
+        "bodyShort": "Every hadith **is approved with its source and grading by a Sharia specialist** before it reaches your child."
+      }
+    },
+    "banner": "AI never generates any Quran or Hadith text — its role is to explain and encourage.",
+    "bannerShort": "AI never generates any Quran or Hadith text — its role is to explain and encourage."
+  },
+  "plans": {
+    "title": "Plans",
+    "subtitle": "Start with the pilot plan — monthly and yearly plans coming soon",
+    "available": "Available now",
+    "soon": "Coming soon",
+    "listSep": ", ",
+    "pilot": {
+      "name": "Pilot plan",
+      "price": "Free",
+      "tag": "{n} days — one day at a time",
+      "items": [
+        "{count} surahs ({surahs})",
+        "{count} hadiths",
+        "One lesson a day",
+        "Up to {children} children"
+      ],
+      "day": "Day {n}: Surah {surah} + {hadith}",
+      "cta": "Start free"
+    },
+    "monthly": {
+      "name": "Monthly plan",
+      "per": "SAR / month",
+      "tag": "A flexible start",
+      "items": [
+        "All of Juz' Amma",
+        "3 hadiths with practical projects",
+        "A weekly review lesson",
+        "For one child",
+        "Cancel anytime"
+      ]
+    },
+    "annual": {
+      "name": "Yearly plan",
+      "per": "SAR / year",
+      "tag": "Less than {n} SAR a month",
+      "items": [
+        "6 Juz' of the Quran",
+        "30 hadiths with practical projects",
+        "A weekly review lesson",
+        "Unlimited children"
+      ]
+    },
+    "names": {
+      "surah": { "112": "Al-Ikhlas", "113": "Al-Falaq", "114": "An-Nas" },
+      "hadith": {
+        "PLACEHOLDER-birr-alwalidayn": "hadith on kindness to parents",
+        "PLACEHOLDER-al-kadhib": "hadith on lying",
+        "PLACEHOLDER-al-ghadab": "hadith on anger"
+      }
+    }
+  },
+  "footer": {
+    "linksLabel": "Links",
+    "privacy": "Privacy policy",
+    "privacyShort": "Privacy policy",
+    "terms": "Terms & conditions",
+    "termsShort": "Terms & conditions",
+    "contact": "Contact us",
+    "brandLatin": "Gharsah",
+    "copyright": "© 1447 AH Gharsah · Made in Saudi Arabia"
   }
 }

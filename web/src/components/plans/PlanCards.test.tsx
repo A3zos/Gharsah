@@ -1,6 +1,29 @@
 import { render, screen, within } from '@testing-library/react';
 
+import { STORAGE_KEY } from '../../i18n/i18n';
+import { LandingI18nProvider } from '../../i18n/LandingI18n';
 import { PlanCards } from './PlanCards';
+
+afterEach(() => localStorage.clear());
+
+test('in English on the landing: English copy, Western digits', () => {
+  localStorage.setItem(STORAGE_KEY, 'en');
+  render(
+    <LandingI18nProvider>
+      <PlanCards pilotAction={<button type="button">Start free</button>} />
+    </LandingI18nProvider>,
+  );
+  const [pilot, monthly, yearly] = screen.getAllByRole('region') as [HTMLElement, HTMLElement, HTMLElement];
+  expect(pilot).toHaveAccessibleName('Pilot plan');
+  expect(within(pilot).getByText('Available now')).toBeInTheDocument();
+  expect(within(pilot).getByText('Free')).toBeInTheDocument();
+  expect(within(pilot).getByText('Day 2: Surah An-Nas + hadith on lying')).toBeInTheDocument();
+  expect(within(monthly).getByText('29')).toBeInTheDocument();
+  expect(within(monthly).getByText('SAR / month')).toBeInTheDocument();
+  expect(within(yearly).getByText('119')).toBeInTheDocument();
+  expect(within(yearly).getByText('Less than 10 SAR a month')).toBeInTheDocument();
+  expect(within(yearly).getByRole('button', { name: 'Coming soon' })).toBeDisabled();
+});
 
 test('three plans in order: the free pilot first, then monthly, then yearly', () => {
   render(<PlanCards pilotAction={<button type="button">ابدأ مجانًا</button>} />);

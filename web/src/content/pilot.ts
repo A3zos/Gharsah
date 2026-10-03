@@ -6,7 +6,7 @@ import day1 from '@content/lessons/pilot-day-1.json';
 import day2 from '@content/lessons/pilot-day-2.json';
 import day3 from '@content/lessons/pilot-day-3.json';
 
-import { toArabicDigits } from '../lib/arabicDigits';
+import { fill, MESSAGES, type UiLanguage } from '../i18n/i18n';
 import { PILOT_MAX_CHILDREN } from './plans';
 import { hadithRepo, quranMeta } from './library';
 
@@ -49,16 +49,33 @@ export const PILOT_DAYS: readonly PilotDay[] = [day1, day2, day3]
 export const pilotDay = (lessonId: string): PilotDay | undefined =>
   PILOT_DAYS.find((d) => d.lessonId === lessonId);
 
-export const PILOT_NAME = 'الباقة التجريبية';
+/**
+ * The pilot plan's copy in a UI language (src/i18n/*.json → plans.pilot). The names
+ * come from plans.names; in Arabic they equal the verified content (pilot.test.ts).
+ */
+export function pilotCopy(lang: UiLanguage) {
+  const m = MESSAGES[lang].plans;
+  const surah = (d: PilotDay) => (m.names.surah as Record<string, string>)[d.surah] ?? d.surahName;
+  const hadith = (d: PilotDay) => (m.names.hadith as Record<string, string>)[d.hadithId] ?? d.hadithTitle;
+  const vars = {
+    count: PILOT_DAYS.length,
+    surahs: PILOT_DAYS.map(surah).join(m.listSep),
+    children: PILOT_MAX_CHILDREN,
+  };
+  return {
+    name: m.pilot.name,
+    /** The pilot is free — no payment step; signing up starts it. */
+    price: m.pilot.price,
+    cta: m.pilot.cta,
+    tag: fill(lang, m.pilot.tag, { n: PILOT_DAYS.length }),
+    /** What the package contains — shown wherever the app shows the plan. */
+    items: m.pilot.items.map((t) => fill(lang, t, vars)),
+    days: PILOT_DAYS.map((d) => fill(lang, m.pilot.day, { n: d.day, surah: surah(d), hadith: hadith(d) })),
+  };
+}
 
-/** The pilot is free — no payment step; signing up starts it. */
-export const PILOT_PRICE = 'مجانًا';
-export const PILOT_CTA = 'ابدأ مجانًا';
-
-/** What the package contains — shown wherever the app shows the plan. */
-export const PILOT_ITEMS: readonly string[] = [
-  `${toArabicDigits(PILOT_DAYS.length)} سور (${PILOT_DAYS.map((d) => d.surahName).join('، ')})`,
-  `${toArabicDigits(PILOT_DAYS.length)} أحاديث`,
-  'حصة واحدة كل يوم',
-  `حتى ${toArabicDigits(PILOT_MAX_CHILDREN)} أطفال`,
-];
+const AR = pilotCopy('ar');
+export const PILOT_NAME = AR.name;
+export const PILOT_PRICE = AR.price;
+export const PILOT_CTA = AR.cta;
+export const PILOT_ITEMS: readonly string[] = AR.items;

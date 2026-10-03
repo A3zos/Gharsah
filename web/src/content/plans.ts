@@ -1,24 +1,12 @@
 // Plan contents and prices shown on the web (design/v3 — landing, web plans, Packages).
 // Buying happens only in the Android app through Google Play Billing (CLAUDE.md §3).
 
-/** design/v3 plan contents (landing, web plans, Packages). */
-export const PLANS = {
-  annual: [
-    '٦ أجزاء من القرآن',
-    '٣٠ حديثًا مع مشاريعها العملية',
-    'حصة مراجعة كل أسبوع',
-    'عدد غير محدود من الأبناء',
-  ],
-  monthly: [
-    'جزء عمّ كاملًا',
-    '٣ أحاديث مع مشاريعها العملية',
-    'حصة مراجعة كل أسبوع',
-    'لابن واحد',
-    'تُلغى متى شئت',
-  ],
-} as const;
+// The plans' copy (names, contents, tags) lives in src/i18n/*.json → plans.
 
-export const PRICE = { annual: '١١٩', monthly: '٢٩' } as const;
+/** Prices in SAR, shown in the UI language's digits. */
+export const PRICE_SAR = { annual: 119, monthly: 29 } as const;
+/** «أقل من ١٠ ريالات في الشهر» — the yearly plan per month, rounded up. */
+export const ANNUAL_MONTHLY_UNDER = 10;
 
 /** The monthly plan covers one child (design/v3 PackagesLimit). */
 export const MONTHLY_MAX_CHILDREN = 1;

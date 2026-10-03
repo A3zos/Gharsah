@@ -1,20 +1,17 @@
 // «لوليّ الأمر» on the landing: the copy + feature rows (ParentFeatures) and a live preview
 // of the parent dashboard (ParentPreview) — one card in a light browser frame, three views
 // (overview / today's lesson / the project) that switch every 5 s with a cross-fade. All names and numbers in the preview are SAMPLE data (no real child).
+// The words follow the landing language (src/i18n → parents).
 import { useEffect, useRef, useState } from 'react';
 
 import { PILOT_MAX_CHILDREN } from '../../content/plans';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { fill, formatNumber, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { C } from '../ui/color';
 import { CheckIcon } from '../ui/icons';
 import { HOW_STEPS, VoiceNote } from './shared';
 
-const VIEWS = [
-  { key: 'overview', label: 'نظرة عامة' },
-  { key: 'today', label: 'حصة اليوم' },
-  { key: 'project', label: 'المشروع' },
-] as const;
+const VIEWS = [{ key: 'overview' }, { key: 'today' }, { key: 'project' }] as const;
 type ViewKey = (typeof VIEWS)[number]['key'];
 const VIEW_MS = 5000;
 
@@ -119,28 +116,22 @@ const FEATURES = [
     icon: ICONS.report,
     tint: 'bg-green-tint',
     color: C.deepGreen,
-    title: 'تقرير كل حصة',
-    text: 'ماذا حفظ، وكم دقيقة، وملاحظة المعلّم',
   },
   {
     icon: ICONS.mic,
     tint: 'bg-gold-tint',
     color: C.warningText,
-    title: 'تسجيلات المشاريع',
-    text: 'تصلك أنت وحدك، بصوت طفلك',
   },
   {
     icon: ICONS.children,
     tint: 'bg-sky-tint',
     color: C.skyText,
-    title: 'أكثر من ابن',
-    // the pilot plan's limit (content/plans.ts) — the plan the landing offers today
-    text: `حتى ${toArabicDigits(PILOT_MAX_CHILDREN)} أبناء على حساب واحد`,
   },
 ];
 
 /** «لوليّ الأمر»: the paragraph and the three feature rows (round tinted icon + title + line). */
 export function ParentFeatures({ desktop }: { desktop?: boolean }) {
+  const { lang, m } = useI18n();
   return (
     <>
       <p
@@ -149,12 +140,11 @@ export function ParentFeatures({ desktop }: { desktop?: boolean }) {
           desktop ? 'max-w-[500px] text-[17px] leading-[1.95]' : 'text-center text-[15px] leading-[1.9]',
         )}
       >
-        لوحة هادئة تريك ما حفظه طفلك، وما تعلّمه من الحديث، والمشاريع التي طبّقها، والأسئلة التي سألها، وتسمع
-        تسجيلاته بصوته.
+        {m.parents.body}
       </p>
       <ul className={cx('m-0 flex list-none flex-col p-0', desktop ? 'gap-[16px] pt-[4px]' : 'gap-[14px]')}>
-        {FEATURES.map((f) => (
-          <li key={f.title} className="flex items-center gap-[14px]">
+        {FEATURES.map((f, i) => (
+          <li key={i} className="flex items-center gap-[14px]">
             <span
               className={cx(
                 'flex shrink-0 items-center justify-center rounded-full',
@@ -166,10 +156,11 @@ export function ParentFeatures({ desktop }: { desktop?: boolean }) {
             </span>
             <span className="flex flex-col gap-[1px]">
               <span className={cx('font-extrabold text-text-dark', desktop ? 'text-[16px]' : 'text-[15px]')}>
-                {f.title}
+                {m.parents.features[i]!.title}
               </span>
               <span className={cx('text-text-muted', desktop ? 'text-[14.5px]' : 'text-[13.5px]')}>
-                {f.text}
+                {/* the third row: the pilot plan's limit (content/plans.ts) — the plan the landing offers today */}
+                {fill(lang, m.parents.features[i]!.text, { n: PILOT_MAX_CHILDREN })}
               </span>
             </span>
           </li>
@@ -182,11 +173,11 @@ export function ParentFeatures({ desktop }: { desktop?: boolean }) {
 // ---- the preview (sample data only) ----------------------------------------------------
 
 const COUNTS = [
-  { n: 8, label: 'سور', color: 'text-deep-green', icon: ICONS.book, c: C.deepGreen },
-  { n: 64, label: 'آية', color: 'text-sky-text', icon: ICONS.sparkle, c: C.skyText },
-  { n: 12, label: 'حديثًا', color: 'text-berry-deep', icon: ICONS.chat, c: C.berryDeep },
-  { n: 9, label: 'مشاريع', color: 'text-warning-text', icon: ICONS.sprout, c: C.warningText },
-];
+  { n: 8, label: 'surahs', color: 'text-deep-green', icon: ICONS.book, c: C.deepGreen },
+  { n: 64, label: 'ayat', color: 'text-sky-text', icon: ICONS.sparkle, c: C.skyText },
+  { n: 12, label: 'hadith', color: 'text-berry-deep', icon: ICONS.chat, c: C.berryDeep },
+  { n: 9, label: 'projects', color: 'text-warning-text', icon: ICONS.sprout, c: C.warningText },
+] as const;
 const PLAN_PCT = 52;
 const HADITH_STEP = HOW_STEPS.find((s) => s.key === 'hadith')!;
 
@@ -251,7 +242,7 @@ function useCountUp(to: number, run: boolean, reduce: boolean): number {
 
 const STAGES = [
   {
-    label: 'بذرة',
+    label: 'seed',
     ring: 'bg-green-tint',
     text: 'text-deep-green',
     art: (s: number) => (
@@ -262,7 +253,7 @@ const STAGES = [
     ),
   },
   {
-    label: 'غَرْسة',
+    label: 'sapling',
     ring: 'bg-gold-tint border-[2px] border-gold',
     text: 'text-warning-text',
     art: (s: number) => (
@@ -274,7 +265,7 @@ const STAGES = [
     ),
   },
   {
-    label: 'شجرة',
+    label: 'tree',
     ring: 'bg-border-soft',
     text: 'text-text-subtle',
     art: (s: number) => (
@@ -284,12 +275,14 @@ const STAGES = [
       </svg>
     ),
   },
-];
+] as const;
 
 /** A cream tile inside the white frame. */
 const TILE = 'rounded-px-18 bg-background';
 
 function Overview({ desktop, run, reduce }: { desktop?: boolean; run: boolean; reduce: boolean }) {
+  const { lang, m } = useI18n();
+  const t = m.parents.preview;
   const values = [
     useCountUp(COUNTS[0]!.n, run, reduce),
     useCountUp(COUNTS[1]!.n, run, reduce),
@@ -308,10 +301,10 @@ function Overview({ desktop, run, reduce }: { desktop?: boolean; run: boolean; r
       >
         <span className="flex items-center justify-between">
           <span className={cx('font-extrabold text-text-muted', desktop ? 'text-[13.5px]' : 'text-[12.5px]')}>
-            مسار النموّ
+            {t.growth}
           </span>
           <span className="rounded-pill bg-green-tint px-[9px] py-[2px] font-heading text-[13px] font-extrabold text-deep-green">
-            {toArabicDigits(PLAN_PCT)}٪
+            {fill(lang, t.percent, { n: PLAN_PCT })}
           </span>
         </span>
         <div className={cx('flex items-start [direction:ltr]', desktop ? 'gap-[6px]' : 'gap-[4px]')}>
@@ -328,7 +321,7 @@ function Overview({ desktop, run, reduce }: { desktop?: boolean; run: boolean; r
                 {s.art((desktop ? 22 : 19) + (i === 0 ? 0 : 2))}
               </span>
               <span className={cx('font-extrabold', desktop ? 'text-[12.5px]' : 'text-[11.5px]', s.text)}>
-                {s.label}
+                {t.stages[s.label]}
               </span>
             </div>
           ))}
@@ -358,10 +351,10 @@ function Overview({ desktop, run, reduce }: { desktop?: boolean; run: boolean; r
                 c.color,
               )}
             >
-              {toArabicDigits(values[i]!)}
+              {formatNumber(lang, values[i]!)}
             </span>
             <span className={cx('font-bold text-text-muted', desktop ? 'text-[14px]' : 'text-[12.5px]')}>
-              {c.label}
+              {t.stats[c.label]}
             </span>
           </div>
         ))}
@@ -387,44 +380,46 @@ function Done({ children }: { children: React.ReactNode }) {
 }
 
 function Today() {
+  const { lang, m } = useI18n();
+  const t = m.parents.preview;
   return (
     <div className="flex flex-col gap-[12px]">
-      <Done>سورة الإخلاص · {toArabicDigits(4)} آيات</Done>
-      <Done>حديث برّ الوالدين</Done>
+      <Done>{fill(lang, t.todaySurah, { n: 4 })}</Done>
+      <Done>{t.todayHadith}</Done>
       <span className="flex items-center gap-[8px] whitespace-nowrap">
         <span className="rounded-pill bg-background px-[12px] py-[6px] text-[13px] font-bold text-text-muted">
-          مدة الحصة {toArabicDigits(12)} دقيقة
+          {fill(lang, t.duration, { n: 12 })}
         </span>
         <span className="rounded-pill bg-green-tint px-[12px] py-[6px] text-[13px] font-extrabold text-deep-green">
-          ردّد بثقة
+          {t.confident}
         </span>
       </span>
       <span className="flex w-full flex-col gap-[3px] rounded-px-18 border-[1.5px] border-gold-border bg-gold-tint px-[14px] py-[10px]">
-        <span className="text-[12px] font-extrabold text-warning-text">ملاحظة المعلّم</span>
-        <span className="text-[14.5px] leading-[1.7] font-bold text-on-gold">
-          تفاعل رائع، وأحسن الاستماع للقارئ
-        </span>
+        <span className="text-[12px] font-extrabold text-warning-text">{t.noteLabel}</span>
+        <span className="text-[14.5px] leading-[1.7] font-bold text-on-gold">{t.note}</span>
       </span>
     </div>
   );
 }
 
 function Project({ playing }: { playing: boolean }) {
+  const { m } = useI18n();
+  const t = m.parents.preview;
   return (
     <div className={cx(TILE, 'flex flex-col gap-[12px] px-[16px] py-[14px]')}>
       <span className="self-start rounded-pill bg-gold px-[12px] py-[4px] text-[12.5px] font-extrabold text-on-gold">
-        مشروع الأسبوع
+        {t.weekProject}
       </span>
       <span className="font-heading text-[18px] leading-[1.5] font-bold text-text-dark">
-        برّ الوالدين · <span className="text-text-muted">ساعد أمه في ترتيب البيت</span>
+        {t.projectTopic} · <span className="text-text-muted">{t.projectDetail}</span>
       </span>
       <span className="flex items-center gap-[6px] self-start rounded-pill bg-green-tint px-[11px] py-[5px] text-[13px] font-extrabold text-deep-green">
-        حكاه بصوته
+        {t.toldByVoice}
         <CheckIcon size={13} strokeWidth={3.2} />
       </span>
       <VoiceNote
         step={HADITH_STEP}
-        line={{ from: 'child', text: 'ساعدت أمي في ترتيب البيت', sec: 6 }}
+        line={{ from: 'child', text: t.voiceCaption, sec: 6 }}
         playing={playing}
       />
     </div>
@@ -433,6 +428,8 @@ function Project({ playing }: { playing: boolean }) {
 
 /** The parent-dashboard preview (sample data) in a light browser frame; three views, every 5 s. */
 export function ParentPreview({ desktop }: { desktop?: boolean }) {
+  const { lang, m } = useI18n();
+  const t = m.parents.preview;
   const reduce = useReducedMotion();
   const { ref, seen } = useSeen<HTMLDivElement>();
   const [view, setView] = useState<ViewKey>('overview');
@@ -452,7 +449,7 @@ export function ParentPreview({ desktop }: { desktop?: boolean }) {
   return (
     <div
       ref={ref}
-      aria-label="مثال للوحة المتابعة (بيانات توضيحية)"
+      aria-label={t.label}
       role="region"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -492,9 +489,9 @@ export function ParentPreview({ desktop }: { desktop?: boolean }) {
             />
           </span>
           <span className="flex min-w-0 grow flex-col gap-[2px]">
-            <span className={cx('font-extrabold', desktop ? 'text-[17px]' : 'text-[15.5px]')}>عبدالله</span>
+            <span className={cx('font-extrabold', desktop ? 'text-[17px]' : 'text-[15.5px]')}>{t.name}</span>
             <span className={cx('text-text-muted', desktop ? 'text-[13px]' : 'text-[12.5px]')}>
-              {toArabicDigits(10)} سنوات · خطة سنوية
+              {fill(lang, t.meta, { age: 10 })}
             </span>
           </span>
           <span
@@ -503,14 +500,14 @@ export function ParentPreview({ desktop }: { desktop?: boolean }) {
               desktop ? 'px-[12px] py-[6px] text-[12.5px]' : 'px-[10px] py-[5px] text-[11.5px]',
             )}
           >
-            {toArabicDigits(5)} أيام متتالية 🔥
+            {fill(lang, t.streak, { n: 5 })}
           </span>
         </div>
 
         {/* segmented control: one track, equal segments, the active one filled */}
         <div
           role="tablist"
-          aria-label="أقسام اللوحة"
+          aria-label={t.tabsLabel}
           className="grid grid-cols-3 gap-[2px] rounded-pill bg-background p-[4px]"
         >
           {VIEWS.map((v) => (
@@ -530,7 +527,7 @@ export function ParentPreview({ desktop }: { desktop?: boolean }) {
                   : 'bg-transparent text-text-muted hover:text-text-dark',
               )}
             >
-              {v.label}
+              {t.tabs[v.key]}
             </button>
           ))}
         </div>

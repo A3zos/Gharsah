@@ -1,10 +1,10 @@
 // design/v2 WebLanding (≥1024px). Content column 1200px (fluid below that).
-// Header + hero follow the landing language (src/i18n); the rest is Arabic for now.
+// Everything follows the landing language (src/i18n) except «الخصوصية» (Arabic for now).
 import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { fill, LANDING_AGES, useI18n } from '../../i18n/i18n';
-import { ArabicOnly } from '../../i18n/LandingI18n';
+import { ArabicOnly, Rich } from '../../i18n/LandingI18n';
 import { buttonClass } from '../ui/Button';
 import { BookIcon, CodeIcon, ForwardIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
@@ -22,6 +22,13 @@ const STEP_ICONS: Record<HowStep['key'], React.ReactNode> = {
   questions: SourceIcons.question(32),
 };
 
+const SOURCES = [
+  { key: 'quran', tint: 'bg-green-tint', icon: SourceIcons.quran(26) },
+  { key: 'recitation', tint: 'bg-sky-tint', icon: SourceIcons.recitation(26) },
+  { key: 'tafsir', tint: 'bg-gold-tint', icon: SourceIcons.tafsir(26) },
+  { key: 'hadith', tint: 'bg-berry-tint', icon: SourceIcons.hadith(26) },
+] as const;
+
 export function LandingDesktop() {
   const { lang, m } = useI18n();
   return (
@@ -33,7 +40,9 @@ export function LandingDesktop() {
           <nav aria-label={m.header.navLabel} className={`${COL} flex items-center gap-[28px]`}>
             <span className="flex items-center gap-[11px]">
               <SproutMark size={38} />
-              <span className="font-heading text-[27px] font-bold text-deep-green">غَرْسة</span>
+              <span lang="ar" className="font-heading text-[27px] font-bold text-deep-green">
+                غَرْسة
+              </span>
             </span>
             <div className="flex grow items-center gap-[30px]">
               {[
@@ -77,7 +86,7 @@ export function LandingDesktop() {
                   {fill(lang, m.hero.ages, LANDING_AGES)}
                 </span>
               </span>
-              <h1 className="m-0 max-w-[600px] font-heading text-[44px] leading-[1.4] font-bold text-text-dark ltr:leading-[1.25]">
+              <h1 className="m-0 max-w-[600px] font-heading text-[44px] leading-[1.4] font-bold text-text-dark ltr:leading-[1.25] ltr:text-balance">
                 {m.hero.title1} <span className="block text-deep-green">{m.hero.title2}</span>
               </h1>
               <p className="m-0 max-w-[560px] text-[17px] leading-[1.9] text-text-muted ltr:leading-[1.75]">
@@ -112,103 +121,93 @@ export function LandingDesktop() {
             <LivePhone desktop />
           </section>
 
-          <ArabicOnly>
-            <section
-              id="how"
-              className={`${COL} flex scroll-mt-[20px] flex-col gap-[34px] pt-[20px] pb-[80px]`}
-            >
-              <div className="flex flex-col items-center gap-[10px]">
-                <h2 className="m-0 font-heading text-[40px] font-bold text-text-dark">كيف تعمل غَرْسة</h2>
-                <p className="m-0 text-center text-[17px] text-text-muted">
-                  معلّم ذكي يعلّم طفلك القرآن والحديث، ويجيب عن أسئلته عن دينه
-                </p>
-              </div>
-              {/* each card is a subgrid of the same 5 rows, so titles, texts and «مثال» boxes line up */}
-              <div className="grid grid-cols-3 gap-x-[22px]">
-                {HOW_STEPS.map((s) => (
-                  <div
-                    key={s.key}
-                    className="row-span-5 grid grid-rows-subgrid gap-y-[14px] rounded-px-28 bg-surface px-[28px] py-[32px] shadow-dark-14-30-5"
-                  >
-                    <span
-                      className={`flex h-[62px] w-[62px] items-center justify-center rounded-px-20 ${s.tint}`}
-                      aria-hidden="true"
-                    >
-                      {STEP_ICONS[s.key]}
-                    </span>
-                    <HowLabel step={s} desktop />
-                    <h3 className="m-0 font-heading text-[22px] leading-[1.5] font-bold text-text-dark">
-                      {s.title}
-                    </h3>
-                    <p className="m-0 text-[15.5px] leading-[1.95] text-text-muted">{s.body}</p>
-                    <HowExample step={s} />
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="flex w-full justify-center border-y border-y-border bg-surface py-[80px]">
-              <div className={`${COL} grid grid-cols-2 items-center gap-[56px]`}>
-                <div className="flex min-w-0 flex-col gap-[22px]">
-                  <span className="self-start rounded-pill bg-green-tint px-[16px] py-[8px] text-[13px] font-extrabold text-deep-green">
-                    لوليّ الأمر
-                  </span>
-                  <h2 className="m-0 max-w-[480px] font-heading text-[40px] leading-[1.45] font-bold text-text-dark">
-                    تتابع تقدّمه… بلا أن تقف فوق رأسه
-                  </h2>
-                  <ParentFeatures desktop />
-                </div>
-                {/* the preview sits on the page container's edge, never past it */}
-                <div className="flex min-w-0 justify-end">
-                  <ParentPreview desktop />
-                </div>
-              </div>
-            </section>
-
-            <section
-              id="sources"
-              className={`${COL} flex scroll-mt-[20px] flex-col gap-[32px] pt-[84px] pb-[20px]`}
-            >
-              <div className="flex flex-col items-center gap-[12px]">
-                <span className="rounded-pill bg-gold-tint px-[16px] py-[8px] text-[13px] font-extrabold text-warning-text">
-                  الموثوقية
-                </span>
-                <h2 className="m-0 font-heading text-[40px] font-bold text-text-dark">مصادرنا</h2>
-                <p className="m-0 max-w-[660px] text-center text-[17px] leading-[1.9] text-text-muted">
-                  كل نصّ يسمعه الطفل مأخوذ من مصدر معتمد ومذكور — لا اجتهاد ولا توليد.
-                </p>
-              </div>
-              <div className="flex gap-[18px]">
-                <SourceCard tint="bg-green-tint" icon={SourceIcons.quran(26)} title="نصّ القرآن">
-                  من مشروع <b className="font-bold text-text-dark">تنزيل</b> — رواية حفص عن عاصم، بالرسم
-                  الإملائي المدقّق.
-                </SourceCard>
-                <SourceCard tint="bg-sky-tint" icon={SourceIcons.recitation(26)} title="التلاوة">
-                  بصوت الشيخ <b className="font-bold text-text-dark">مشاري راشد العفاسي</b> — تلاوة مرتّلة
-                  واضحة تناسب الأطفال.
-                </SourceCard>
-                <SourceCard tint="bg-gold-tint" icon={SourceIcons.tafsir(26)} title="التفسير">
-                  من <b className="font-bold text-text-dark">التفسير الميسّر</b> — مجمع الملك فهد لطباعة
-                  المصحف الشريف.
-                </SourceCard>
-                <SourceCard tint="bg-berry-tint" icon={SourceIcons.hadith(26)} title="الأحاديث">
-                  كل حديث <b className="font-bold text-text-dark">يُعتمد بتخريجه ودرجته من مختصّ شرعي</b> قبل
-                  أن يصل الطفل.
-                </SourceCard>
-              </div>
-              <div className="flex items-center gap-[20px] rounded-px-28 bg-deep-green px-[34px] py-[30px]">
-                <span
-                  className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-px-18 bg-hero-chip"
-                  aria-hidden="true"
+          <section
+            id="how"
+            className={`${COL} flex scroll-mt-[20px] flex-col gap-[34px] pt-[20px] pb-[80px]`}
+          >
+            <div className="flex flex-col items-center gap-[10px]">
+              <h2 className="m-0 font-heading text-[40px] font-bold text-text-dark">{m.how.title}</h2>
+              <p className="m-0 text-center text-[17px] text-text-muted">{m.how.subtitle}</p>
+            </div>
+            {/* each card is a subgrid of the same 5 rows, so titles, texts and «مثال» boxes line up */}
+            <div className="grid grid-cols-3 gap-x-[22px]">
+              {HOW_STEPS.map((s) => (
+                <div
+                  key={s.key}
+                  className="row-span-5 grid grid-rows-subgrid gap-y-[14px] rounded-px-28 bg-surface px-[28px] py-[32px] shadow-dark-14-30-5"
                 >
-                  {SourceIcons.shieldOnDark(28)}
-                </span>
-                <p className="m-0 font-heading text-[25px] leading-[1.7] font-bold text-surface">
-                  الذكاء الاصطناعي لا يولّد أي نصّ قرآني أو حديثي — دوره أن يشرح ويشجّع فقط.
-                </p>
-              </div>
-            </section>
+                  <span
+                    className={`flex h-[62px] w-[62px] items-center justify-center rounded-px-20 ${s.tint}`}
+                    aria-hidden="true"
+                  >
+                    {STEP_ICONS[s.key]}
+                  </span>
+                  <HowLabel step={s} desktop />
+                  <h3 className="m-0 font-heading text-[22px] leading-[1.5] font-bold text-text-dark">
+                    {m.how.steps[s.key].title}
+                  </h3>
+                  <p className="m-0 text-[15.5px] leading-[1.95] text-text-muted ltr:leading-[1.75]">
+                    {m.how.steps[s.key].body}
+                  </p>
+                  <HowExample step={s} />
+                </div>
+              ))}
+            </div>
+          </section>
 
+          <section className="flex w-full justify-center border-y border-y-border bg-surface py-[80px]">
+            <div className={`${COL} grid grid-cols-2 items-center gap-[56px]`}>
+              <div className="flex min-w-0 flex-col gap-[22px]">
+                <span className="self-start rounded-pill bg-green-tint px-[16px] py-[8px] text-[13px] font-extrabold text-deep-green">
+                  {m.parents.pill}
+                </span>
+                <h2 className="m-0 max-w-[480px] font-heading text-[40px] leading-[1.45] font-bold text-text-dark ltr:leading-[1.25] ltr:text-balance">
+                  {m.parents.title}
+                </h2>
+                <ParentFeatures desktop />
+              </div>
+              {/* the preview sits on the page container's edge, never past it */}
+              <div className="flex min-w-0 justify-end">
+                <ParentPreview desktop />
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="sources"
+            className={`${COL} flex scroll-mt-[20px] flex-col gap-[32px] pt-[84px] pb-[20px]`}
+          >
+            <div className="flex flex-col items-center gap-[12px]">
+              <span className="rounded-pill bg-gold-tint px-[16px] py-[8px] text-[13px] font-extrabold text-warning-text">
+                {m.sources.pill}
+              </span>
+              <h2 className="m-0 font-heading text-[40px] font-bold text-text-dark">{m.sources.title}</h2>
+              <p className="m-0 max-w-[660px] text-center text-[17px] leading-[1.9] text-text-muted ltr:text-balance">
+                {m.sources.subtitle}
+              </p>
+            </div>
+            <div className="flex gap-[18px]">
+              {SOURCES.map((s) => (
+                <SourceCard key={s.key} tint={s.tint} icon={s.icon} title={m.sources.cards[s.key].title}>
+                  <Rich text={m.sources.cards[s.key].body} />
+                </SourceCard>
+              ))}
+            </div>
+            <div className="flex items-center gap-[20px] rounded-px-28 bg-deep-green px-[34px] py-[30px]">
+              <span
+                className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-px-18 bg-hero-chip"
+                aria-hidden="true"
+              >
+                {SourceIcons.shieldOnDark(28)}
+              </span>
+              <p className="m-0 font-heading text-[25px] leading-[1.7] font-bold text-surface ltr:leading-[1.45]">
+                {m.sources.banner}
+              </p>
+            </div>
+          </section>
+
+          {/* not translated yet: Arabic, rtl in every language */}
+          <ArabicOnly>
             <section
               id="privacy"
               className={`${COL} flex scroll-mt-[20px] flex-col gap-[28px] pt-[70px] pb-[80px]`}
@@ -232,46 +231,49 @@ export function LandingDesktop() {
                 </PrivacyCard>
               </div>
             </section>
-
-            <section
-              id="plans"
-              className="flex w-full scroll-mt-[20px] justify-center border-t border-t-border bg-surface py-[80px]"
-            >
-              <div className={`${COL} flex flex-col items-center gap-[34px]`}>
-                <div className="flex flex-col items-center gap-[10px]">
-                  <h2 className="m-0 font-heading text-[40px] font-bold text-text-dark">الباقات</h2>
-                  <p className="m-0 text-[17px] text-text-muted">
-                    ابدأ بالباقة التجريبية — الباقتان الشهرية والسنوية قريبًا
-                  </p>
-                </div>
-                <PlanCards pilotAction={<PilotSignupLink />} />
-              </div>
-            </section>
           </ArabicOnly>
+
+          <section
+            id="plans"
+            className="flex w-full scroll-mt-[20px] justify-center border-t border-t-border bg-surface py-[80px]"
+          >
+            <div className={`${COL} flex flex-col items-center gap-[34px]`}>
+              <div className="flex flex-col items-center gap-[10px]">
+                <h2 className="m-0 font-heading text-[40px] font-bold text-text-dark">{m.plans.title}</h2>
+                <p className="m-0 text-[17px] text-text-muted">{m.plans.subtitle}</p>
+              </div>
+              <PlanCards pilotAction={<PilotSignupLink />} />
+            </div>
+          </section>
         </main>
 
-        <ArabicOnly>
-          <footer className="flex w-full justify-center border-t border-t-border bg-background py-[40px]">
-            <div className={`${COL} flex items-center gap-[24px]`}>
-              <span className="flex items-center gap-[10px]">
-                <SproutMark size={28} seed={false} />
-                <span className="font-heading text-[20px] font-bold text-deep-green">غَرْسة</span>
+        <footer className="flex w-full justify-center border-t border-t-border bg-background py-[40px]">
+          <div className={`${COL} flex items-center gap-[24px]`}>
+            <span className="flex items-center gap-[10px]">
+              <SproutMark size={28} seed={false} />
+              <span lang="ar" className="font-heading text-[20px] font-bold text-deep-green">
+                غَرْسة
               </span>
-              <nav aria-label="روابط" className="flex grow items-center gap-[24px]">
-                <Link to={paths.privacy} className="text-[14px] text-text-muted no-underline">
-                  سياسة الخصوصية
-                </Link>
-                <Link to={paths.terms} className="text-[14px] text-text-muted no-underline">
-                  الشروط والأحكام
-                </Link>
-                <Link to={paths.legal} className="text-[14px] text-text-muted no-underline">
-                  تواصل معنا
-                </Link>
-              </nav>
-              <span className="text-[13.5px] text-text-muted">© ١٤٤٧هـ غَرْسة · صُنع في السعودية</span>
-            </div>
-          </footer>
-        </ArabicOnly>
+              {m.footer.brandLatin && (
+                <span className="font-heading text-[20px] font-bold text-deep-green">
+                  {m.footer.brandLatin}
+                </span>
+              )}
+            </span>
+            <nav aria-label={m.footer.linksLabel} className="flex grow items-center gap-[24px]">
+              <Link to={paths.privacy} className="text-[14px] text-text-muted no-underline">
+                {m.footer.privacy}
+              </Link>
+              <Link to={paths.terms} className="text-[14px] text-text-muted no-underline">
+                {m.footer.terms}
+              </Link>
+              <Link to={paths.legal} className="text-[14px] text-text-muted no-underline">
+                {m.footer.contact}
+              </Link>
+            </nav>
+            <span className="text-[13.5px] text-text-muted">{m.footer.copyright}</span>
+          </div>
+        </footer>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 // same art, different sizes, so sizes are props with the frames' exact values.
 import { useEffect, useRef, useState } from 'react';
 
+import { useI18n } from '../../i18n/i18n';
 import { C } from '../ui/color';
 import { PlayGlyph } from '../ui/icons';
 import { cx } from '../../lib/cx';
@@ -9,74 +10,66 @@ import { cx } from '../../lib/cx';
 /** One voice note: who speaks, the caption, its (pretend) length in seconds. */
 export type VoiceLine = { from: 'teacher' | 'child'; text: string; sec: number };
 
-/** «كيف تعمل غَرْسة»: the three cards. Examples are descriptive on purpose — no ayah, hadith or answer text. */
+/**
+ * «كيف تعمل غَرْسة»: the three cards' look and their voice notes' order and lengths; the
+ * words are in src/i18n (how.steps.<key>). Examples are descriptive on purpose — no ayah,
+ * hadith or answer text («سؤال جميل! خلّنا نفهمه معًا…» exactly, never an answer).
+ */
 export const HOW_STEPS = [
   {
     key: 'quran',
-    label: 'القرآن',
-    title: 'يحفظ القرآن مع معلّم ذكي',
-    body: 'يسمع الطفل الآية من قارئ متقن، ثم يردّدها بصوته، والمعلّم يشجّعه ويعدّ معه حتى يتقنها.',
     tint: 'bg-green-tint',
     labelColor: 'text-deep-green',
     childBubble: 'bg-primary/15',
     accent: 'primary',
     accentBg: 'bg-primary',
     chat: [
-      { from: 'teacher', text: 'اليوم سورة الإخلاص… ردّدها معي آية آية', sec: 5 },
-      { from: 'child', text: 'جاهز!', sec: 1 },
+      { from: 'teacher', sec: 5 },
+      { from: 'child', sec: 1 },
     ],
   },
   {
     key: 'hadith',
-    label: 'الحديث',
-    title: 'يفهم الحديث ويطبّقه',
-    body: 'يتعلّم الطفل حديثًا قصيرًا ومعناه بكلمات بسيطة، ثم يحوّله إلى عمل حقيقي في البيت.',
     tint: 'bg-gold-tint',
     labelColor: 'text-warning-text',
     childBubble: 'bg-gold/15',
     accent: 'goldDeep',
     accentBg: 'bg-gold-deep',
     chat: [
-      { from: 'teacher', text: 'حديث اليوم عن برّ الوالدين 💛', sec: 4 },
-      { from: 'child', text: 'سأساعدها في ترتيب البيت', sec: 2 },
+      { from: 'teacher', sec: 4 },
+      { from: 'child', sec: 2 },
     ],
   },
   {
     key: 'questions',
-    label: 'أسئلة الطفل',
-    title: 'يجيب عن تساؤلاته عن الإسلام',
-    body: 'يسأل الطفل بصوته عمّا يحيّره، فيجيبه المعلّم بلغة تناسب عمره، من إجابات مراجَعة من مختصين.',
     tint: 'bg-berry-tint',
     labelColor: 'text-berry-deep',
     childBubble: 'bg-berry/15',
     accent: 'berry',
     accentBg: 'bg-berry',
     chat: [
-      { from: 'child', text: 'ليش نصلي خمس صلوات في اليوم؟', sec: 3 },
-      // Exactly this — the landing never shows an answer's religious content.
-      { from: 'teacher', text: 'سؤال جميل! خلّنا نفهمه معًا…', sec: 2 },
+      { from: 'child', sec: 3 },
+      { from: 'teacher', sec: 2 },
     ],
   },
 ] as const satisfies readonly {
   key: string;
-  label: string;
-  title: string;
-  body: string;
   tint: string;
   labelColor: string;
   childBubble: string;
   accent: 'primary' | 'goldDeep' | 'berry';
   accentBg: string;
-  chat: readonly [VoiceLine, VoiceLine];
+  chat: readonly [Omit<VoiceLine, 'text'>, Omit<VoiceLine, 'text'>];
 }[];
 
 export type HowStep = (typeof HOW_STEPS)[number];
 
 /** A card's label (the old «الخطوة n» slot), in the card's accent. */
 export function HowLabel({ step, desktop }: { step: HowStep; desktop?: boolean }) {
+  const { m } = useI18n();
   return (
     <span className={cx('font-extrabold', step.labelColor, desktop ? 'text-[13px]' : 'text-[12px]')}>
-      {step.label}
+      {m.how.steps[step.key].label}
     </span>
   );
 }
@@ -140,7 +133,7 @@ export function VoiceNote({ step, line, playing }: { step: HowStep; line: VoiceL
       </div>
       <span
         className={cx(
-          'max-w-full truncate px-[4px] text-[13px] leading-[1.4] text-text-muted',
+          'max-w-full truncate px-[4px] text-[13px] leading-[1.4] text-text-muted ltr:line-clamp-2 ltr:whitespace-normal',
           teacher ? 'text-start' : 'text-end',
         )}
       >
@@ -183,11 +176,20 @@ function usePlayOnView<T extends HTMLElement>() {
  */
 export function HowExample({ step }: { step: HowStep }) {
   const { ref, playing } = usePlayOnView<HTMLDivElement>();
+  const { m } = useI18n();
+  const words = m.how.steps[step.key];
   return (
     <div ref={ref} className={cx('flex flex-col gap-[10px] rounded-px-18 p-[14px]', step.tint)}>
-      <span className="-mb-[4px] text-[12px] leading-[1.2] font-extrabold text-text-muted">مثال</span>
+      <span className="-mb-[4px] text-[12px] leading-[1.2] font-extrabold text-text-muted">
+        {m.how.example}
+      </span>
       {step.chat.map((line, i) => (
-        <VoiceNote key={line.text} step={step} line={line} playing={playing && i === 0} />
+        <VoiceNote
+          key={line.from}
+          step={step}
+          line={{ ...line, text: words[line.from] }}
+          playing={playing && i === 0}
+        />
       ))}
     </div>
   );

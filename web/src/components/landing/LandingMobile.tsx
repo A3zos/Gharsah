@@ -1,12 +1,12 @@
 // design/v2 WebLandingMobile (<1024px): sticky top bar with a menu, a single
-// column, and the fixed «للأعلى» button. Header + hero follow the landing language
-// (src/i18n); the rest is Arabic for now.
+// column, and the fixed «للأعلى» button. Everything follows the landing language
+// (src/i18n) except «الخصوصية» (Arabic for now).
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { fill, LANDING_AGES, useI18n } from '../../i18n/i18n';
-import { ArabicOnly } from '../../i18n/LandingI18n';
+import { ArabicOnly, Rich } from '../../i18n/LandingI18n';
 import { cx } from '../../lib/cx';
 import { buttonClass } from '../ui/Button';
 import { C } from '../ui/color';
@@ -23,6 +23,13 @@ const STEP_ICONS: Record<HowStep['key'], React.ReactNode> = {
   hadith: <BookIcon size={24} color="ayahBracket" />,
   questions: SourceIcons.question(26),
 };
+
+const SOURCES = [
+  { key: 'quran', tint: 'bg-green-tint', icon: SourceIcons.quran(22) },
+  { key: 'recitation', tint: 'bg-sky-tint', icon: SourceIcons.recitation(22) },
+  { key: 'tafsir', tint: 'bg-gold-tint', icon: SourceIcons.tafsir(22) },
+  { key: 'hadith', tint: 'bg-berry-tint', icon: SourceIcons.hadith(22) },
+] as const;
 
 const MENU = [
   ['#m-how', 'how'],
@@ -80,7 +87,9 @@ export function LandingMobile() {
             <SproutMark size={30} seed={false} />
             <span className="min-w-0 grow font-heading text-[22px] font-bold text-deep-green">
               {/* Narrow phones: the mark alone, so the language button and both auth buttons fit. */}
-              <span className="max-[419px]:sr-only">غَرْسة</span>
+              <span lang="ar" className="max-[419px]:sr-only">
+                غَرْسة
+              </span>
             </span>
             <LanguageSheetButton />
             <Link
@@ -162,72 +171,63 @@ export function LandingMobile() {
             <LivePhone />
           </div>
 
-          <ArabicOnly>
-            <section id="m-how" className="flex scroll-mt-[80px] flex-col gap-[16px] px-[20px] pb-[44px]">
-              <h2 className="m-0 text-center font-heading text-[27px] font-bold">كيف تعمل غَرْسة</h2>
-              <p className="m-0 -mt-[6px] text-center text-[14.5px] leading-[1.8] text-text-muted">
-                معلّم ذكي يعلّم طفلك القرآن والحديث، ويجيب عن أسئلته عن دينه
-              </p>
-              {HOW_STEPS.map((s) => (
-                <StepCard key={s.key} step={s} icon={STEP_ICONS[s.key]} />
-              ))}
-            </section>
-          </ArabicOnly>
+          <section id="m-how" className="flex scroll-mt-[80px] flex-col gap-[16px] px-[20px] pb-[44px]">
+            <h2 className="m-0 text-center font-heading text-[27px] font-bold">{m.how.title}</h2>
+            <p className="m-0 -mt-[6px] text-center text-[14.5px] leading-[1.8] text-text-muted">
+              {m.how.subtitle}
+            </p>
+            {HOW_STEPS.map((s) => (
+              <StepCard key={s.key} step={s} icon={STEP_ICONS[s.key]} />
+            ))}
+          </section>
         </main>
 
-        <ArabicOnly>
-          <section className="border-y border-y-border bg-surface px-[20px] py-[40px]">
-            <div className="mx-auto flex max-w-[520px] flex-col gap-[18px]">
-              <span className="self-center rounded-pill bg-green-tint px-[14px] py-[7px] text-[12.5px] font-extrabold text-deep-green">
-                لوليّ الأمر
-              </span>
-              <h2 className="m-0 text-center font-heading text-[26px] leading-[1.5] font-bold">
-                تتابع تقدّمه… بلا أن تقف فوق رأسه
-              </h2>
-              <ParentFeatures />
-              <div className="pt-[6px]">
-                <ParentPreview />
-              </div>
-            </div>
-          </section>
-
-          <section
-            id="m-sources"
-            className="mx-auto flex w-full max-w-[560px] scroll-mt-[80px] flex-col gap-[14px] px-[20px] py-[40px]"
-          >
-            <span className="self-center rounded-pill bg-gold-tint px-[14px] py-[7px] text-[12.5px] font-extrabold text-warning-text">
-              الموثوقية
+        <section className="border-y border-y-border bg-surface px-[20px] py-[40px]">
+          <div className="mx-auto flex max-w-[520px] flex-col gap-[18px]">
+            <span className="self-center rounded-pill bg-green-tint px-[14px] py-[7px] text-[12.5px] font-extrabold text-deep-green">
+              {m.parents.pill}
             </span>
-            <h2 className="m-0 text-center font-heading text-[27px] font-bold">مصادرنا</h2>
-            <p className="m-0 mb-[6px] text-center text-[14.5px] leading-[1.9] text-text-muted">
-              كل نصّ يسمعه الطفل من مصدر معتمد ومذكور — لا اجتهاد ولا توليد.
-            </p>
-            <SourceRow tint="bg-green-tint" icon={SourceIcons.quran(22)} title="نصّ القرآن">
-              من مشروع <b className="font-bold text-text-dark">تنزيل</b> — رواية حفص عن عاصم.
-            </SourceRow>
-            <SourceRow tint="bg-sky-tint" icon={SourceIcons.recitation(22)} title="التلاوة">
-              بصوت الشيخ <b className="font-bold text-text-dark">مشاري راشد العفاسي</b>.
-            </SourceRow>
-            <SourceRow tint="bg-gold-tint" icon={SourceIcons.tafsir(22)} title="التفسير">
-              من <b className="font-bold text-text-dark">التفسير الميسّر</b> — مجمع الملك فهد.
-            </SourceRow>
-            <SourceRow tint="bg-berry-tint" icon={SourceIcons.hadith(22)} title="الأحاديث">
-              <b className="font-bold text-text-dark">تُعتمد بتخريجها ودرجتها من مختصّ شرعي</b> قبل أن تصل
-              الطفل.
-            </SourceRow>
-            <div className="mt-[4px] flex items-center gap-[14px] rounded-px-24 bg-deep-green px-[20px] py-[22px]">
-              <span
-                className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-px-15 bg-hero-chip"
-                aria-hidden="true"
-              >
-                {SourceIcons.shieldOnDark(24)}
-              </span>
-              <p className="m-0 font-heading text-[17px] leading-[1.7] font-bold text-surface">
-                الذكاء الاصطناعي لا يولّد أي نصّ قرآني أو حديثي.
-              </p>
+            <h2 className="m-0 text-center font-heading text-[26px] leading-[1.5] font-bold ltr:leading-[1.3] ltr:text-balance">
+              {m.parents.title}
+            </h2>
+            <ParentFeatures />
+            <div className="pt-[6px]">
+              <ParentPreview />
             </div>
-          </section>
+          </div>
+        </section>
 
+        <section
+          id="m-sources"
+          className="mx-auto flex w-full max-w-[560px] scroll-mt-[80px] flex-col gap-[14px] px-[20px] py-[40px]"
+        >
+          <span className="self-center rounded-pill bg-gold-tint px-[14px] py-[7px] text-[12.5px] font-extrabold text-warning-text">
+            {m.sources.pill}
+          </span>
+          <h2 className="m-0 text-center font-heading text-[27px] font-bold">{m.sources.title}</h2>
+          <p className="m-0 mb-[6px] text-center text-[14.5px] leading-[1.9] text-text-muted">
+            {m.sources.subtitleShort}
+          </p>
+          {SOURCES.map((s) => (
+            <SourceRow key={s.key} tint={s.tint} icon={s.icon} title={m.sources.cards[s.key].title}>
+              <Rich text={m.sources.cards[s.key].bodyShort} />
+            </SourceRow>
+          ))}
+          <div className="mt-[4px] flex items-center gap-[14px] rounded-px-24 bg-deep-green px-[20px] py-[22px]">
+            <span
+              className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-px-15 bg-hero-chip"
+              aria-hidden="true"
+            >
+              {SourceIcons.shieldOnDark(24)}
+            </span>
+            <p className="m-0 font-heading text-[17px] leading-[1.7] font-bold text-surface ltr:leading-[1.45]">
+              {m.sources.bannerShort}
+            </p>
+          </div>
+        </section>
+
+        {/* not translated yet: Arabic, rtl in every language */}
+        <ArabicOnly>
           <section
             id="m-privacy"
             className="scroll-mt-[80px] border-y border-y-border bg-surface px-[20px] py-[36px]"
@@ -255,41 +255,49 @@ export function LandingMobile() {
               </PrivacyRow>
             </div>
           </section>
-
-          <section
-            id="m-plans"
-            className="mx-auto flex w-full max-w-[560px] scroll-mt-[80px] flex-col gap-[24px] px-[20px] py-[40px] min-[900px]:max-w-[1176px]"
-          >
-            <h2 className="m-0 text-center font-heading text-[27px] font-bold">الباقات</h2>
-            <p className="m-0 mb-[4px] text-center text-[14px] text-text-muted">
-              ابدأ بالباقة التجريبية — الباقتان الشهرية والسنوية قريبًا
-            </p>
-            <PlanCards pilotAction={<PilotSignupLink />} />
-          </section>
-
-          <footer className="flex flex-col items-center gap-[14px] border-t border-t-border px-[20px] pt-[28px] pb-[34px]">
-            <span className="flex items-center gap-[9px]">
-              <SproutMark size={24} seed={false} />
-              <span className="font-heading text-[18px] font-bold text-deep-green">غَرْسة</span>
-            </span>
-            <nav aria-label="روابط" className="flex items-center gap-[18px]">
-              <Link to={paths.privacy} className="text-[13px] text-text-muted no-underline">
-                الخصوصية
-              </Link>
-              <Link to={paths.terms} className="text-[13px] text-text-muted no-underline">
-                الشروط
-              </Link>
-              <Link to={paths.legal} className="text-[13px] text-text-muted no-underline">
-                تواصل معنا
-              </Link>
-            </nav>
-            <span className="text-[12.5px] text-text-muted">© ١٤٤٧هـ غَرْسة · صُنع في السعودية</span>
-          </footer>
         </ArabicOnly>
+
+        <section
+          id="m-plans"
+          className="mx-auto flex w-full max-w-[560px] scroll-mt-[80px] flex-col gap-[24px] px-[20px] py-[40px] min-[900px]:max-w-[1176px]"
+        >
+          <h2 className="m-0 text-center font-heading text-[27px] font-bold">{m.plans.title}</h2>
+          <p className="m-0 mb-[4px] text-center text-[14px] text-text-muted">{m.plans.subtitle}</p>
+          <PlanCards pilotAction={<PilotSignupLink />} />
+        </section>
+
+        <footer className="flex flex-col items-center gap-[14px] border-t border-t-border px-[20px] pt-[28px] pb-[34px]">
+          <span className="flex items-center gap-[9px]">
+            <SproutMark size={24} seed={false} />
+            <span lang="ar" className="font-heading text-[18px] font-bold text-deep-green">
+              غَرْسة
+            </span>
+            {m.footer.brandLatin && (
+              <span className="font-heading text-[18px] font-bold text-deep-green">
+                {m.footer.brandLatin}
+              </span>
+            )}
+          </span>
+          <nav
+            aria-label={m.footer.linksLabel}
+            className="flex flex-wrap items-center justify-center gap-x-[18px] gap-y-[6px]"
+          >
+            <Link to={paths.privacy} className="text-[13px] text-text-muted no-underline">
+              {m.footer.privacyShort}
+            </Link>
+            <Link to={paths.terms} className="text-[13px] text-text-muted no-underline">
+              {m.footer.termsShort}
+            </Link>
+            <Link to={paths.legal} className="text-[13px] text-text-muted no-underline">
+              {m.footer.contact}
+            </Link>
+          </nav>
+          <span className="text-center text-[12.5px] text-text-muted">{m.footer.copyright}</span>
+        </footer>
       </div>
       <a
         href="#m-top"
-        aria-label="العودة للأعلى"
+        aria-label={m.header.backToTop}
         className="fixed end-[20px] bottom-[calc(26px+env(safe-area-inset-bottom))] z-40 flex h-[56px] w-[56px] items-center justify-center rounded-full border-[3px] border-surface bg-deep-green no-underline shadow-dark-10-24-22"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -307,6 +315,8 @@ export function LandingMobile() {
 }
 
 function StepCard({ step, icon }: { step: HowStep; icon: React.ReactNode }) {
+  const { m } = useI18n();
+  const words = m.how.steps[step.key];
   return (
     <div className="flex flex-col gap-[12px] rounded-px-24 bg-surface px-[20px] py-[22px] shadow-dark-10-22-5">
       <div className="flex gap-[14px]">
@@ -318,8 +328,8 @@ function StepCard({ step, icon }: { step: HowStep; icon: React.ReactNode }) {
         </span>
         <span className="flex flex-col gap-[6px]">
           <HowLabel step={step} />
-          <h3 className="m-0 font-heading text-[19px] font-bold">{step.title}</h3>
-          <span className="text-[14px] leading-[1.9] text-text-muted">{step.body}</span>
+          <h3 className="m-0 font-heading text-[19px] font-bold">{words.title}</h3>
+          <span className="text-[14px] leading-[1.9] text-text-muted ltr:leading-[1.7]">{words.body}</span>
         </span>
       </div>
       <HowExample step={step} />

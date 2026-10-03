@@ -4,55 +4,58 @@
 // whenever its container is ≥900px wide (a container query, so the parent page's
 // sidebar is accounted for); narrower → stacked, pilot first. One internal layout
 // (badge, title, price, tag pill, features, button at the bottom); equal heights.
+// The copy follows the landing language (src/i18n); the parent page has no provider,
+// so it stays Arabic. LTR mirrors the row (the pilot on the left).
 import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
-import { PILOT_CTA, PILOT_DAYS, PILOT_ITEMS, PILOT_NAME, PILOT_PRICE } from '../../content/pilot';
-import { PLANS, PRICE } from '../../content/plans';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { pilotCopy } from '../../content/pilot';
+import { ANNUAL_MONTHLY_UNDER, PRICE_SAR } from '../../content/plans';
+import { fill, formatNumber, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { PILOT_BUTTON } from './pilotButton';
 import { PlanList } from '../landing/shared';
 
 export function PlanCards({ pilotAction }: { pilotAction: React.ReactNode }) {
+  const { lang, m } = useI18n();
+  const p = m.plans;
+  const pilot = pilotCopy(lang);
   return (
     <div className="@container w-full">
       <div className="mx-auto grid w-full max-w-[1100px] grid-cols-1 justify-items-center gap-[24px] @min-[900px]:grid-cols-[repeat(3,minmax(0,1fr))] @min-[900px]:justify-items-stretch">
         <PlanCard
           featured
-          badge="متاحة الآن"
-          title={PILOT_NAME}
-          price={PILOT_PRICE}
-          tag={`${toArabicDigits(PILOT_DAYS.length)} أيام — يومًا بعد يوم`}
-          items={PILOT_ITEMS}
+          badge={p.available}
+          title={pilot.name}
+          price={pilot.price}
+          tag={pilot.tag}
+          items={pilot.items}
           extra={
             <ol className="m-0 flex flex-col gap-[4px] ps-[18px] text-[13px] leading-[1.7] text-text-muted">
-              {PILOT_DAYS.map((d) => (
-                <li key={d.lessonId}>
-                  اليوم {toArabicDigits(d.day)}: سورة {d.surahName} + {d.hadithTitle}
-                </li>
+              {pilot.days.map((d) => (
+                <li key={d}>{d}</li>
               ))}
             </ol>
           }
           action={pilotAction}
         />
         <PlanCard
-          badge="قريبًا"
-          title="الباقة الشهرية"
-          price={PRICE.monthly}
-          per="ريال / شهر"
-          tag="تجربة مرنة للبداية"
-          items={PLANS.monthly}
-          action={<SoonButton />}
+          badge={p.soon}
+          title={p.monthly.name}
+          price={formatNumber(lang, PRICE_SAR.monthly)}
+          per={p.monthly.per}
+          tag={p.monthly.tag}
+          items={p.monthly.items}
+          action={<SoonButton label={p.soon} />}
         />
         <PlanCard
-          badge="قريبًا"
-          title="الباقة السنوية"
-          price={PRICE.annual}
-          per="ريال / سنة"
-          tag="أقل من ١٠ ريالات في الشهر"
-          items={PLANS.annual}
-          action={<SoonButton />}
+          badge={p.soon}
+          title={p.annual.name}
+          price={formatNumber(lang, PRICE_SAR.annual)}
+          per={p.annual.per}
+          tag={fill(lang, p.annual.tag, { n: ANNUAL_MONTHLY_UNDER })}
+          items={p.annual.items}
+          action={<SoonButton label={p.soon} />}
         />
       </div>
     </div>
@@ -93,7 +96,7 @@ function PlanCard({
     >
       <span
         className={cx(
-          'absolute -top-[14px] right-[24px] rounded-pill px-[15px] py-[6px] text-[12.5px] font-extrabold',
+          'absolute start-[24px] -top-[14px] rounded-pill px-[15px] py-[6px] text-[12.5px] font-extrabold',
           featured ? 'bg-primary text-surface' : 'bg-gold-tint text-warning-text',
         )}
       >
@@ -124,23 +127,24 @@ function PlanCard({
 }
 
 /** Not on sale yet: a disabled ghost button. */
-function SoonButton() {
+function SoonButton({ label }: { label: string }) {
   return (
     <button
       type="button"
       disabled
       className="flex h-[54px] w-full cursor-not-allowed items-center justify-center rounded-px-20 border-[1.5px] border-input-border bg-transparent font-heading text-[17px] font-bold text-text-muted"
     >
-      قريبًا
+      {label}
     </button>
   );
 }
 
 /** Landing: «ابدأ مجانًا» → sign up (signing up starts the free pilot). */
 export function PilotSignupLink() {
+  const { m } = useI18n();
   return (
     <Link to={paths.signup} className={PILOT_BUTTON}>
-      {PILOT_CTA}
+      {m.plans.pilot.cta}
     </Link>
   );
 }
