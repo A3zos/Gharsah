@@ -1,12 +1,31 @@
 import { useEffect } from 'react';
-import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
+import {
+  isRouteErrorResponse,
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+  useLocation,
+} from 'react-router';
 
 import type { Route } from './+types/root';
 import { PendingDesign } from './components/PendingDesign';
+import { useI18n } from './i18n/i18n';
 import { tokens } from './styles/tokens.generated';
 import './styles/app.css';
 
+/** The landing in each language (?lang= opens it translated) — hreflang alternates. */
+const SITE = 'https://gharsah.pages.dev/';
+const LANDING_ALTERNATES = [
+  { hrefLang: 'ar', href: SITE },
+  { hrefLang: 'en', href: `${SITE}?lang=en` },
+  { hrefLang: 'id', href: `${SITE}?lang=id` },
+  { hrefLang: 'x-default', href: SITE },
+] as const;
+
 export function Layout({ children }: { children: React.ReactNode }) {
+  const landing = useLocation().pathname === '/';
   return (
     <html lang="ar" dir="rtl">
       <head>
@@ -17,6 +36,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
+        {landing &&
+          LANDING_ALTERNATES.map((l) => (
+            <link key={l.hrefLang} rel="alternate" hrefLang={l.hrefLang} href={l.href} />
+          ))}
         <Meta />
         <Links />
       </head>
@@ -65,8 +88,10 @@ export function HydrateFallback() {
 }
 
 // TODO(design): no designed error / not-found screen yet.
+// No provider here, so it reads Arabic (the default context).
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  const { m } = useI18n();
   const notFound = isRouteErrorResponse(error) && error.status === 404;
   if (!notFound) console.error(error);
-  return <PendingDesign name={notFound ? 'الصفحة غير موجودة' : 'حدث خطأ غير متوقع'} />;
+  return <PendingDesign name={notFound ? m.common.notFound : m.common.unexpectedError} />;
 }

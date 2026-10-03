@@ -2,7 +2,8 @@
 // created by the database (handle_new_user trigger) from the sign-up metadata.
 // Every function throws AuthFailure.
 import { supabase } from '../supabase/client';
-import { AuthFailure, toAuthFailure } from './authFailure';
+import { MESSAGES, type UiLanguage } from '../i18n/i18n';
+import { authFailure, toAuthFailure } from './authFailure';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -29,7 +30,7 @@ export async function signUp(name: string, email: string, password: string): Pro
 export async function signIn(email: string, password: string): Promise<void> {
   const { data, error } = await supabase().auth.signInWithPassword({ email: email.trim(), password });
   if (error) throw toAuthFailure(error);
-  if (data.user?.is_anonymous) throw new AuthFailure('حدث خطأ غير متوقع — حاول مرة أخرى.');
+  if (data.user?.is_anonymous) throw authFailure('unknown');
 }
 
 export async function sendPasswordReset(email: string): Promise<void> {
@@ -52,11 +53,15 @@ export async function signOut(): Promise<void> {
   await supabase().auth.signOut();
 }
 
-/** Password strength for the Signup meter (0–3 bars; design shows 2 = «جيدة»). */
-export function passwordStrength(pw: string): { bars: 0 | 1 | 2 | 3; label: string } {
+/** Password strength for the Signup meter (0–3 bars; design shows 2 = «جيدة»), labelled in `lang`. */
+export function passwordStrength(
+  pw: string,
+  lang: UiLanguage = 'ar',
+): { bars: 0 | 1 | 2 | 3; label: string } {
+  const t = MESSAGES[lang].auth.strength;
   if (!pw) return { bars: 0, label: '' };
-  if (pw.length < MIN_PASSWORD_LENGTH) return { bars: 1, label: 'قصيرة' };
+  if (pw.length < MIN_PASSWORD_LENGTH) return { bars: 1, label: t.short };
   const kinds = [/[a-z]/i, /\d/, /[^a-z\d]/i].filter((r) => r.test(pw)).length;
-  if (kinds >= 3 || (kinds >= 2 && pw.length >= 12)) return { bars: 3, label: 'قوية' };
-  return { bars: 2, label: 'جيدة' };
+  if (kinds >= 3 || (kinds >= 2 && pw.length >= 12)) return { bars: 3, label: t.strong };
+  return { bars: 2, label: t.good };
 }

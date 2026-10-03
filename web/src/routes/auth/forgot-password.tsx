@@ -6,16 +6,31 @@ import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 import { C } from '../../components/ui/color';
 import { AlertIcon } from '../../components/ui/icons';
-import { Blob, MobilePage } from '../../components/ui/Page';
+import { Blob, MobilePage, useDocumentMeta } from '../../components/ui/Page';
+import { LanguageSheetButton } from '../../components/ui/LanguageSwitcher';
 import { TextField } from '../../components/ui/TextField';
 import { isValidEmail, sendPasswordReset } from '../../data/auth';
+import { authFailureMessage } from '../../data/authFailure';
+import { MESSAGES, useI18n } from '../../i18n/i18n';
+import { I18nProvider } from '../../i18n/I18nProvider';
 import { useBack } from '../../lib/nav';
 import type { Route } from './+types/forgot-password';
 
-export const meta: Route.MetaFunction = () => [{ title: 'نسيت كلمة المرور — غَرْسة' }];
+export const meta: Route.MetaFunction = () => [{ title: MESSAGES.ar.auth.titles.forgot }];
 
-/** design/v2 ForgotPass — form, then «أرسلنا رابطًا إلى بريدك». */
+/** design/v2 ForgotPass — form, then «أرسلنا رابطًا إلى بريدك» (in the chosen language). */
 export default function ForgotPasswordRoute() {
+  return (
+    <I18nProvider>
+      <ForgotPassword />
+    </I18nProvider>
+  );
+}
+
+function ForgotPassword() {
+  const { lang, m } = useI18n();
+  const t = m.auth.forgot;
+  useDocumentMeta(m.auth.titles.forgot);
   const back = useBack(paths.login);
   const [email, setEmail] = useState('');
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -25,14 +40,14 @@ export default function ForgotPasswordRoute() {
   const send = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (busy) return;
-    if (!isValidEmail(email)) return setError('صيغة البريد الإلكتروني غير صحيحة.');
+    if (!isValidEmail(email)) return setError(t.invalidEmail);
     setBusy(true);
     setError(null);
     try {
       await sendPasswordReset(email);
       setSentTo(email.trim());
     } catch (err) {
-      setError((err as Error).message);
+      setError(authFailureMessage(lang, err));
     } finally {
       setBusy(false);
     }
@@ -45,23 +60,22 @@ export default function ForgotPasswordRoute() {
     >
       <div className="flex items-center gap-[12px]">
         <BackButton onClick={back} small />
-        <h1 className="m-0 grow font-heading text-[26px] leading-[1.4] font-bold">نسيت كلمة المرور؟</h1>
+        <h1 className="m-0 grow font-heading text-[26px] leading-[1.4] font-bold">{t.title}</h1>
+        <LanguageSheetButton />
       </div>
 
       {sentTo === null ? (
         <form noValidate onSubmit={send} className="flex flex-col gap-[18px]">
-          <p className="m-0 text-[15px] leading-[1.95] text-text-muted">
-            اكتب بريدك وسنرسل لك رابطًا لإعادة تعيين كلمة المرور.
-          </p>
+          <p className="m-0 text-[15px] leading-[1.95] text-text-muted">{t.intro}</p>
           <TextField
-            label="البريد الإلكتروني"
+            label={t.email}
             labelClassName="text-[14.5px]"
             id="reset-email"
             name="email"
             type="email"
             dir="ltr"
             autoComplete="email"
-            placeholder="name@example.com"
+            placeholder={t.emailPlaceholder}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             status={error ? 'error' : undefined}
@@ -74,7 +88,7 @@ export default function ForgotPasswordRoute() {
             aria-busy={busy}
             className="h-[58px] rounded-px-20 font-heading text-[18px] font-bold"
           >
-            أرسل الرابط
+            {t.send}
           </Button>
         </form>
       ) : (
@@ -95,17 +109,17 @@ export default function ForgotPasswordRoute() {
             </svg>
           </span>
           <p className="m-0 text-center font-heading text-[26px] leading-[1.5] font-bold text-deep-green">
-            أرسلنا رابطًا إلى بريدك
+            {t.sentTitle}
           </p>
           <p className="m-0 max-w-[300px] text-center text-[15px] leading-[1.95] text-text-muted">
-            افتح الرسالة المُرسلة إلى{' '}
+            {t.sentBefore}{' '}
             <span className="font-bold text-text-dark" dir="ltr">
               {sentTo}
             </span>{' '}
-            واتبع الرابط. تنتهي صلاحيته بعد ساعة.
+            {t.sentAfter}
           </p>
           <span className="rounded-pill bg-gold-tint px-[16px] py-[9px] text-[12.5px] font-bold text-warning-text">
-            لم تصلك؟ تحقّق من «غير المرغوب فيه»
+            {t.spam}
           </span>
           {error && (
             <p role="alert" className="m-0 flex items-center gap-[7px] text-[13px] font-bold text-error-text">
@@ -124,13 +138,13 @@ export default function ForgotPasswordRoute() {
           onClick={() => (sentTo === null ? setEmail('') : void send())}
           className="h-[54px] rounded-px-20 text-[15px] font-bold"
         >
-          {sentTo === null ? 'جرّب بريدًا آخر' : 'إعادة الإرسال'}
+          {sentTo === null ? t.tryOther : t.resend}
         </Button>
         <Link
           to={paths.login}
           className="flex h-[50px] items-center justify-center text-[15px] font-bold text-deep-green no-underline"
         >
-          العودة لتسجيل الدخول
+          {t.backToLogin}
         </Link>
       </div>
     </MobilePage>

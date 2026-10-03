@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 import { cx } from '../../lib/cx';
 
 /**
@@ -38,4 +40,17 @@ export function MobilePage({
 /** A soft decorative circle (the frames' translucent corner blobs). */
 export function Blob({ className }: { className: string }) {
   return <div aria-hidden="true" className={cx('pointer-events-none absolute rounded-full', className)} />;
+}
+
+/**
+ * A translated page's <title> (and description meta, when the page has one) in the UI
+ * language. The route's static `meta` stays Arabic (prerendered); after hydration this
+ * sets the chosen language's (in Arabic the same text, so switching back restores it).
+ */
+export function useDocumentMeta(title: string, description?: string) {
+  useEffect(() => {
+    document.title = title;
+    if (description !== undefined)
+      document.querySelector('meta[name="description"]')?.setAttribute('content', description);
+  }, [title, description]);
 }

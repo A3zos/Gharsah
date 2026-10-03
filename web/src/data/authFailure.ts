@@ -1,7 +1,11 @@
-// User-facing auth/Firestore errors in Arabic — same messages as
-// app/lib/features/auth/data/auth_failure.dart.
+// User-facing auth/Firestore errors — same messages as
+// app/lib/features/auth/data/auth_failure.dart. `message` stays Arabic (other code and
+// tests read it); a page in another language shows authFailureMessage(lang, failure),
+// looked up by the failure's `key` in src/i18n/<lang>/auth.json → errors.
+import { MESSAGES, type Messages, type UiLanguage } from '../i18n/i18n';
 
 export type AuthField = 'email' | 'password' | 'general';
+export type AuthErrorKey = keyof Messages['auth']['errors'];
 
 export class AuthFailure extends Error {
   override name = 'AuthFailure';
@@ -9,6 +13,8 @@ export class AuthFailure extends Error {
     message: string,
     readonly field: AuthField = 'general',
     readonly code?: string,
+    /** The translatable message (auth.json → errors); none = `message` in every language. */
+    readonly key?: AuthErrorKey,
   ) {
     super(message);
   }
@@ -17,8 +23,8 @@ export class AuthFailure extends Error {
 /** Firebase error codes arrive as `auth/…`, `functions/…` or bare. */
 export const bareCode = (code: string): string => code.replace(/^[a-z]+\//, '');
 
-export function authFailure(rawCode: string): AuthFailure {
-  const code = bareCode(rawCode);
+/** A (bare) error code → its message key and field. */
+function classify(code: string): [AuthErrorKey, AuthField] {
   switch (code) {
     case 'invalid-credential':
     case 'invalid-login-credentials':
@@ -26,43 +32,62 @@ export function authFailure(rawCode: string): AuthFailure {
     case 'wrong-password':
     case 'INVALID_LOGIN_CREDENTIALS':
     case 'invalid_credentials':
-      return new AuthFailure('البريد الإلكتروني أو كلمة المرور غير صحيحة.', 'password', code);
+      return ['wrongCredentials', 'password'];
     case 'email-already-in-use':
     case 'user_already_exists':
     case 'email_exists':
-      return new AuthFailure('هذا البريد مسجّل مسبقًا — جرّب تسجيل الدخول.', 'email', code);
+      return ['emailInUse', 'email'];
     case 'weak-password':
     case 'weak_password':
-      return new AuthFailure('كلمة المرور ضعيفة — استخدم ٨ أحرف على الأقل.', 'password', code);
+      return ['weakPassword', 'password'];
     case 'invalid-email':
     case 'missing-email':
     case 'email_address_invalid':
     case 'validation_failed':
-      return new AuthFailure('صيغة البريد الإلكتروني غير صحيحة.', 'email', code);
+      return ['invalidEmail', 'email'];
     case 'too-many-requests':
     case 'over_request_rate_limit':
     case 'over_email_send_rate_limit':
-      return new AuthFailure('محاولات كثيرة — انتظر قليلًا ثم حاول مجددًا.', 'general', code);
+      return ['tooMany', 'general'];
     case 'network-request-failed':
     case 'unavailable':
-      return new AuthFailure('تعذّر الاتصال بالإنترنت — تحقّق من الشبكة وحاول مجددًا.', 'general', code);
+      return ['network', 'general'];
     case 'user-disabled':
-      return new AuthFailure('هذا الحساب موقوف. تواصل معنا للمساعدة.', 'general', code);
+      return ['userDisabled', 'general'];
     case 'operation-not-allowed':
-      return new AuthFailure('تسجيل الدخول بالبريد غير مفعّل حاليًا.', 'general', code);
+      return ['notAllowed', 'general'];
     case 'requires-recent-login':
-      return new AuthFailure('لحماية حسابك: سجّل الخروج ثم ادخل من جديد، ثم أعد المحاولة.', 'general', code);
+      return ['recentLogin', 'general'];
     case 'email_not_confirmed':
     case 'confirm-email':
-      return new AuthFailure('افتح رابط التأكيد الذي أرسلناه إلى بريدك، ثم سجّل الدخول.', 'general', code);
+      return ['emailNotConfirmed', 'general'];
     case 'plan-child-limit':
-      return new AuthFailure('وصلت إلى عدد الأبناء الذي تشمله باقتك.', 'general', code);
+      return ['planChildLimit', 'general'];
     case 'permission-denied':
     case '42501':
-      return new AuthFailure('تعذّر حفظ بيانات الحساب — حاول مرة أخرى.', 'general', code);
+      return ['saveFailed', 'general'];
     default:
-      return new AuthFailure('حدث خطأ غير متوقع — حاول مرة أخرى.', 'general', code);
+      return ['unexpected', 'general'];
   }
+}
+
+export function authFailure(rawCode: string): AuthFailure {
+  const code = bareCode(rawCode);
+  const [key, field] = classify(code);
+  return new AuthFailure(MESSAGES.ar.auth.errors[key], field, code, key);
+}
+
+/**
+ * A failure's message in the UI language: Arabic = its `message` as before; English /
+ * Indonesian = by its key (a failure without one keeps its own message).
+ */
+export function authFailureMessage(lang: UiLanguage, err: unknown): string {
+  const f = err as { message?: unknown; key?: unknown } | null;
+  const message = typeof f?.message === 'string' ? f.message : MESSAGES.ar.auth.errors.unexpected;
+  if (lang === 'ar') return message;
+  const errors = MESSAGES[lang].auth.errors;
+  if (typeof f?.key === 'string' && f.key in errors) return errors[f.key as AuthErrorKey];
+  return err instanceof AuthFailure ? message : errors.unexpected;
 }
 
 export function toAuthFailure(e: unknown): AuthFailure {

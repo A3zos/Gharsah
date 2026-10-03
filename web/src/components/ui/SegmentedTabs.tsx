@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 
+import { useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 
 export interface Segment<T extends string> {
@@ -23,9 +24,12 @@ export function SegmentedTabs<T extends string>({
   idPrefix: string;
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const { dir } = useI18n();
   const onKey = (e: React.KeyboardEvent, i: number) => {
-    // RTL: ArrowLeft moves to the next tab.
-    const step = e.key === 'ArrowLeft' ? 1 : e.key === 'ArrowRight' ? -1 : 0;
+    // The arrow pointing along the reading direction moves to the next tab (RTL: ArrowLeft).
+    const fwd = dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+    const prev = dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
+    const step = e.key === fwd ? 1 : e.key === prev ? -1 : 0;
     if (!step) return;
     e.preventDefault();
     const next = (i + step + segments.length) % segments.length;

@@ -1,4 +1,8 @@
 {
+  "meta": {
+    "title": "Gharsah — Planting a love of the Quran… that grows with them",
+    "description": "A voice teacher who sits with your child every day: helps them memorize ayah by ayah, teaches them a hadith, and gives them a good deed to do and then tell about in their own voice the next day."
+  },
   "language": {
     "label": "Language",
     "choose": "Choose a language",
@@ -12,7 +16,7 @@
     "sources": "What they learn",
     "privacy": "Privacy",
     "plans": "Plans",
-    "login": "Log in",
+    "login": "Sign in",
     "signup": "Sign up",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
@@ -24,7 +28,7 @@
     "title2": "from its authentic sources",
     "body": "A smart teacher helps your child memorize the Quran in the voice of a skilled reciter, learn the Prophet's Sunnah and live it through good deeds, and get answers to their questions in words that fit their age, while you follow every step from your dashboard.",
     "startParent": "Start as a parent",
-    "childLogin": "Child login with code"
+    "childLogin": "Child sign-in with code"
   },
   "phone": {
     "live": "Live",
@@ -152,12 +156,12 @@
   },
   "plans": {
     "title": "Plans",
-    "subtitle": "Start with the pilot plan — monthly and yearly plans coming soon",
+    "subtitle": "Start with the free trial plan — monthly and yearly plans coming soon",
     "available": "Available now",
     "soon": "Coming soon",
     "listSep": ", ",
     "pilot": {
-      "name": "Pilot plan",
+      "name": "Free trial plan",
       "price": "Free",
       "tag": "{n} days — one day at a time",
       "items": [
@@ -222,7 +226,17 @@
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "codeCell": "Box {ordinal} of {label}",
-    "ordinals": ["1", "2", "3", "4", "5", "6"]
+    "ordinals": ["1", "2", "3", "4", "5", "6"],
+    "back": "Back",
+    "cancel": "Cancel",
+    "notFound": "Page not found",
+    "unexpectedError": "Something went wrong",
+    "leave": {
+      "title": "Leave without saving?",
+      "body": "What you entered on this page won't be saved.",
+      "confirm": "Leave without saving",
+      "cancel": "Keep filling in"
+    }
   },
   "login": {
     "tabsLabel": "Sign-in type",

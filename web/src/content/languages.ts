@@ -1,6 +1,6 @@
-// The language switcher's languages. On the landing (src/i18n) Arabic and English
-// really switch; Indonesian — and English everywhere else — shows «قريبًا» and keeps
-// the current language.
+// The language switcher's languages. On a translated page (under an <I18nProvider>)
+// all three really switch; on a page without one a choice shows «قريبًا» and keeps
+// Arabic.
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { isUiLanguage, useI18n } from '../i18n/i18n';
@@ -22,8 +22,8 @@ export const LANGUAGES: readonly Language[] = [
 ];
 
 /**
- * Picking a language: the current one → nothing; one with messages on the landing →
- * switch; otherwise → the «قريبًا» toast (in the current language) for a moment.
+ * Picking a language: the current one → nothing; on a translated page → switch;
+ * without a provider → the «قريبًا» toast (Arabic) for a moment.
  */
 export function useLanguagePick(ms = 2600) {
   const { lang, m, setLang } = useI18n();

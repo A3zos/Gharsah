@@ -39,7 +39,7 @@ export function TextField({
   const fieldId = id ?? auto;
   const msgId = `${fieldId}-msg`;
   const [shown, setShown] = useState(false);
-  const { m } = useI18n();
+  const { m, dir: pageDir } = useI18n();
   const hasBadge = !password && status !== undefined;
   const ltr = dir === 'ltr';
 
@@ -62,7 +62,16 @@ export function TextField({
             'w-full border-[1.5px] bg-surface font-body text-[16px] text-text-dark placeholder:text-placeholder',
             compact ? 'h-[56px] rounded-px-19' : 'h-[58px] rounded-px-20',
             status === 'ok' ? 'border-primary' : status === 'error' ? 'border-berry' : 'border-input-border',
-            password ? 'pr-[18px] pl-[58px]' : hasBadge ? 'pr-[18px] pl-[52px]' : 'px-[18px]',
+            // the eye / badge sit at the page's end (the input's own dir may differ: email = ltr)
+            password
+              ? pageDir === 'rtl'
+                ? 'pr-[18px] pl-[58px]'
+                : 'pr-[58px] pl-[18px]'
+              : hasBadge
+                ? pageDir === 'rtl'
+                  ? 'pr-[18px] pl-[52px]'
+                  : 'pr-[52px] pl-[18px]'
+                : 'px-[18px]',
             ltr && 'text-left',
             className,
           )}
@@ -73,7 +82,7 @@ export function TextField({
             type="button"
             onClick={() => setShown((v) => !v)}
             aria-label={shown ? m.common.hidePassword : m.common.showPassword}
-            className="absolute left-[8px] flex h-[44px] w-[44px] items-center justify-center rounded-px-14 border-0 bg-transparent"
+            className="absolute end-[8px] flex h-[44px] w-[44px] items-center justify-center rounded-px-14 border-0 bg-transparent"
           >
             <EyeIcon open={shown} />
           </button>
@@ -98,7 +107,7 @@ export function TextField({
 
 function StatusBadge({ status }: { status: FieldStatus }) {
   return status === 'ok' ? (
-    <span className="absolute left-[16px] flex h-[24px] w-[24px] items-center justify-center rounded-full bg-primary">
+    <span className="absolute end-[16px] flex h-[24px] w-[24px] items-center justify-center rounded-full bg-primary">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path
           d="M5 12.5 L10 17.5 L19 7"
@@ -110,7 +119,7 @@ function StatusBadge({ status }: { status: FieldStatus }) {
       </svg>
     </span>
   ) : (
-    <span className="absolute left-[16px] flex h-[24px] w-[24px] items-center justify-center rounded-full bg-berry-tint">
+    <span className="absolute end-[16px] flex h-[24px] w-[24px] items-center justify-center rounded-full bg-berry-tint">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 6 V13.5" stroke={C.errorText} strokeWidth="2.6" strokeLinecap="round" />
         <circle cx="12" cy="18" r="1.6" fill={C.errorText} />

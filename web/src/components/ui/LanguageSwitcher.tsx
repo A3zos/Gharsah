@@ -1,7 +1,7 @@
 // The language switcher (content/languages.ts): a header dropdown (desktop landing),
-// a globe button + bottom sheet (phone landing), and radio cards (parent settings).
-// On the landing Arabic ↔ English really switch (src/i18n); Indonesian — and English
-// outside the landing — shows «قريبًا» and keeps the current language.
+// a globe button + bottom sheet (phone landing, auth pages), and radio cards (parent
+// settings). Under an <I18nProvider> all three languages really switch (src/i18n); on a
+// page without one (not translated yet) a choice shows «قريبًا» and keeps Arabic.
 // TODO(design): no designed language switcher yet.
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -249,7 +249,7 @@ export function LanguageSettings() {
   );
 }
 
-/** Phone landing header: a globe button opening a bottom sheet with the three languages. */
+/** Phone landing / auth top bar: a globe button opening a bottom sheet with the three languages. */
 export function LanguageSheetButton() {
   const [open, setOpen] = useState(false);
   const { lang, toast, pick } = useLanguagePick();

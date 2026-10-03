@@ -1,195 +1,199 @@
 {
+  "meta": {
+    "title": "Gharsah — Menanam cinta Al-Qur'an… yang tumbuh bersama mereka",
+    "description": "Guru bersuara yang menemani anak Anda setiap hari: membantunya menghafal ayat demi ayat, mengajarkan sebuah hadis, dan memberinya satu amal baik untuk dikerjakan lalu diceritakan dengan suaranya sendiri keesokan harinya."
+  },
   "language": {
-    "label": "Language",
-    "choose": "Choose a language",
-    "close": "Close",
-    "soon": "Coming soon — we're working on this language"
+    "label": "Bahasa",
+    "choose": "Pilih bahasa",
+    "close": "Tutup",
+    "soon": "Segera hadir — kami sedang menyiapkan bahasa ini"
   },
   "header": {
-    "navLabel": "Main",
-    "sectionsLabel": "Page sections",
-    "how": "How it works",
-    "sources": "What they learn",
-    "privacy": "Privacy",
-    "plans": "Plans",
-    "login": "Log in",
-    "signup": "Sign up",
-    "openMenu": "Open menu",
-    "closeMenu": "Close menu",
-    "backToTop": "Back to top"
+    "navLabel": "Utama",
+    "sectionsLabel": "Bagian halaman",
+    "how": "Cara kerjanya",
+    "sources": "Apa yang dipelajari",
+    "privacy": "Privasi",
+    "plans": "Paket",
+    "login": "Masuk",
+    "signup": "Buat akun",
+    "openMenu": "Buka menu",
+    "closeMenu": "Tutup menu",
+    "backToTop": "Kembali ke atas"
   },
   "hero": {
-    "ages": "For children aged {min}–{max}",
-    "title1": "Plant faith in your child",
-    "title2": "from its authentic sources",
-    "body": "A smart teacher helps your child memorize the Quran in the voice of a skilled reciter, learn the Prophet's Sunnah and live it through good deeds, and get answers to their questions in words that fit their age, while you follow every step from your dashboard.",
-    "startParent": "Start as a parent",
-    "childLogin": "Child login with code"
+    "ages": "Untuk anak usia {min}–{max} tahun",
+    "title1": "Tanamkan agama pada anak Anda",
+    "title2": "dari sumber-sumbernya yang sahih",
+    "body": "Guru pintar yang membantu anak Anda menghafal Al-Qur'an dengan suara qari yang mahir, mengajarkan sunah Nabi dan mengamalkannya lewat amal baik, serta menjawab pertanyaannya dengan bahasa yang sesuai usianya, sementara Anda memantau setiap langkahnya dari dasbor.",
+    "startParent": "Mulai sebagai orang tua",
+    "childLogin": "Anak masuk dengan kode"
   },
   "phone": {
-    "live": "Live",
-    "quranLesson": "Quran lesson",
-    "hadithLesson": "Hadith lesson",
-    "teacher": "Teacher Abdullah",
+    "live": "Langsung",
+    "quranLesson": "Al-Qur'an",
+    "hadithLesson": "Hadis",
+    "teacher": "Ustaz Abdullah",
     "surah": "Surah Al-Ikhlas",
-    "listening": "I'm listening…",
-    "hadithOfDay": "Today's hadith:",
-    "hadithTopic": "Kindness to parents",
-    "hadithHint": "Learn the meaning, then live it at home",
-    "project": "Today's project"
+    "listening": "Aku mendengarkanmu…",
+    "hadithOfDay": "Hadis hari ini:",
+    "hadithTopic": "Berbakti kepada orang tua",
+    "hadithHint": "Pahami maknanya, lalu amalkan di rumah",
+    "project": "Proyek hari ini"
   },
   "how": {
-    "title": "How Gharsah works",
-    "subtitle": "A smart teacher who teaches your child the Quran and Hadith, and answers their questions about their faith",
-    "example": "Example",
+    "title": "Cara kerja Gharsah",
+    "subtitle": "Guru pintar yang mengajarkan Al-Qur'an dan hadis kepada anak Anda, serta menjawab pertanyaannya tentang agamanya",
+    "example": "Contoh",
     "steps": {
       "quran": {
-        "label": "Quran",
-        "title": "Memorize the Quran with a smart teacher",
-        "body": "Your child hears each ayah from a skilled reciter, then repeats it aloud, while the teacher encourages and counts along until they master it.",
-        "teacher": "Today: Surah Al-Ikhlas… repeat it with me, ayah by ayah",
-        "child": "Ready!"
+        "label": "Al-Qur'an",
+        "title": "Menghafal Al-Qur'an bersama guru pintar",
+        "body": "Anak mendengar ayat dari qari yang mahir, lalu menirukannya dengan suaranya sendiri, sementara guru menyemangati dan menghitung bersamanya sampai ia lancar.",
+        "teacher": "Hari ini Surah Al-Ikhlas… tirukan bersamaku, ayat demi ayat",
+        "child": "Siap!"
       },
       "hadith": {
-        "label": "Hadith",
-        "title": "Understand the Hadith and live it",
-        "body": "Your child learns a short hadith and its meaning in simple words, then turns it into a real deed at home.",
-        "teacher": "Today's hadith is about kindness to parents 💛",
-        "child": "I'll help her tidy the house"
+        "label": "Hadis",
+        "title": "Memahami hadis dan mengamalkannya",
+        "body": "Anak mempelajari hadis pendek beserta maknanya dengan kata-kata sederhana, lalu mewujudkannya menjadi amal nyata di rumah.",
+        "teacher": "Hadis hari ini tentang berbakti kepada orang tua 💛",
+        "child": "Aku akan membantu ibu merapikan rumah"
       },
       "questions": {
-        "label": "Children's questions",
-        "title": "Answers their questions about Islam",
-        "body": "Your child asks out loud about whatever puzzles them, and the teacher answers in words that suit their age, using answers reviewed by specialists.",
-        "teacher": "Great question! Let's understand it together…",
-        "child": "Why do we pray five times a day?"
+        "label": "Pertanyaan anak",
+        "title": "Menjawab pertanyaannya tentang Islam",
+        "body": "Anak bertanya dengan suaranya tentang hal yang membuatnya bingung, lalu guru menjawab dengan bahasa yang sesuai usianya, dari jawaban yang ditinjau para ahli.",
+        "teacher": "Pertanyaan bagus! Yuk, kita pahami bersama…",
+        "child": "Kenapa kita salat lima kali sehari?"
       }
     }
   },
   "parents": {
-    "pill": "For parents",
-    "title": "Follow their progress… without hovering over them",
-    "body": "A calm dashboard that shows what your child has memorized, what they've learned from the Hadith and the projects they've put into practice, and lets you hear their recordings in their own voice.",
+    "pill": "Untuk orang tua",
+    "title": "Pantau kemajuannya… tanpa harus terus mengawasinya",
+    "body": "Dasbor yang tenang yang menunjukkan apa yang sudah dihafal anak Anda, apa yang ia pelajari dari hadis, dan proyek yang sudah ia amalkan, serta memperdengarkan rekamannya dengan suaranya sendiri.",
     "features": [
       {
-        "title": "A report for every lesson",
-        "text": "What they memorized, how long, and the teacher's note"
+        "title": "Laporan setiap pelajaran",
+        "text": "Apa yang dihafal, berapa menit, dan catatan ustaz"
       },
       {
-        "title": "Project recordings",
-        "text": "Sent only to you, in your child's voice"
+        "title": "Rekaman proyek",
+        "text": "Hanya untuk Anda, dengan suara anak Anda"
       },
       {
-        "title": "More than one child",
-        "text": "Up to {n} children on one account"
+        "title": "Lebih dari satu anak",
+        "text": "Hingga {n} anak dalam satu akun"
       }
     ],
     "preview": {
-      "label": "Sample parent dashboard (sample data)",
-      "tabsLabel": "Dashboard sections",
+      "label": "Contoh dasbor orang tua (data contoh)",
+      "tabsLabel": "Bagian dasbor",
       "name": "Abdullah",
-      "meta": "{age} years · Yearly plan",
-      "streak": "{n}-day streak 🔥",
+      "meta": "{age} tahun · Paket tahunan",
+      "streak": "{n} hari berturut-turut 🔥",
       "tabs": {
-        "overview": "Overview",
-        "today": "Today's lesson",
-        "project": "Project"
+        "overview": "Ringkasan",
+        "today": "Pelajaran hari ini",
+        "project": "Proyek"
       },
-      "growth": "Growth path",
+      "growth": "Jalur perkembangan",
       "percent": "{n}%",
       "stages": {
-        "seed": "Seed",
-        "sapling": "Sapling",
-        "tree": "Tree"
+        "seed": "Benih",
+        "sapling": "Tunas",
+        "tree": "Pohon"
       },
       "stats": {
-        "surahs": "Surahs",
+        "surahs": "Surah",
         "ayat": "Ayat",
-        "hadith": "Hadiths",
-        "projects": "Projects"
+        "hadith": "Hadis",
+        "projects": "Proyek"
       },
       "todaySurah": "Surah Al-Ikhlas · {n} ayat",
-      "todayHadith": "Hadith: Kindness to parents",
-      "duration": "Lesson time: {n} min",
-      "confident": "Repeated with confidence",
-      "noteLabel": "Teacher's note",
-      "note": "Great engagement, and listened well to the reciter",
-      "weekProject": "This week's project",
-      "projectTopic": "Kindness to parents",
-      "projectDetail": "Helped his mother tidy the house",
-      "toldByVoice": "Told it in his own voice",
-      "voiceCaption": "I helped my mom tidy the house"
+      "todayHadith": "Hadis berbakti kepada orang tua",
+      "duration": "Durasi pelajaran {n} menit",
+      "confident": "Menirukan dengan percaya diri",
+      "noteLabel": "Catatan ustaz",
+      "note": "Sangat aktif, dan menyimak qari dengan baik",
+      "weekProject": "Proyek minggu ini",
+      "projectTopic": "Berbakti kepada orang tua",
+      "projectDetail": "Membantu ibunya merapikan rumah",
+      "toldByVoice": "Menceritakannya dengan suaranya sendiri",
+      "voiceCaption": "Aku membantu ibu merapikan rumah"
     }
   },
   "sources": {
-    "pill": "Trust",
-    "title": "What your child learns",
-    "subtitle": "Every answer comes from a stated, trusted source — no guesswork, no generation.",
+    "pill": "Terpercaya",
+    "title": "Apa yang dipelajari anak Anda?",
+    "subtitle": "Setiap jawaban diambil dari sumber tepercaya yang disebutkan — tanpa menebak dan tanpa mengarang.",
     "cards": {
       "quran": {
-        "title": "Learn the Quran",
-        "body": "Memorize the ayat in the voice of a skilled reciter; any question about an ayah is answered with sound, authoritative tafsir.",
-        "questions": ["What does \"Allah, the Eternal Refuge\" mean?"],
-        "reply": "Great question! Let's understand it together from the tafsir…",
-        "sources": ["Tanzil Quran", "Al-Tafsir Al-Muyassar (King Fahd Complex)", "Alafasy recitation"]
+        "title": "Belajar Al-Qur'an",
+        "body": "Menghafal ayat dengan suara qari yang mahir, dan setiap pertanyaan tentang ayat dijawab dengan tafsir yang sahih dan diakui.",
+        "questions": ["Apa arti {ayah}?"],
+        "reply": "Pertanyaan bagus! Yuk, kita pahami bersama dari tafsirnya…",
+        "sources": ["Mushaf Tanzil", "Tafsir Al-Muyassar (Kompleks Raja Fahd)", "Bacaan Alafasy"]
       },
       "hadith": {
-        "title": "Learn the Hadith",
-        "body": "Learn a hadith and its meaning in simple words, and how to live it every day through a real deed.",
-        "questions": ["How can I live the hadith on kindness to parents today?"],
-        "reply": "Start by helping your mom at home 💛",
-        "sources": ["Dorar Al-Saniyya", "Encyclopedia of Translated Hadiths"]
+        "title": "Belajar hadis",
+        "body": "Mempelajari hadis dan maknanya dengan kata-kata sederhana, serta cara mengamalkannya dalam keseharian lewat amal nyata.",
+        "questions": ["Bagaimana aku mengamalkan hadis berbakti kepada orang tua hari ini?"],
+        "reply": "Mulailah dengan membantu ibumu di rumah 💛",
+        "sources": ["Ensiklopedia Ad-Durar As-Saniyyah", "Ensiklopedia Hadis Nabi"]
       },
       "islam": {
-        "title": "What is Islam?",
-        "body": "Any question about Islam that comes to anyone's mind, Muslim or not, gets a clear answer in words that suit their age.",
-        "questions": ["Why do we pray?", "Why do we die?"],
-        "reply": "Great questions! Let's discover the answer together…",
-        "sources": ["Quran & Sunnah", "A'lam Al-Sunnah Al-Manshurah", "Minhaj Al-Muslim"]
+        "title": "Apa itu Islam?",
+        "body": "Setiap pertanyaan tentang Islam yang terlintas di benak siapa pun, Muslim maupun bukan, mendapat jawaban yang jelas dengan bahasa yang sesuai usianya.",
+        "questions": ["Kenapa kita salat?", "Kenapa kita meninggal?"],
+        "reply": "Pertanyaan yang hebat! Yuk, kita cari tahu jawabannya…",
+        "sources": ["Al-Qur'an dan Sunah", "A'lam As-Sunnah Al-Mansyurah", "Minhajul Muslim"]
       }
     },
-    "sourceLabel": "Sources"
+    "sourceLabel": "Sumber"
   },
   "plans": {
-    "title": "Plans",
-    "subtitle": "Start with the pilot plan — monthly and yearly plans coming soon",
-    "available": "Available now",
-    "soon": "Coming soon",
+    "title": "Paket",
+    "subtitle": "Mulai dengan paket uji coba gratis — paket bulanan dan tahunan segera hadir",
+    "available": "Tersedia sekarang",
+    "soon": "Segera hadir",
     "listSep": ", ",
     "pilot": {
-      "name": "Pilot plan",
-      "price": "Free",
-      "tag": "{n} days — one day at a time",
+      "name": "Paket uji coba gratis",
+      "price": "Gratis",
+      "tag": "{n} hari — hari demi hari",
       "items": [
-        "{count} surahs ({surahs})",
-        "{count} hadiths",
-        "One lesson a day",
-        "Up to {children} children"
+        "{count} surah ({surahs})",
+        "{count} hadis",
+        "Satu pelajaran setiap hari",
+        "Hingga {children} anak"
       ],
-      "day": "Day {n}: Surah {surah} + {hadith}",
-      "cta": "Start free"
+      "day": "Hari {n}: Surah {surah} + {hadith}",
+      "cta": "Mulai gratis"
     },
     "monthly": {
-      "name": "Monthly plan",
-      "per": "SAR / month",
-      "tag": "A flexible start",
+      "name": "Paket bulanan",
+      "per": "SAR / bulan",
+      "tag": "Awal yang fleksibel",
       "items": [
-        "All of Juz' Amma",
-        "3 hadiths with practical projects",
-        "A weekly review lesson",
-        "For one child",
-        "Cancel anytime"
+        "Juz 'Amma lengkap",
+        "3 hadis beserta proyek praktiknya",
+        "Pelajaran murajaah setiap pekan",
+        "Untuk satu anak",
+        "Bisa dibatalkan kapan saja"
       ]
     },
     "annual": {
-      "name": "Yearly plan",
-      "per": "SAR / year",
-      "tag": "Less than {n} SAR a month",
+      "name": "Paket tahunan",
+      "per": "SAR / tahun",
+      "tag": "Kurang dari {n} SAR per bulan",
       "items": [
-        "6 Juz' of the Quran",
-        "30 hadiths with practical projects",
-        "A weekly review lesson",
-        "Unlimited children"
+        "6 juz Al-Qur'an",
+        "30 hadis beserta proyek praktiknya",
+        "Pelajaran murajaah setiap pekan",
+        "Jumlah anak tidak terbatas"
       ]
     },
     "names": {
@@ -199,73 +203,83 @@
         "114": "An-Nas"
       },
       "hadith": {
-        "PLACEHOLDER-birr-alwalidayn": "hadith on kindness to parents",
-        "PLACEHOLDER-al-kadhib": "hadith on lying",
-        "PLACEHOLDER-al-ghadab": "hadith on anger"
+        "PLACEHOLDER-birr-alwalidayn": "hadis berbakti kepada orang tua",
+        "PLACEHOLDER-al-kadhib": "hadis tentang berbohong",
+        "PLACEHOLDER-al-ghadab": "hadis tentang marah"
       }
     }
   },
   "footer": {
-    "linksLabel": "Links",
-    "privacy": "Privacy policy",
-    "privacyShort": "Privacy policy",
-    "terms": "Terms & conditions",
-    "termsShort": "Terms & conditions",
-    "contact": "Contact us",
+    "linksLabel": "Tautan",
+    "privacy": "Kebijakan privasi",
+    "privacyShort": "Kebijakan privasi",
+    "terms": "Syarat & ketentuan",
+    "termsShort": "Syarat & ketentuan",
+    "contact": "Hubungi kami",
     "brandLatin": "Gharsah",
-    "copyright": "© 1447 AH Gharsah · Made in Saudi Arabia"
+    "copyright": "© 1447 H Gharsah · Dibuat di Arab Saudi"
   },
   "common": {
-    "home": "Home",
-    "navLabel": "Navigation",
-    "logoLabel": "Gharsah — back to the home page",
-    "showPassword": "Show password",
-    "hidePassword": "Hide password",
-    "codeCell": "Box {ordinal} of {label}",
-    "ordinals": ["1", "2", "3", "4", "5", "6"]
+    "home": "Beranda",
+    "navLabel": "Navigasi",
+    "logoLabel": "Gharsah — kembali ke beranda",
+    "showPassword": "Tampilkan kata sandi",
+    "hidePassword": "Sembunyikan kata sandi",
+    "codeCell": "Kotak {ordinal} dari {label}",
+    "ordinals": ["1", "2", "3", "4", "5", "6"],
+    "back": "Kembali",
+    "cancel": "Batal",
+    "notFound": "Halaman tidak ditemukan",
+    "unexpectedError": "Terjadi kesalahan",
+    "leave": {
+      "title": "Keluar tanpa menyimpan?",
+      "body": "Isian Anda di halaman ini tidak akan disimpan.",
+      "confirm": "Keluar tanpa menyimpan",
+      "cancel": "Lanjut mengisi"
+    }
   },
   "login": {
-    "tabsLabel": "Sign-in type",
-    "parentTab": "Parent",
-    "childTab": "Child",
+    "tabsLabel": "Jenis masuk",
+    "parentTab": "Orang tua",
+    "childTab": "Anak",
     "parent": {
-      "title": "Welcome back",
-      "subtitle": "Sign in to follow your children's progress.",
+      "title": "Selamat datang kembali",
+      "subtitle": "Masuk untuk memantau kemajuan anak-anak Anda.",
       "email": "Email",
       "emailPlaceholder": "name@example.com",
-      "password": "Password",
+      "password": "Kata sandi",
       "passwordPlaceholder": "••••••••",
-      "forgot": "Forgot your password?",
-      "note": "Parent accounts only. Children don't create accounts — they sign in with a link code.",
-      "childDeviceNote": "This browser is linked to a child's account. Signing in here unlinks it, and the child will need a new link code — it's better to sign in from your phone or another browser.",
-      "submit": "Sign in",
-      "noAccount": "Don't have an account?",
-      "signup": "Create one"
+      "forgot": "Lupa kata sandi?",
+      "note": "Hanya untuk akun orang tua. Anak tidak membuat akun — ia masuk dengan kode tautan.",
+      "childDeviceNote": "Browser ini terhubung dengan akun anak. Jika Anda masuk di sini, tautannya terputus dan anak akan memerlukan kode tautan baru — sebaiknya masuk dari ponsel Anda atau browser lain.",
+      "submit": "Masuk",
+      "noAccount": "Belum punya akun?",
+      "signup": "Buat akun"
     },
     "child": {
-      "title": "Hi there, champ!",
-      "subtitle": "Enter the link code your parent gave you.",
-      "code": "Link code",
-      "note": "No email or password needed — the code is all you need. Code expired?",
-      "askParent": "Ask your parent for a new one",
-      "submit": "Enter"
+      "title": "Halo, jagoan!",
+      "subtitle": "Masukkan kode tautan yang diberikan orang tuamu.",
+      "code": "Kode tautan",
+      "note": "Tidak perlu email atau kata sandi — cukup kodenya saja. Kodemu sudah kedaluwarsa?",
+      "askParent": "Minta kode baru dari orang tuamu",
+      "submit": "Masuk"
     },
     "errors": {
-      "invalidEmail": "That email address doesn't look right.",
-      "emptyPassword": "Enter your password.",
-      "wrongCredentials": "The email or password is incorrect.",
-      "tooMany": "Too many attempts — wait a moment, then try again.",
-      "network": "Couldn't connect to the internet — check your connection and try again.",
-      "emailNotConfirmed": "Open the confirmation link we sent to your email, then sign in.",
-      "userDisabled": "This account is suspended. Contact us for help.",
-      "unexpected": "Something went wrong — please try again.",
-      "codeWrong": "The code is incorrect or has expired. Ask your parent for a new one.",
-      "codeWhatToDo": "What can I do?",
-      "codeShort": "Fill in all six boxes.",
-      "codeOk": "Verified — opening the child app",
-      "codeTooMany": "Too many attempts — wait a moment, then try again.",
-      "codeOffline": "Check your internet connection.",
-      "codeUnavailable": "The service isn't available right now — try again shortly."
+      "invalidEmail": "Format email tidak benar.",
+      "emptyPassword": "Tulis kata sandi Anda.",
+      "wrongCredentials": "Email atau kata sandi salah.",
+      "tooMany": "Terlalu banyak percobaan — tunggu sebentar, lalu coba lagi.",
+      "network": "Tidak bisa terhubung ke internet — periksa jaringan Anda dan coba lagi.",
+      "emailNotConfirmed": "Buka tautan konfirmasi yang kami kirim ke email Anda, lalu masuk.",
+      "userDisabled": "Akun ini dinonaktifkan. Hubungi kami untuk bantuan.",
+      "unexpected": "Terjadi kesalahan — coba lagi.",
+      "codeWrong": "Kodenya salah atau sudah kedaluwarsa. Minta kode baru dari orang tuamu.",
+      "codeWhatToDo": "Lalu bagaimana?",
+      "codeShort": "Isi keenam kotaknya.",
+      "codeOk": "Berhasil — membuka aplikasi anak",
+      "codeTooMany": "Terlalu banyak percobaan — tunggu sebentar, lalu coba lagi.",
+      "codeOffline": "Periksa koneksi internetmu.",
+      "codeUnavailable": "Layanan sedang tidak tersedia, coba lagi sebentar lagi."
     }
   }
 }

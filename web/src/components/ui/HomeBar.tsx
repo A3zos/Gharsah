@@ -3,21 +3,26 @@
 // start, the underlined غَرْسة logo at the end — both go "home" (the parent
 // dashboard when signed in, else the landing page). Leaving a form with unsaved
 // input is confirmed by the page's own navigation blocker (useLeaveGuard).
+// `languageSwitch` adds the compact language button beside the far item (translated
+// pages only — under an <I18nProvider>).
 import { Link } from 'react-router';
 
 import { useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { useHomeTarget } from '../../lib/useHomeTarget';
 import { ForwardIcon, SproutMark } from './icons';
+import { LanguageSheetButton } from './LanguageSwitcher';
 
 export function HomeBar({
   className,
   to,
   logoFirst,
+  languageSwitch,
 }: {
   className?: string;
   to?: string;
   logoFirst?: boolean;
+  languageSwitch?: boolean;
 }) {
   const home = useHomeTarget();
   const { m } = useI18n();
@@ -52,6 +57,7 @@ export function HomeBar({
     >
       {logoFirst ? logo : button}
       <span className="grow" />
+      {languageSwitch && <LanguageSheetButton />}
       {logoFirst ? button : logo}
     </nav>
   );

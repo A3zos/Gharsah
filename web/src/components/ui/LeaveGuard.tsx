@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useBlocker, type Location } from 'react-router';
 
+import { useI18n } from '../../i18n/i18n';
 import { ConfirmSheet } from './ConfirmSheet';
 
 export function LeaveGuard({
@@ -13,6 +14,8 @@ export function LeaveGuard({
   when: boolean;
   allow?: (next: Location, current: Location) => boolean;
 }) {
+  const { m } = useI18n();
+  const t = m.common.leave;
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {
     if (!when) return false;
     if (allow?.(nextLocation, currentLocation)) return false;
@@ -33,10 +36,10 @@ export function LeaveGuard({
   return (
     <ConfirmSheet
       open={blocker.state === 'blocked'}
-      title="تخرج بدون حفظ؟"
-      body="ما أدخلته في هذه الصفحة لن يُحفظ."
-      confirmLabel="خروج بدون حفظ"
-      cancelLabel="أكمل التعبئة"
+      title={t.title}
+      body={t.body}
+      confirmLabel={t.confirm}
+      cancelLabel={t.cancel}
       danger
       onConfirm={() => blocker.proceed?.()}
       onCancel={() => blocker.reset?.()}

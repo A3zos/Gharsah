@@ -4,6 +4,7 @@
 import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { buttonClass } from './Button';
 
@@ -13,7 +14,7 @@ export function ConfirmSheet({
   body,
   icon,
   confirmLabel,
-  cancelLabel = 'إلغاء',
+  cancelLabel,
   danger,
   busy,
   onConfirm,
@@ -37,6 +38,7 @@ export function ConfirmSheet({
   children?: React.ReactNode;
   footnote?: string;
 }) {
+  const { m } = useI18n();
   const titleId = useId();
   const bodyId = useId();
   const sheet = useRef<HTMLDivElement>(null);
@@ -128,7 +130,7 @@ export function ConfirmSheet({
           onClick={onCancel}
           className={buttonClass('quiet', 'custom', 'h-[58px] rounded-px-20 text-[16.5px] font-extrabold')}
         >
-          {cancelLabel}
+          {cancelLabel ?? m.common.cancel}
         </button>
         {footnote && <span className="text-center text-[12px] text-text-subtle">{footnote}</span>}
       </div>

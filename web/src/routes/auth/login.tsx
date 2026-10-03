@@ -9,19 +9,19 @@ import { CODE_LENGTH, CodeInput } from '../../components/ui/CodeInput';
 import { C } from '../../components/ui/color';
 import { AlertIcon, CheckCircleIcon, SproutBadge } from '../../components/ui/icons';
 import { Note } from '../../components/ui/Note';
-import { Blob, MobilePage } from '../../components/ui/Page';
+import { Blob, MobilePage, useDocumentMeta } from '../../components/ui/Page';
 import { SegmentedTabs } from '../../components/ui/SegmentedTabs';
 import { TextField } from '../../components/ui/TextField';
 import { isValidEmail, signIn } from '../../data/auth';
-import { bareCode } from '../../data/authFailure';
-import { useI18n, type Messages } from '../../i18n/i18n';
+import { authFailureMessage } from '../../data/authFailure';
+import { MESSAGES, useI18n } from '../../i18n/i18n';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { ClaimFailure, claimCode } from '../../data/childSession';
 import { toLatinDigits } from '../../lib/arabicDigits';
 import { safeNext } from '../../lib/nav';
 import type { Route } from './+types/login';
 
-export const meta: Route.MetaFunction = () => [{ title: 'تسجيل الدخول — غَرْسة' }];
+export const meta: Route.MetaFunction = () => [{ title: MESSAGES.ar.auth.titles.login }];
 
 type Tab = 'parent' | 'child';
 
@@ -59,20 +59,23 @@ export default function LoginRoute({ loaderData }: Route.ComponentProps) {
   const [params, setParams] = useSearchParams();
   const childDevice = loaderData?.childDevice ?? false;
   const tab = tabOf(params);
-  // The welcome choice is Arabic only for now; the two tabs follow the chosen language.
-  if (!tab) return <Welcome />;
+  // The welcome choice and the two tabs follow the chosen language.
   return (
     <I18nProvider>
-      <Login
-        tab={tab}
-        childDevice={childDevice}
-        onTab={(t) => {
-          const next = new URLSearchParams(params);
-          next.delete('role');
-          next.set('tab', t);
-          setParams(next, { replace: true });
-        }}
-      />
+      {!tab ? (
+        <Welcome />
+      ) : (
+        <Login
+          tab={tab}
+          childDevice={childDevice}
+          onTab={(t) => {
+            const next = new URLSearchParams(params);
+            next.delete('role');
+            next.set('tab', t);
+            setParams(next, { replace: true });
+          }}
+        />
+      )}
     </I18nProvider>
   );
 }
@@ -80,35 +83,38 @@ export default function LoginRoute({ loaderData }: Route.ComponentProps) {
 // ── design/v3 Auth — the welcome choice ─────────────────────────────────────
 
 function Welcome() {
+  const { m } = useI18n();
+  const t = m.auth.welcome;
+  useDocumentMeta(m.auth.titles.login);
   return (
     <MobilePage
       decor={<Blob className="-top-[170px] -right-[140px] h-[400px] w-[400px] bg-blob-sky" />}
       innerClassName="items-center gap-[26px] px-[26px] pt-[76px] pb-[40px]"
     >
-      <HomeBar />
+      <HomeBar languageSwitch />
       <div className="flex flex-col items-center gap-[8px]">
         <SproutBadge size={66} />
-        <h1 className="m-0 font-heading text-[34px] leading-[1.6] font-bold text-deep-green">غَرْسة</h1>
-        <p className="m-0 max-w-[270px] text-center text-[15px] leading-[1.7] text-text-muted">
-          حساب وليّ الأمر — تتابع منه رحلة أبنائك مع القرآن.
-        </p>
+        <h1 lang="ar" className="m-0 font-heading text-[34px] leading-[1.6] font-bold text-deep-green">
+          غَرْسة
+        </h1>
+        <p className="m-0 max-w-[270px] text-center text-[15px] leading-[1.7] text-text-muted">{t.tagline}</p>
       </div>
       <GrowthIntro />
       <div className="mt-auto flex w-full flex-col gap-[12px]">
-        <ButtonLink to={paths.login}>تسجيل دخول</ButtonLink>
+        <ButtonLink to={paths.login}>{t.login}</ButtonLink>
         <ButtonLink to={paths.signup} variant="outline">
-          إنشاء حساب
+          {t.signup}
         </ButtonLink>
         <p className="m-0 mt-[6px] text-center text-[12px] leading-[1.8] text-text-muted">
-          بالمتابعة فإنك توافق على{' '}
+          {t.agree}{' '}
           <Link to={paths.terms} className="font-bold">
-            شروط الاستخدام
+            {t.terms}
           </Link>{' '}
-          و
+          {t.and}
           <Link to={paths.privacy} className="font-bold">
-            سياسة الخصوصية
+            {t.privacy}
           </Link>
-          .
+          {t.end}
         </p>
       </div>
     </MobilePage>
@@ -117,6 +123,8 @@ function Welcome() {
 
 /** Seed → sprout → tree, drawing itself in (Auth frame card). */
 function GrowthIntro() {
+  const { m } = useI18n();
+  const t = m.auth.welcome;
   const line = (delay: string) => (
     <div className="relative mt-[32px] h-0 grow border-t-[2.5px] border-dotted border-t-border-strong">
       <div
@@ -138,12 +146,9 @@ function GrowthIntro() {
   );
   return (
     <div className="flex w-full flex-col items-center gap-[14px] rounded-px-26 bg-surface px-[18px] pt-[22px] pb-[18px] shadow-card">
-      <div
-        className="flex w-full items-start px-[2px] pt-[4px] [direction:ltr]"
-        aria-label="بذرة ثم غَرْسة ثم شجرة"
-      >
+      <div className="flex w-full items-start px-[2px] pt-[4px] [direction:ltr]" aria-label={t.stagesLabel}>
         {stage(
-          'بذرة',
+          t.stages.seed,
           'bg-gold-tint',
           'gh-pop .45s ease-out .08s both',
           <svg width="26" height="26" viewBox="0 0 40 40" fill="none" aria-hidden="true">
@@ -153,7 +158,7 @@ function GrowthIntro() {
         )}
         {line('.2s')}
         {stage(
-          'غَرْسة',
+          t.stages.sapling,
           'bg-green-tint',
           'gh-pop .45s ease-out .62s both',
           <svg width="36" height="36" viewBox="0 0 40 40" fill="none" aria-hidden="true">
@@ -164,7 +169,7 @@ function GrowthIntro() {
         )}
         {line('.74s')}
         {stage(
-          'شجرة',
+          t.stages.tree,
           'bg-green-tint border-[2.5px] border-primary',
           'gh-pop .45s ease-out 1.14s both, gh-pulse 2.6s ease-in-out 1.74s infinite',
           <svg width="44" height="44" viewBox="0 0 40 40" fill="none" aria-hidden="true">
@@ -187,13 +192,8 @@ function Login({ tab, onTab, childDevice }: { tab: Tab; onTab: (t: Tab) => void;
   const [expired, setExpired] = useState<string[] | null>(null);
   const { lang, m } = useI18n();
   const t = m.login;
-  if (expired)
-    // not translated yet: Arabic, rtl in every language
-    return (
-      <div lang="ar" dir="rtl">
-        <SCodeExpired cells={expired} onBack={() => setExpired(null)} />
-      </div>
-    );
+  useDocumentMeta(m.auth.titles.login);
+  if (expired) return <SCodeExpired cells={expired} onBack={() => setExpired(null)} />;
   return (
     <MobilePage
       decor={<Blob className="-top-[150px] -left-[130px] h-[340px] w-[340px] bg-blob-green-strong" />}
@@ -202,7 +202,7 @@ function Login({ tab, onTab, childDevice }: { tab: Tab; onTab: (t: Tab) => void;
       <div className="mx-auto flex w-full max-w-[440px] grow flex-col gap-[16px]">
         {/* One back control: «الرئيسية» (history-aware) on the left, the logo on the right
             (RTL: logo first; LTR: the back button first). */}
-        <HomeBar logoFirst={lang === 'ar'} />
+        <HomeBar logoFirst={lang === 'ar'} languageSwitch />
         <div className="flex flex-col gap-[4px]">
           <h1 className="m-0 font-heading text-[28px] leading-[1.5] font-bold">
             {tab === 'parent' ? t.parent.title : t.child.title}
@@ -282,9 +282,9 @@ function ParentForm({ childDevice }: { childDevice: boolean }) {
       await signIn(email, password);
       navigate(safeNext(params, 'parent') ?? paths.parent.root, { replace: true });
     } catch (err) {
-      const f = err as { field?: string; message: string; code?: string };
-      // Arabic: the data layer's message as before; English: by the failure's code
-      const message = lang === 'ar' ? f.message : signInMessage(m.login.errors, f.code);
+      const f = err as { field?: string };
+      // Arabic: the data layer's message as before; English / Indonesian: by its key
+      const message = authFailureMessage(lang, err);
       setError({ field: f.field ?? 'general', message });
       setBusy(false);
     }
@@ -466,36 +466,4 @@ function ChildForm({ onExpired }: { onExpired: (cells: string[]) => void }) {
       </div>
     </form>
   );
-}
-
-/** A sign-in failure's message in a non-Arabic language, by its code (data/authFailure.ts). */
-function signInMessage(e: Messages['login']['errors'], code: string | undefined): string {
-  switch (code && bareCode(code)) {
-    case 'invalid-credential':
-    case 'invalid-login-credentials':
-    case 'user-not-found':
-    case 'wrong-password':
-    case 'INVALID_LOGIN_CREDENTIALS':
-    case 'invalid_credentials':
-      return e.wrongCredentials;
-    case 'invalid-email':
-    case 'missing-email':
-    case 'email_address_invalid':
-    case 'validation_failed':
-      return e.invalidEmail;
-    case 'too-many-requests':
-    case 'over_request_rate_limit':
-    case 'over_email_send_rate_limit':
-      return e.tooMany;
-    case 'network-request-failed':
-    case 'unavailable':
-      return e.network;
-    case 'email_not_confirmed':
-    case 'confirm-email':
-      return e.emailNotConfirmed;
-    case 'user-disabled':
-      return e.userDisabled;
-    default:
-      return e.unexpected;
-  }
 }

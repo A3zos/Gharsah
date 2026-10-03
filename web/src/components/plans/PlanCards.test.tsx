@@ -14,7 +14,7 @@ test('in English on the landing: English copy, Western digits', () => {
     </I18nProvider>,
   );
   const [pilot, monthly, yearly] = screen.getAllByRole('region') as [HTMLElement, HTMLElement, HTMLElement];
-  expect(pilot).toHaveAccessibleName('Pilot plan');
+  expect(pilot).toHaveAccessibleName('Free trial plan');
   expect(within(pilot).getByText('Available now')).toBeInTheDocument();
   expect(within(pilot).getByText('Free')).toBeInTheDocument();
   expect(within(pilot).getByText('Day 2: Surah An-Nas + hadith on lying')).toBeInTheDocument();

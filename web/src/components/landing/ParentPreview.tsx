@@ -386,7 +386,7 @@ function Today() {
     <div className="flex flex-col gap-[12px]">
       <Done>{fill(lang, t.todaySurah, { n: 4 })}</Done>
       <Done>{t.todayHadith}</Done>
-      <span className="flex items-center gap-[8px] whitespace-nowrap">
+      <span className="flex flex-wrap items-center gap-[8px] whitespace-nowrap">
         <span className="rounded-pill bg-background px-[12px] py-[6px] text-[13px] font-bold text-text-muted">
           {fill(lang, t.duration, { n: 12 })}
         </span>

@@ -30,7 +30,7 @@ test('the pilot copy in Arabic (unchanged) and in English (Western digits)', () 
   ]);
   const enCopy = pilotCopy('en');
   expect(enCopy).toEqual({
-    name: 'Pilot plan',
+    name: 'Free trial plan',
     price: 'Free',
     cta: 'Start free',
     tag: '3 days — one day at a time',
@@ -41,4 +41,11 @@ test('the pilot copy in Arabic (unchanged) and in English (Western digits)', () 
       'Day 3: Surah Al-Falaq + hadith on anger',
     ],
   });
+});
+
+test('the pilot copy in Indonesian', () => {
+  const idCopy = pilotCopy('id');
+  expect(idCopy.name).toBe('Paket uji coba gratis');
+  expect(idCopy.items[0]).toBe('3 surah (Al-Ikhlas, An-Nas, Al-Falaq)');
+  expect(idCopy.days[1]).toBe('Hari 2: Surah An-Nas + hadis tentang berbohong');
 });

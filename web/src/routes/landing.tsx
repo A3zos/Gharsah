@@ -1,16 +1,14 @@
 import { LandingDesktop } from '../components/landing/LandingDesktop';
 import { LandingMobile } from '../components/landing/LandingMobile';
-import { useI18n } from '../i18n/i18n';
+import { useDocumentMeta } from '../components/ui/Page';
+import { MESSAGES, useI18n } from '../i18n/i18n';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Route } from './+types/landing';
 
+// Prerendered in Arabic; another language sets its own title/description after hydration.
 export const meta: Route.MetaFunction = () => [
-  { title: 'غَرْسة — نغرس حُبّ القرآن… ويكبر معهم' },
-  {
-    name: 'description',
-    content:
-      'معلّم صوتي يجلس مع ابنك كل يوم: يحفّظه آية آية، ويعلّمه حديثًا، ويكلّفه بعمل صالح يحكيه بصوته في اليوم التالي.',
-  },
+  { title: MESSAGES.ar.meta.title },
+  { name: 'description', content: MESSAGES.ar.meta.description },
 ];
 
 /**
@@ -27,7 +25,8 @@ export default function Landing() {
 
 /** lang/dir on the page itself too, so it mirrors in the same render as the text. */
 function LandingPage() {
-  const { lang, dir } = useI18n();
+  const { lang, dir, m } = useI18n();
+  useDocumentMeta(m.meta.title, m.meta.description);
   return (
     <div lang={lang} dir={dir}>
       <div className="hidden lg:block">
