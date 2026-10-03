@@ -65,10 +65,14 @@ export async function createServerLesson(o: {
     ayahCount: (s) => quranMeta.ayahCount(s),
     surahName: (s) => quranMeta.surahName(s),
   });
+  let disposed = false;
   return {
     lesson,
     mouth: lip.frame,
     dispose() {
+      // the whole AI engine: requests, speech, reciter, mic, lip-sync (idempotent)
+      if (disposed) return;
+      disposed = true;
       lesson.dispose();
       voice.stop();
       player.stop();

@@ -24,6 +24,7 @@
 //   allow word feedback — voice/recitationVerifier.ts).
 // * Any server failure that a restart can't fix → `fallback` (the route then
 //   runs the built-in lesson) so the child is never stuck.
+import { changed, lessonLog } from '../lessonLog';
 import { Observable } from '../observable';
 import { PlaybackBlocked } from '../ports';
 import { AgentUnavailable, RateLimited, SessionExpired, type AgentApi, type Gender } from './api';
@@ -121,7 +122,30 @@ export interface ServerLessonDeps {
   beat?: (ms: number) => Promise<void>;
   /** After this long without the first answer, show «المعلّم يتجهّز…». */
   warmingAfterMs?: number;
+  /** Dead-end guard: idle this long (nothing playing, listening or pending) → recover. false = off. */
+  watchdog?: { idleMs: number; tickMs: number } | false;
 }
+
+/** Idle (no audio, not listening, no request) this long = stuck → recover. */
+export const WATCHDOG_IDLE_MS = 8000;
+const WATCHDOG_TICK_MS = 1000;
+/** State fields logged on every transition. */
+const LOGGED: readonly (keyof ServerLessonState)[] = [
+  'phase',
+  'segment',
+  'stageIndex',
+  'expects',
+  'busy',
+  'speaking',
+  'reciting',
+  'repeat',
+  'hearing',
+  'currentAyah',
+  'paused',
+  'micPrompt',
+  'playbackBlocked',
+  'listenOnly',
+];
 
 // ── state ──
 
@@ -341,13 +365,97 @@ export class ServerLesson {
   }
 
   private set(patch: Partial<ServerLessonState>): void {
-    if (this.disposed) return;
-    this.state.value = { ...this.state.value, ...patch };
+    if (this.disposed || this.halted) return;
+    const before = this.state.value;
+    const after = { ...before, ...patch };
+    this.state.value = after;
+    const diff = changed(before, after, LOGGED);
+    if (diff) lessonLog('ai', 'state', diff);
+  }
+
+  // ── dead-end guard ──
+
+  private watchdogTimer: ReturnType<typeof setInterval> | null = null;
+  private idleSince: number | null = null;
+  /** Recoveries on the current turn: 1st → the turn again; 2nd → move on. */
+  private rescues = 0;
+  /** Fell back / disposed: nothing of this engine may run any more. */
+  private halted = false;
+
+  private startWatchdog(): void {
+    const w = this.d.watchdog ?? { idleMs: WATCHDOG_IDLE_MS, tickMs: WATCHDOG_TICK_MS };
+    if (!w || this.watchdogTimer) return;
+    this.watchdogTimer = setInterval(() => {
+      if (!this.isIdle()) {
+        this.idleSince = null;
+        return;
+      }
+      const now = Date.now();
+      this.idleSince ??= now;
+      if (now - this.idleSince >= w.idleMs) {
+        this.idleSince = null;
+        this.rescue();
+      }
+    }, w.tickMs);
+  }
+
+  private stopWatchdog(): void {
+    if (this.watchdogTimer) clearInterval(this.watchdogTimer);
+    this.watchdogTimer = null;
+  }
+
+  /** Live, and nothing is happening: no audio, not listening, no request, no prompt. */
+  private isIdle(): boolean {
+    const s = this.state.value;
+    return (
+      !this.disposed &&
+      !this.halted &&
+      s.phase === 'live' &&
+      !s.paused &&
+      !s.busy &&
+      !s.speaking &&
+      !s.reciting &&
+      s.repeat === 'idle' &&
+      !s.hearing &&
+      !s.micPrompt &&
+      !s.playbackBlocked
+    );
+  }
+
+  /** A dead end: say the current turn again; stuck again → move on (never a frozen screen). */
+  private rescue(): void {
+    const s = this.state.value;
+    lessonLog('ai', 'STUCK — recovering', {
+      stage: s.stages[s.stageIndex]?.id,
+      expects: s.expects,
+      rescue: this.rescues + 1,
+    });
+    const t = this.turn;
+    if (!t) {
+      void this.startSegment(false);
+      return;
+    }
+    this.rescues++;
+    if (this.rescues === 1) {
+      void this.play(t);
+      return;
+    }
+    // stuck twice on the same turn: move on — a repeat is skipped (never counted as repeated)
+    const next =
+      t.expects === 'repeat'
+        ? SKIP_AYAH
+        : t.expects === 'none'
+          ? null
+          : (t.quickReplies[0] ?? DEFAULT_ANSWER);
+    if (next === null) void this.segmentEnded();
+    else void this.send(next, false);
   }
 
   // ── lifecycle ──
 
   async start(): Promise<void> {
+    lessonLog('ai', 'engine start', { gender: this.d.gender, lesson: this.d.plan.lessonId });
+    this.startWatchdog();
     this.d.voice.warm?.();
     const warm = setTimeout(() => {
       if (this.state.value.phase === 'starting') this.set({ phase: 'warming' });
@@ -454,9 +562,27 @@ export class ServerLesson {
 
   private fallback(e: unknown): void {
     const reason = String((e as Error)?.message ?? e);
-    console.warn('[gharsah] AI lesson → built-in lesson:', reason);
-    this.cancelTurn();
+    lessonLog('ai', 'FALLBACK → builtin', { reason });
     this.set({ phase: 'fallback', busy: false, expects: null, fallbackReason: reason });
+    // One engine at a time: this one stops for good before the built-in lesson starts.
+    this.halt();
+  }
+
+  /** Stops everything this engine does: speech, audio, listening, requests, timers. */
+  private halt(): void {
+    if (this.halted) return;
+    this.cancelTurn();
+    this.stopWatchdog();
+    this.d.api.abortAll?.();
+    this.allowAnswer?.(false);
+    this.allowAnswer = null;
+    this.halted = true;
+    lessonLog('ai', 'engine stopped');
+  }
+
+  /** True once this engine fell back or was disposed. */
+  get stopped(): boolean {
+    return this.halted || this.disposed;
   }
 
   // ── a turn ──
@@ -470,6 +596,8 @@ export class ServerLesson {
   }
 
   private async play(turn: ServerTurn): Promise<void> {
+    if (this.halted || this.disposed) return;
+    if (turn !== this.turn) this.rescues = 0;
     this.cancelTurn();
     const abort = new AbortController();
     this.turnAbort = abort;
@@ -484,6 +612,15 @@ export class ServerLesson {
       turn.surahNo !== null &&
       turn.surahNo !== this.d.plan.surahNo
     ) {
+      // Today's surah is done and the server moved on to the next one: that is simply
+      // the end of the Quran part (the hadith part follows) — never a fallback mid-lesson.
+      if (this.state.value.quranDone) {
+        lessonLog('ai', 'next surah offered after today’s → end of the Quran part', {
+          surah: turn.surahNo,
+        });
+        this.turn = turn;
+        return this.segmentEnded();
+      }
       return this.fallback(new Error(`server surah ${turn.surahNo} ≠ today's ${this.d.plan.surahNo}`));
     }
     const title = turn.kind === 'hadith' ? hadithTitleOf(turn) : null;
@@ -565,7 +702,9 @@ export class ServerLesson {
       await this.await(turn, abort, startsRepeats);
     } catch (e) {
       if (e instanceof Cancelled) return;
-      throw e;
+      // Never a silent dead end: log it; the watchdog recovers the turn.
+      lessonLog('ai', 'turn failed', { error: String((e as Error)?.message ?? e) });
+      this.set({ speaking: false, reciting: false, repeat: 'idle', hearing: false, busy: false });
     }
   }
 
@@ -580,6 +719,7 @@ export class ServerLesson {
 
   /** The teacher's line, voiced; the caption follows the piece being said. */
   private async say(text: string, abort: AbortController): Promise<void> {
+    lessonLog('ai', 'voice start', { text: text.slice(0, 40) });
     this.set({ speaking: true });
     try {
       for (;;) {
@@ -601,6 +741,7 @@ export class ServerLesson {
         }
       }
     } finally {
+      lessonLog('ai', 'voice end');
       this.set({ speaking: false });
     }
   }
@@ -650,6 +791,7 @@ export class ServerLesson {
   }
 
   private async recite(url: string, abort: AbortController): Promise<void> {
+    lessonLog('ai', 'audio start', { url: url.split('/').pop() });
     this.set({ reciting: true });
     try {
       for (;;) {
@@ -667,6 +809,7 @@ export class ServerLesson {
         }
       }
     } finally {
+      lessonLog('ai', 'audio end', { url: url.split('/').pop() });
       this.set({ reciting: false });
     }
   }
@@ -818,6 +961,10 @@ export class ServerLesson {
       return this.send(first ?? DEFAULT_ANSWER);
     }
     if (h.text) return this.send(this.spokenAnswer(h.text) ?? h.text.trim());
+    // The end of today's surah: «ننتقل لسورة الناس، أم تكتفي اليوم؟» — one surah a day
+    // (pilot plan), so never the «next surah» option.
+    if (turn.kind === 'quran' && turn.stage === 'done')
+      return this.send(stopForToday(turn.quickReplies) ?? first ?? DEFAULT_ANSWER);
     return this.send(first ?? DEFAULT_ANSWER);
   }
 
@@ -934,7 +1081,8 @@ export class ServerLesson {
 
   private async send(text: string, repeated = false): Promise<void> {
     const t = this.turn;
-    if (!t || this.disposed) return;
+    if (!t || this.disposed || this.halted) return;
+    lessonLog('ai', 'send', { stage: t.stage, expects: t.expects, repeated });
     // the reply to a repeat (or a skip) may judge it — see judges()
     this.answeredRepeat = repeated || (t.expects === 'repeat' && text === SKIP_AYAH);
     this.cancelTurn();
@@ -1036,7 +1184,7 @@ export class ServerLesson {
   }
 
   dispose(): void {
-    this.cancelTurn();
+    this.halt();
     this.disposed = true;
     this.state.dispose();
   }
@@ -1079,6 +1227,11 @@ export function normalizeArabic(t: string): string {
     .replace(/[^\p{L}\p{N}\s]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** The «that's enough for today» option of an end-of-surah question, if any. */
+export function stopForToday(replies: readonly string[]): string | null {
+  return replies.find((r) => /أكتفي|اكتفي|نكتفي|يكفي|كفاية|لاحقًا|لاحقا|بكرة|^لا(\s|،|$)/.test(r)) ?? null;
 }
 
 /** The hadith title the server sent with this turn (field or show_ayat), if any. */

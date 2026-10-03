@@ -21,6 +21,7 @@
 // * nothing waits for a tap: lines finish, then ~2 s, then the next step; the mic
 //   opens by itself; the project report stops by itself after the child stops talking;
 // * `mannersRedirect` pauses counting for one redirect line, counts kept.
+import { changed, lessonLog } from './lessonLog';
 import {
   MicPermissionDenied,
   type AiTeacher,
@@ -91,7 +92,25 @@ export interface LessonTimings {
    * then listen-only (each step continues by itself). The child is never stuck.
    */
   readonly voiceOnly: boolean;
+  /**
+   * Dead-end guard (the web: 8000): nothing changed this long while the lesson isn't
+   * waiting for the child → re-run the current moment, then move on. Off when unset.
+   */
+  readonly watchdogMs?: number;
 }
+
+/** Beats that wait for the child (or a tap / a retry) — never treated as a dead end. */
+const WAITING_BEATS: ReadonlySet<string> = new Set([
+  'listening',
+  'hearingAnswer',
+  'awaitMic',
+  'recording',
+  'recorded',
+  'saving',
+  'saveFailed',
+]);
+/** State fields logged on every transition. */
+const LOGGED_FIELDS: readonly (keyof LessonState)[] = ['screen', 'stepIndex', 'stage', 'beat', 'repeatsDone'];
 
 /** Recorder level (0..1) that counts as the child talking during the report. */
 const REPORT_VOICE_LEVEL = 0.15;
@@ -228,7 +247,47 @@ export class LessonAgent {
   }
 
   private set(s: LessonState): void {
-    if (!this.disposed) this.state.value = s;
+    if (this.disposed) return;
+    const before = this.state.value;
+    this.state.value = s;
+    this.lastChange = Date.now();
+    const diff = changed(before, s, LOGGED_FIELDS);
+    if (diff) lessonLog('builtin', 'state', diff);
+  }
+
+  // ── dead-end guard ──
+  private lastChange = Date.now();
+  private watchdog: Interval | undefined;
+  private rescues = 0;
+  private rescuedAt = -1;
+
+  private startWatchdog(): void {
+    const ms = this.timings.watchdogMs;
+    if (!ms || this.watchdog) return;
+    this.watchdog = setInterval(() => {
+      if (this.disposed || this.paused || Date.now() - this.lastChange < ms) return;
+      // Waiting for the child (or a tap / a retry) is not a dead end — those have their own timers.
+      if (WAITING_BEATS.has(this.s.beat) || this.s.screen === 'lessonEnd' || this.s.playbackBlocked) return;
+      this.rescue();
+    }, 1000);
+  }
+
+  /** Nothing moved: the current moment again; stuck again on the same step → the next step. */
+  private rescue(): void {
+    this.rescues = this.rescuedAt === this.s.stepIndex ? this.rescues + 1 : 1;
+    this.rescuedAt = this.s.stepIndex;
+    lessonLog('builtin', 'STUCK — recovering', {
+      step: this.s.stepIndex,
+      screen: this.s.screen,
+      beat: this.s.beat,
+      rescue: this.rescues,
+    });
+    this.lastChange = Date.now();
+    if (this.rescues === 1 && this.resumeFn) {
+      this.resumeFn();
+      return;
+    }
+    this.advanceAfterPause();
   }
 
   private setLevel(v: number): void {
@@ -252,6 +311,8 @@ export class LessonAgent {
 
   /** Starts at `from`'s step (resume from a checkpoint) or at the beginning. */
   async start(from?: LessonProgress): Promise<void> {
+    lessonLog('builtin', 'engine start', { lesson: this.script.lessonId, resumeAt: from?.stepIndex ?? 0 });
+    this.startWatchdog();
     if (from && from.lessonId === this.script.lessonId && !from.completed) this._progress = from;
     try {
       validateLessonScript(this.script, this.content.meta);
@@ -298,6 +359,8 @@ export class LessonAgent {
 
   async dispose(): Promise<void> {
     if (this.disposed) return;
+    clearInterval(this.watchdog);
+    lessonLog('builtin', 'engine stopped');
     this.gen++;
     this.cancelTimers();
     clearInterval(this.clock);

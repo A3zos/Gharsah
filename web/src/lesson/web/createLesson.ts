@@ -2,6 +2,7 @@
 // (bundled, or downloaded once + sha256-checked into Cache Storage), the interim
 // speech teacher (+ the AI server's voice via ai-speak when VITE_AI_VOICE=1), the
 // WAV project recorder and the Supabase progress sink.
+import { lessonLog } from '../lessonLog';
 import manifestJson from '@content/audio/quran/manifest.json';
 import textJson from '@content/quran/quran_text.json';
 
@@ -133,7 +134,15 @@ export function createWebLesson(o: {
     // ~600 ms of quiet after a question before the mic listens (a natural pause)
     // A pure voice call: ~6 s of silence → one nudge, again → the step continues by
     // itself; a blocked mic → «سماح», then listen-only.
-    timings: { maxRecordingMs: MAX_REPORT_MS, echoGuardMs: 600, voiceOnly: true, silenceMs: 6000 },
+    // + the dead-end guard: 8 s with nothing happening → recover (logged)
+    timings: {
+      maxRecordingMs: MAX_REPORT_MS,
+      echoGuardMs: 600,
+      voiceOnly: true,
+      silenceMs: 6000,
+      watchdogMs: 8000,
+    },
+    log: (m, e) => lessonLog('builtin', m, e === undefined ? undefined : String((e as Error)?.message ?? e)),
     childFirstName: o.childFirstName,
     debugTapCountsRepeat: import.meta.env.DEV,
   });

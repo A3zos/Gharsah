@@ -92,6 +92,9 @@ export function ServerLessonCall({
 
   useEffect(() => {
     if (state.phase === 'fallback') {
+      // One engine at a time: the AI engine (requests, voice, reciter, mic) is torn down
+      // completely BEFORE the built-in lesson is mounted.
+      web?.dispose();
       // Kept for support: open the console, or sessionStorage «gharsah.aiFallback».
       try {
         sessionStorage.setItem(
@@ -104,7 +107,7 @@ export function ServerLessonCall({
       fallbackRef.current(state.quranDone);
     }
     if (state.phase === 'ended') goHome();
-  }, [state.phase, state.quranDone, state.fallbackReason, goHome]);
+  }, [state.phase, state.quranDone, state.fallbackReason, goHome, web]);
 
   const blocker = useBlocker(() => !leaving.current && state.phase !== 'fallback');
   const blocked = blocker.state === 'blocked';

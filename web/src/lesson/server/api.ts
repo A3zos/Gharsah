@@ -239,11 +239,24 @@ export class AgentApi {
     return this.json(r);
   }
 
+  /** Aborts every request in flight and any later one — the engine is being torn down. */
+  abortAll(): void {
+    this.stopped.abort();
+  }
+
+  private readonly stopped = new AbortController();
+
+  private signalFor(timeoutMs: number): AbortSignal {
+    const timeout = AbortSignal.timeout(timeoutMs);
+    return typeof AbortSignal.any === 'function' ? AbortSignal.any([timeout, this.stopped.signal]) : timeout;
+  }
+
   private async request(
     path: string,
     o: { method?: 'GET' | 'POST'; body?: unknown; query?: Record<string, string>; timeoutMs: number },
   ): Promise<Response> {
     if (!ALLOWED.has(path)) throw new Error(`Not an allowed AI endpoint: ${path}`);
+    if (this.stopped.signal.aborted) throw new AgentUnavailable(`${path}: the lesson engine stopped`);
     const qs = o.query ? `?${new URLSearchParams(o.query).toString()}` : '';
     let r: Response;
     try {
@@ -251,7 +264,7 @@ export class AgentApi {
         method: o.method ?? 'GET',
         headers: o.body === undefined ? undefined : { 'Content-Type': 'application/json' },
         body: o.body === undefined ? undefined : JSON.stringify(o.body),
-        signal: AbortSignal.timeout(o.timeoutMs),
+        signal: this.signalFor(o.timeoutMs),
       });
     } catch (e) {
       throw new AgentUnavailable(`${path}: ${(e as Error).message || 'network error'}`);

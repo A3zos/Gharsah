@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 
 import type { Route } from './+types/root';
@@ -29,7 +30,33 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  useStaleCodeReload();
   return <Outlet />;
+}
+
+/**
+ * A tab left open across a deploy asks for code chunks that no longer exist (404 —
+ * see public/404.html). Mixing old and new code can freeze a lesson, so reload once
+ * to the new version (at most once a minute, so a real outage can't loop).
+ */
+function useStaleCodeReload() {
+  useEffect(() => {
+    const KEY = 'gharsah.staleReloadAt';
+    const reload = (e: Event) => {
+      try {
+        const last = Number(sessionStorage.getItem(KEY) ?? 0);
+        if (Date.now() - last < 60_000) return;
+        sessionStorage.setItem(KEY, String(Date.now()));
+      } catch {
+        // storage blocked — still reload once
+      }
+      e.preventDefault();
+      console.info('[lesson] - stale code chunk → reloading to the new version');
+      window.location.reload();
+    };
+    window.addEventListener('vite:preloadError', reload);
+    return () => window.removeEventListener('vite:preloadError', reload);
+  }, []);
 }
 
 /** Shown while a non-prerendered route's client code loads (SPA fallback). */
