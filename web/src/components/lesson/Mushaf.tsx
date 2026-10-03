@@ -29,7 +29,16 @@ function Ornament() {
 }
 
 /** The surah's banner: a rounded cartouche, thin double gold border, the name centered. */
-export function SurahBanner({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
+export function SurahBanner({
+  name,
+  label,
+  size = 'md',
+}: {
+  name: string;
+  /** Replaces «سورة {name}» (the English landing's «Surah Al-Ikhlas»). */
+  label?: string;
+  size?: 'sm' | 'md';
+}) {
   return (
     <div className="flex justify-center" aria-hidden="true">
       <div className="rounded-pill border border-gold-border p-[3px]">
@@ -46,7 +55,7 @@ export function SurahBanner({ name, size = 'md' }: { name: string; size?: 'sm' |
               size === 'sm' ? 'text-[15px]' : 'text-[18px]',
             )}
           >
-            سورة {name}
+            {label ?? `سورة ${name}`}
           </span>
           <Ornament />
         </div>

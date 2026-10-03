@@ -1,9 +1,12 @@
 // design/v2 WebLandingMobile (<1024px): sticky top bar with a menu, a single
-// column, and the fixed «للأعلى» button.
+// column, and the fixed «للأعلى» button. Header + hero follow the landing language
+// (src/i18n); the rest is Arabic for now.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
+import { fill, LANDING_AGES, useI18n } from '../../i18n/i18n';
+import { ArabicOnly } from '../../i18n/LandingI18n';
 import { cx } from '../../lib/cx';
 import { buttonClass } from '../ui/Button';
 import { C } from '../ui/color';
@@ -22,14 +25,15 @@ const STEP_ICONS: Record<HowStep['key'], React.ReactNode> = {
 };
 
 const MENU = [
-  ['#m-how', 'كيف تعمل'],
-  ['#m-sources', 'مصادرنا'],
-  ['#m-privacy', 'الخصوصية'],
-  ['#m-plans', 'الباقات'],
+  ['#m-how', 'how'],
+  ['#m-sources', 'sources'],
+  ['#m-privacy', 'privacy'],
+  ['#m-plans', 'plans'],
 ] as const;
 
 export function LandingMobile() {
   const [menu, setMenu] = useState(false);
+  const { lang, m } = useI18n();
 
   useEffect(() => {
     if (!menu) return;
@@ -50,7 +54,7 @@ export function LandingMobile() {
             <button
               type="button"
               onClick={() => setMenu((m) => !m)}
-              aria-label={menu ? 'إغلاق القائمة' : 'فتح القائمة'}
+              aria-label={menu ? m.header.closeMenu : m.header.openMenu}
               aria-expanded={menu}
               aria-controls="landing-menu"
               className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-px-15 border-[1.5px] border-input-border bg-surface p-0"
@@ -83,22 +87,22 @@ export function LandingMobile() {
               to={paths.login}
               className="flex h-[40px] items-center justify-center rounded-px-14 border-[1.5px] border-input-border bg-surface px-[10px] text-[13px] font-extrabold whitespace-nowrap text-deep-green no-underline"
             >
-              تسجيل الدخول
+              {m.header.login}
             </Link>
             <Link
               to={paths.signup}
               className="flex h-[40px] items-center justify-center rounded-px-14 bg-deep-green px-[10px] text-[13px] font-extrabold whitespace-nowrap text-surface no-underline hover:text-surface"
             >
-              إنشاء حساب
+              {m.header.signup}
             </Link>
           </div>
           {menu && (
             <nav
               id="landing-menu"
-              aria-label="أقسام الصفحة"
+              aria-label={m.header.sectionsLabel}
               className="absolute inset-x-0 top-[72px] z-29 flex flex-col gap-[4px] border-b border-b-border bg-surface px-[16px] pt-[10px] pb-[16px] shadow-dark-14-28-8"
             >
-              {MENU.map(([href, label]) => (
+              {MENU.map(([href, key]) => (
                 <a
                   key={href}
                   href={href}
@@ -108,7 +112,7 @@ export function LandingMobile() {
                     href === '#m-plans' ? 'bg-green-tint text-deep-green' : 'text-text-dark',
                   )}
                 >
-                  {label}
+                  {m.header[key]}
                 </a>
               ))}
             </nav>
@@ -119,14 +123,15 @@ export function LandingMobile() {
           <section className="flex flex-col items-center gap-[18px] px-[20px] pt-[32px] pb-[36px]">
             <span className="flex items-center gap-[7px] rounded-pill bg-green-tint px-[14px] py-[8px]">
               <span className="h-[7px] w-[7px] rounded-full bg-primary" />
-              <span className="text-[12.5px] font-extrabold text-deep-green">للأطفال من ٨ إلى ١٣ سنة</span>
+              <span className="text-[12.5px] font-extrabold text-deep-green">
+                {fill(lang, m.hero.ages, LANDING_AGES)}
+              </span>
             </span>
-            <h1 className="m-0 text-center font-heading text-[34px] leading-[1.45] font-bold">
-              اغرس في طفلك دينه <span className="block text-deep-green">من مصادره الشرعية</span>
+            <h1 className="m-0 text-center font-heading text-[34px] leading-[1.45] font-bold ltr:leading-[1.25] ltr:text-balance">
+              {m.hero.title1} <span className="block text-deep-green">{m.hero.title2}</span>
             </h1>
-            <p className="m-0 text-center text-[15.5px] leading-[1.95] text-text-muted">
-              معلّم ذكي يحفّظ طفلك القرآن بصوت قارئ متقن، ويعلّمه السنّة النبوية ويطبّقها بعمل صالح، ويجيب عن
-              تساؤلاته بلغة تناسب عمره، وأنت تتابع كل خطوة من لوحتك.
+            <p className="m-0 text-center text-[15.5px] leading-[1.95] text-text-muted ltr:leading-[1.75]">
+              {m.hero.body}
             </p>
             <div className="flex w-full flex-col gap-[11px] pt-[4px]">
               <Link
@@ -137,7 +142,7 @@ export function LandingMobile() {
                   'h-[62px] gap-[9px] rounded-px-22 font-heading text-[19px] font-bold shadow-lesson-home-button',
                 )}
               >
-                ابدأ كوليّ أمر
+                {m.hero.startParent}
               </Link>
               <Link
                 to={paths.childCode}
@@ -148,7 +153,7 @@ export function LandingMobile() {
                 )}
               >
                 <CodeIcon size={20} />
-                دخول الطفل برمز
+                {m.hero.childLogin}
               </Link>
             </div>
           </section>
@@ -157,125 +162,135 @@ export function LandingMobile() {
             <LivePhone />
           </div>
 
-          <section id="m-how" className="flex scroll-mt-[80px] flex-col gap-[16px] px-[20px] pb-[44px]">
-            <h2 className="m-0 text-center font-heading text-[27px] font-bold">كيف تعمل غَرْسة</h2>
-            <p className="m-0 -mt-[6px] text-center text-[14.5px] leading-[1.8] text-text-muted">
-              معلّم ذكي يعلّم طفلك القرآن والحديث، ويجيب عن أسئلته عن دينه
-            </p>
-            {HOW_STEPS.map((s) => (
-              <StepCard key={s.key} step={s} icon={STEP_ICONS[s.key]} />
-            ))}
-          </section>
+          <ArabicOnly>
+            <section id="m-how" className="flex scroll-mt-[80px] flex-col gap-[16px] px-[20px] pb-[44px]">
+              <h2 className="m-0 text-center font-heading text-[27px] font-bold">كيف تعمل غَرْسة</h2>
+              <p className="m-0 -mt-[6px] text-center text-[14.5px] leading-[1.8] text-text-muted">
+                معلّم ذكي يعلّم طفلك القرآن والحديث، ويجيب عن أسئلته عن دينه
+              </p>
+              {HOW_STEPS.map((s) => (
+                <StepCard key={s.key} step={s} icon={STEP_ICONS[s.key]} />
+              ))}
+            </section>
+          </ArabicOnly>
         </main>
 
-        <section className="border-y border-y-border bg-surface px-[20px] py-[40px]">
-          <div className="mx-auto flex max-w-[520px] flex-col gap-[18px]">
-            <span className="self-center rounded-pill bg-green-tint px-[14px] py-[7px] text-[12.5px] font-extrabold text-deep-green">
-              لوليّ الأمر
-            </span>
-            <h2 className="m-0 text-center font-heading text-[26px] leading-[1.5] font-bold">
-              تتابع تقدّمه… بلا أن تقف فوق رأسه
-            </h2>
-            <ParentFeatures />
-            <div className="pt-[6px]">
-              <ParentPreview />
+        <ArabicOnly>
+          <section className="border-y border-y-border bg-surface px-[20px] py-[40px]">
+            <div className="mx-auto flex max-w-[520px] flex-col gap-[18px]">
+              <span className="self-center rounded-pill bg-green-tint px-[14px] py-[7px] text-[12.5px] font-extrabold text-deep-green">
+                لوليّ الأمر
+              </span>
+              <h2 className="m-0 text-center font-heading text-[26px] leading-[1.5] font-bold">
+                تتابع تقدّمه… بلا أن تقف فوق رأسه
+              </h2>
+              <ParentFeatures />
+              <div className="pt-[6px]">
+                <ParentPreview />
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section
-          id="m-sources"
-          className="mx-auto flex w-full max-w-[560px] scroll-mt-[80px] flex-col gap-[14px] px-[20px] py-[40px]"
-        >
-          <span className="self-center rounded-pill bg-gold-tint px-[14px] py-[7px] text-[12.5px] font-extrabold text-warning-text">
-            الموثوقية
-          </span>
-          <h2 className="m-0 text-center font-heading text-[27px] font-bold">مصادرنا</h2>
-          <p className="m-0 mb-[6px] text-center text-[14.5px] leading-[1.9] text-text-muted">
-            كل نصّ يسمعه الطفل من مصدر معتمد ومذكور — لا اجتهاد ولا توليد.
-          </p>
-          <SourceRow tint="bg-green-tint" icon={SourceIcons.quran(22)} title="نصّ القرآن">
-            من مشروع <b className="font-bold text-text-dark">تنزيل</b> — رواية حفص عن عاصم.
-          </SourceRow>
-          <SourceRow tint="bg-sky-tint" icon={SourceIcons.recitation(22)} title="التلاوة">
-            بصوت الشيخ <b className="font-bold text-text-dark">مشاري راشد العفاسي</b>.
-          </SourceRow>
-          <SourceRow tint="bg-gold-tint" icon={SourceIcons.tafsir(22)} title="التفسير">
-            من <b className="font-bold text-text-dark">التفسير الميسّر</b> — مجمع الملك فهد.
-          </SourceRow>
-          <SourceRow tint="bg-berry-tint" icon={SourceIcons.hadith(22)} title="الأحاديث">
-            <b className="font-bold text-text-dark">تُعتمد بتخريجها ودرجتها من مختصّ شرعي</b> قبل أن تصل
-            الطفل.
-          </SourceRow>
-          <div className="mt-[4px] flex items-center gap-[14px] rounded-px-24 bg-deep-green px-[20px] py-[22px]">
-            <span
-              className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-px-15 bg-hero-chip"
-              aria-hidden="true"
-            >
-              {SourceIcons.shieldOnDark(24)}
+          <section
+            id="m-sources"
+            className="mx-auto flex w-full max-w-[560px] scroll-mt-[80px] flex-col gap-[14px] px-[20px] py-[40px]"
+          >
+            <span className="self-center rounded-pill bg-gold-tint px-[14px] py-[7px] text-[12.5px] font-extrabold text-warning-text">
+              الموثوقية
             </span>
-            <p className="m-0 font-heading text-[17px] leading-[1.7] font-bold text-surface">
-              الذكاء الاصطناعي لا يولّد أي نصّ قرآني أو حديثي.
+            <h2 className="m-0 text-center font-heading text-[27px] font-bold">مصادرنا</h2>
+            <p className="m-0 mb-[6px] text-center text-[14.5px] leading-[1.9] text-text-muted">
+              كل نصّ يسمعه الطفل من مصدر معتمد ومذكور — لا اجتهاد ولا توليد.
             </p>
-          </div>
-        </section>
+            <SourceRow tint="bg-green-tint" icon={SourceIcons.quran(22)} title="نصّ القرآن">
+              من مشروع <b className="font-bold text-text-dark">تنزيل</b> — رواية حفص عن عاصم.
+            </SourceRow>
+            <SourceRow tint="bg-sky-tint" icon={SourceIcons.recitation(22)} title="التلاوة">
+              بصوت الشيخ <b className="font-bold text-text-dark">مشاري راشد العفاسي</b>.
+            </SourceRow>
+            <SourceRow tint="bg-gold-tint" icon={SourceIcons.tafsir(22)} title="التفسير">
+              من <b className="font-bold text-text-dark">التفسير الميسّر</b> — مجمع الملك فهد.
+            </SourceRow>
+            <SourceRow tint="bg-berry-tint" icon={SourceIcons.hadith(22)} title="الأحاديث">
+              <b className="font-bold text-text-dark">تُعتمد بتخريجها ودرجتها من مختصّ شرعي</b> قبل أن تصل
+              الطفل.
+            </SourceRow>
+            <div className="mt-[4px] flex items-center gap-[14px] rounded-px-24 bg-deep-green px-[20px] py-[22px]">
+              <span
+                className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-px-15 bg-hero-chip"
+                aria-hidden="true"
+              >
+                {SourceIcons.shieldOnDark(24)}
+              </span>
+              <p className="m-0 font-heading text-[17px] leading-[1.7] font-bold text-surface">
+                الذكاء الاصطناعي لا يولّد أي نصّ قرآني أو حديثي.
+              </p>
+            </div>
+          </section>
 
-        <section
-          id="m-privacy"
-          className="scroll-mt-[80px] border-y border-y-border bg-surface px-[20px] py-[36px]"
-        >
-          <div className="mx-auto flex max-w-[520px] flex-col gap-[13px]">
-            <h2 className="m-0 mb-[4px] text-center font-heading text-[25px] font-bold">خصوصية طفلك أولًا</h2>
-            <PrivacyRow tint="bg-green-tint" icon={<PersonIcon size={21} />} title="الطفل لا يعطي أي بيانات">
-              لا بريد ولا كلمة مرور. الحساب لوليّ الأمر وحده.
-            </PrivacyRow>
-            <PrivacyRow
-              tint="bg-sky-tint"
-              icon={<CodeIcon size={21} color="skyText" strokeWidth={2} />}
-              title="يدخل برمز فقط"
-            >
-              رمز من ستّ خانات يصدره وليّ الأمر ويلغيه متى شاء.
-            </PrivacyRow>
-            <PrivacyRow tint="bg-berry-tint" icon={SourceIcons.noMic(21)} title="لا نخزّن صوته الحيّ">
-              ترديد الآيات يُسمع ولا يُحفظ. تسجيل المشروع وحده يصل لوليّ الأمر، وله حذفه.
-            </PrivacyRow>
-          </div>
-        </section>
+          <section
+            id="m-privacy"
+            className="scroll-mt-[80px] border-y border-y-border bg-surface px-[20px] py-[36px]"
+          >
+            <div className="mx-auto flex max-w-[520px] flex-col gap-[13px]">
+              <h2 className="m-0 mb-[4px] text-center font-heading text-[25px] font-bold">
+                خصوصية طفلك أولًا
+              </h2>
+              <PrivacyRow
+                tint="bg-green-tint"
+                icon={<PersonIcon size={21} />}
+                title="الطفل لا يعطي أي بيانات"
+              >
+                لا بريد ولا كلمة مرور. الحساب لوليّ الأمر وحده.
+              </PrivacyRow>
+              <PrivacyRow
+                tint="bg-sky-tint"
+                icon={<CodeIcon size={21} color="skyText" strokeWidth={2} />}
+                title="يدخل برمز فقط"
+              >
+                رمز من ستّ خانات يصدره وليّ الأمر ويلغيه متى شاء.
+              </PrivacyRow>
+              <PrivacyRow tint="bg-berry-tint" icon={SourceIcons.noMic(21)} title="لا نخزّن صوته الحيّ">
+                ترديد الآيات يُسمع ولا يُحفظ. تسجيل المشروع وحده يصل لوليّ الأمر، وله حذفه.
+              </PrivacyRow>
+            </div>
+          </section>
 
-        <section
-          id="m-plans"
-          className="mx-auto flex w-full max-w-[560px] scroll-mt-[80px] flex-col gap-[24px] px-[20px] py-[40px] min-[900px]:max-w-[1176px]"
-        >
-          <h2 className="m-0 text-center font-heading text-[27px] font-bold">الباقات</h2>
-          <p className="m-0 mb-[4px] text-center text-[14px] text-text-muted">
-            ابدأ بالباقة التجريبية — الباقتان الشهرية والسنوية قريبًا
-          </p>
-          <PlanCards pilotAction={<PilotSignupLink />} />
-        </section>
+          <section
+            id="m-plans"
+            className="mx-auto flex w-full max-w-[560px] scroll-mt-[80px] flex-col gap-[24px] px-[20px] py-[40px] min-[900px]:max-w-[1176px]"
+          >
+            <h2 className="m-0 text-center font-heading text-[27px] font-bold">الباقات</h2>
+            <p className="m-0 mb-[4px] text-center text-[14px] text-text-muted">
+              ابدأ بالباقة التجريبية — الباقتان الشهرية والسنوية قريبًا
+            </p>
+            <PlanCards pilotAction={<PilotSignupLink />} />
+          </section>
 
-        <footer className="flex flex-col items-center gap-[14px] border-t border-t-border px-[20px] pt-[28px] pb-[34px]">
-          <span className="flex items-center gap-[9px]">
-            <SproutMark size={24} seed={false} />
-            <span className="font-heading text-[18px] font-bold text-deep-green">غَرْسة</span>
-          </span>
-          <nav aria-label="روابط" className="flex items-center gap-[18px]">
-            <Link to={paths.privacy} className="text-[13px] text-text-muted no-underline">
-              الخصوصية
-            </Link>
-            <Link to={paths.terms} className="text-[13px] text-text-muted no-underline">
-              الشروط
-            </Link>
-            <Link to={paths.legal} className="text-[13px] text-text-muted no-underline">
-              تواصل معنا
-            </Link>
-          </nav>
-          <span className="text-[12.5px] text-text-muted">© ١٤٤٧هـ غَرْسة · صُنع في السعودية</span>
-        </footer>
+          <footer className="flex flex-col items-center gap-[14px] border-t border-t-border px-[20px] pt-[28px] pb-[34px]">
+            <span className="flex items-center gap-[9px]">
+              <SproutMark size={24} seed={false} />
+              <span className="font-heading text-[18px] font-bold text-deep-green">غَرْسة</span>
+            </span>
+            <nav aria-label="روابط" className="flex items-center gap-[18px]">
+              <Link to={paths.privacy} className="text-[13px] text-text-muted no-underline">
+                الخصوصية
+              </Link>
+              <Link to={paths.terms} className="text-[13px] text-text-muted no-underline">
+                الشروط
+              </Link>
+              <Link to={paths.legal} className="text-[13px] text-text-muted no-underline">
+                تواصل معنا
+              </Link>
+            </nav>
+            <span className="text-[12.5px] text-text-muted">© ١٤٤٧هـ غَرْسة · صُنع في السعودية</span>
+          </footer>
+        </ArabicOnly>
       </div>
       <a
         href="#m-top"
         aria-label="العودة للأعلى"
-        className="fixed bottom-[calc(26px+env(safe-area-inset-bottom))] left-[20px] z-40 flex h-[56px] w-[56px] items-center justify-center rounded-full border-[3px] border-surface bg-deep-green no-underline shadow-dark-10-24-22"
+        className="fixed end-[20px] bottom-[calc(26px+env(safe-area-inset-bottom))] z-40 flex h-[56px] w-[56px] items-center justify-center rounded-full border-[3px] border-surface bg-deep-green no-underline shadow-dark-10-24-22"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path

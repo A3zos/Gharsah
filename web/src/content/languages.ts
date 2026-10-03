@@ -1,7 +1,9 @@
-// The language switcher — UI ONLY for now (PO, 2026-10-03): Arabic stays the only
-// language; choosing another one shows «قريبًا» and keeps Arabic. No i18n wiring,
-// no stored preference, no direction change.
+// The language switcher's languages. On the landing (src/i18n) Arabic and English
+// really switch; Indonesian — and English everywhere else — shows «قريبًا» and keeps
+// the current language.
 import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { isUiLanguage, useI18n } from '../i18n/i18n';
 
 export type LanguageCode = 'ar' | 'en' | 'id';
 
@@ -19,24 +21,27 @@ export const LANGUAGES: readonly Language[] = [
   { code: 'id', name: 'Bahasa Indonesia', short: 'ID' },
 ];
 
-/** The only language the app speaks today. */
-export const CURRENT_LANGUAGE: LanguageCode = 'ar';
-
-export const LANGUAGE_SOON = 'قريبًا — نعمل على دعم هذه اللغة';
-
-/** Picking a language: Arabic → nothing to do; others → the «قريبًا» toast for a moment. */
+/**
+ * Picking a language: the current one → nothing; one with messages on the landing →
+ * switch; otherwise → the «قريبًا» toast (in the current language) for a moment.
+ */
 export function useLanguagePick(ms = 2600) {
+  const { lang, m, setLang } = useI18n();
   const [toast, setToast] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   const pick = useCallback(
     (code: LanguageCode) => {
-      if (code === CURRENT_LANGUAGE) return;
+      if (code === lang) return;
       clearTimeout(timer.current);
-      setToast(LANGUAGE_SOON);
+      if (setLang && isUiLanguage(code)) {
+        setToast(null);
+        return setLang(code);
+      }
+      setToast(m.language.soon);
       timer.current = setTimeout(() => setToast(null), ms);
     },
-    [ms],
+    [lang, m, setLang, ms],
   );
-  return { toast, pick };
+  return { lang, toast, pick };
 }

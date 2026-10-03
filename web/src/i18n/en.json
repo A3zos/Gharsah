@@ -1,0 +1,40 @@
+{
+  "language": {
+    "label": "Language",
+    "choose": "Choose a language",
+    "close": "Close",
+    "soon": "Coming soon — we're working on this language"
+  },
+  "header": {
+    "navLabel": "Main",
+    "sectionsLabel": "Page sections",
+    "how": "How it works",
+    "sources": "Our sources",
+    "privacy": "Privacy",
+    "plans": "Plans",
+    "login": "Log in",
+    "signup": "Sign up",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "hero": {
+    "ages": "For children aged {min}–{max}",
+    "title1": "Plant faith in your child",
+    "title2": "from its authentic sources",
+    "body": "A smart teacher helps your child memorize the Quran in the voice of a skilled reciter, learn the Prophet's Sunnah and live it through good deeds, and get answers to their questions in words that fit their age, while you follow every step from your dashboard.",
+    "startParent": "Start as a parent",
+    "childLogin": "Child login with code"
+  },
+  "phone": {
+    "live": "Live",
+    "quranLesson": "Quran lesson",
+    "hadithLesson": "Hadith lesson",
+    "teacher": "Teacher Abdullah",
+    "surah": "Surah Al-Ikhlas",
+    "listening": "I'm listening…",
+    "hadithOfDay": "Today's hadith:",
+    "hadithTopic": "Kindness to parents",
+    "hadithHint": "Learn the meaning, then live it at home",
+    "project": "Today's project"
+  }
+}

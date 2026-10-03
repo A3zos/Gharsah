@@ -1,23 +1,19 @@
-// The language switcher (UI only — content/languages.ts): a header dropdown
-// (desktop landing), a globe button + bottom sheet (phone landing), and radio
-// cards (parent settings). Picking English / Indonesian shows «قريبًا» and keeps
-// Arabic selected. TODO(design): no designed language switcher yet.
+// The language switcher (content/languages.ts): a header dropdown (desktop landing),
+// a globe button + bottom sheet (phone landing), and radio cards (parent settings).
+// On the landing Arabic ↔ English really switch (src/i18n); Indonesian — and English
+// outside the landing — shows «قريبًا» and keeps the current language.
+// TODO(design): no designed language switcher yet.
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import {
-  CURRENT_LANGUAGE,
-  LANGUAGES,
-  useLanguagePick,
-  type Language,
-  type LanguageCode,
-} from '../../content/languages';
+import { useI18n } from '../../i18n/i18n';
+import { LANGUAGES, useLanguagePick, type Language, type LanguageCode } from '../../content/languages';
 import { cx } from '../../lib/cx';
 import { C } from './color';
 import { CheckIcon } from './icons';
 import { Toast } from './Toast';
 
-const current = LANGUAGES.find((l) => l.code === CURRENT_LANGUAGE)!;
+const languageOf = (code: LanguageCode) => LANGUAGES.find((l) => l.code === code)!;
 
 export function GlobeIcon({ size = 20, color = C.deepGreen }: { size?: number; color?: string }) {
   return (
@@ -69,7 +65,9 @@ function Mark({ on }: { on: boolean }) {
 export function LanguageMenu({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const { toast, pick } = useLanguagePick();
+  const { lang, toast, pick } = useLanguagePick();
+  const { m } = useI18n();
+  const current = languageOf(lang);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const items = useRef<(HTMLLIElement | null)[]>([]);
@@ -127,7 +125,7 @@ export function LanguageMenu({ className }: { className?: string }) {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
-        aria-label={`اللغة: ${current.name}`}
+        aria-label={`${m.language.label}: ${current.name}`}
         onClick={() => (open ? close() : openAt(LANGUAGES.indexOf(current)))}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -160,12 +158,12 @@ export function LanguageMenu({ className }: { className?: string }) {
         <ul
           id={listId}
           role="listbox"
-          aria-label="اختر اللغة"
+          aria-label={m.language.choose}
           onKeyDown={onListKey}
-          className="absolute top-[calc(100%+8px)] right-0 z-40 m-0 flex w-[250px] animate-[gh-rise_.18s_ease-out_both] list-none flex-col gap-[2px] rounded-px-20 border-[1.5px] border-border bg-surface p-[6px] shadow-dark-14-28-8"
+          className="absolute end-0 top-[calc(100%+8px)] z-40 m-0 flex w-[250px] animate-[gh-rise_.18s_ease-out_both] list-none flex-col gap-[2px] rounded-px-20 border-[1.5px] border-border bg-surface p-[6px] shadow-dark-14-28-8"
         >
           {LANGUAGES.map((l, i) => {
-            const on = l.code === CURRENT_LANGUAGE;
+            const on = l.code === lang;
             return (
               <li
                 key={l.code}
@@ -195,7 +193,7 @@ export function LanguageMenu({ className }: { className?: string }) {
   );
 }
 
-/** The three languages as radio cards (settings, the bottom sheet). Arabic stays checked. */
+/** The three languages as radio cards (settings, the bottom sheet); the current one checked. */
 export function LanguageCards({
   onPick,
   autoFocus,
@@ -204,10 +202,11 @@ export function LanguageCards({
   autoFocus?: boolean;
 }) {
   const name = useId();
+  const { lang, m } = useI18n();
   return (
-    <div role="radiogroup" aria-label="اللغة" className="flex flex-col gap-[10px]">
+    <div role="radiogroup" aria-label={m.language.label} className="flex flex-col gap-[10px]">
       {LANGUAGES.map((l) => {
-        const on = l.code === CURRENT_LANGUAGE;
+        const on = l.code === lang;
         return (
           <label
             key={l.code}
@@ -222,7 +221,7 @@ export function LanguageCards({
               value={l.code}
               checked={on}
               autoFocus={autoFocus && on}
-              // only Arabic is available: another choice shows «قريبًا», Arabic stays checked
+              // checked follows the language, not the click: a «قريبًا» choice stays unchecked
               // (arrow keys in a radio group fire click too)
               readOnly
               onClick={() => onPick(l.code)}
@@ -253,7 +252,9 @@ export function LanguageSettings() {
 /** Phone landing header: a globe button opening a bottom sheet with the three languages. */
 export function LanguageSheetButton() {
   const [open, setOpen] = useState(false);
-  const { toast, pick } = useLanguagePick();
+  const { lang, toast, pick } = useLanguagePick();
+  const { m } = useI18n();
+  const current = languageOf(lang);
   const titleId = useId();
   const sheet = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -285,7 +286,7 @@ export function LanguageSheetButton() {
   }, [open]);
 
   const choose = (code: LanguageCode) => {
-    if (code === CURRENT_LANGUAGE) return setOpen(false);
+    if (code === lang) return setOpen(false);
     setOpen(false);
     pick(code);
   };
@@ -297,7 +298,7 @@ export function LanguageSheetButton() {
         type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`اللغة: ${current.name}`}
+        aria-label={`${m.language.label}: ${current.name}`}
         onClick={() => setOpen(true)}
         className="flex h-[40px] w-[40px] shrink-0 cursor-pointer items-center justify-center rounded-px-14 border-[1.5px] border-input-border bg-surface p-0"
       >
@@ -330,11 +331,11 @@ export function LanguageSheetButton() {
                   className="m-0 flex items-center gap-[9px] font-heading text-[22px] font-bold"
                 >
                   <GlobeIcon size={22} />
-                  اللغة
+                  {m.language.label}
                 </h2>
                 <button
                   type="button"
-                  aria-label="إغلاق"
+                  aria-label={m.language.close}
                   onClick={() => setOpen(false)}
                   className="flex h-[44px] w-[44px] cursor-pointer items-center justify-center rounded-full border-0 bg-background p-0"
                 >

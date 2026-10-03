@@ -3,15 +3,16 @@
 // alternates between the Quran lesson (the current ayah from the verified Tanzil text)
 // and the Hadith lesson (topic only until the hadith is approved in content/).
 // Decorative (aria-hidden). The phone itself never moves; scaled down on phones.
+// Its labels follow the landing language (src/i18n); the ayah always stays Arabic.
 import { useEffect, useRef, useState } from 'react';
 
 import hadithJson from '@content/hadith/hadith.json';
 
 import { verifiedAyah } from '../../content/verified';
+import { formatNumber, useI18n, type Messages } from '../../i18n/i18n';
 import { Hadith } from '../../lesson/hadith';
-import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
-import { TEACHER_NAME, teacherFrameSrc, type TeacherFrame } from '../child/teacherCharacter';
+import { teacherFrameSrc, type TeacherFrame } from '../child/teacherCharacter';
 import { AyahNumber, Basmala, SurahBanner } from '../lesson/Mushaf';
 import { C } from '../ui/color';
 import { MicIcon } from '../ui/icons';
@@ -28,9 +29,9 @@ const HADITH = (hadithJson as { hadith: Record<string, unknown>[] }).hadith
 type Scene = 'quran' | 'hadith';
 const SCENES: readonly Scene[] = ['quran', 'hadith'];
 const SCENE_MS = 6000;
-const SCENE_PILL: Record<Scene, { label: string; tone: string }> = {
-  quran: { label: 'حصة القرآن', tone: 'border-primary/40 bg-green-tint text-deep-green' },
-  hadith: { label: 'حصة الحديث', tone: 'border-berry-border bg-berry-tint text-berry-deep' },
+const SCENE_PILL: Record<Scene, { label: keyof Messages['phone']; tone: string }> = {
+  quran: { label: 'quranLesson', tone: 'border-primary/40 bg-green-tint text-deep-green' },
+  hadith: { label: 'hadithLesson', tone: 'border-berry-border bg-berry-tint text-berry-deep' },
 };
 
 // The talking loop at 8 fps: idle → mouth-small → mouth-open → mouth-small for ~2.5 s,
@@ -99,10 +100,11 @@ function TalkingTeacher() {
 }
 
 function StatusBar() {
+  const { lang } = useI18n();
   return (
     <div className="relative flex h-[34px] shrink-0 items-center justify-between px-[26px] pt-[8px]">
       <span className="font-heading text-[14px] font-bold text-text-dark">
-        {toArabicDigits(9)}:{toArabicDigits(41)}
+        {formatNumber(lang, 9)}:{formatNumber(lang, 41)}
       </span>
       <span className="flex items-center gap-[5px]" dir="ltr">
         <svg width="17" height="11" viewBox="0 0 17 11" fill="none">
@@ -167,6 +169,7 @@ function AyahLine() {
   return (
     <p
       ref={ref}
+      lang="ar"
       dir="rtl"
       style={{ fontSize: px }}
       className="m-0 w-full overflow-hidden text-center font-ayah leading-[1.9] whitespace-nowrap text-text-dark"
@@ -195,10 +198,12 @@ function Fade({ show, children }: { show: boolean; children: React.ReactNode }) 
 }
 
 function QuranCard() {
+  const { m } = useI18n();
   return (
     // the lesson's mushaf card: the surah's banner, the basmala, the ayah being recited
     <div className="flex w-full flex-col gap-[2px] self-center rounded-px-24 border border-primary/40 bg-[color-mix(in_srgb,var(--color-gold-tint)_40%,var(--color-surface))] px-[12px] pt-[10px] pb-[8px] shadow-lesson-ayah-card">
-      <SurahBanner name="الإخلاص" size="sm" />
+      {/* «سورة الإخلاص» / «Surah Al-Ikhlas»; the basmala and the ayah stay Arabic */}
+      <SurahBanner name="الإخلاص" label={m.phone.surah} size="sm" />
       <Basmala surahName="الإخلاص" className="text-[16px] leading-[1.9]" />
       <AyahLine />
     </div>
@@ -207,20 +212,25 @@ function QuranCard() {
 
 /** The lesson's hadith card style; the hadith text itself only when approved in content/. */
 function HadithCard() {
+  const { m } = useI18n();
   return (
     <div className="flex w-full flex-col items-center gap-[6px] self-center rounded-px-24 border-[2px] border-primary bg-surface px-[12px] pt-[10px] pb-[11px] text-center shadow-lesson-ayah-card">
-      <span className="font-heading text-[17px] leading-[1.5] font-bold text-text-dark">
-        حديث اليوم: <span className="text-berry-deep">{HADITH.topic}</span>
+      <span className="font-heading text-[17px] leading-[1.5] font-bold text-text-dark ltr:text-[15px]">
+        {m.phone.hadithOfDay} <span className="text-berry-deep">{m.phone.hadithTopic}</span>
       </span>
       {HADITH.isApproved ? (
-        <span className="line-clamp-2 font-classical text-[15px] leading-[1.8] text-text-dark">
+        <span
+          lang="ar"
+          dir="rtl"
+          className="line-clamp-2 font-classical text-[15px] leading-[1.8] text-text-dark"
+        >
           «{HADITH.displayText}»
         </span>
       ) : (
-        <span className="text-[12px] font-bold text-text-muted">يتعلّم المعنى ثم يطبّقه بعمل في البيت</span>
+        <span className="text-[12px] font-bold text-text-muted">{m.phone.hadithHint}</span>
       )}
       <span className="rounded-pill bg-gold px-[10px] py-[2px] text-[11.5px] font-extrabold text-on-gold">
-        مشروع اليوم
+        {m.phone.project}
       </span>
     </div>
   );
@@ -241,6 +251,7 @@ function useScene() {
 
 function CallScreen() {
   const [scene, setScene] = useScene();
+  const { lang, m } = useI18n();
   return (
     <div className="flex h-full flex-col bg-background">
       <StatusBar />
@@ -260,7 +271,7 @@ function CallScreen() {
           <span className="flex grow items-center justify-center gap-[6px]">
             <span className="flex items-center gap-[5px] rounded-pill border border-berry-border bg-surface px-[10px] py-[4px]">
               <span className="h-[7px] w-[7px] animate-[gh-blink_1.4s_ease-in-out_infinite] rounded-full bg-berry" />
-              <span className="text-[13px] font-extrabold text-berry-deep">مباشر</span>
+              <span className="text-[13px] font-extrabold text-berry-deep">{m.phone.live}</span>
             </span>
             <span className="grid">
               {SCENES.map((k) => (
@@ -271,19 +282,19 @@ function CallScreen() {
                       SCENE_PILL[k].tone,
                     )}
                   >
-                    {SCENE_PILL[k].label}
+                    {m.phone[SCENE_PILL[k].label]}
                   </span>
                 </Fade>
               ))}
             </span>
             <span dir="ltr" className="font-heading text-[13px] font-bold text-text-muted">
-              {toArabicDigits('02')}:{toArabicDigits(14)}
+              {formatNumber(lang, '02')}:{formatNumber(lang, 14)}
             </span>
           </span>
         </div>
         <TalkingTeacher />
         <span className="-mt-[4px] rounded-pill bg-green-tint px-[12px] py-[3px] text-[13px] font-extrabold text-deep-green">
-          {TEACHER_NAME.boy}
+          {m.phone.teacher}
         </span>
         {/* the lesson card: the Quran ayah (ONE line, never wrapped) or the hadith card */}
         <div className="grid w-full">
@@ -315,7 +326,7 @@ function CallScreen() {
             <span className="absolute inset-0 animate-[gh-pulse_2s_ease-in-out_infinite] rounded-full motion-reduce:animate-none" />
             <MicIcon size={26} />
           </span>
-          <span className="text-[13px] font-bold text-text-muted">أنا أسمعك…</span>
+          <span className="text-[13px] font-bold text-text-muted">{m.phone.listening}</span>
         </div>
       </div>
     </div>

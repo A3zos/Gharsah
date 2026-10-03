@@ -1,5 +1,7 @@
 import { LandingDesktop } from '../components/landing/LandingDesktop';
 import { LandingMobile } from '../components/landing/LandingMobile';
+import { useI18n } from '../i18n/i18n';
+import { LandingI18nProvider } from '../i18n/LandingI18n';
 import type { Route } from './+types/landing';
 
 export const meta: Route.MetaFunction = () => [
@@ -17,13 +19,23 @@ export const meta: Route.MetaFunction = () => [
  */
 export default function Landing() {
   return (
-    <>
+    <LandingI18nProvider>
+      <LandingPage />
+    </LandingI18nProvider>
+  );
+}
+
+/** lang/dir on the page itself too, so it mirrors in the same render as the text. */
+function LandingPage() {
+  const { lang, dir } = useI18n();
+  return (
+    <div lang={lang} dir={dir}>
       <div className="hidden lg:block">
         <LandingDesktop />
       </div>
       <div className="lg:hidden">
         <LandingMobile />
       </div>
-    </>
+    </div>
   );
 }
