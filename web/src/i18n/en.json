@@ -148,8 +148,7 @@
         "sources": ["Quran & Sunnah", "A'lam Al-Sunnah Al-Manshurah", "Minhaj Al-Muslim"]
       }
     },
-    "sourceLabel": "Sources",
-    "banner": "AI never composes any ayah or hadith — its role is to explain, encourage, and answer from trusted sources."
+    "sourceLabel": "Sources"
   },
   "plans": {
     "title": "Plans",

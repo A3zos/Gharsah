@@ -186,17 +186,6 @@ export function LandingDesktop() {
               </p>
             </div>
             <LearnCards desktop />
-            <div className="flex items-center gap-[20px] rounded-px-28 bg-deep-green px-[34px] py-[30px]">
-              <span
-                className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-px-18 bg-hero-chip"
-                aria-hidden="true"
-              >
-                {SourceIcons.shieldOnDark(28)}
-              </span>
-              <p className="m-0 font-heading text-[25px] leading-[1.7] font-bold text-surface ltr:leading-[1.45]">
-                {m.sources.banner}
-              </p>
-            </div>
           </section>
 
           <section

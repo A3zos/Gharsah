@@ -467,23 +467,6 @@ export const SourceIcons = {
       <path d="M11 9.5 H16.5 M11 13 H16.5" stroke={C.ayahBracket} strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   ),
-  shieldOnDark: (s: number) => (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 3 L20 6.5 V12 C20 16.5 16.6 19.9 12 21 C7.4 19.9 4 16.5 4 12 V6.5 Z"
-        stroke={C.surface}
-        strokeWidth="1.9"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8.6 12.2 L11 14.6 L15.6 10"
-        stroke={C.surface}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  ),
   project: (s: number) => (
     <svg width={s} height={s} viewBox="0 0 64 64" fill="none">
       <path d="M32 38 V18" stroke={C.berryDeep} strokeWidth="3.4" strokeLinecap="round" />

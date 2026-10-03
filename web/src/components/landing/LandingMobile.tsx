@@ -204,17 +204,6 @@ export function LandingMobile() {
             {m.sources.subtitle}
           </p>
           <LearnCards />
-          <div className="mt-[4px] flex items-center gap-[14px] rounded-px-24 bg-deep-green px-[20px] py-[22px]">
-            <span
-              className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-px-15 bg-hero-chip"
-              aria-hidden="true"
-            >
-              {SourceIcons.shieldOnDark(24)}
-            </span>
-            <p className="m-0 font-heading text-[17px] leading-[1.7] font-bold text-surface ltr:leading-[1.45]">
-              {m.sources.banner}
-            </p>
-          </div>
         </section>
 
         <section
