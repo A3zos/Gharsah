@@ -129,22 +129,26 @@
       "quran": {
         "title": "Learn the Quran",
         "body": "Memorize the ayat in the voice of a skilled reciter; any question about an ayah is answered with sound, authoritative tafsir.",
-        "examples": ["What does \"Allah, the Eternal Refuge\" mean?"],
-        "source": "Sources: Tanzil Quran · Al-Tafsir Al-Muyassar (King Fahd Complex) · Alafasy recitation"
+        "questions": ["What does \"Allah, the Eternal Refuge\" mean?"],
+        "reply": "Great question! Let's understand it together from the tafsir…",
+        "sources": ["Tanzil Quran", "Al-Tafsir Al-Muyassar (King Fahd Complex)", "Alafasy recitation"]
       },
       "hadith": {
         "title": "Learn the Hadith",
         "body": "Learn a hadith and its meaning in simple words, and how to live it every day through a real deed.",
-        "examples": ["How can I live the hadith on kindness to parents today?"],
-        "source": "Sources: Dorar Al-Saniyya · Encyclopedia of Translated Hadiths"
+        "questions": ["How can I live the hadith on kindness to parents today?"],
+        "reply": "Start by helping your mom at home 💛",
+        "sources": ["Dorar Al-Saniyya", "Encyclopedia of Translated Hadiths"]
       },
       "islam": {
         "title": "What is Islam?",
         "body": "Any question about Islam that comes to anyone's mind, Muslim or not, gets a clear answer in words that suit their age.",
-        "examples": ["Why do we pray?", "Why do we die?"],
-        "source": "Sources: Quran & Sunnah · A'lam Al-Sunnah Al-Manshurah · Minhaj Al-Muslim"
+        "questions": ["Why do we pray?", "Why do we die?"],
+        "reply": "Great questions! Let's discover the answer together…",
+        "sources": ["Quran & Sunnah", "A'lam Al-Sunnah Al-Manshurah", "Minhaj Al-Muslim"]
       }
     },
+    "sourceLabel": "Sources",
     "banner": "AI never composes any ayah or hadith — its role is to explain, encourage, and answer from trusted sources."
   },
   "plans": {

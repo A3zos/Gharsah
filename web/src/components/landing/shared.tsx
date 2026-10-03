@@ -15,124 +15,137 @@ const SAMAD = verifiedAyah(112, 2).text;
 
 type LearnKey = keyof Messages['sources']['cards'];
 
-/** The three cards' look: icon, its tinted box, the example bubbles' accent. */
-const LEARN: readonly { key: LearnKey; tint: string; chip: string; icon: (s: number) => React.ReactNode }[] =
+/** The three cards' look: the header band, the icon, the child's bubbles. */
+const LEARN: readonly { key: LearnKey; band: string; chip: string; icon: (s: number) => React.ReactNode }[] =
   [
     {
       key: 'quran',
-      tint: 'bg-green-tint',
+      band: 'bg-primary/10',
       chip: 'bg-primary/12 text-deep-green',
       icon: (s) => SourceIcons.quran(s),
     },
     {
       key: 'hadith',
-      tint: 'bg-gold-tint',
+      band: 'bg-gold/10',
       chip: 'bg-gold/12 text-warning-text',
       icon: (s) => SourceIcons.scroll(s),
     },
     {
       key: 'islam',
-      tint: 'bg-berry-tint',
+      band: 'bg-berry/10',
       chip: 'bg-berry/12 text-berry-deep',
       icon: (s) => SourceIcons.question(s),
     },
   ];
 
-/** A child's example question; «{ayah}» becomes ﴿ٱللَّهُ ٱلصَّمَدُ﴾ (Arabic, Uthmani, rtl in every language). */
-function ExampleBubble({ text, tone }: { text: string; tone: string }) {
+/** «{ayah}» in a question → ﴿ٱللَّهُ ٱلصَّمَدُ﴾ (Arabic, Uthmani, rtl in every language). */
+function WithAyah({ text }: { text: string }) {
   const [before, after] = text.split('{ayah}');
+  if (after === undefined) return <>{text}</>;
   return (
-    <span
-      className={cx(
-        'max-w-full rounded-px-14 rounded-es-[4px] px-[12px] py-[6px] text-[14px] leading-[1.6] font-bold',
-        tone,
-      )}
-    >
+    <>
       {before}
-      {after !== undefined && (
-        <>
-          <span lang="ar" dir="rtl" className="font-ayah text-[1.1em] font-normal">
-            <span className="text-ayah-bracket">﴿</span>
-            {SAMAD}
-            <span className="text-ayah-bracket">﴾</span>
-          </span>
-          {after}
-        </>
-      )}
-    </span>
+      <span lang="ar" dir="rtl" className="font-ayah text-[1.1em] font-normal">
+        <span className="text-ayah-bracket">﴿</span>
+        {SAMAD}
+        <span className="text-ayah-bracket">﴾</span>
+      </span>
+      {after}
+    </>
   );
 }
 
 /**
- * «ماذا يتعلّم طفلك؟»: three cards (the Quran / the Hadith / what Islam is), each with
- * example questions and its stated sources. Desktop: 3 equal columns; phones: stacked rows.
+ * The example as a mini chat (like «كيف تعمل غَرْسة»): the child's questions on the end
+ * side in the card's accent, the teacher's short reply on the start side, white, with the
+ * teacher's name. No religious answer beyond these lines.
+ */
+function MiniChat({ questions, reply, tone }: { questions: readonly string[]; reply: string; tone: string }) {
+  const { m } = useI18n();
+  return (
+    <div className="flex flex-col gap-[8px] rounded-px-18 bg-background p-[12px]">
+      {questions.map((q) => (
+        <span
+          key={q}
+          className={cx(
+            'max-w-[90%] self-end rounded-px-16 rounded-ee-[4px] px-[12px] py-[7px] text-[14px] leading-[1.6] font-bold',
+            tone,
+          )}
+        >
+          <WithAyah text={q} />
+        </span>
+      ))}
+      <span className="flex max-w-[90%] flex-col gap-[2px] self-start rounded-px-16 rounded-es-[4px] bg-surface px-[12px] py-[7px] shadow-soft">
+        <span className="text-[11.5px] leading-[1.4] font-extrabold text-deep-green">{m.phone.teacher}</span>
+        <span className="text-[14px] leading-[1.6] text-text-dark">{reply}</span>
+      </span>
+    </div>
+  );
+}
+
+/** «📖 المصدر» + the source names as small chips that wrap neatly. */
+function SourceChips({ names }: { names: readonly string[] }) {
+  const { m } = useI18n();
+  return (
+    <div className="flex flex-wrap items-center gap-[6px]">
+      <span className="flex items-center gap-[5px] pe-[2px] text-[12.5px] font-extrabold text-text-muted">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M4 5.5 C6.5 4.2 9.5 4.2 12 5.8 C14.5 4.2 17.5 4.2 20 5.5 V18.5 C17.5 17.2 14.5 17.2 12 18.8 C9.5 17.2 6.5 17.2 4 18.5 Z"
+            stroke={C.textMuted}
+            strokeWidth="2"
+            strokeLinejoin="round"
+          />
+          <path d="M12 5.8 V18.8" stroke={C.textMuted} strokeWidth="2" />
+        </svg>
+        {m.sources.sourceLabel}
+      </span>
+      {names.map((n) => (
+        <span
+          key={n}
+          className="rounded-pill border border-border-soft bg-background px-[10px] py-[3px] text-[12px] leading-[1.5] font-bold text-text-muted"
+        >
+          {n}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * «ماذا يتعلّم طفلك؟»: three cards (the Quran / the Hadith / what Islam is). A tinted
+ * header band with the icon and title, then the text, and — pinned to the bottom so the
+ * cards line up — the mini chat and the sources. Desktop: 3 equal columns; phones: stacked.
  */
 export function LearnCards({ desktop }: { desktop?: boolean }) {
   const { m } = useI18n();
   return (
-    <div className={desktop ? 'grid grid-cols-3 gap-[18px]' : 'flex flex-col gap-[14px]'}>
+    <div className={desktop ? 'grid grid-cols-3 gap-[24px]' : 'flex flex-col gap-[20px]'}>
       {LEARN.map((c) => {
         const t = m.sources.cards[c.key];
-        const icon = (
-          <span
-            className={cx(
-              'flex shrink-0 items-center justify-center',
-              c.tint,
-              desktop ? 'h-[52px] w-[52px] rounded-px-17' : 'h-[44px] w-[44px] rounded-px-15',
-            )}
-            aria-hidden="true"
-          >
-            {c.icon(desktop ? 26 : 22)}
-          </span>
-        );
-        const body = (
-          <>
-            <h3
-              className={cx(
-                'm-0',
-                desktop ? 'font-heading text-[21px] font-bold' : 'text-[16px] font-extrabold',
-              )}
-            >
-              {t.title}
-            </h3>
-            <p
-              className={cx(
-                'm-0 text-text-muted ltr:leading-[1.7]',
-                desktop ? 'text-[14.5px] leading-[1.95]' : 'text-[13.5px] leading-[1.9]',
-              )}
-            >
-              {t.body}
-            </p>
-            <span className="flex flex-wrap items-start gap-[8px]">
-              {t.examples.map((e) => (
-                <ExampleBubble key={e} text={e} tone={c.chip} />
-              ))}
-            </span>
-            <span
-              className={cx(
-                'border-t border-t-border-soft pt-[10px] leading-[1.7] text-text-muted',
-                desktop ? 'mt-auto text-[12.5px]' : 'mt-[2px] text-[12px]',
-              )}
-            >
-              {t.source}
-            </span>
-          </>
-        );
-        return desktop ? (
+        return (
           <div
             key={c.key}
-            className="flex min-w-0 flex-col gap-[13px] rounded-px-26 border-[1.5px] border-border bg-surface px-[24px] py-[28px]"
+            className="flex min-w-0 flex-col overflow-hidden rounded-px-28 bg-surface shadow-dark-14-30-5 transition-[translate,box-shadow] duration-200 ease-out hover:-translate-y-[4px] hover:shadow-dark-30-70-10 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
           >
-            {icon}
-            {body}
-          </div>
-        ) : (
-          <div
-            key={c.key}
-            className="flex items-start gap-[13px] rounded-px-22 border-[1.5px] border-border bg-surface px-[16px] py-[18px]"
-          >
-            {icon}
-            <span className="flex min-w-0 flex-col gap-[7px]">{body}</span>
+            <div className={cx('flex items-center gap-[14px] px-[24px] py-[18px]', c.band)}>
+              <span
+                className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-px-18 bg-surface shadow-soft"
+                aria-hidden="true"
+              >
+                {c.icon(28)}
+              </span>
+              <h3 className="m-0 font-heading text-[24px] leading-[1.35] font-bold text-text-dark">
+                {t.title}
+              </h3>
+            </div>
+            <div className="flex grow flex-col gap-[16px] p-[24px]">
+              <p className="m-0 text-[16px] leading-[1.85] text-text-muted ltr:leading-[1.6]">{t.body}</p>
+              <div className="mt-auto flex flex-col gap-[16px]">
+                <MiniChat questions={t.questions} reply={t.reply} tone={c.chip} />
+                <SourceChips names={t.sources} />
+              </div>
+            </div>
           </div>
         );
       })}
