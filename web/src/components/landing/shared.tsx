@@ -1,9 +1,10 @@
 // Pieces the desktop (WebLanding) and mobile (WebLandingMobile) landing share —
 // same art, different sizes, so sizes are props with the frames' exact values.
+import { teacherFrameSrc } from '../child/teacherCharacter';
 import { C } from '../ui/color';
 import { cx } from '../../lib/cx';
 
-/** «كيف تعمل غَرْسة»: the three cards. Examples are descriptive on purpose — no ayah or hadith text here. */
+/** «كيف تعمل غَرْسة»: the three cards. Examples are descriptive on purpose — no ayah, hadith or answer text. */
 export const HOW_STEPS = [
   {
     key: 'quran',
@@ -11,8 +12,13 @@ export const HOW_STEPS = [
     title: 'يحفظ القرآن مع معلّم ذكي',
     body: 'يسمع الطفل الآية من قارئ متقن، ثم يردّدها بصوته، والمعلّم يشجّعه ويعدّ معه حتى يتقنها.',
     tint: 'bg-green-tint',
-    teacher: ['اليوم سورة الإخلاص 🌱 اسمعها من القارئ، ثم ردّدها معي آية آية.'],
-    child: [],
+    labelColor: 'text-deep-green',
+    childBubble: 'bg-primary/15',
+    child: 'boy',
+    chat: [
+      { from: 'teacher', text: 'اليوم سورة الإخلاص 🌱 اسمعها من القارئ، ثم ردّدها معي آية آية.' },
+      { from: 'child', text: 'جاهز!' },
+    ],
   },
   {
     key: 'hadith',
@@ -20,82 +26,122 @@ export const HOW_STEPS = [
     title: 'يفهم الحديث ويطبّقه',
     body: 'يتعلّم الطفل حديثًا قصيرًا ومعناه بكلمات بسيطة، ثم يحوّله إلى عمل حقيقي في البيت.',
     tint: 'bg-gold-tint',
-    teacher: ['حديث اليوم عن برّ الوالدين 💛 ما الشيء الذي ستفعله لأمك اليوم؟'],
-    child: [],
+    labelColor: 'text-warning-text',
+    childBubble: 'bg-gold/15',
+    child: 'girl',
+    chat: [
+      { from: 'teacher', text: 'حديث اليوم عن برّ الوالدين 💛 ما الشيء الذي ستفعله لأمك اليوم؟' },
+      { from: 'child', text: 'سأساعدها في ترتيب البيت' },
+    ],
   },
   {
     key: 'questions',
     label: 'أسئلة الطفل',
-    soon: true,
     title: 'يجيب عن تساؤلاته عن الإسلام',
     body: 'يسأل الطفل بصوته عمّا يحيّره، فيجيبه المعلّم بلغة تناسب عمره، من إجابات مراجَعة من مختصين.',
     tint: 'bg-berry-tint',
-    teacher: [],
-    child: ['ليش نصلي خمس صلوات في اليوم؟', 'ليش خلق الله النار؟'],
+    labelColor: 'text-berry-deep',
+    childBubble: 'bg-berry/15',
+    child: 'boy',
+    chat: [
+      { from: 'child', text: 'ليش خلق الله النار؟' },
+      { from: 'child', text: 'ليش نصلي خمس صلوات في اليوم؟' },
+      // Exactly this — the landing never shows an answer's religious content.
+      { from: 'teacher', text: 'سؤال جميل! خلّنا نفهمه معًا…' },
+    ],
   },
 ] as const satisfies readonly {
   key: string;
   label: string;
-  soon?: boolean;
   title: string;
   body: string;
   tint: string;
-  teacher: readonly string[];
-  child: readonly string[];
+  labelColor: string;
+  childBubble: string;
+  child: 'boy' | 'girl';
+  chat: readonly { from: 'teacher' | 'child'; text: string }[];
 }[];
 
 export type HowStep = (typeof HOW_STEPS)[number];
 
-/** A card's label (the old «الخطوة n» slot) + «قريبًا» for features not live yet. */
+/** A card's label (the old «الخطوة n» slot), in the card's accent. */
 export function HowLabel({ step, desktop }: { step: HowStep; desktop?: boolean }) {
   return (
-    <span className="flex items-center gap-[8px]">
-      <span className={cx('font-extrabold text-gold', desktop ? 'text-[13px]' : 'text-[12px]')}>
-        {step.label}
-      </span>
-      {'soon' in step && step.soon && (
-        <span className="rounded-pill bg-berry-tint px-[9px] py-[2px] text-[11px] font-extrabold text-berry-deep">
-          قريبًا
-        </span>
+    <span className={cx('font-extrabold', step.labelColor, desktop ? 'text-[13px]' : 'text-[12px]')}>
+      {step.label}
+    </span>
+  );
+}
+
+/** 28px round avatars: the teacher sprite cropped to his face, or the child's portrait. */
+function ChatAvatar({ who, tint }: { who: 'teacher' | 'boy' | 'girl'; tint: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cx('relative h-[28px] w-[28px] shrink-0 overflow-hidden rounded-full', tint)}
+    >
+      {who === 'teacher' ? (
+        <img
+          src={teacherFrameSrc('boy', 'idle')}
+          alt=""
+          loading="lazy"
+          className="absolute top-[-5px] left-[-14px] w-[56px] max-w-none"
+        />
+      ) : (
+        <img
+          src={`/avatars/child-${who}-1-256.webp`}
+          alt=""
+          loading="lazy"
+          className="h-full w-full scale-[1.3] object-cover [object-position:50%_30%]"
+        />
       )}
     </span>
   );
 }
 
-/** «مثال»: a soft tinted box with the teacher's bubble (start side) or the child's (end side). */
+/**
+ * «مثال»: a mini chat in a soft tinted box — the teacher's white bubble with his avatar
+ * on the start side, the child's accent-tinted bubble with the child's on the other.
+ */
 export function HowExample({ step, desktop }: { step: HowStep; desktop?: boolean }) {
-  const text = desktop ? 'text-[14.5px]' : 'text-[13.5px]';
+  const text = desktop ? 'text-[14px]' : 'text-[13.5px]';
   return (
     <div
       className={cx(
         'flex flex-col gap-[8px] rounded-px-18',
         step.tint,
-        desktop ? 'mt-auto px-[14px] pt-[10px] pb-[14px]' : 'px-[12px] pt-[8px] pb-[12px]',
+        desktop ? 'px-[14px] pt-[10px] pb-[14px]' : 'px-[12px] pt-[8px] pb-[12px]',
       )}
     >
       <span className="text-[11.5px] font-extrabold text-text-muted">مثال</span>
-      {step.teacher.map((t) => (
-        <span
-          key={t}
-          className={cx(
-            'max-w-[92%] self-start rounded-px-18 rounded-tr-px-4 bg-surface px-[13px] py-[9px] leading-[1.8] font-bold text-text-dark shadow-soft',
-            text,
-          )}
-        >
-          {t}
-        </span>
-      ))}
-      {step.child.map((t) => (
-        <span
-          key={t}
-          className={cx(
-            'max-w-[92%] self-end rounded-px-18 rounded-tl-px-4 bg-berry-deep px-[13px] py-[9px] leading-[1.8] font-bold text-surface',
-            text,
-          )}
-        >
-          {t}
-        </span>
-      ))}
+      {step.chat.map((m) =>
+        m.from === 'teacher' ? (
+          <span key={m.text} className="flex max-w-[94%] items-end gap-[7px] self-start">
+            <ChatAvatar who="teacher" tint="bg-surface" />
+            <span
+              className={cx(
+                'rounded-px-18 rounded-br-px-4 bg-surface px-[12px] py-[8px] leading-[1.75] font-bold text-text-dark shadow-soft',
+                text,
+              )}
+            >
+              {m.text}
+            </span>
+          </span>
+        ) : (
+          <span key={m.text} className="flex max-w-[94%] items-end gap-[7px] self-end">
+            <span
+              className={cx(
+                'rounded-px-18 rounded-bl-px-4 px-[12px] py-[8px] leading-[1.75] font-bold text-text-dark',
+                step.childBubble,
+                text,
+              )}
+            >
+              {m.text}
+            </span>
+            <ChatAvatar who={step.child} tint="bg-surface" />
+          </span>
+        ),
+      )}
     </div>
   );
 }

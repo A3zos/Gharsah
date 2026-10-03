@@ -117,11 +117,12 @@ export function LandingDesktop() {
                 معلّم ذكي يعلّم طفلك القرآن والحديث، ويجيب عن أسئلته عن دينه
               </p>
             </div>
-            <div className="flex gap-[22px]">
+            {/* each card is a subgrid of the same 5 rows, so titles, texts and «مثال» boxes line up */}
+            <div className="grid grid-cols-3 gap-x-[22px]">
               {HOW_STEPS.map((s) => (
                 <div
                   key={s.key}
-                  className="flex grow basis-0 flex-col gap-[16px] rounded-px-28 bg-surface px-[28px] py-[34px] shadow-dark-14-30-5"
+                  className="row-span-5 grid grid-rows-subgrid gap-y-[14px] rounded-px-28 bg-surface px-[28px] py-[32px] shadow-dark-14-30-5"
                 >
                   <span
                     className={`flex h-[62px] w-[62px] items-center justify-center rounded-px-20 ${s.tint}`}
@@ -130,7 +131,9 @@ export function LandingDesktop() {
                     {STEP_ICONS[s.key]}
                   </span>
                   <HowLabel step={s} desktop />
-                  <h3 className="m-0 font-heading text-[25px] font-bold text-text-dark">{s.title}</h3>
+                  <h3 className="m-0 font-heading text-[22px] leading-[1.5] font-bold text-text-dark">
+                    {s.title}
+                  </h3>
                   <p className="m-0 text-[15.5px] leading-[1.95] text-text-muted">{s.body}</p>
                   <HowExample step={s} desktop />
                 </div>
