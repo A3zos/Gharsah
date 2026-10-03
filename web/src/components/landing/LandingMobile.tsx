@@ -11,7 +11,8 @@ import { BookIcon, CodeIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons
 import { Blob } from '../ui/Page';
 import { LanguageSheetButton } from '../ui/LanguageSwitcher';
 import { LivePhone } from './LivePhone';
-import { DashboardPreview, HOW_STEPS, HowExample, HowLabel, SourceIcons, type HowStep } from './shared';
+import { ParentPreview } from './ParentPreview';
+import { HOW_STEPS, HowExample, HowLabel, SourceIcons, type HowStep } from './shared';
 import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
 
 const STEP_ICONS: Record<HowStep['key'], React.ReactNode> = {
@@ -175,7 +176,7 @@ export function LandingMobile() {
             <h2 className="m-0 text-center font-heading text-[26px] leading-[1.5] font-bold">
               تتابع تقدّمه… بلا أن تقف فوق رأسه
             </h2>
-            <DashboardPreview />
+            <ParentPreview />
           </div>
         </section>
 

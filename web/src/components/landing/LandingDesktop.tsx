@@ -6,7 +6,8 @@ import { buttonClass } from '../ui/Button';
 import { BookIcon, CheckIcon, CodeIcon, ForwardIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
 import { LivePhone } from './LivePhone';
-import { DashboardPreview, HOW_STEPS, HowExample, HowLabel, SourceIcons, type HowStep } from './shared';
+import { ParentPreview } from './ParentPreview';
+import { HOW_STEPS, HowExample, HowLabel, SourceIcons, type HowStep } from './shared';
 import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
 import { LanguageMenu } from '../ui/LanguageSwitcher';
 
@@ -166,7 +167,7 @@ export function LandingDesktop() {
                 </ul>
               </div>
               <div className="flex w-[540px] shrink-0 flex-col gap-[18px]">
-                <DashboardPreview desktop />
+                <ParentPreview desktop />
               </div>
             </div>
           </section>

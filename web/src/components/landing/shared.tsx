@@ -7,7 +7,7 @@ import { PlayGlyph } from '../ui/icons';
 import { cx } from '../../lib/cx';
 
 /** One voice note: who speaks, the caption, its (pretend) length in seconds. */
-type VoiceLine = { from: 'teacher' | 'child'; text: string; sec: number };
+export type VoiceLine = { from: 'teacher' | 'child'; text: string; sec: number };
 
 /** «كيف تعمل غَرْسة»: the three cards. Examples are descriptive on purpose — no ayah, hadith or answer text. */
 export const HOW_STEPS = [
@@ -99,7 +99,7 @@ function waveform(text: string): number[] {
  * words as a one-line muted caption under it. Teacher: white + accent play button, on the start side;
  * child: accent-tinted + white play button, on the other side.
  */
-function VoiceNote({ step, line, playing }: { step: HowStep; line: VoiceLine; playing: boolean }) {
+export function VoiceNote({ step, line, playing }: { step: HowStep; line: VoiceLine; playing: boolean }) {
   const teacher = line.from === 'teacher';
   return (
     <div className={cx('flex w-full flex-col gap-[3px]', teacher ? 'items-start' : 'items-end')}>
@@ -244,148 +244,6 @@ export function PlanList({
         </li>
       ))}
     </ul>
-  );
-}
-
-/** The parent-dashboard preview card (growth path + four counts). */
-export function DashboardPreview({ desktop }: { desktop?: boolean }) {
-  const stages = [
-    {
-      label: 'بذرة',
-      ring: 'bg-green-tint',
-      text: 'text-deep-green',
-      art: (s: number) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-          <ellipse cx="12" cy="14" rx="6" ry="7.5" fill={C.primary} />
-          <path d="M12 9 C12 6 13.5 4 16 3.5" stroke={C.deepGreen} strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-      ),
-      size: desktop ? 26 : 21,
-    },
-    {
-      label: 'غَرْسة',
-      ring: 'bg-gold-tint border-[2px] border-gold',
-      text: 'text-warning-text',
-      art: (s: number) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-          <path d="M12 21 V11" stroke={C.deepGreen} strokeWidth="2.2" strokeLinecap="round" />
-          <path d="M12 15 C8 15 5.5 12.5 5.5 8.5 C9.5 8.5 12 11 12 15 Z" fill={C.primary} />
-          <path d="M12 13 C16 13 18.5 10.5 18.5 6.5 C14.5 6.5 12 9 12 13 Z" fill={C.softGreen} />
-        </svg>
-      ),
-      size: desktop ? 28 : 23,
-    },
-    {
-      label: 'شجرة',
-      ring: 'bg-border-soft',
-      text: 'text-text-subtle',
-      art: (s: number) => (
-        <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-          <path d="M12 21 V13" stroke={C.textSubtle} strokeWidth="2.2" strokeLinecap="round" />
-          <circle cx="12" cy="8" r="6" fill={C.voiceBarOff} />
-        </svg>
-      ),
-      size: desktop ? 28 : 23,
-    },
-  ];
-  const counts = [
-    { n: '٨', label: 'سور', color: 'text-deep-green' },
-    { n: '٦٤', label: 'آية', color: 'text-sky-text' },
-    { n: '١٢', label: 'حديثًا', color: 'text-berry-deep' },
-    { n: '٩', label: 'مشاريع', color: 'text-warning-text' },
-  ];
-  return (
-    <div
-      aria-label="مثال للوحة المتابعة"
-      className={cx(
-        'flex flex-col border-[1.5px] border-border bg-background',
-        desktop ? 'gap-[20px] rounded-px-30 p-[26px]' : 'gap-[16px] rounded-px-26 p-[20px]',
-      )}
-    >
-      <div className={cx('flex items-center', desktop ? 'gap-[14px]' : 'gap-[12px]')}>
-        <span
-          className={cx(
-            'flex items-center justify-center bg-green-tint font-heading font-extrabold text-deep-green',
-            desktop
-              ? 'h-[54px] w-[54px] rounded-px-18 text-[22px]'
-              : 'h-[46px] w-[46px] rounded-px-16 text-[19px]',
-          )}
-        >
-          ع
-        </span>
-        <span className={cx('flex grow flex-col', desktop ? 'gap-[3px]' : 'gap-[2px]')}>
-          <span className={cx('font-extrabold', desktop ? 'text-[17px]' : 'text-[15.5px]')}>عبدالله</span>
-          <span className={cx('text-text-muted', desktop ? 'text-[13px]' : 'text-[12.5px]')}>
-            {desktop ? '١٠ سنوات · خطة سنوية' : '١٠ سنوات'}
-          </span>
-        </span>
-        <span
-          className={cx(
-            'rounded-pill bg-gold-tint font-extrabold text-warning-text',
-            desktop ? 'px-[13px] py-[7px] text-[12.5px]' : 'px-[11px] py-[6px] text-[11.5px]',
-          )}
-        >
-          {desktop ? '٥ أيام متتالية' : '٥ أيام'}
-        </span>
-      </div>
-      <div
-        className={cx(
-          'flex flex-col bg-surface',
-          desktop
-            ? 'gap-[14px] rounded-px-22 px-[18px] py-[20px]'
-            : 'gap-[12px] rounded-px-20 px-[14px] py-[16px]',
-        )}
-      >
-        <span className={cx('font-extrabold text-text-muted', desktop ? 'text-[13.5px]' : 'text-[12.5px]')}>
-          مسار النموّ
-        </span>
-        <div className={cx('flex items-start [direction:ltr]', desktop ? 'gap-[6px]' : 'gap-[4px]')}>
-          {stages.map((s) => (
-            <div
-              key={s.label}
-              className={cx('flex grow basis-0 flex-col items-center', desktop ? 'gap-[8px]' : 'gap-[6px]')}
-            >
-              <span
-                className={cx(
-                  'flex items-center justify-center rounded-full',
-                  desktop ? 'h-[52px] w-[52px]' : 'h-[42px] w-[42px]',
-                  s.ring,
-                )}
-                aria-hidden="true"
-              >
-                {s.art(s.size)}
-              </span>
-              <span className={cx('font-extrabold', desktop ? 'text-[12.5px]' : 'text-[11.5px]', s.text)}>
-                {s.label}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="h-[8px] overflow-hidden rounded-px-4 bg-border [direction:ltr]">
-          <span className="block h-[8px] w-[52%] rounded-px-4 bg-primary" />
-        </div>
-      </div>
-      <div className={cx('flex', desktop ? 'gap-[10px]' : 'gap-[8px]')}>
-        {counts.map((c) => (
-          <div
-            key={c.label}
-            className={cx(
-              'flex grow flex-col items-center bg-surface',
-              desktop
-                ? 'gap-[3px] rounded-px-18 px-[10px] py-[14px]'
-                : 'gap-[2px] rounded-px-16 px-[6px] py-[12px]',
-            )}
-          >
-            <span
-              className={cx('font-heading font-extrabold', desktop ? 'text-[22px]' : 'text-[19px]', c.color)}
-            >
-              {c.n}
-            </span>
-            <span className="text-[12px] font-bold text-text-muted">{c.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 
