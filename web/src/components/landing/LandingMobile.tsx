@@ -6,7 +6,7 @@ import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { fill, LANDING_AGES, useI18n } from '../../i18n/i18n';
-import { ArabicOnly, Rich } from '../../i18n/LandingI18n';
+import { ArabicOnly } from '../../i18n/LandingI18n';
 import { cx } from '../../lib/cx';
 import { buttonClass } from '../ui/Button';
 import { C } from '../ui/color';
@@ -15,7 +15,7 @@ import { Blob } from '../ui/Page';
 import { LanguageSheetButton } from '../ui/LanguageSwitcher';
 import { LivePhone } from './LivePhone';
 import { ParentFeatures, ParentPreview } from './ParentPreview';
-import { HOW_STEPS, HowExample, HowLabel, SourceIcons, type HowStep } from './shared';
+import { HOW_STEPS, HowExample, HowLabel, LearnCards, SourceIcons, type HowStep } from './shared';
 import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
 
 const STEP_ICONS: Record<HowStep['key'], React.ReactNode> = {
@@ -23,13 +23,6 @@ const STEP_ICONS: Record<HowStep['key'], React.ReactNode> = {
   hadith: <BookIcon size={24} color="ayahBracket" />,
   questions: SourceIcons.question(26),
 };
-
-const SOURCES = [
-  { key: 'quran', tint: 'bg-green-tint', icon: SourceIcons.quran(22) },
-  { key: 'recitation', tint: 'bg-sky-tint', icon: SourceIcons.recitation(22) },
-  { key: 'tafsir', tint: 'bg-gold-tint', icon: SourceIcons.tafsir(22) },
-  { key: 'hadith', tint: 'bg-berry-tint', icon: SourceIcons.hadith(22) },
-] as const;
 
 const MENU = [
   ['#m-how', 'how'],
@@ -206,13 +199,9 @@ export function LandingMobile() {
           </span>
           <h2 className="m-0 text-center font-heading text-[27px] font-bold">{m.sources.title}</h2>
           <p className="m-0 mb-[6px] text-center text-[14.5px] leading-[1.9] text-text-muted">
-            {m.sources.subtitleShort}
+            {m.sources.subtitle}
           </p>
-          {SOURCES.map((s) => (
-            <SourceRow key={s.key} tint={s.tint} icon={s.icon} title={m.sources.cards[s.key].title}>
-              <Rich text={m.sources.cards[s.key].bodyShort} />
-            </SourceRow>
-          ))}
+          <LearnCards />
           <div className="mt-[4px] flex items-center gap-[14px] rounded-px-24 bg-deep-green px-[20px] py-[22px]">
             <span
               className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-px-15 bg-hero-chip"
@@ -221,7 +210,7 @@ export function LandingMobile() {
               {SourceIcons.shieldOnDark(24)}
             </span>
             <p className="m-0 font-heading text-[17px] leading-[1.7] font-bold text-surface ltr:leading-[1.45]">
-              {m.sources.bannerShort}
+              {m.sources.banner}
             </p>
           </div>
         </section>
@@ -333,33 +322,6 @@ function StepCard({ step, icon }: { step: HowStep; icon: React.ReactNode }) {
         </span>
       </div>
       <HowExample step={step} />
-    </div>
-  );
-}
-
-function SourceRow({
-  tint,
-  icon,
-  title,
-  children,
-}: {
-  tint: string;
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start gap-[13px] rounded-px-22 border-[1.5px] border-border bg-surface px-[16px] py-[18px]">
-      <span
-        className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-px-15 ${tint}`}
-        aria-hidden="true"
-      >
-        {icon}
-      </span>
-      <span className="flex flex-col gap-[5px]">
-        <h3 className="m-0 text-[16px] font-extrabold">{title}</h3>
-        <span className="text-[13.5px] leading-[1.9] text-text-muted">{children}</span>
-      </span>
     </div>
   );
 }

@@ -4,13 +4,13 @@ import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { fill, LANDING_AGES, useI18n } from '../../i18n/i18n';
-import { ArabicOnly, Rich } from '../../i18n/LandingI18n';
+import { ArabicOnly } from '../../i18n/LandingI18n';
 import { buttonClass } from '../ui/Button';
 import { BookIcon, CodeIcon, ForwardIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
 import { LivePhone } from './LivePhone';
 import { ParentFeatures, ParentPreview } from './ParentPreview';
-import { HOW_STEPS, HowExample, HowLabel, SourceIcons, type HowStep } from './shared';
+import { HOW_STEPS, HowExample, HowLabel, LearnCards, SourceIcons, type HowStep } from './shared';
 import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
 import { LanguageMenu } from '../ui/LanguageSwitcher';
 
@@ -21,13 +21,6 @@ const STEP_ICONS: Record<HowStep['key'], React.ReactNode> = {
   hadith: <BookIcon size={30} color="ayahBracket" />,
   questions: SourceIcons.question(32),
 };
-
-const SOURCES = [
-  { key: 'quran', tint: 'bg-green-tint', icon: SourceIcons.quran(26) },
-  { key: 'recitation', tint: 'bg-sky-tint', icon: SourceIcons.recitation(26) },
-  { key: 'tafsir', tint: 'bg-gold-tint', icon: SourceIcons.tafsir(26) },
-  { key: 'hadith', tint: 'bg-berry-tint', icon: SourceIcons.hadith(26) },
-] as const;
 
 export function LandingDesktop() {
   const { lang, m } = useI18n();
@@ -186,13 +179,7 @@ export function LandingDesktop() {
                 {m.sources.subtitle}
               </p>
             </div>
-            <div className="flex gap-[18px]">
-              {SOURCES.map((s) => (
-                <SourceCard key={s.key} tint={s.tint} icon={s.icon} title={m.sources.cards[s.key].title}>
-                  <Rich text={m.sources.cards[s.key].body} />
-                </SourceCard>
-              ))}
-            </div>
+            <LearnCards desktop />
             <div className="flex items-center gap-[20px] rounded-px-28 bg-deep-green px-[34px] py-[30px]">
               <span
                 className="flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-px-18 bg-hero-chip"
@@ -275,31 +262,6 @@ export function LandingDesktop() {
           </div>
         </footer>
       </div>
-    </div>
-  );
-}
-
-function SourceCard({
-  tint,
-  icon,
-  title,
-  children,
-}: {
-  tint: string;
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex grow basis-0 flex-col gap-[13px] rounded-px-26 border-[1.5px] border-border bg-surface px-[24px] py-[28px]">
-      <span
-        className={`flex h-[52px] w-[52px] items-center justify-center rounded-px-17 ${tint}`}
-        aria-hidden="true"
-      >
-        {icon}
-      </span>
-      <h3 className="m-0 font-heading text-[21px] font-bold">{title}</h3>
-      <p className="m-0 text-[14.5px] leading-[1.95] text-text-muted">{children}</p>
     </div>
   );
 }

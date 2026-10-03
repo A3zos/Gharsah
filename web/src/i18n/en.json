@@ -9,7 +9,7 @@
     "navLabel": "Main",
     "sectionsLabel": "Page sections",
     "how": "How it works",
-    "sources": "Our sources",
+    "sources": "What they learn",
     "privacy": "Privacy",
     "plans": "Plans",
     "login": "Log in",
@@ -75,8 +75,14 @@
         "title": "A report for every lesson",
         "text": "What they memorized, how long, and the teacher's note"
       },
-      { "title": "Project recordings", "text": "Sent only to you, in your child's voice" },
-      { "title": "More than one child", "text": "Up to {n} children on one account" }
+      {
+        "title": "Project recordings",
+        "text": "Sent only to you, in your child's voice"
+      },
+      {
+        "title": "More than one child",
+        "text": "Up to {n} children on one account"
+      }
     ],
     "preview": {
       "label": "Sample parent dashboard (sample data)",
@@ -84,11 +90,24 @@
       "name": "Abdullah",
       "meta": "{age} years · Yearly plan",
       "streak": "{n}-day streak 🔥",
-      "tabs": { "overview": "Overview", "today": "Today's lesson", "project": "Project" },
+      "tabs": {
+        "overview": "Overview",
+        "today": "Today's lesson",
+        "project": "Project"
+      },
       "growth": "Growth path",
       "percent": "{n}%",
-      "stages": { "seed": "Seed", "sapling": "Sapling", "tree": "Tree" },
-      "stats": { "surahs": "Surahs", "ayat": "Ayat", "hadith": "Hadiths", "projects": "Projects" },
+      "stages": {
+        "seed": "Seed",
+        "sapling": "Sapling",
+        "tree": "Tree"
+      },
+      "stats": {
+        "surahs": "Surahs",
+        "ayat": "Ayat",
+        "hadith": "Hadiths",
+        "projects": "Projects"
+      },
       "todaySurah": "Surah Al-Ikhlas · {n} ayat",
       "todayHadith": "Hadith: Kindness to parents",
       "duration": "Lesson time: {n} min",
@@ -104,33 +123,29 @@
   },
   "sources": {
     "pill": "Trust",
-    "title": "Our sources",
-    "subtitle": "Every text your child hears comes from a stated, trusted source — no guesswork, no generation.",
-    "subtitleShort": "Every text your child hears comes from a stated, trusted source — no guesswork, no generation.",
+    "title": "What your child learns",
+    "subtitle": "Every answer comes from a stated, trusted source — no guesswork, no generation.",
     "cards": {
       "quran": {
-        "title": "Quran text",
-        "body": "From the **Tanzil project** — Hafs from Asim, in the verified Uthmani script.",
-        "bodyShort": "From the **Tanzil project** — Hafs from Asim, in the verified Uthmani script."
-      },
-      "recitation": {
-        "title": "Recitation",
-        "body": "In the voice of Sheikh **Mishary Rashid Alafasy** — a clear, measured recitation that suits children.",
-        "bodyShort": "In the voice of Sheikh **Mishary Rashid Alafasy** — a clear, measured recitation that suits children."
-      },
-      "tafsir": {
-        "title": "Tafsir",
-        "body": "From **Al-Tafsir Al-Muyassar** — King Fahd Complex for the Printing of the Holy Quran.",
-        "bodyShort": "From **Al-Tafsir Al-Muyassar** — King Fahd Complex for the Printing of the Holy Quran."
+        "title": "Learn the Quran",
+        "body": "Memorize the ayat in the voice of a skilled reciter; any question about an ayah is answered with sound, authoritative tafsir.",
+        "examples": ["What does \"Allah, the Eternal Refuge\" mean?"],
+        "source": "Sources: Tanzil Quran · Al-Tafsir Al-Muyassar (King Fahd Complex) · Alafasy recitation"
       },
       "hadith": {
-        "title": "Hadith",
-        "body": "Every hadith **is approved with its source and grading by a Sharia specialist** before it reaches your child.",
-        "bodyShort": "Every hadith **is approved with its source and grading by a Sharia specialist** before it reaches your child."
+        "title": "Learn the Hadith",
+        "body": "Learn a hadith and its meaning in simple words, and how to live it every day through a real deed.",
+        "examples": ["How can I live the hadith on kindness to parents today?"],
+        "source": "Sources: Dorar Al-Saniyya · Encyclopedia of Translated Hadiths"
+      },
+      "islam": {
+        "title": "What is Islam?",
+        "body": "Any question about Islam that comes to anyone's mind, Muslim or not, gets a clear answer in words that suit their age.",
+        "examples": ["Why do we pray?", "Why do we die?"],
+        "source": "Sources: Quran & Sunnah · A'lam Al-Sunnah Al-Manshurah · Minhaj Al-Muslim"
       }
     },
-    "banner": "AI never generates any Quran or Hadith text — its role is to explain and encourage.",
-    "bannerShort": "AI never generates any Quran or Hadith text — its role is to explain and encourage."
+    "banner": "AI never composes any ayah or hadith — its role is to explain, encourage, and answer from trusted sources."
   },
   "plans": {
     "title": "Plans",
@@ -175,7 +190,11 @@
       ]
     },
     "names": {
-      "surah": { "112": "Al-Ikhlas", "113": "Al-Falaq", "114": "An-Nas" },
+      "surah": {
+        "112": "Al-Ikhlas",
+        "113": "Al-Falaq",
+        "114": "An-Nas"
+      },
       "hadith": {
         "PLACEHOLDER-birr-alwalidayn": "hadith on kindness to parents",
         "PLACEHOLDER-al-kadhib": "hadith on lying",

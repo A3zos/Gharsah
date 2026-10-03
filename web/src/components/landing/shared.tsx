@@ -2,10 +2,145 @@
 // same art, different sizes, so sizes are props with the frames' exact values.
 import { useEffect, useRef, useState } from 'react';
 
-import { useI18n } from '../../i18n/i18n';
+import { verifiedAyah } from '../../content/verified';
+import { useI18n, type Messages } from '../../i18n/i18n';
 import { C } from '../ui/color';
 import { PlayGlyph } from '../ui/icons';
 import { cx } from '../../lib/cx';
+
+// ---- «ماذا يتعلّم طفلك؟» ------------------------------------------------------------------
+
+// Al-Ikhlas 112:2 for the Quran card's example question — from the verified Tanzil text.
+const SAMAD = verifiedAyah(112, 2).text;
+
+type LearnKey = keyof Messages['sources']['cards'];
+
+/** The three cards' look: icon, its tinted box, the example bubbles' accent. */
+const LEARN: readonly { key: LearnKey; tint: string; chip: string; icon: (s: number) => React.ReactNode }[] =
+  [
+    {
+      key: 'quran',
+      tint: 'bg-green-tint',
+      chip: 'bg-primary/12 text-deep-green',
+      icon: (s) => SourceIcons.quran(s),
+    },
+    {
+      key: 'hadith',
+      tint: 'bg-gold-tint',
+      chip: 'bg-gold/12 text-warning-text',
+      icon: (s) => SourceIcons.scroll(s),
+    },
+    {
+      key: 'islam',
+      tint: 'bg-berry-tint',
+      chip: 'bg-berry/12 text-berry-deep',
+      icon: (s) => SourceIcons.question(s),
+    },
+  ];
+
+/** A child's example question; «{ayah}» becomes ﴿ٱللَّهُ ٱلصَّمَدُ﴾ (Arabic, Uthmani, rtl in every language). */
+function ExampleBubble({ text, tone }: { text: string; tone: string }) {
+  const [before, after] = text.split('{ayah}');
+  return (
+    <span
+      className={cx(
+        'max-w-full rounded-px-14 rounded-es-[4px] px-[12px] py-[6px] text-[14px] leading-[1.6] font-bold',
+        tone,
+      )}
+    >
+      {before}
+      {after !== undefined && (
+        <>
+          <span lang="ar" dir="rtl" className="font-ayah text-[1.1em] font-normal">
+            <span className="text-ayah-bracket">﴿</span>
+            {SAMAD}
+            <span className="text-ayah-bracket">﴾</span>
+          </span>
+          {after}
+        </>
+      )}
+    </span>
+  );
+}
+
+/**
+ * «ماذا يتعلّم طفلك؟»: three cards (the Quran / the Hadith / what Islam is), each with
+ * example questions and its stated sources. Desktop: 3 equal columns; phones: stacked rows.
+ */
+export function LearnCards({ desktop }: { desktop?: boolean }) {
+  const { m } = useI18n();
+  return (
+    <div className={desktop ? 'grid grid-cols-3 gap-[18px]' : 'flex flex-col gap-[14px]'}>
+      {LEARN.map((c) => {
+        const t = m.sources.cards[c.key];
+        const icon = (
+          <span
+            className={cx(
+              'flex shrink-0 items-center justify-center',
+              c.tint,
+              desktop ? 'h-[52px] w-[52px] rounded-px-17' : 'h-[44px] w-[44px] rounded-px-15',
+            )}
+            aria-hidden="true"
+          >
+            {c.icon(desktop ? 26 : 22)}
+          </span>
+        );
+        const body = (
+          <>
+            <h3
+              className={cx(
+                'm-0',
+                desktop ? 'font-heading text-[21px] font-bold' : 'text-[16px] font-extrabold',
+              )}
+            >
+              {t.title}
+            </h3>
+            <p
+              className={cx(
+                'm-0 text-text-muted ltr:leading-[1.7]',
+                desktop ? 'text-[14.5px] leading-[1.95]' : 'text-[13.5px] leading-[1.9]',
+              )}
+            >
+              {t.body}
+            </p>
+            <span className="flex flex-wrap items-start gap-[8px]">
+              {t.examples.map((e) => (
+                <ExampleBubble key={e} text={e} tone={c.chip} />
+              ))}
+            </span>
+            <span
+              className={cx(
+                'border-t border-t-border-soft pt-[10px] leading-[1.7] text-text-muted',
+                desktop ? 'mt-auto text-[12.5px]' : 'mt-[2px] text-[12px]',
+              )}
+            >
+              {t.source}
+            </span>
+          </>
+        );
+        return desktop ? (
+          <div
+            key={c.key}
+            className="flex min-w-0 flex-col gap-[13px] rounded-px-26 border-[1.5px] border-border bg-surface px-[24px] py-[28px]"
+          >
+            {icon}
+            {body}
+          </div>
+        ) : (
+          <div
+            key={c.key}
+            className="flex items-start gap-[13px] rounded-px-22 border-[1.5px] border-border bg-surface px-[16px] py-[18px]"
+          >
+            {icon}
+            <span className="flex min-w-0 flex-col gap-[7px]">{body}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---- voice notes -------------------------------------------------------------------------
 
 /** One voice note: who speaks, the caption, its (pretend) length in seconds. */
 export type VoiceLine = { from: 'teacher' | 'child'; text: string; sec: number };
@@ -299,6 +434,24 @@ export const SourceIcons = {
         strokeWidth="1.9"
         strokeLinejoin="round"
       />
+    </svg>
+  ),
+  /** The hadith scroll in amber («تعلّم الحديث»). */
+  scroll: (s: number) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M7 4 H17 C18.7 4 20 5.3 20 7 V20 H9.5 C8 20 7 18.8 7 17.3 Z"
+        stroke={C.ayahBracket}
+        strokeWidth="1.9"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 4 C5.3 4 4 5.3 4 7 C4 8.2 4.9 9 6 9 H7"
+        stroke={C.ayahBracket}
+        strokeWidth="1.9"
+        strokeLinejoin="round"
+      />
+      <path d="M11 9.5 H16.5 M11 13 H16.5" stroke={C.ayahBracket} strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   ),
   shieldOnDark: (s: number) => (
