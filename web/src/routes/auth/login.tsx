@@ -13,6 +13,9 @@ import { Blob, MobilePage } from '../../components/ui/Page';
 import { SegmentedTabs } from '../../components/ui/SegmentedTabs';
 import { TextField } from '../../components/ui/TextField';
 import { isValidEmail, signIn } from '../../data/auth';
+import { bareCode } from '../../data/authFailure';
+import { useI18n, type Messages } from '../../i18n/i18n';
+import { LandingI18nProvider } from '../../i18n/LandingI18n';
 import { ClaimFailure, claimCode } from '../../data/childSession';
 import { toLatinDigits } from '../../lib/arabicDigits';
 import { safeNext } from '../../lib/nav';
@@ -56,18 +59,21 @@ export default function LoginRoute({ loaderData }: Route.ComponentProps) {
   const [params, setParams] = useSearchParams();
   const childDevice = loaderData?.childDevice ?? false;
   const tab = tabOf(params);
+  // The welcome choice is Arabic only for now; the two tabs follow the chosen language.
   if (!tab) return <Welcome />;
   return (
-    <Login
-      tab={tab}
-      childDevice={childDevice}
-      onTab={(t) => {
-        const next = new URLSearchParams(params);
-        next.delete('role');
-        next.set('tab', t);
-        setParams(next, { replace: true });
-      }}
-    />
+    <LandingI18nProvider>
+      <Login
+        tab={tab}
+        childDevice={childDevice}
+        onTab={(t) => {
+          const next = new URLSearchParams(params);
+          next.delete('role');
+          next.set('tab', t);
+          setParams(next, { replace: true });
+        }}
+      />
+    </LandingI18nProvider>
   );
 }
 
@@ -179,31 +185,40 @@ function GrowthIntro() {
 
 function Login({ tab, onTab, childDevice }: { tab: Tab; onTab: (t: Tab) => void; childDevice: boolean }) {
   const [expired, setExpired] = useState<string[] | null>(null);
-  if (expired) return <SCodeExpired cells={expired} onBack={() => setExpired(null)} />;
+  const { lang, m } = useI18n();
+  const t = m.login;
+  if (expired)
+    // not translated yet: Arabic, rtl in every language
+    return (
+      <div lang="ar" dir="rtl">
+        <SCodeExpired cells={expired} onBack={() => setExpired(null)} />
+      </div>
+    );
   return (
     <MobilePage
       decor={<Blob className="-top-[150px] -left-[130px] h-[340px] w-[340px] bg-blob-green-strong" />}
       innerClassName="px-[26px] pt-[30px] pb-[36px]"
     >
       <div className="mx-auto flex w-full max-w-[440px] grow flex-col gap-[16px]">
-        {/* One back control: «الرئيسية» (history-aware), logo on the right. */}
-        <HomeBar logoFirst />
+        {/* One back control: «الرئيسية» (history-aware) on the left, the logo on the right
+            (RTL: logo first; LTR: the back button first). */}
+        <HomeBar logoFirst={lang === 'ar'} />
         <div className="flex flex-col gap-[4px]">
           <h1 className="m-0 font-heading text-[28px] leading-[1.5] font-bold">
-            {tab === 'parent' ? 'أهلًا بعودتك' : 'أهلًا يا بطل!'}
+            {tab === 'parent' ? t.parent.title : t.child.title}
           </h1>
           <p className="m-0 text-[14.5px] leading-[1.7] text-text-muted">
-            {tab === 'parent' ? 'سجّل دخولك لمتابعة تقدّم أبنائك.' : 'أدخل رمز الربط الذي أعطاك إياه والدك.'}
+            {tab === 'parent' ? t.parent.subtitle : t.child.subtitle}
           </p>
         </div>
         <SegmentedTabs<Tab>
-          label="نوع الدخول"
+          label={t.tabsLabel}
           idPrefix="login"
           value={tab}
           onChange={onTab}
           segments={[
-            { value: 'parent', label: 'ولي الأمر', icon: (on) => <ParentGlyph on={on} /> },
-            { value: 'child', label: 'الطفل', icon: (on) => <ChildGlyph on={on} /> },
+            { value: 'parent', label: t.parentTab, icon: (on) => <ParentGlyph on={on} /> },
+            { value: 'child', label: t.childTab, icon: (on) => <ChildGlyph on={on} /> },
           ]}
         />
         <div
@@ -253,21 +268,24 @@ function ParentForm({ childDevice }: { childDevice: boolean }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<{ field: string; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const { lang, m } = useI18n();
+  const t = m.login.parent;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
-    if (!isValidEmail(email))
-      return setError({ field: 'email', message: 'صيغة البريد الإلكتروني غير صحيحة.' });
-    if (!password) return setError({ field: 'password', message: 'اكتب كلمة المرور.' });
+    if (!isValidEmail(email)) return setError({ field: 'email', message: m.login.errors.invalidEmail });
+    if (!password) return setError({ field: 'password', message: m.login.errors.emptyPassword });
     setBusy(true);
     setError(null);
     try {
       await signIn(email, password);
       navigate(safeNext(params, 'parent') ?? paths.parent.root, { replace: true });
     } catch (err) {
-      const f = err as { field?: string; message: string };
-      setError({ field: f.field ?? 'general', message: f.message });
+      const f = err as { field?: string; message: string; code?: string };
+      // Arabic: the data layer's message as before; English: by the failure's code
+      const message = lang === 'ar' ? f.message : signInMessage(m.login.errors, f.code);
+      setError({ field: f.field ?? 'general', message });
       setBusy(false);
     }
   };
@@ -275,13 +293,13 @@ function ParentForm({ childDevice }: { childDevice: boolean }) {
   return (
     <form noValidate onSubmit={submit} className="flex grow flex-col gap-[18px]">
       <TextField
-        label="البريد الإلكتروني"
+        label={t.email}
         id="login-email"
         name="email"
         type="email"
         dir="ltr"
         autoComplete="email"
-        placeholder="name@example.com"
+        placeholder={t.emailPlaceholder}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         status={error?.field === 'email' ? 'error' : undefined}
@@ -289,28 +307,25 @@ function ParentForm({ childDevice }: { childDevice: boolean }) {
       />
       <div className="flex flex-col gap-[8px]">
         <TextField
-          label="كلمة المرور"
+          label={t.password}
           id="login-pass"
           name="password"
           password
           autoComplete="current-password"
-          placeholder="••••••••"
+          placeholder={t.passwordPlaceholder}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           status={error?.field === 'password' ? 'error' : undefined}
           message={error?.field === 'password' ? error.message : undefined}
         />
         <Link to={paths.forgotPassword} className="self-start px-[2px] py-[6px] text-[13.5px] font-bold">
-          نسيت كلمة المرور؟
+          {t.forgot}
         </Link>
       </div>
-      <Note tone="green">حساب وليّ الأمر فقط. لا ينشئ الطفل حسابًا — يدخل برمز الربط.</Note>
+      <Note tone="green">{t.note}</Note>
       {childDevice && (
         // Signing in replaces this browser's child session (one identity per browser).
-        <Note tone="gold">
-          هذا المتصفح مربوط بحساب طفل. تسجيل دخولك هنا يفصله، وسيحتاج الطفل رمز ربط جديدًا — الأفضل أن تدخل من
-          جوالك أو متصفح آخر.
-        </Note>
+        <Note tone="gold">{t.childDeviceNote}</Note>
       )}
       {error?.field === 'general' && (
         <p role="alert" className="m-0 flex items-center gap-[7px] text-[13px] font-bold text-error-text">
@@ -320,12 +335,12 @@ function ParentForm({ childDevice }: { childDevice: boolean }) {
       )}
       <div className="mt-auto flex flex-col gap-[14px]">
         <Button type="submit" disabled={busy} aria-busy={busy}>
-          تسجيل الدخول
+          {t.submit}
         </Button>
         <p className="m-0 text-center text-[14px] text-text-muted">
-          ليس لديك حساب؟{' '}
+          {t.noAccount}{' '}
           <Link to={paths.signup} className="font-bold">
-            إنشاء حساب
+            {t.signup}
           </Link>
         </p>
       </div>
@@ -340,6 +355,9 @@ function ChildForm({ onExpired }: { onExpired: (cells: string[]) => void }) {
   const [params] = useSearchParams();
   const [cells, setCells] = useState<string[]>(() => Array(CODE_LENGTH).fill(''));
   const [status, setStatus] = useState<CodeStatus>('');
+  const { m } = useI18n();
+  const t = m.login.child;
+  const e = m.login.errors;
 
   const submit = async (value = cells) => {
     if (status === 'busy' || status === 'ok') return;
@@ -376,10 +394,10 @@ function ChildForm({ onExpired }: { onExpired: (cells: string[]) => void }) {
       </div>
       <div className="flex flex-col gap-[10px]">
         <label htmlFor="code-cell-1" className="text-center text-[14px] font-bold">
-          رمز الربط
+          {t.code}
         </label>
         <CodeInput
-          label="رمز الربط"
+          label={t.code}
           value={cells}
           invalid={status === 'bad'}
           disabled={status === 'busy' || status === 'ok'}
@@ -398,54 +416,86 @@ function ChildForm({ onExpired }: { onExpired: (cells: string[]) => void }) {
             <>
               <span className="flex items-center gap-[7px] text-[13px] font-bold text-error-text">
                 <AlertIcon />
-                الرمز غير صحيح أو انتهت صلاحيته. اطلب رمزًا جديدًا من والدك.
+                {e.codeWrong}
               </span>
               <button
                 type="button"
                 onClick={() => onExpired(cells)}
                 className="border-0 bg-transparent p-0 font-body text-[13px] font-extrabold text-deep-green underline"
               >
-                ما الحل؟
+                {e.codeWhatToDo}
               </button>
             </>
           )}
           {status === 'short' && (
-            <span className="text-[13px] font-bold text-warning-text">أكمل الخانات الستّ.</span>
+            <span className="text-[13px] font-bold text-warning-text">{e.codeShort}</span>
           )}
           {status === 'ok' && (
             <span className="flex items-center gap-[7px] text-[13px] font-bold text-deep-green">
               <CheckCircleIcon />
-              تم التحقق — جارٍ فتح تطبيق الطفل
+              {e.codeOk}
             </span>
           )}
           {(status === 'tooMany' || status === 'offline' || status === 'unavailable') && (
             <span className="flex items-center gap-[7px] text-[13px] font-bold text-error-text">
               <AlertIcon />
               {status === 'tooMany'
-                ? 'محاولات كثيرة — انتظر قليلًا ثم حاول مجددًا.'
+                ? e.codeTooMany
                 : status === 'offline'
-                  ? 'تحقق من اتصالك بالإنترنت.'
-                  : 'الخدمة غير متاحة الآن، حاول بعد قليل.'}
+                  ? e.codeOffline
+                  : e.codeUnavailable}
             </span>
           )}
         </div>
       </div>
       <Note tone="gold">
-        لا تحتاج بريدًا ولا كلمة مرور — الرمز وحده يكفي. انتهت صلاحية رمزك؟{' '}
+        {t.note}{' '}
         <button
           type="button"
           onClick={() => onExpired(cells.map((c) => c || '–'))}
           className="border-0 bg-transparent p-0 font-body font-extrabold text-deep-green underline"
         >
-          اطلب رمزًا جديدًا من والدك
+          {t.askParent}
         </button>
         .
       </Note>
       <div className="mt-auto">
         <Button type="submit" className="w-full" disabled={status === 'busy'} aria-busy={status === 'busy'}>
-          دخول
+          {t.submit}
         </Button>
       </div>
     </form>
   );
+}
+
+/** A sign-in failure's message in a non-Arabic language, by its code (data/authFailure.ts). */
+function signInMessage(e: Messages['login']['errors'], code: string | undefined): string {
+  switch (code && bareCode(code)) {
+    case 'invalid-credential':
+    case 'invalid-login-credentials':
+    case 'user-not-found':
+    case 'wrong-password':
+    case 'INVALID_LOGIN_CREDENTIALS':
+    case 'invalid_credentials':
+      return e.wrongCredentials;
+    case 'invalid-email':
+    case 'missing-email':
+    case 'email_address_invalid':
+    case 'validation_failed':
+      return e.invalidEmail;
+    case 'too-many-requests':
+    case 'over_request_rate_limit':
+    case 'over_email_send_rate_limit':
+      return e.tooMany;
+    case 'network-request-failed':
+    case 'unavailable':
+      return e.network;
+    case 'email_not_confirmed':
+    case 'confirm-email':
+      return e.emailNotConfirmed;
+    case 'user-disabled':
+      return e.userDisabled;
+    default:
+      return e.unexpected;
+  }
 }

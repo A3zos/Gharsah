@@ -3,6 +3,7 @@ import { useId, useState } from 'react';
 import { cx } from '../../lib/cx';
 import { C } from './color';
 import { EyeIcon } from './icons';
+import { useI18n } from '../../i18n/i18n';
 
 export type FieldStatus = 'ok' | 'error';
 
@@ -38,6 +39,7 @@ export function TextField({
   const fieldId = id ?? auto;
   const msgId = `${fieldId}-msg`;
   const [shown, setShown] = useState(false);
+  const { m } = useI18n();
   const hasBadge = !password && status !== undefined;
   const ltr = dir === 'ltr';
 
@@ -70,7 +72,7 @@ export function TextField({
           <button
             type="button"
             onClick={() => setShown((v) => !v)}
-            aria-label={shown ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+            aria-label={shown ? m.common.hidePassword : m.common.showPassword}
             className="absolute left-[8px] flex h-[44px] w-[44px] items-center justify-center rounded-px-14 border-0 bg-transparent"
           >
             <EyeIcon open={shown} />

@@ -70,6 +70,19 @@ function initialLanguage(): UiLanguage {
   return 'ar';
 }
 
+/**
+ * A page opened with a valid ?lang= keeps it: stored like a switcher choice, so the
+ * next page (the login from the landing's «Log in», …) opens in the same language.
+ */
+export function rememberUrlLanguage(): void {
+  try {
+    const q = new URLSearchParams(window.location.search).get('lang');
+    if (isUiLanguage(q)) localStorage.setItem(STORAGE_KEY, q);
+  } catch {
+    // no URL / storage blocked — this page still uses ?lang=
+  }
+}
+
 export function setDocumentLanguage(lang: UiLanguage) {
   const html = document.documentElement;
   html.lang = lang;

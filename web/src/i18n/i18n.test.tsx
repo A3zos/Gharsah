@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { LanguageMenu, LanguageSheetButton } from '../components/ui/LanguageSwitcher';
 import ar from './ar.json';
 import en from './en.json';
+import id from './id.json';
 import { fill, STORAGE_KEY, useI18n } from './i18n';
 import { LandingI18nProvider } from './LandingI18n';
 
@@ -40,6 +41,8 @@ afterEach(() => {
 
 test('ar.json and en.json have the same keys', () => {
   expect(keysOf(en)).toEqual(keysOf(ar));
+  // Indonesian: the English text for now (translated later), the same keys
+  expect(keysOf(id)).toEqual(keysOf(ar));
 });
 
 test('fill: the age range in each language’s digits', () => {
@@ -79,6 +82,16 @@ test('Indonesian still shows «قريبًا» (in the page language) and keeps t
   fireEvent.click(screen.getByRole('button', { name: 'Language: English' }));
   fireEvent.click(screen.getByRole('option', { name: /Indonesia/ }));
   expect(screen.getByRole('status')).toHaveTextContent('Coming soon');
+  expect(screen.getByTestId('probe')).toHaveAttribute('data-lang', 'en');
+});
+
+test('?lang=en is remembered for the next page (the login from «Log in»)', () => {
+  window.history.replaceState(null, '', '/?lang=en');
+  const { unmount } = landing();
+  expect(localStorage.getItem(STORAGE_KEY)).toBe('en');
+  unmount();
+  window.history.replaceState(null, '', '/login?tab=parent');
+  landing();
   expect(screen.getByTestId('probe')).toHaveAttribute('data-lang', 'en');
 });
 

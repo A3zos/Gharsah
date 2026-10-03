@@ -2,9 +2,9 @@ import { useRef } from 'react';
 
 import { cx } from '../../lib/cx';
 import { normalizeDigit } from '../../lib/arabicDigits';
+import { fill, useI18n } from '../../i18n/i18n';
 
 export const CODE_LENGTH = 6;
-const ORDINALS = ['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة'];
 
 /**
  * The six pairing-code cells (03 child tab). Shows Arabic-Indic digits, accepts
@@ -27,6 +27,7 @@ export function CodeInput({
   onComplete?: (cells: string[]) => void;
 }) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
+  const { lang, m } = useI18n();
   const focus = (i: number) => refs.current[Math.max(0, Math.min(CODE_LENGTH - 1, i))]?.focus();
 
   const setFrom = (start: number, digits: string[]) => {
@@ -55,7 +56,10 @@ export function CodeInput({
           autoComplete={i === 0 ? 'one-time-code' : 'off'}
           maxLength={CODE_LENGTH}
           disabled={disabled}
-          aria-label={`الخانة ${ORDINALS[i]} من ${label}`}
+          aria-label={fill(lang, m.common.codeCell, {
+            ordinal: m.common.ordinals[i] ?? String(i + 1),
+            label,
+          })}
           aria-invalid={invalid || undefined}
           value={value[i] ?? ''}
           onFocus={(e) => e.currentTarget.select()}
