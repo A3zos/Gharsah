@@ -9,7 +9,7 @@ import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
 import { TEACHER_NAME, teacherFrameSrc, type TeacherFrame } from '../child/teacherCharacter';
 import { C } from '../ui/color';
-import { CheckIcon, MicIcon } from '../ui/icons';
+import { MicIcon } from '../ui/icons';
 
 // Al-Ikhlas 112:1, the ayah being recited — from the verified asset.
 const AYAH = verifiedAyah(112, 1);
@@ -55,8 +55,8 @@ function TalkingTeacher() {
   }, [reduce]);
   const frame: TeacherFrame = reduce ? 'idle' : LOOP[tick % LOOP.length]!;
   return (
-    <div className="relative h-[300px] w-full shrink-0">
-      <span className="absolute top-[26px] left-1/2 h-[268px] w-[268px] -translate-x-1/2 rounded-full bg-green-tint" />
+    <div className="relative h-[280px] w-full shrink-0">
+      <span className="absolute top-[24px] left-1/2 h-[250px] w-[250px] -translate-x-1/2 rounded-full bg-green-tint" />
       {/* all frames stacked, only one visible — no flicker while switching */}
       {SHOWN.map((f) => (
         <img
@@ -66,14 +66,14 @@ function TalkingTeacher() {
           loading="eager"
           draggable={false}
           className={cx(
-            'absolute bottom-0 left-1/2 h-[300px] w-[230px] -translate-x-1/2 object-cover object-top',
+            'absolute bottom-0 left-1/2 h-[280px] w-[215px] -translate-x-1/2 object-cover object-top',
             f === frame ? 'opacity-100' : 'opacity-0',
           )}
         />
       ))}
       {/* the talking glow */}
       {!reduce && (
-        <span className="absolute top-[46px] left-1/2 h-[228px] w-[228px] -translate-x-1/2 animate-[gh-pulse_2.4s_ease-in-out_infinite] rounded-full" />
+        <span className="absolute top-[42px] left-1/2 h-[210px] w-[210px] -translate-x-1/2 animate-[gh-pulse_2.4s_ease-in-out_infinite] rounded-full" />
       )}
     </div>
   );
@@ -162,7 +162,7 @@ function CallScreen() {
   return (
     <div className="flex h-full flex-col bg-background">
       <StatusBar />
-      <div className="flex grow flex-col items-center gap-[10px] px-[14px] pt-[10px] pb-[28px]">
+      <div className="flex grow flex-col items-center gap-[10px] px-[14px] pt-[10px] pb-[84px]">
         {/* LiveHeader */}
         <div className="flex w-full items-center gap-[8px]">
           <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-berry-border bg-berry-tint">
@@ -191,7 +191,7 @@ function CallScreen() {
           {TEACHER_NAME.boy}
         </span>
         {/* the ayah card: the current ayah on ONE line (scaled down to fit, never wrapped) */}
-        <div className="flex w-full flex-col items-center gap-[4px] rounded-px-24 border-[2px] border-primary bg-surface px-[12px] pt-[14px] pb-[14px] shadow-lesson-ayah-card">
+        <div className="flex w-full flex-col items-center gap-[4px] rounded-px-24 border-[2px] border-primary bg-surface px-[12px] pt-[10px] pb-[11px] shadow-lesson-ayah-card">
           <AyahLine />
           <span className="text-[12px] font-bold text-text-muted">
             سورة الإخلاص · الآية {toArabicDigits(1)}
@@ -210,15 +210,20 @@ function CallScreen() {
   );
 }
 
-function FloatCard({ className, children }: { className: string; children: React.ReactNode }) {
+/**
+ * The parent's push notification, styled like a system banner (in gold). Sizes are in
+ * the 323-wide phone's units: on desktop it renders ~260px wide with a 20px app icon.
+ */
+function ParentNotification() {
   return (
-    <div
-      className={cx(
-        'absolute z-3 flex items-center gap-[9px] rounded-px-18 border-[1.5px] border-border bg-surface px-[13px] py-[10px] whitespace-nowrap shadow-dark-14-28-8 motion-reduce:animate-none',
-        className,
-      )}
-    >
-      {children}
+    <div className="absolute -bottom-[34px] -left-[56px] z-3 flex w-[303px] animate-[gh-notif-in_.6s_cubic-bezier(.2,.8,.2,1)_.9s_both] flex-col gap-[4px] rounded-px-20 border border-gold/60 bg-linear-to-br from-gold-tint/95 via-gold-tint/85 to-gold/45 px-[15px] pt-[11px] pb-[13px] text-on-gold shadow-gold-16-32-28 backdrop-blur-[12px] motion-reduce:animate-none">
+      <span className="flex items-center gap-[7px] text-[12.5px] font-bold text-on-gold/65">
+        <img src="/icon-192.png" alt="" className="h-[23px] w-[23px] rounded-px-6" draggable={false} />
+        <span>غَرْسة</span>
+        <span className="ms-auto">الآن</span>
+      </span>
+      <span className="mt-[2px] text-[15px] leading-[1.5] font-extrabold">تنبيه لولي الأمر</span>
+      <span className="text-[14.5px] leading-[1.5] font-semibold">بدر أتمّ حصة اليوم 🌟</span>
     </div>
   );
 }
@@ -260,20 +265,8 @@ export function LivePhone({ desktop }: { desktop?: boolean }) {
         {/* dynamic island */}
         <span className="absolute top-[9px] left-1/2 h-[26px] w-[92px] -translate-x-1/2 rounded-pill bg-text-dark" />
       </div>
-      {/* overlaps the lower-left corner, beside the mic — never over the ayah or the mic */}
-      <FloatCard
-        className="bottom-[22px] -left-[56px] animate-[gh-float-3_5.2s_ease-in-out_.8s_infinite]"
-      >
-        <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary">
-          <CheckIcon size={15} color="surface" strokeWidth={3.2} />
-        </span>
-        <span className="flex flex-col">
-          <span className="text-[11.5px] font-bold text-text-muted">ولي الأمر</span>
-          <span className="text-[13.5px] font-extrabold text-text-dark">
-            بدر أتمّ اليوم {toArabicDigits(1)} ✓
-          </span>
-        </span>
-      </FloatCard>
+      {/* a push notification over the lower-left corner — never over the ayah or the mic */}
+      <ParentNotification />
     </div>
   );
   return (
