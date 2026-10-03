@@ -37,7 +37,7 @@ export const HOW_STEPS = [
     accent: 'goldDeep',
     accentBg: 'bg-gold-deep',
     chat: [
-      { from: 'teacher', text: 'حديث اليوم عن برّ الوالدين 💛 ما الذي ستفعله لأمك؟', sec: 4 },
+      { from: 'teacher', text: 'حديث اليوم عن برّ الوالدين 💛', sec: 4 },
       { from: 'child', text: 'سأساعدها في ترتيب البيت', sec: 2 },
     ],
   },
@@ -81,9 +81,9 @@ export function HowLabel({ step, desktop }: { step: HowStep; desktop?: boolean }
   );
 }
 
-const BARS = 22;
+const BARS = 16;
 
-/** ~22 waveform bar heights (30–100% of 18px), fixed per line so every render draws the same note. */
+/** ~16 waveform bar heights (30–100% of 14px), fixed per line so every render draws the same note. */
 function waveform(text: string): number[] {
   let h = 0;
   for (const ch of text) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -95,37 +95,37 @@ function waveform(text: string): number[] {
 }
 
 /**
- * A compact WhatsApp-style voice note on one row (play button, waveform, «0:05»), with the
- * words as a muted caption under it. Teacher: white + accent play button, on the start side;
+ * A small WhatsApp-style voice note on one row (play button, waveform, «0:05»), with the
+ * words as a one-line muted caption under it. Teacher: white + accent play button, on the start side;
  * child: accent-tinted + white play button, on the other side.
  */
 function VoiceNote({ step, line, playing }: { step: HowStep; line: VoiceLine; playing: boolean }) {
   const teacher = line.from === 'teacher';
   return (
-    <div className={cx('flex w-full flex-col gap-[2px]', teacher ? 'items-start' : 'items-end')}>
+    <div className={cx('flex w-full flex-col gap-[3px]', teacher ? 'items-start' : 'items-end')}>
       <div
         className={cx(
-          'flex h-[52px] w-full max-w-[260px] items-center gap-[10px] rounded-px-18 px-[12px] py-[8px] shadow-soft',
+          'flex h-[40px] w-full max-w-[200px] items-center gap-[8px] rounded-px-14 px-[10px] py-[6px] shadow-soft',
           teacher ? 'bg-surface' : step.childBubble,
         )}
       >
         <span
           className={cx(
-            'flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full',
+            'flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full',
             teacher ? step.accentBg : 'bg-surface',
           )}
         >
           {/* the play triangle points right in RTL too (media icons are not mirrored) */}
           <span className="translate-x-[1px]">
-            <PlayGlyph size={13} color={teacher ? 'surface' : step.accent} />
+            <PlayGlyph size={10} color={teacher ? 'surface' : step.accent} />
           </span>
         </span>
-        <span className="flex h-[18px] min-w-0 grow items-center gap-[2px]" dir="ltr">
+        <span className="flex h-[14px] min-w-0 grow items-center gap-[2px]" dir="ltr">
           {waveform(line.text).map((h, i) => (
             <span
               key={i}
               className={cx(
-                'w-[3px] shrink-0 rounded-pill',
+                'w-[2px] shrink-0 rounded-pill',
                 step.accentBg,
                 playing && 'animate-[gh-wave_.5s_ease-in-out_4_alternate]',
               )}
@@ -140,7 +140,7 @@ function VoiceNote({ step, line, playing }: { step: HowStep; line: VoiceLine; pl
       </div>
       <span
         className={cx(
-          'line-clamp-2 max-w-full px-[4px] text-[14px] leading-[1.45] text-text-muted',
+          'max-w-full truncate px-[4px] text-[13px] leading-[1.4] text-text-muted',
           teacher ? 'text-start' : 'text-end',
         )}
       >
@@ -184,11 +184,8 @@ function usePlayOnView<T extends HTMLElement>() {
 export function HowExample({ step }: { step: HowStep }) {
   const { ref, playing } = usePlayOnView<HTMLDivElement>();
   return (
-    <div
-      ref={ref}
-      className={cx('flex flex-col gap-[6px] rounded-px-18 px-[12px] pt-[8px] pb-[10px]', step.tint)}
-    >
-      <span className="text-[11.5px] font-extrabold text-text-muted">مثال</span>
+    <div ref={ref} className={cx('flex flex-col gap-[10px] rounded-px-18 p-[14px]', step.tint)}>
+      <span className="-mb-[4px] text-[12px] leading-[1.2] font-extrabold text-text-muted">مثال</span>
       {step.chat.map((line, i) => (
         <VoiceNote key={line.text} step={step} line={line} playing={playing && i === 0} />
       ))}
