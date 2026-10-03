@@ -1,10 +1,14 @@
 // The landing hero's phone: a modern phone showing our ACTUAL live lesson (the call
-// screen's pill + timer, the sprite teacher talking, the current ayah from the
-// verified Tanzil text, the listening mic), with a floating parent notification.
-// Purely decorative (aria-hidden). Always upright; scaled down on phones.
+// screen's pills + timer, the sprite teacher talking, the listening mic). The screen
+// alternates between the Quran lesson (the current ayah from the verified Tanzil text)
+// and the Hadith lesson (topic only until the hadith is approved in content/).
+// Decorative (aria-hidden). The phone itself never moves; scaled down on phones.
 import { useEffect, useRef, useState } from 'react';
 
+import hadithJson from '@content/hadith/hadith.json';
+
 import { verifiedAyah } from '../../content/verified';
+import { Hadith } from '../../lesson/hadith';
 import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
 import { TEACHER_NAME, teacherFrameSrc, type TeacherFrame } from '../child/teacherCharacter';
@@ -13,6 +17,20 @@ import { MicIcon } from '../ui/icons';
 
 // Al-Ikhlas 112:1, the ayah being recited — from the verified asset.
 const AYAH = verifiedAyah(112, 1);
+
+// The برّ الوالدين hadith from content/hadith/hadith.json: its text shows only once
+// it is approved there (Hadith hides it otherwise) — never typed here.
+const HADITH = (hadithJson as { hadith: Record<string, unknown>[] }).hadith
+  .map((j) => Hadith.fromJson(j))
+  .find((h) => h.topic === 'برّ الوالدين')!;
+
+type Scene = 'quran' | 'hadith';
+const SCENES: readonly Scene[] = ['quran', 'hadith'];
+const SCENE_MS = 6000;
+const SCENE_PILL: Record<Scene, { label: string; tone: string }> = {
+  quran: { label: 'حصة القرآن', tone: 'border-primary/40 bg-green-tint text-deep-green' },
+  hadith: { label: 'حصة الحديث', tone: 'border-berry-border bg-berry-tint text-berry-deep' },
+};
 
 // The talking loop at 8 fps: idle → mouth-small → mouth-open → mouth-small for ~2.5 s,
 // then a ~1 s pause with a blink in the middle, and again.
@@ -55,8 +73,8 @@ function TalkingTeacher() {
   }, [reduce]);
   const frame: TeacherFrame = reduce ? 'idle' : LOOP[tick % LOOP.length]!;
   return (
-    <div className="relative h-[280px] w-full shrink-0">
-      <span className="absolute top-[24px] left-1/2 h-[250px] w-[250px] -translate-x-1/2 rounded-full bg-green-tint" />
+    <div className="relative h-[292px] w-full shrink-0">
+      <span className="absolute top-[24px] left-1/2 h-[262px] w-[262px] -translate-x-1/2 rounded-full bg-green-tint" />
       {/* all frames stacked, only one visible — no flicker while switching */}
       {SHOWN.map((f) => (
         <img
@@ -66,14 +84,14 @@ function TalkingTeacher() {
           loading="eager"
           draggable={false}
           className={cx(
-            'absolute bottom-0 left-1/2 h-[280px] w-[215px] -translate-x-1/2 object-cover object-top',
+            'absolute bottom-0 left-1/2 h-[292px] w-[224px] -translate-x-1/2 object-cover object-top',
             f === frame ? 'opacity-100' : 'opacity-0',
           )}
         />
       ))}
       {/* the talking glow */}
       {!reduce && (
-        <span className="absolute top-[42px] left-1/2 h-[210px] w-[210px] -translate-x-1/2 animate-[gh-pulse_2.4s_ease-in-out_infinite] rounded-full" />
+        <span className="absolute top-[44px] left-1/2 h-[222px] w-[222px] -translate-x-1/2 animate-[gh-pulse_2.4s_ease-in-out_infinite] rounded-full" />
       )}
     </div>
   );
@@ -158,13 +176,71 @@ function AyahLine() {
   );
 }
 
+/** Two layers in one grid cell; the shown one fades in over the other (~400ms). */
+function Fade({ show, children }: { show: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      className={cx(
+        'flex justify-center transition-opacity duration-[400ms] ease-in-out [grid-area:1/1]',
+        show ? 'opacity-100' : 'opacity-0',
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function QuranCard() {
+  return (
+    <div className="flex w-full flex-col items-center gap-[4px] self-center rounded-px-24 border-[2px] border-primary bg-surface px-[12px] pt-[10px] pb-[11px] shadow-lesson-ayah-card">
+      <AyahLine />
+      <span className="text-[12px] font-bold text-text-muted">سورة الإخلاص</span>
+    </div>
+  );
+}
+
+/** The lesson's hadith card style; the hadith text itself only when approved in content/. */
+function HadithCard() {
+  return (
+    <div className="flex w-full flex-col items-center gap-[6px] self-center rounded-px-24 border-[2px] border-primary bg-surface px-[12px] pt-[10px] pb-[11px] text-center shadow-lesson-ayah-card">
+      <span className="font-heading text-[17px] leading-[1.5] font-bold text-text-dark">
+        حديث اليوم: <span className="text-berry-deep">{HADITH.topic}</span>
+      </span>
+      {HADITH.isApproved ? (
+        <span className="line-clamp-2 font-classical text-[15px] leading-[1.8] text-text-dark">
+          «{HADITH.displayText}»
+        </span>
+      ) : (
+        <span className="text-[12px] font-bold text-text-muted">يتعلّم المعنى ثم يطبّقه بعمل في البيت</span>
+      )}
+      <span className="rounded-pill bg-gold px-[10px] py-[2px] text-[11.5px] font-extrabold text-on-gold">
+        مشروع اليوم
+      </span>
+    </div>
+  );
+}
+
+/** Quran ↔ Hadith every ~6 s; under reduced motion it stays on the Quran (dots still switch). */
+function useScene() {
+  const reduce = useReducedMotion();
+  const [scene, setScene] = useState<Scene>('quran');
+  useEffect(() => {
+    if (reduce) return;
+    // keyed on `scene`, so a dot click restarts the 6 s
+    const t = setTimeout(() => setScene((s) => (s === 'quran' ? 'hadith' : 'quran')), SCENE_MS);
+    return () => clearTimeout(t);
+  }, [reduce, scene]);
+  return [scene, setScene] as const;
+}
+
 function CallScreen() {
+  const [scene, setScene] = useScene();
   return (
     <div className="flex h-full flex-col bg-background">
       <StatusBar />
-      <div className="flex grow flex-col items-center gap-[10px] px-[14px] pt-[10px] pb-[84px]">
+      <div className="flex grow flex-col items-center gap-[10px] px-[14px] pt-[10px] pb-[24px]">
         {/* LiveHeader */}
-        <div className="flex w-full items-center gap-[8px]">
+        <div className="flex w-full items-center gap-[6px]">
           <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-berry-border bg-berry-tint">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path
@@ -175,28 +251,58 @@ function CallScreen() {
               />
             </svg>
           </span>
-          <span className="flex grow items-center justify-center gap-[7px]">
-            <span className="flex items-center gap-[5px] rounded-pill border border-berry-border bg-surface px-[11px] py-[4px]">
+          <span className="flex grow items-center justify-center gap-[6px]">
+            <span className="flex items-center gap-[5px] rounded-pill border border-berry-border bg-surface px-[10px] py-[4px]">
               <span className="h-[7px] w-[7px] animate-[gh-blink_1.4s_ease-in-out_infinite] rounded-full bg-berry" />
               <span className="text-[13px] font-extrabold text-berry-deep">مباشر</span>
+            </span>
+            <span className="grid">
+              {SCENES.map((k) => (
+                <Fade key={k} show={k === scene}>
+                  <span
+                    className={cx(
+                      'rounded-pill border px-[10px] py-[4px] text-[13px] font-extrabold whitespace-nowrap',
+                      SCENE_PILL[k].tone,
+                    )}
+                  >
+                    {SCENE_PILL[k].label}
+                  </span>
+                </Fade>
+              ))}
             </span>
             <span dir="ltr" className="font-heading text-[13px] font-bold text-text-muted">
               {toArabicDigits('02')}:{toArabicDigits(14)}
             </span>
           </span>
-          <span className="w-[34px] shrink-0" />
         </div>
         <TalkingTeacher />
         <span className="-mt-[4px] rounded-pill bg-green-tint px-[12px] py-[3px] text-[13px] font-extrabold text-deep-green">
           {TEACHER_NAME.boy}
         </span>
-        {/* the ayah card: the current ayah on ONE line (scaled down to fit, never wrapped) */}
-        <div className="flex w-full flex-col items-center gap-[4px] rounded-px-24 border-[2px] border-primary bg-surface px-[12px] pt-[10px] pb-[11px] shadow-lesson-ayah-card">
-          <AyahLine />
-          <span className="text-[12px] font-bold text-text-muted">
-            سورة الإخلاص · الآية {toArabicDigits(1)}
-          </span>
+        {/* the lesson card: the Quran ayah (ONE line, never wrapped) or the hadith card */}
+        <div className="grid w-full">
+          <Fade show={scene === 'quran'}>
+            <QuranCard />
+          </Fade>
+          <Fade show={scene === 'hadith'}>
+            <HadithCard />
+          </Fade>
         </div>
+        {/* which scene is on (clickable, also under reduced motion) */}
+        <span className="flex items-center gap-[6px]">
+          {SCENES.map((k) => (
+            <button
+              key={k}
+              type="button"
+              tabIndex={-1}
+              onClick={() => setScene(k)}
+              className={cx(
+                'h-[7px] cursor-pointer rounded-pill border-0 p-0 transition-all duration-[400ms]',
+                k === scene ? 'w-[18px] bg-primary' : 'w-[7px] bg-border-strong',
+              )}
+            />
+          ))}
+        </span>
         {/* the listening mic (brand green) */}
         <div className="mt-auto flex flex-col items-center gap-[6px]">
           <span className="relative flex h-[64px] w-[64px] items-center justify-center rounded-full bg-primary shadow-lesson-home-button">
@@ -210,26 +316,8 @@ function CallScreen() {
   );
 }
 
-/**
- * The parent's push notification, styled like a system banner (in gold). Sizes are in
- * the 323-wide phone's units: on desktop it renders ~260px wide with a 20px app icon.
- */
-function ParentNotification() {
-  return (
-    <div className="absolute -bottom-[34px] -left-[56px] z-3 flex w-[303px] animate-[gh-notif-in_.6s_cubic-bezier(.2,.8,.2,1)_.9s_both] flex-col gap-[4px] rounded-px-20 border border-gold/60 bg-linear-to-br from-gold-tint/95 via-gold-tint/85 to-gold/45 px-[15px] pt-[11px] pb-[13px] text-on-gold shadow-gold-16-32-28 backdrop-blur-[12px] motion-reduce:animate-none">
-      <span className="flex items-center gap-[7px] text-[12.5px] font-bold text-on-gold/65">
-        <img src="/icon-192.png" alt="" className="h-[23px] w-[23px] rounded-px-6" draggable={false} />
-        <span>غَرْسة</span>
-        <span className="ms-auto">الآن</span>
-      </span>
-      <span className="mt-[2px] text-[15px] leading-[1.5] font-extrabold">تنبيه لولي الأمر</span>
-      <span className="text-[14.5px] leading-[1.5] font-semibold">بدر أتمّ حصة اليوم 🌟</span>
-    </div>
-  );
-}
-
 // The phone is laid out at 323×700 (a real ~9:19.5 phone) and scaled as one piece to
-// its box's height, so the teacher, card, mic and the parent card all shrink together.
+// its box's height, so the teacher, card and mic all shrink together.
 const BASE_H = 700;
 
 /** Scales the 323×700 phone to the height of `box` (sized in CSS). */
@@ -265,8 +353,6 @@ export function LivePhone({ desktop }: { desktop?: boolean }) {
         {/* dynamic island */}
         <span className="absolute top-[9px] left-1/2 h-[26px] w-[92px] -translate-x-1/2 rounded-pill bg-text-dark" />
       </div>
-      {/* a push notification over the lower-left corner — never over the ayah or the mic */}
-      <ParentNotification />
     </div>
   );
   return (
