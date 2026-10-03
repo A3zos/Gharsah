@@ -71,12 +71,11 @@ export function LandingDesktop() {
                 <span className="text-[14px] font-extrabold text-deep-green">للأطفال من ٨ إلى ١٣ سنة</span>
               </span>
               <h1 className="m-0 max-w-[600px] font-heading text-[44px] leading-[1.4] font-bold text-text-dark">
-                غَرْسة — نغرس حُبّ القرآن <span className="text-deep-green">… ويكبر معهم</span>
+                اغرس في طفلك دينه <span className="block text-deep-green">من مصادره الشرعية</span>
               </h1>
               <p className="m-0 max-w-[560px] text-[17px] leading-[1.9] text-text-muted">
-                اغرس في طفلك تعلّم دينه من مصادره الشرعية الموثوقة: القرآن الكريم والسنّة النبوية. معلّم ذكي
-                يحفّظه الآيات بصوت قارئ متقن، ويعلّمه الأحاديث ويطبّقها بعمل صالح، ويجيب عن تساؤلاته بلغة
-                تناسب عمره، وأنت تتابع كل خطوة من لوحتك.
+                معلّم ذكي يحفّظ طفلك القرآن بصوت قارئ متقن، ويعلّمه السنّة النبوية ويطبّقها بعمل صالح، ويجيب
+                عن تساؤلاته بلغة تناسب عمره، وأنت تتابع كل خطوة من لوحتك.
               </p>
               <div className="flex items-center gap-[12px] pt-[4px]">
                 <Link

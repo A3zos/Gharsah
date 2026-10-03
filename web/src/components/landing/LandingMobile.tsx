@@ -121,12 +121,11 @@ export function LandingMobile() {
               <span className="text-[12.5px] font-extrabold text-deep-green">للأطفال من ٨ إلى ١٣ سنة</span>
             </span>
             <h1 className="m-0 text-center font-heading text-[34px] leading-[1.45] font-bold">
-              غَرْسة — نغرس حُبّ القرآن <span className="text-deep-green">… ويكبر معهم</span>
+              اغرس في طفلك دينه <span className="block text-deep-green">من مصادره الشرعية</span>
             </h1>
             <p className="m-0 text-center text-[15.5px] leading-[1.95] text-text-muted">
-              اغرس في طفلك تعلّم دينه من مصادره الشرعية الموثوقة: القرآن الكريم والسنّة النبوية. معلّم ذكي
-              يحفّظه الآيات بصوت قارئ متقن، ويعلّمه الأحاديث ويطبّقها بعمل صالح، ويجيب عن تساؤلاته بلغة تناسب
-              عمره، وأنت تتابع كل خطوة من لوحتك.
+              معلّم ذكي يحفّظ طفلك القرآن بصوت قارئ متقن، ويعلّمه السنّة النبوية ويطبّقها بعمل صالح، ويجيب عن
+              تساؤلاته بلغة تناسب عمره، وأنت تتابع كل خطوة من لوحتك.
             </p>
             <div className="flex w-full flex-col gap-[11px] pt-[4px]">
               <Link
