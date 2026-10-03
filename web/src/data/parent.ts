@@ -3,13 +3,17 @@
 // (real purchases: Google Play Billing in the Android app — CLAUDE.md §3).
 import { supabase } from '../supabase/client';
 import { watch } from '../supabase/live';
+import { MESSAGES, type UiLanguage } from '../i18n/i18n';
 import { toAuthFailure } from './authFailure';
 
 export type PlanId = 'annual' | 'monthly';
+/** «سنوية» / "Yearly" … (parent.json → plans.label). */
+export const planLabel = (plan: PlanId | 'trial', lang: UiLanguage = 'ar'): string =>
+  MESSAGES[lang].parent.plans.label[plan];
 export const PLAN_LABEL: Record<PlanId | 'trial', string> = {
-  annual: 'سنوية',
-  monthly: 'شهرية',
-  trial: 'تجريبية',
+  annual: planLabel('annual'),
+  monthly: planLabel('monthly'),
+  trial: planLabel('trial'),
 };
 
 export interface Subscription {

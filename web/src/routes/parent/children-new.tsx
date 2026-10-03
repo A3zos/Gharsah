@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { ChildAvatar } from '../../components/child/ChildAvatar';
-import { AVATARS, defaultAvatar } from '../../content/avatars';
+import { avatarLabel, AVATARS, defaultAvatar } from '../../content/avatars';
 import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage } from '../../components/parent/ParentShell';
 import { BackButton } from '../../components/ui/BackButton';
@@ -27,6 +27,7 @@ import { Stepper, StepperWide } from '../../components/ui/Stepper';
 import {
   addChild,
   DEFAULT_SCHEDULE,
+  dayNames,
   formatTime,
   updateSchedule,
   WEEK_DAYS,
@@ -38,14 +39,17 @@ import {
 } from '../../data/children';
 import { maxChildren } from '../../content/plans';
 import { isSubscribed } from '../../data/parent';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { ageLabel } from '../../data/stats';
+import { formatNumber, MESSAGES, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { DESKTOP, useMedia } from '../../lib/useMedia';
+import { failureText, fmt, useParentTitle } from '../../components/parent/parentText';
 import type { Route } from './+types/children-new';
 
-export const meta: Route.MetaFunction = () => [{ title: 'إضافة ابن — غَرْسة' }];
+export const meta: Route.MetaFunction = () => [
+  { title: `${MESSAGES.ar.parent.meta.addChild} — ${MESSAGES.ar.parent.meta.brand}` },
+];
 
-const STEPS = ['البيانات', 'الجدول', 'الشخصية'];
 /** Each step is a URL (`?step=`) so the browser back button walks the steps. */
 const STEP_KEYS = ['data', 'schedule', 'avatar'] as const;
 /** Where the flow was opened from — «رجوع» on the first step goes back there. */
@@ -75,6 +79,7 @@ export default function AddChildRoute() {
   const editId = params.get('child');
   const { children, subscription } = useParentData();
   const editing = editId ? (children?.find((c) => c.id === editId) ?? null) : null;
+  useParentTitle('addChild');
   if (children === null || subscription === undefined) {
     return <ParentPage tab={null} desktop={<div aria-busy="true" />} />;
   }
@@ -90,9 +95,10 @@ export default function AddChildRoute() {
 }
 
 function NotFound() {
+  const t = useI18n().m.parent.common;
   return (
     <p className="m-0 text-[15px] text-text-muted">
-      لم نجد بيانات هذا الابن. <Link to={paths.parent.children}>العودة إلى أبنائي</Link>
+      {t.notFound} <Link to={paths.parent.children}>{t.backToChildren}</Link>
     </p>
   );
 }
@@ -100,6 +106,9 @@ function NotFound() {
 function Flow({ editing }: { editing: ChildProfile | null }) {
   const navigate = useNavigate();
   const desktop = useMedia(DESKTOP);
+  const { lang, m } = useI18n();
+  const t = m.parent.addChild;
+  const STEPS = t.steps;
   const [params, setParams] = useSearchParams();
   const origin = ORIGINS[params.get('from') ?? ''] ?? paths.parent.children;
   const keyIndex = STEP_KEYS.indexOf((params.get('step') ?? 'data') as (typeof STEP_KEYS)[number]);
@@ -122,7 +131,15 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
   const [initial] = useState(() => JSON.stringify(draft));
   const dirty = JSON.stringify(draft) !== initial;
   const [nameError, setNameError] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // A message key of addChild, or a failure (shown in the current UI language).
+  const [failure, setFailure] = useState<unknown>(null);
+  const error =
+    failure === null
+      ? null
+      : failure === 'pickDay' || failure === 'pickReview'
+        ? t[failure]
+        : failureText(lang, failure);
+  const setError = (e: unknown) => setFailure(e);
   const [busy, setBusy] = useState(false);
 
   const set = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));
@@ -163,9 +180,9 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
       return setStep(1);
     }
     if (step === 1) {
-      if (!draft.schedule.days.length) return setError('اختر يومًا واحدًا على الأقل.');
+      if (!draft.schedule.days.length) return setError('pickDay');
       if (!draft.schedule.reviewDays.some((d) => draft.schedule.days.includes(d)))
-        return setError('اختر يوم مراجعة واحدًا على الأقل من أيام الحصص.');
+        return setError('pickReview');
       if (!custom) setSchedule({ custom: {} });
       if (!editing) return setStep(2);
     }
@@ -182,22 +199,22 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
         navigate(paths.parent.childCode(id), { replace: true, state: { fresh: true } });
       }
     } catch (e) {
-      setError((e as Error).message);
+      setError(e);
       setBusy(false);
     }
   };
 
   const ctaLabel = editing
-    ? 'حفظ الجدول'
+    ? t.saveSchedule
     : step === 0
       ? desktop
-        ? 'التالي — الجدول'
-        : 'التالي — جدول التعلّم'
+        ? t.nextScheduleWide
+        : t.nextSchedule
       : step === 1
         ? desktop
-          ? 'التالي — الشخصية'
-          : 'التالي — اختيار الشخصية'
-        : 'حفظ وإنشاء رمز الربط';
+          ? t.nextAvatarWide
+          : t.nextAvatar
+        : t.create;
 
   // A deep link to a later step of a new child starts at the first step.
   if (!editing && step > 0 && !draft.name.trim()) {
@@ -226,24 +243,20 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
           <div className="flex grow flex-col gap-[24px]">
             {guard}
             <DesktopHeader
-              title={editing ? `جدول ${editing.name}` : 'إضافة ابن'}
-              subtitle={
-                editing
-                  ? 'عدّل أيام الحصص ووقتها ومدّتها.'
-                  : 'ثلاث خطوات: بياناته، جدوله، ثم شخصيته — وينتهي برمز الربط.'
-              }
+              title={editing ? fmt(lang, t.scheduleOf, { name: editing.name }) : t.title}
+              subtitle={editing ? t.editSubtitle : t.newSubtitle}
             />
             {!editing && <StepperWide steps={steps} current={step} />}
             <div className="flex min-h-0 grow gap-[20px]">
               <section
-                aria-label="بيانات الابن"
+                aria-label={t.childData}
                 aria-disabled={step !== 0 || undefined}
                 className={cx(
                   'flex grow basis-0 flex-col gap-[20px] rounded-px-30 bg-surface px-[32px] py-[30px] shadow-dark-14-30-5',
                   dim(0),
                 )}
               >
-                <h2 className="m-0 font-heading text-[23px] font-bold">بيانات الابن</h2>
+                <h2 className="m-0 font-heading text-[23px] font-bold">{t.childData}</h2>
                 <NameField
                   value={draft.name}
                   error={nameError}
@@ -265,21 +278,19 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                     <path d="M12 11 V16.5" stroke={C.skyText} strokeWidth="2" strokeLinecap="round" />
                     <circle cx="12" cy="7.8" r="1.3" fill={C.skyText} />
                   </svg>
-                  <span className="text-[13.5px] leading-[1.9] text-sky-text">
-                    لا نطلب أي بيانات من الابن نفسه — الاسم والعمر لك وحدك، ويستخدمهما المعلّم لمناداته.
-                  </span>
+                  <span className="text-[13.5px] leading-[1.9] text-sky-text">{t.privacyNote}</span>
                 </div>
               </section>
               <div className="flex grow basis-0 flex-col gap-[20px]">
                 <section
-                  aria-label="جدول التعلّم"
+                  aria-label={t.schedule}
                   className={cx(
                     'flex flex-col gap-[18px] rounded-px-30 bg-surface px-[32px] py-[30px] shadow-dark-14-30-5',
                     dim(1),
                   )}
                 >
-                  <h2 className="m-0 font-heading text-[23px] font-bold">جدول التعلّم</h2>
-                  <span className="text-[14px] text-text-muted">أيام الحصص</span>
+                  <h2 className="m-0 font-heading text-[23px] font-bold">{t.schedule}</h2>
+                  <span className="text-[14px] text-text-muted">{t.lessonDays}</span>
                   <DayPicker
                     days={draft.schedule.days}
                     onToggle={toggleDay}
@@ -288,11 +299,11 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                   />
                   <ReviewDaySection draft={draft} onToggle={toggleReview} limit={reviewLimit} />
                   <div className="flex flex-col gap-[8px]">
-                    <span className="text-[14px] text-text-muted">وقت الحصة</span>
+                    <span className="text-[14px] text-text-muted">{t.lessonTime}</span>
                     <TimeStepper minutes={draft.schedule.time} onChange={(time) => setSchedule({ time })} />
                   </div>
                   <div className="flex flex-col gap-[8px]">
-                    <span className="text-[14px] text-text-muted">مدّة الجلسة</span>
+                    <span className="text-[14px] text-text-muted">{t.sessionLength}</span>
                     <DurationChips
                       value={draft.schedule.duration}
                       onChange={(duration) => setSchedule({ duration })}
@@ -302,13 +313,13 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                 </section>
                 {!editing && (
                   <section
-                    aria-label="شخصية الابن"
+                    aria-label={t.avatar}
                     className={cx(
                       'flex grow flex-col gap-[18px] rounded-px-30 bg-surface px-[32px] py-[30px] shadow-dark-14-30-5',
                       dim(2),
                     )}
                   >
-                    <h2 className="m-0 font-heading text-[23px] font-bold">شخصية الابن</h2>
+                    <h2 className="m-0 font-heading text-[23px] font-bold">{t.avatar}</h2>
                     <AvatarGrid value={draft.avatarId} onChange={pickAvatar} compact />
                   </section>
                 )}
@@ -325,7 +336,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                   'h-[62px] rounded-px-22 px-[28px] text-[16px] font-bold',
                 )}
               >
-                {step > 0 && !editing ? 'السابق' : 'إلغاء'}
+                {step > 0 && !editing ? t.prev : t.cancel}
               </button>
               <span className="grow" />
               <Button
@@ -336,7 +347,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                 className="h-[62px] gap-[10px] rounded-px-22 px-[40px] font-heading text-[19px] font-bold shadow-lesson-home-button"
               >
                 {ctaLabel}
-                <ForwardIcon size={22} />
+                <ForwardIcon size={22} className="ltr:-scale-x-100" />
               </Button>
             </div>
           </div>
@@ -349,12 +360,12 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
   const back = () =>
     step === 0 || editing ? exit() : window.history.length > 1 ? navigate(-1) : setStep(step - 1);
   const title = editing
-    ? `جدول ${editing.name}`
+    ? fmt(lang, t.scheduleOf, { name: editing.name })
     : step === 0
-      ? 'إضافة ابن'
+      ? t.title
       : step === 1
-        ? 'جدول التعلّم'
-        : `اختر شخصية ${draft.name.trim()}`;
+        ? t.schedule
+        : fmt(lang, t.pickAvatarFor, { name: draft.name.trim() });
   return (
     <ParentPage
       tab={null}
@@ -366,7 +377,8 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
           <div className="flex items-center gap-[12px]">
             <BackButton
               onClick={back}
-              label={step === 0 || editing ? 'رجوع' : `رجوع إلى ${steps[step - 1]}`}
+              label={step === 0 || editing ? t.back : fmt(lang, t.backTo, { step: steps[step - 1]! })}
+              className="ltr:[&_svg]:-scale-x-100"
             />
             <h1 className="m-0 font-heading text-[24px] leading-[1.5] font-bold">{title}</h1>
           </div>
@@ -382,21 +394,19 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
               <AgeField value={draft.age} onChange={(age) => set({ age })} />
               <GenderField value={draft.gender} onChange={pickGender} />
               <Note tone="green" icon={<InfoGreen />}>
-                يمكنك تعديل العمر لاحقًا من لوحة التحكم.
+                {t.ageLater}
               </Note>
             </>
           )}
 
           {step === 1 && (
             <>
-              <p className="m-0 text-[13.5px] leading-[1.8] text-text-muted">
-                حدّد أيام الحصص ووقتها — ونذكّر طفلك تلقائيًا.
-              </p>
+              <p className="m-0 text-[13.5px] leading-[1.8] text-text-muted">{t.scheduleIntro}</p>
               <div className="flex flex-col gap-[11px]">
                 <div className="flex items-baseline justify-between gap-[10px]">
-                  <span className="text-[14px] font-bold">أيام الحصص</span>
+                  <span className="text-[14px] font-bold">{t.lessonDays}</span>
                   <span className="text-[12.5px] text-text-muted">
-                    {daysCountText(draft.schedule.days.length)}
+                    {daysCountText(draft.schedule.days.length, lang)}
                   </span>
                 </div>
                 <DayPicker
@@ -409,28 +419,24 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
               {!custom && <ReviewDaySection draft={draft} onToggle={toggleReview} limit={reviewLimit} />}
               <div className="flex flex-col gap-[10px]">
                 <div className="flex items-baseline justify-between gap-[10px]">
-                  <span className="text-[14px] font-bold">وقت الحصة</span>
-                  <span className="text-[12.5px] text-text-muted">
-                    {custom ? 'الوقت الافتراضي' : 'يُطبَّق على كل الأيام المختارة'}
-                  </span>
+                  <span className="text-[14px] font-bold">{t.lessonTime}</span>
+                  <span className="text-[12.5px] text-text-muted">{custom ? t.defaultTime : t.allDays}</span>
                 </div>
                 <TimeStepper minutes={draft.schedule.time} onChange={(time) => setSchedule({ time })} />
                 <CustomTimes draft={draft} open={custom} onOpen={setCustom} setSchedule={setSchedule} />
               </div>
               <div className="flex flex-col gap-[10px]">
-                <span className="text-[14px] font-bold">الحدّ الأقصى للحصة اليومية</span>
+                <span className="text-[14px] font-bold">{t.dailyCap}</span>
                 <DurationChips
                   value={draft.schedule.duration}
                   onChange={(duration) => setSchedule({ duration })}
                 />
                 {custom && draft.schedule.reviewDays.length > 0 && (
                   <p className="m-0 rounded-px-14 bg-gold-tint px-[13px] py-[11px] text-[12.5px] leading-[1.8] text-warning-text">
-                    الأيام الذهبية هي أيام المراجعة الأسبوعية — تُعدّلها من شاشة الجدول.
+                    {t.goldNote}
                   </p>
                 )}
-                <p className="m-0 text-[12.5px] leading-[1.8] text-text-muted">
-                  الحصة تنتهي متى أنهى طفلُك دروس اليوم، دون تجاوز هذه المدة.
-                </p>
+                <p className="m-0 text-[12.5px] leading-[1.8] text-text-muted">{t.capNote}</p>
               </div>
               <div className="flex items-center gap-[9px]">
                 <svg
@@ -454,19 +460,17 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                     strokeLinecap="round"
                   />
                 </svg>
-                <span className="text-[12.5px] text-text-muted">سنذكّر طفلك قبل موعد الحصة</span>
+                <span className="text-[12.5px] text-text-muted">{t.remind}</span>
               </div>
               <Note tone="green" icon={<InfoGreen />}>
-                يمكنك تعديل الجدول لاحقًا من لوحة التحكم في أي وقت.
+                {t.scheduleLater}
               </Note>
             </>
           )}
 
           {step === 2 && (
             <>
-              <p className="m-0 text-[13.5px] leading-[1.8] text-text-muted">
-                شخصيات محتشمة ولطيفة — يراها طفلك في تطبيقه مع كل إنجاز.
-              </p>
+              <p className="m-0 text-[13.5px] leading-[1.8] text-text-muted">{t.avatarIntro}</p>
               <AvatarGrid value={draft.avatarId} onChange={pickAvatar} />
               <div className="flex items-center gap-[12px] rounded-px-20 bg-surface px-[16px] py-[14px] shadow-child-card">
                 <svg width="24" height="24" viewBox="0 0 76 76" fill="none" aria-hidden="true">
@@ -474,9 +478,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                   <path d="M38 40 C28 40 22 34 22 26 C32 26 38 32 38 40 Z" fill={C.primary} />
                   <path d="M38 45 C48 45 54 39 54 31 C44 31 38 37 38 45 Z" fill={C.softGreen} />
                 </svg>
-                <p className="m-0 text-[12.5px] leading-[1.8] text-text-muted">
-                  تنمو شجرة الشخصية كلما أتمّ طفلك حفظًا جديدًا.
-                </p>
+                <p className="m-0 text-[12.5px] leading-[1.8] text-text-muted">{t.avatarTree}</p>
               </div>
             </>
           )}
@@ -501,17 +503,23 @@ function ReviewDaySection({
   onToggle: (d: WeekDay) => void;
   limit: boolean;
 }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.addChild;
   const chosen = WEEK_DAYS.filter((d) => draft.schedule.reviewDays.includes(d.id));
   return (
     <div className="flex flex-col gap-[11px]">
       <div className="flex items-baseline justify-between gap-[10px]">
         <span className="flex items-center gap-[8px] text-[14px] font-bold">
           <ReviewGlyph />
-          أيام المراجعة الأسبوعية
-          <span className="text-[12px] font-bold text-text-muted">٣ أيام كحد أقصى</span>
+          {t.reviewTitle}
+          <span className="text-[12px] font-bold text-text-muted">{t.reviewMax}</span>
         </span>
         <span className="text-[12.5px] font-bold text-warning-text" aria-live="polite">
-          {chosen.length ? `مراجعة · ${chosen.map((d) => d.label).join('، ')}` : 'اختر يومًا'}
+          {chosen.length
+            ? fmt(lang, t.reviewChosen, {
+                days: chosen.map((d) => dayNames(d.id, lang).label).join(m.parent.common.listSep),
+              })
+            : t.reviewPick}
         </span>
       </div>
       <ReviewDayPicker
@@ -521,12 +529,10 @@ function ReviewDaySection({
       />
       {limit && (
         <p role="alert" className="m-0 text-[12.5px] font-bold text-error-text">
-          تقدر تختار ٣ أيام مراجعة كحد أقصى
+          {t.reviewLimit}
         </p>
       )}
-      <p className="m-0 text-[12.5px] leading-[1.8] text-text-muted">
-        في أيام المراجعة تحلّ حصةُ المراجعة محلّ الدرس الجديد — يعيد طفلك ما حفظه من السور والأحاديث.
-      </p>
+      <p className="m-0 text-[12.5px] leading-[1.8] text-text-muted">{t.reviewBody}</p>
     </div>
   );
 }
@@ -552,10 +558,11 @@ function NameField({
   error: boolean;
   wide?: boolean;
 }) {
+  const t = useI18n().m.parent.addChild;
   return (
     <div className={cx('flex flex-col', wide ? 'gap-[9px]' : 'gap-[8px]')}>
       <label htmlFor="child-name" className={cx('font-bold', wide ? 'text-[14.5px]' : 'text-[14px]')}>
-        اسم الابن
+        {t.nameLabel}
       </label>
       <input
         id="child-name"
@@ -563,7 +570,7 @@ function NameField({
         type="text"
         autoComplete="off"
         maxLength={40}
-        placeholder="الاسم كما يحبّ أن يُنادى"
+        placeholder={t.namePlaceholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={error || undefined}
@@ -575,7 +582,7 @@ function NameField({
       />
       {error && (
         <span id="child-name-msg" className="text-[12.5px] font-medium text-error-text">
-          اكتب اسم الابن (٤٠ حرفًا على الأكثر).
+          {t.nameError}
         </span>
       )}
     </div>
@@ -591,20 +598,22 @@ function AgeField({
   onChange: (v: number) => void;
   wide?: boolean;
 }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.addChild;
   return (
     <div className="flex flex-col gap-[10px]">
       <div className="flex items-baseline justify-between">
-        <span className={cx('font-bold', wide ? 'text-[14.5px]' : 'text-[14px]')}>العمر</span>
-        <span className="text-[12.5px] text-text-muted">من ٨ إلى ١٣ سنة</span>
+        <span className={cx('font-bold', wide ? 'text-[14.5px]' : 'text-[14px]')}>{t.ageLabel}</span>
+        <span className="text-[12.5px] text-text-muted">{t.ageRange}</span>
       </div>
       <div className="[&>div]:gap-[8px]">
         <ChoiceChips
-          label="العمر"
+          label={t.ageLabel}
           options={AGES}
           value={value as (typeof AGES)[number]}
           onChange={onChange}
-          render={(n) => toArabicDigits(n)}
-          ariaFor={(n) => `${toArabicDigits(n)} ${n <= 10 ? 'سنوات' : 'سنة'}`}
+          render={(n) => formatNumber(lang, n)}
+          ariaFor={(n) => ageLabel(n, lang)}
           className="h-[56px] rounded-px-18 font-heading text-[20px] font-bold"
         />
       </div>
@@ -613,10 +622,11 @@ function AgeField({
 }
 
 function GenderField({ value, onChange }: { value: Gender; onChange: (g: Gender) => void }) {
+  const t = useI18n().m.parent.addChild;
   return (
     <div className="flex flex-col gap-[10px]">
-      <span className="text-[14px] font-bold">الجنس</span>
-      <div role="radiogroup" aria-label="الجنس" className="flex gap-[12px]">
+      <span className="text-[14px] font-bold">{t.genderLabel}</span>
+      <div role="radiogroup" aria-label={t.genderLabel} className="flex gap-[12px]">
         {(['girl', 'boy'] as const).map((g) => {
           const on = value === g;
           return (
@@ -634,7 +644,7 @@ function GenderField({ value, onChange }: { value: Gender; onChange: (g: Gender)
               )}
             >
               <ChildAvatar id={defaultAvatar(g)} size={58} />
-              <span className="text-[15px] font-bold text-text-dark">{g === 'girl' ? 'بنت' : 'ولد'}</span>
+              <span className="text-[15px] font-bold text-text-dark">{g === 'girl' ? t.girl : t.boy}</span>
             </button>
           );
         })}
@@ -653,8 +663,9 @@ function AvatarGrid({
   onChange: (id: string) => void;
   compact?: boolean;
 }) {
+  const { lang, m } = useI18n();
   return (
-    <div role="radiogroup" aria-label="الشخصية" className="grid grid-cols-4 gap-[12px]">
+    <div role="radiogroup" aria-label={m.parent.addChild.avatarGroup} className="grid grid-cols-4 gap-[12px]">
       {AVATARS.map((a) => {
         const on = a.key === value;
         return (
@@ -663,7 +674,7 @@ function AvatarGrid({
             type="button"
             role="radio"
             aria-checked={on}
-            aria-label={a.label}
+            aria-label={avatarLabel(a, lang)}
             onClick={() => onChange(a.key)}
             className={cx(
               'relative flex items-center justify-center p-0',
@@ -683,7 +694,7 @@ function AvatarGrid({
             />
             {on && (
               <span
-                className="absolute top-[8px] left-[8px] flex h-[26px] w-[26px] items-center justify-center rounded-full bg-deep-green"
+                className="absolute end-[8px] top-[8px] flex h-[26px] w-[26px] items-center justify-center rounded-full bg-deep-green"
                 aria-hidden="true"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -717,6 +728,8 @@ function CustomTimes({
   setSchedule: (p: Partial<ChildSchedule>) => void;
 }) {
   const { schedule } = draft;
+  const { lang, m } = useI18n();
+  const t = m.parent.addChild;
   const chosen = WEEK_DAYS.filter((d) => schedule.days.includes(d.id));
   const bump = (d: WeekDay) => {
     const offset = ((schedule.custom[d] ?? schedule.time) - schedule.time + 1440) % 1440;
@@ -737,12 +750,12 @@ function CustomTimes({
         type="button"
         aria-expanded={false}
         onClick={() => onOpen(true)}
-        className="flex h-[58px] items-center gap-[10px] rounded-px-18 border-[1.5px] border-border bg-transparent px-[16px] text-right font-body"
+        className="flex h-[58px] items-center gap-[10px] rounded-px-18 border-[1.5px] border-border bg-transparent px-[16px] text-start font-body"
       >
         {lines}
         <span className="flex grow flex-col gap-[1px]">
-          <span className="text-[14px] font-bold text-deep-green">تخصيص وقت لكل يوم</span>
-          <span className="text-[11.5px] text-text-muted">اختياري — لأوقات مختلفة بين الأيام</span>
+          <span className="text-[14px] font-bold text-deep-green">{t.customTitle}</span>
+          <span className="text-[11.5px] text-text-muted">{t.customOptional}</span>
         </span>
         <svg className="shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
@@ -763,12 +776,12 @@ function CustomTimes({
         aria-expanded
         aria-controls="custom-times"
         onClick={() => onOpen(false)}
-        className="flex h-[58px] w-full items-center gap-[10px] rounded-t-px-18 border-[1.5px] border-b-0 border-seed-dots bg-green-tint px-[16px] text-right font-body"
+        className="flex h-[58px] w-full items-center gap-[10px] rounded-t-px-18 border-[1.5px] border-b-0 border-seed-dots bg-green-tint px-[16px] text-start font-body"
       >
         {lines}
         <span className="flex grow flex-col gap-[1px]">
-          <span className="text-[14px] font-bold text-deep-green">تخصيص وقت لكل يوم</span>
-          <span className="text-[11.5px] text-text-muted">مُفعّل — اضغط للإخفاء</span>
+          <span className="text-[14px] font-bold text-deep-green">{t.customTitle}</span>
+          <span className="text-[11.5px] text-text-muted">{t.customOn}</span>
         </span>
         <svg className="shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
@@ -784,9 +797,7 @@ function CustomTimes({
         id="custom-times"
         className="flex flex-col gap-[8px] rounded-b-px-18 border-[1.5px] border-t-0 border-seed-dots bg-green-tint px-[14px] pt-[4px] pb-[16px]"
       >
-        <p className="m-0 mb-[4px] text-[11.5px] leading-[1.8] text-text-muted">
-          يُستخدم الوقت الافتراضي أعلاه لأي يوم لم تغيّره.
-        </p>
+        <p className="m-0 mb-[4px] text-[11.5px] leading-[1.8] text-text-muted">{t.customNote}</p>
         {chosen.map((d) => (
           <div
             key={d.id}
@@ -798,17 +809,17 @@ function CustomTimes({
             )}
           >
             <span className="grow ps-[8px] text-[14px] font-bold">
-              {d.label}
-              {schedule.reviewDays.includes(d.id) && ' · مراجعة'}
+              {dayNames(d.id, lang).label}
+              {schedule.reviewDays.includes(d.id) && t.reviewSuffix}
             </span>
             <button
               type="button"
               onClick={() => bump(d.id)}
-              aria-label={`تأخير وقت ${d.label} ربع ساعة`}
+              aria-label={fmt(lang, t.delay, { day: dayNames(d.id, lang).label })}
               className="flex h-[44px] shrink-0 items-center gap-[7px] rounded-px-14 border-[1.5px] border-seed-dots bg-background px-[14px] font-body text-[14.5px] font-bold text-deep-green"
             >
               <ClockGlyph size={17} />
-              {formatTime(schedule.custom[d.id] ?? schedule.time)}
+              {formatTime(schedule.custom[d.id] ?? schedule.time, lang)}
             </button>
           </div>
         ))}

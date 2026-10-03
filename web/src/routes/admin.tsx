@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { AdminView } from '../components/admin/AdminView';
 import { loadAdminStats, type AdminLoad } from '../data/admin';
+import { MESSAGES, useI18n } from '../i18n/i18n';
+import { I18nProvider } from '../i18n/I18nProvider';
 import type { Route } from './+types/admin';
 
 export const meta: Route.MetaFunction = () => [
-  { title: 'إحصاءات — غَرْسة' },
+  { title: `${MESSAGES.ar.admin.meta} — ${MESSAGES.ar.admin.brand}` },
   { name: 'robots', content: 'noindex, nofollow' },
 ];
 
@@ -36,5 +38,20 @@ export default function AdminRoute() {
       live = false;
     };
   }, []);
-  return <AdminView state={state} onRefresh={refresh} />;
+  return (
+    <I18nProvider>
+      <AdminTitle />
+      <AdminView state={state} onRefresh={refresh} />
+    </I18nProvider>
+  );
+}
+
+/** <title> in the UI language («إحصاءات — غَرْسة», as the meta above). */
+function AdminTitle() {
+  const t = useI18n().m.admin;
+  const title = `${t.meta} — ${t.brand}`;
+  useEffect(() => {
+    document.title = title;
+  }, [title]);
+  return null;
 }

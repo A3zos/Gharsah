@@ -1,26 +1,19 @@
 // Schedule controls of design/v2 Schedule / ScheduleCustom (and the ParentWebAddChild panel).
-import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
-import { DURATIONS, formatTime, WEEK_DAYS, type WeekDay } from '../../data/children';
+import { dayNames, DURATIONS, formatTime, WEEK_DAYS, type WeekDay } from '../../data/children';
+import { countPhrase, fill, MESSAGES, useI18n, type UiLanguage } from '../../i18n/i18n';
 import { C } from './color';
 
 /** «٤ أيام مختارة» / «يوم واحد مختار» / «يومان مختاران» / «لم تختر أيامًا بعد». */
-export function daysCountText(n: number): string {
-  if (n === 0) return 'لم تختر أيامًا بعد';
-  if (n === 1) return 'يوم واحد مختار';
-  if (n === 2) return 'يومان مختاران';
-  return `${toArabicDigits(n)} أيام مختارة`;
+export function daysCountText(n: number, lang: UiLanguage = 'ar'): string {
+  const t = MESSAGES[lang].parent.schedule.daysCount;
+  return n === 0 ? t.none : countPhrase(lang, n, t);
 }
 
-/** ParentWebAddChild's one-letter day names. */
-const LETTER: Record<WeekDay, string> = {
-  sat: 'س',
-  sun: 'ح',
-  mon: 'ن',
-  tue: 'ث',
-  wed: 'ر',
-  thu: 'خ',
-  fri: 'ج',
+/** A day's names in the UI language; `letter` = ParentWebAddChild's one-letter day name. */
+const useDay = () => {
+  const { lang } = useI18n();
+  return (d: WeekDay) => dayNames(d, lang);
 };
 
 /** Seven day toggles (46px circles; `wide` = the desktop's 58px letter circles). */
@@ -38,10 +31,13 @@ export function DayPicker({
   /** design/v3: review days wear a gold ring. */
   reviewDays?: WeekDay[];
 }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.schedule;
+  const day = useDay();
   return (
     <div
       role="group"
-      aria-label="أيام الحصص"
+      aria-label={t.lessonDays}
       className={cx('flex', wide ? 'gap-[8px]' : 'justify-between gap-[4px]')}
     >
       {WEEK_DAYS.map((d) => {
@@ -52,7 +48,7 @@ export function DayPicker({
             key={d.id}
             type="button"
             disabled={disabled}
-            aria-label={review ? `${d.label} — يوم المراجعة` : d.label}
+            aria-label={review ? fill(lang, t.reviewDayAria, { day: day(d.id).label }) : day(d.id).label}
             aria-pressed={on}
             onClick={() => onToggle(d.id)}
             className={cx(
@@ -71,7 +67,7 @@ export function DayPicker({
             )}
           >
             {wide ? (
-              LETTER[d.id]
+              day(d.id).letter
             ) : (
               <>
                 {on && (
@@ -85,7 +81,7 @@ export function DayPicker({
                     />
                   </svg>
                 )}
-                <span className="text-[10.5px] leading-[1.2] font-bold">{d.short}</span>
+                <span className="text-[10.5px] leading-[1.2] font-bold">{day(d.id).short}</span>
               </>
             )}
           </button>
@@ -138,8 +134,11 @@ export function ReviewDayPicker({
   lessonDays: WeekDay[];
   onToggle: (d: WeekDay) => void;
 }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.schedule;
+  const day = useDay();
   return (
-    <div role="group" aria-label="أيام المراجعة الأسبوعية" className="flex justify-between gap-[4px]">
+    <div role="group" aria-label={t.reviewGroup} className="flex justify-between gap-[4px]">
       {WEEK_DAYS.map((d) => {
         const on = value.includes(d.id);
         const lesson = lessonDays.includes(d.id);
@@ -149,7 +148,7 @@ export function ReviewDayPicker({
             type="button"
             aria-pressed={on}
             disabled={!lesson}
-            aria-label={lesson ? `المراجعة يوم ${d.label}` : `${d.label} — ليس يوم حصة`}
+            aria-label={fill(lang, lesson ? t.reviewOn : t.notLessonDay, { day: day(d.id).label })}
             onClick={() => onToggle(d.id)}
             className={cx(
               'flex h-[46px] w-[46px] shrink-0 flex-col items-center justify-center gap-[1px] rounded-full p-0 font-body disabled:cursor-not-allowed',
@@ -170,7 +169,7 @@ export function ReviewDayPicker({
                 />
               </svg>
             )}
-            <span className="text-[10.5px] leading-[1.2] font-bold">{d.short}</span>
+            <span className="text-[10.5px] leading-[1.2] font-bold">{day(d.id).short}</span>
           </button>
         );
       })}
@@ -195,6 +194,8 @@ export function ClockGlyph({ size = 22 }: { size?: number }) {
 
 /** The time card with −/+ (quarter-hour steps). */
 export function TimeStepper({ minutes, onChange }: { minutes: number; onChange: (m: number) => void }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.schedule;
   const btn =
     'flex h-[44px] w-[44px] items-center justify-center rounded-px-15 border-[1.5px] border-input-border bg-background';
   return (
@@ -206,14 +207,14 @@ export function TimeStepper({ minutes, onChange }: { minutes: number; onChange: 
         aria-live="polite"
         className="grow font-heading text-[26px] leading-[1.4] font-bold text-text-dark"
       >
-        {formatTime(minutes)}
+        {formatTime(minutes, lang)}
       </output>
       <div className="flex shrink-0 gap-[8px]">
         <button
           type="button"
           className={btn}
           onClick={() => onChange((minutes + 1425) % 1440)}
-          aria-label="تقديم الوقت ربع ساعة"
+          aria-label={t.earlier}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M6 12 H18" stroke={C.textDark} strokeWidth="2.4" strokeLinecap="round" />
@@ -223,7 +224,7 @@ export function TimeStepper({ minutes, onChange }: { minutes: number; onChange: 
           type="button"
           className={btn}
           onClick={() => onChange((minutes + 15) % 1440)}
-          aria-label="تأخير الوقت ربع ساعة"
+          aria-label={t.later}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M12 6 V18 M6 12 H18" stroke={C.textDark} strokeWidth="2.4" strokeLinecap="round" />
@@ -287,13 +288,15 @@ export function DurationChips({
   value: number;
   onChange: (d: (typeof DURATIONS)[number]) => void;
 }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.schedule;
   return (
     <ChoiceChips
-      label="الحدّ الأقصى للحصة اليومية"
+      label={t.dailyCap}
       options={DURATIONS}
       value={value as (typeof DURATIONS)[number]}
       onChange={onChange}
-      render={(n) => `${toArabicDigits(n)} دقيقة`}
+      render={(n) => fill(lang, t.minutes, { n })}
       className="h-[54px] rounded-px-18 font-body text-[15px] font-bold"
     />
   );

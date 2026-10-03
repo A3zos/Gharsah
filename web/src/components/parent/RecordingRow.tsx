@@ -4,8 +4,10 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { formatDuration, loadRecording, type ProjectSubmission } from '../../data/submissions';
+import { useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { C } from '../ui/color';
+import { fmt } from './parentText';
 
 /** The design's fixed bar heights (px). */
 const BARS = [
@@ -87,6 +89,8 @@ export function RecordingRow({
   childName: string;
 }) {
   const { playing, played, error, toggle } = useRecording(submission);
+  const { lang, m } = useI18n();
+  const t = m.parent.recordings;
   const active = playing || played > 0;
   return (
     <div
@@ -98,7 +102,7 @@ export function RecordingRow({
       <button
         type="button"
         onClick={() => void toggle()}
-        aria-label={playing ? `إيقاف تسجيل ${childName}` : `استمع إلى تسجيل ${childName}`}
+        aria-label={fmt(lang, playing ? t.stop : t.listen, { name: childName })}
         aria-pressed={playing}
         className={cx(
           'flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-full border-0',
@@ -124,12 +128,12 @@ export function RecordingRow({
           </span>
         </span>
         <span className={cx('text-[13.5px] leading-[1.8]', error ? 'text-error-text' : 'text-text-muted')}>
-          {error ? 'تعذّر تشغيل التسجيل — حاول مرة أخرى.' : line}
+          {error ? t.playError : line}
         </span>
       </span>
       <Waveform played={played} />
       <span className="shrink-0 font-heading text-[14px] font-bold text-text-muted">
-        {formatDuration(submission.durationMs)}
+        {formatDuration(submission.durationMs, lang)}
       </span>
     </div>
   );
@@ -137,6 +141,8 @@ export function RecordingRow({
 
 /** A project assigned but not reported yet («بانتظار حكايته غدًا»). */
 export function PendingRecordingRow({ title, childName }: { title: string; childName: string }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.recordings;
   return (
     <div className="flex items-center gap-[18px] rounded-px-24 border-[1.5px] border-border bg-surface px-[22px] py-[20px]">
       <span
@@ -151,11 +157,11 @@ export function PendingRecordingRow({ title, childName }: { title: string; child
         <span className="flex flex-wrap items-center gap-[10px]">
           <span className="text-[16.5px] font-extrabold">{title}</span>
           <span className="rounded-pill bg-gold-tint px-[11px] py-[5px] text-[11.5px] font-extrabold text-warning-text">
-            بانتظار حكايته غدًا
+            {t.pendingPill}
           </span>
         </span>
         <span className="text-[13.5px] leading-[1.8] text-text-muted">
-          يحكي {childName} غدًا ماذا فعل — ثم يظهر التسجيل هنا.
+          {fmt(lang, t.pendingLine, { name: childName })}
         </span>
       </span>
       <Waveform played={0} />
@@ -186,12 +192,14 @@ export function CompactPlayer({
   childName: string;
 }) {
   const { playing, played, error, toggle, position } = useRecording(submission);
+  const { lang, m } = useI18n();
+  const t = m.parent.recordings;
   return (
     <div className="flex items-center gap-[12px] rounded-px-18 border-[1.5px] border-border bg-surface p-[9px]">
       <button
         type="button"
         onClick={() => void toggle()}
-        aria-label={playing ? `إيقاف تسجيل ${childName}` : `استمع إلى تسجيل ${childName}`}
+        aria-label={fmt(lang, playing ? t.stop : t.listen, { name: childName })}
         aria-pressed={playing}
         className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border-0 bg-deep-green"
       >
@@ -202,12 +210,12 @@ export function CompactPlayer({
           <Waveform played={played} />
         </div>
         <div className="flex items-center justify-between gap-[8px]">
-          <span className="text-[11.5px] font-bold text-text-muted">{formatDuration(position)}</span>
+          <span className="text-[11.5px] font-bold text-text-muted">{formatDuration(position, lang)}</span>
           <span className={cx('text-[11.5px]', error ? 'text-error-text' : 'text-text-muted')}>
-            {error ? 'تعذّر التشغيل' : `بصوت ${childName}`}
+            {error ? t.playErrorShort : fmt(lang, t.byVoice, { name: childName })}
           </span>
           <span className="text-[11.5px] font-bold text-text-muted">
-            {formatDuration(submission.durationMs)}
+            {formatDuration(submission.durationMs, lang)}
           </span>
         </div>
       </div>

@@ -1,12 +1,11 @@
 // design/v3 Dashboard growth card (phone): the stage illustration, the plan bar
 // and the seed → sprout → tree timeline that draws itself in.
-import type { Stage } from '../../data/stats';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { stageLabel, type Stage } from '../../data/stats';
+import { fill, useI18n } from '../../i18n/i18n';
 import { C } from '../ui/color';
 import { Blob } from '../ui/Page';
 
 const ORDER: Stage[] = ['seed', 'sprout', 'tree'];
-const LABEL: Record<Stage, string> = { seed: 'بذرة', sprout: 'غَرْسة', tree: 'شجرة' };
 
 function Illustration({ stage }: { stage: Stage }) {
   return (
@@ -105,13 +104,15 @@ export function GrowthHero({
   /** «أتمّ ١ من ٣ أيام (٣٣٪) من الباقة التجريبية» */
   sentence: string;
 }) {
+  const { lang, m } = useI18n();
+  const t = m.parent;
   const at = ORDER.indexOf(stage);
   const seg = (from: number, span: number) =>
     `${Math.round(Math.min(1, Math.max(0, (pct - from) / span)) * 1000) / 10}%`;
   const delays = [0.08, 0.62, 1.14];
   return (
     <section
-      aria-label={`نموّ ${name}`}
+      aria-label={t.dashboard.growthOf.replace('{name}', name)}
       className="relative flex flex-col gap-[14px] overflow-hidden rounded-px-28 bg-surface p-[20px] shadow-card"
     >
       <Blob className="-top-[80px] -left-[70px] h-[230px] w-[230px] bg-blob-green-faint" />
@@ -131,10 +132,10 @@ export function GrowthHero({
       <div className="relative flex flex-col gap-[8px]">
         <div className="flex items-baseline justify-between gap-[10px]">
           <span className="text-[13px] font-bold text-text-muted">
-            المرحلة الحالية: <span className="text-deep-green">{LABEL[stage]}</span>
+            {t.growth.currentStage} <span className="text-deep-green">{stageLabel(stage, lang)}</span>
           </span>
           <span className="font-heading text-[19px] leading-[1.3] font-extrabold text-deep-green">
-            {toArabicDigits(pct)}٪
+            {fill(lang, t.common.pct, { n: pct })}
           </span>
         </div>
         <div
@@ -143,7 +144,7 @@ export function GrowthHero({
           aria-valuenow={pct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label="من الباقة التجريبية"
+          aria-label={t.growth.ofPilot}
         >
           <div className="h-full rounded-px-6 bg-primary" style={{ width: `${pct}%` }} />
         </div>
@@ -178,7 +179,7 @@ export function GrowthHero({
                 className="text-[12.5px] font-extrabold"
                 style={{ color: i <= at ? C.deepGreen : C.textFaint }}
               >
-                {LABEL[s]}
+                {stageLabel(s, lang)}
               </span>
             </div>
           </div>

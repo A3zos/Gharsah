@@ -9,16 +9,20 @@ import { BackButton } from '../../components/ui/BackButton';
 import { C } from '../../components/ui/color';
 import { AlertIcon } from '../../components/ui/icons';
 import { updateSchedule } from '../../data/children';
-import { PILOT_NAME, PILOT_PRICE } from '../../content/pilot';
+import { pilotCopy } from '../../content/pilot';
 import { deleteAccount, isSubscribed, updateParentName } from '../../data/parent';
 import { LanguageSettings } from '../../components/ui/LanguageSwitcher';
+import { MESSAGES, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
+import { failureText, useParentTitle } from '../../components/parent/parentText';
 import type { Route } from './+types/settings';
 
-export const meta: Route.MetaFunction = () => [{ title: 'الإعدادات — غَرْسة' }];
+export const meta: Route.MetaFunction = () => [
+  { title: `${MESSAGES.ar.parent.meta.settings} — ${MESSAGES.ar.parent.meta.brand}` },
+];
 
 const Chevron = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="ltr:-scale-x-100">
     <path
       d="M15 5 L8 12 L15 19"
       stroke={C.textSubtle}
@@ -125,7 +129,7 @@ const icons = {
 };
 
 const rowCls =
-  'flex min-h-[60px] w-full items-center gap-[13px] px-[16px] py-[12px] text-right font-body no-underline';
+  'flex min-h-[60px] w-full items-center gap-[13px] px-[16px] py-[12px] text-start font-body no-underline';
 
 function Row({
   icon,
@@ -207,7 +211,15 @@ function Group({ title, children }: { title?: string; children: React.ReactNode 
 export default function SettingsRoute() {
   const navigate = useNavigate();
   const { profile, email, subscription, children } = useParentData();
-  const [error, setError] = useState<string | null>(null);
+  const { lang, m } = useI18n();
+  const t = m.parent.settings;
+  const pilot = pilotCopy(lang);
+  useParentTitle('settings');
+  // A message key of settings, or a failure (shown in the current UI language).
+  const [failure, setFailure] = useState<unknown>(null);
+  const error =
+    failure === null ? null : failure === 'nameTooLong' ? t.nameTooLong : failureText(lang, failure);
+  const setError = (e: unknown) => setFailure(e);
   const [busy, setBusy] = useState(false);
   const sub = subscription && isSubscribed(subscription) ? subscription : null;
   const signOutFlow = useSignOut();
@@ -225,7 +237,7 @@ export default function SettingsRoute() {
           .map((c) => updateSchedule(c.id, { ...c.schedule!, reminder: !reminderOn })),
       );
     } catch (e) {
-      setError((e as Error).message);
+      setError(e);
     } finally {
       setBusy(false);
     }
@@ -233,47 +245,47 @@ export default function SettingsRoute() {
 
   const rename = async () => {
     // TODO(design): no designed edit-name screen; the browser prompt is used.
-    const next = window.prompt('الاسم', profile?.name ?? '')?.trim();
+    const next = window.prompt(t.namePrompt, profile?.name ?? '')?.trim();
     if (!next || next === profile?.name) return;
-    if (next.length > 100) return setError('الاسم طويل جدًا.');
+    if (next.length > 100) return setError('nameTooLong');
     try {
       await updateParentName(next);
     } catch (e) {
-      setError((e as Error).message);
+      setError(e);
     }
   };
 
   const remove = async () => {
     // TODO(design): no designed confirmation for «حذف الحساب»; the warning card + browser confirm are used.
-    if (!window.confirm('حذف الحساب نهائيًا مع بيانات جميع أبنائك وتسجيلاتهم؟ لا يمكن التراجع.')) return;
+    if (!window.confirm(t.confirmDelete)) return;
     setBusy(true);
     try {
       await deleteAccount();
       navigate(paths.landing, { replace: true });
     } catch (e) {
-      setError((e as Error).message);
+      setError(e);
       setBusy(false);
     }
   };
 
   const body = (
     <>
-      <Group title="الحساب">
-        <Row icon={icons.person} label="الاسم" value={profile?.name} onClick={() => void rename()} />
-        <Row icon={icons.person} label="البريد" value={email} />
-        <Row icon={icons.lock} label="تغيير كلمة المرور" to={paths.forgotPassword} last />
+      <Group title={t.account}>
+        <Row icon={icons.person} label={t.name} value={profile?.name} onClick={() => void rename()} />
+        <Row icon={icons.person} label={t.email} value={email} />
+        <Row icon={icons.lock} label={t.password} to={paths.forgotPassword} last />
       </Group>
-      <Group title="الاشتراك">
+      <Group title={t.subscription}>
         <Row
           icon={icons.play}
-          label="إدارة الاشتراك"
+          label={t.manage}
           // The pilot: one package for everyone (product-owner decision 2026-10-02).
-          value={sub ? `${PILOT_NAME} · ${PILOT_PRICE}` : 'بلا اشتراك'}
+          value={sub ? `${pilot.name} · ${pilot.price}` : t.noSubscription}
           to={paths.parent.plans}
           last
         />
       </Group>
-      <Group title="التنبيهات">
+      <Group title={t.alerts}>
         <div className={rowCls}>
           <span
             className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-px-13 bg-background"
@@ -282,7 +294,7 @@ export default function SettingsRoute() {
             {icons.bell}
           </span>
           <span id="reminder-label" className="grow text-[15.5px] font-bold">
-            تذكير موعد الحصة
+            {t.reminder}
           </span>
           <button
             type="button"
@@ -300,17 +312,17 @@ export default function SettingsRoute() {
           </button>
         </div>
       </Group>
-      <Group title="اللغة">
+      <Group title={t.language}>
         <LanguageSettings />
       </Group>
-      <Group title="عن التطبيق">
-        <Row icon={icons.doc} label="الشروط والأحكام" to={paths.terms} />
-        <Row icon={icons.doc} label="سياسة الخصوصية" to={paths.privacy} />
-        <Row icon={icons.book} label="مصادر المحتوى" to={`${paths.landing}#sources`} last />
+      <Group title={t.about}>
+        <Row icon={icons.doc} label={t.terms} to={paths.terms} />
+        <Row icon={icons.doc} label={t.privacy} to={paths.privacy} />
+        <Row icon={icons.book} label={t.sources} to={`${paths.landing}#sources`} last />
       </Group>
       <Group>
-        <Row icon={icons.logout} label="تسجيل الخروج" onClick={signOutFlow.ask} />
-        <Row icon={icons.trash} label="حذف الحساب" danger onClick={() => void remove()} last />
+        <Row icon={icons.logout} label={t.signOut} onClick={signOutFlow.ask} />
+        <Row icon={icons.trash} label={t.deleteAccount} danger onClick={() => void remove()} last />
       </Group>
       {error && (
         <p role="alert" className="m-0 flex items-center gap-[7px] text-[13px] font-bold text-error-text">
@@ -321,9 +333,7 @@ export default function SettingsRoute() {
       {signOutFlow.sheet}
       <div className="flex items-start gap-[11px] rounded-px-22 border-[1.5px] border-berry-border bg-berry-tint p-[16px]">
         <AlertIcon size={20} />
-        <span className="text-[13px] leading-[1.85] font-bold text-error-text">
-          حذف الحساب يمحو نهائيًا بيانات جميع أبنائك وتسجيلاتهم الصوتية، ولا يمكن التراجع عنه.
-        </span>
+        <span className="text-[13px] leading-[1.85] font-bold text-error-text">{t.deleteWarn}</span>
       </div>
     </>
   );
@@ -333,13 +343,23 @@ export default function SettingsRoute() {
       tab="settings"
       desktop={
         <>
-          <DesktopHeader title="الإعدادات" />
+          <DesktopHeader title={t.title} />
           <div className="flex max-w-[640px] flex-col gap-[16px]">{body}</div>
         </>
       }
       mobile={
         <>
-          <MobileHeader title="الإعدادات" leading={<BackButton to={paths.parent.dashboard()} small />} />
+          <MobileHeader
+            title={t.title}
+            leading={
+              <BackButton
+                to={paths.parent.dashboard()}
+                small
+                label={m.parent.addChild.back}
+                className="ltr:[&_svg]:-scale-x-100"
+              />
+            }
+          />
           {body}
         </>
       }

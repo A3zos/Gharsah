@@ -17,6 +17,8 @@ export interface ParentData {
 }
 
 const Ctx = createContext<ParentData | null>(null);
+/** For tests: renders parent pages with fixed data (no live listeners). */
+export const ParentDataContext = Ctx;
 
 export function ParentDataProvider({
   uid,

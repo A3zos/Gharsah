@@ -3,6 +3,7 @@
 // a short-lived signed URL (storage policy: parent reads own children only).
 import { supabase } from '../supabase/client';
 import { watch } from '../supabase/live';
+import type { UiLanguage } from '../i18n/i18n';
 
 export interface ProjectSubmission {
   id: string;
@@ -61,11 +62,12 @@ export async function deleteSubmission(_uid: string, _childId: string, s: Projec
   if (error) throw error;
 }
 
-/** «٠:٤٤» */
-export function formatDuration(ms: number): string {
+/** «٠:٤٤» (Arabic-Indic digits) / "0:44" in English and Indonesian. */
+export function formatDuration(ms: number, lang: UiLanguage = 'ar'): string {
   const total = Math.max(0, Math.round(ms / 1000));
   const m = Math.floor(total / 60);
   const s = total % 60;
+  if (lang !== 'ar') return `${m}:${String(s).padStart(2, '0')}`;
   const ar = (n: number) => n.toLocaleString('ar-SA-u-nu-arab', { useGrouping: false });
   return `${ar(m)}:${ar(s).padStart(2, '٠')}`;
 }

@@ -5,29 +5,23 @@
 // text is never shown unless approved (else «قيد المراجعة»).
 import { Link } from 'react-router';
 
-import { hadithRepo, projectRepo, quranMeta } from '../../content/library';
+import { hadithRepo, quranMeta } from '../../content/library';
 import { verifiedAyah } from '../../content/verified';
 import type { ChildProfile } from '../../data/children';
 import type { Headline } from '../../data/stats';
 import type { ProjectSubmission } from '../../data/submissions';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { countPhrase, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
-import { hijriDayMonth, toDateOrNull } from '../../lib/dates';
-import { plural } from '../../lib/plural';
+import { toDateOrNull } from '../../lib/dates';
 import { AyahText } from '../ui/AyahText';
 import { C } from '../ui/color';
 import { CheckIcon, ForwardIcon } from '../ui/icons';
+import { capitalize, dayMonth, fmt, hadithTopic, pctText, projectCopy, surahName } from './parentText';
 import { CompactPlayer } from './RecordingRow';
 
 export type DashCard = 'surahs' | 'ayat' | 'hadith' | 'projects';
 
 const ORDER: DashCard[] = ['surahs', 'ayat', 'hadith', 'projects'];
-const LABEL: Record<DashCard, string> = {
-  surahs: 'السور المنجزة',
-  ayat: 'الآيات المحفوظة',
-  hadith: 'الأحاديث',
-  projects: 'المشاريع المنجزة',
-};
 const TINT: Record<DashCard, string> = {
   surahs: 'bg-green-tint',
   ayat: 'bg-sky-tint',
@@ -109,6 +103,7 @@ function Lock({ size = 16 }: { size?: number }) {
 
 /** «بعد الباقة التجريبية — قريبًا» (launch content: 3 surahs, 3 hadith topics). */
 function ComingSoonRow() {
+  const { m } = useI18n();
   return (
     <div className="flex items-center gap-[11px] rounded-px-18 border-[1.5px] border-dashed border-border-strong bg-transparent p-[14px]">
       <span
@@ -117,9 +112,9 @@ function ComingSoonRow() {
       >
         <Lock />
       </span>
-      <span className="grow text-[14px] font-bold text-text-subtle">بعد الباقة التجريبية</span>
+      <span className="grow text-[14px] font-bold text-text-subtle">{m.parent.detail.afterPilot}</span>
       <span className="rounded-pill bg-border-soft px-[10px] py-[5px] text-[11.5px] font-extrabold whitespace-nowrap text-text-muted">
-        قريبًا
+        {m.parent.common.soon}
       </span>
     </div>
   );
@@ -152,6 +147,7 @@ function PanelHeader({
   subtitle?: string;
   onClose: () => void;
 }) {
+  const { m } = useI18n();
   return (
     <div className="flex items-center justify-between gap-[10px]">
       <div className="flex flex-col gap-[3px]">
@@ -163,7 +159,7 @@ function PanelHeader({
         onClick={onClose}
         className="flex h-[40px] items-center gap-[6px] rounded-px-14 border-0 bg-border-soft px-[13px] font-body text-[13px] font-bold text-text-muted"
       >
-        إخفاء
+        {m.parent.detail.hide}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
             d="M6 14.5 L12 8.5 L18 14.5"
@@ -197,6 +193,8 @@ export function DashDetail({
     hadith: h.hadith,
     projects: h.projects,
   };
+  const { lang, m } = useI18n();
+  const label = m.parent.cards;
   const idx = ORDER.indexOf(card);
   const s = child.stats ?? {};
   return (
@@ -226,7 +224,7 @@ export function DashDetail({
                 <Icon kind={kind} />
               </span>
               <span className="font-heading text-[32px] leading-[1.2] font-extrabold">
-                {toArabicDigits(counts[kind])}
+                {fmt(lang, '{n}', { n: counts[kind] })}
               </span>
               <span
                 className={cx(
@@ -234,24 +232,29 @@ export function DashDetail({
                   on ? 'font-extrabold text-deep-green' : 'font-bold text-text-muted',
                 )}
               >
-                {LABEL[kind]}
+                {label[kind]}
               </span>
-              <span className="absolute top-[18px] left-[16px]">
-                <ForwardIcon size={18} color={on ? 'deepGreen' : 'textSubtle'} strokeWidth={2.2} />
+              <span className="absolute end-[16px] top-[18px]">
+                <ForwardIcon
+                  size={18}
+                  color={on ? 'deepGreen' : 'textSubtle'}
+                  strokeWidth={2.2}
+                  className="ltr:-scale-x-100"
+                />
               </span>
             </Link>
           );
         })}
       </div>
       <section
-        aria-label={LABEL[card]}
+        aria-label={label[card]}
         className="relative flex flex-col gap-[12px] rounded-px-26 border-[1.5px] border-border bg-surface p-[18px] shadow-lesson-done-card"
       >
         <span
           aria-hidden="true"
           className={cx(
             'absolute -top-[9px] h-[16px] w-[16px] [transform:rotate(-45deg)] border-t-[1.5px] border-r-[1.5px] border-t-border border-r-border bg-surface',
-            idx % 2 === 0 ? 'right-[24%]' : 'left-[24%]',
+            idx % 2 === 0 ? 'start-[24%]' : 'end-[24%]',
           )}
         />
         {card === 'surahs' && <SurahsPanel s={s} h={h} onClose={onClose} />}
@@ -264,6 +267,9 @@ export function DashDetail({
 }
 
 function SurahsPanel({ s, h, onClose }: { s: Record<string, unknown>; h: Headline; onClose: () => void }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.detail;
+  const surah = (n: number) => fmt(lang, m.parent.common.surah, { name: surahName(lang, n) });
   const done = list(s.surahsDone)
     .filter((e) => surahOk(e.surah))
     .reverse();
@@ -275,8 +281,8 @@ function SurahsPanel({ s, h, onClose }: { s: Record<string, unknown>; h: Headlin
   return (
     <>
       <PanelHeader
-        title="السور"
-        subtitle={`${toArabicDigits(h.surahs)} مكتملة${inProgress ? ' · ١ قيد الحفظ' : ''}`}
+        title={t.surahsTitle}
+        subtitle={`${fmt(lang, t.surahsSubtitle, { n: h.surahs })}${inProgress ? t.surahsInProgress : ''}`}
         onClose={onClose}
       />
       {inProgress && (
@@ -288,31 +294,31 @@ function SurahsPanel({ s, h, onClose }: { s: Record<string, unknown>; h: Headlin
             >
               <Icon kind="surahs" />
             </span>
-            <span className="grow text-[15.5px] font-bold">
-              سورة {quranMeta.surahName(inProgress.surah!)}
-            </span>
+            <span className="grow text-[15.5px] font-bold">{surah(inProgress.surah!)}</span>
             <span className="rounded-pill bg-surface px-[11px] py-[6px] text-[11.5px] font-extrabold whitespace-nowrap text-warning-text">
-              قيد الحفظ
+              {t.inProgress}
             </span>
           </div>
           <div className="flex items-center gap-[10px]">
             <div className="h-[8px] grow overflow-hidden rounded-px-5 bg-surface">
               <div className="h-full rounded-px-5 bg-gold" style={{ width: `${pct}%` }} />
             </div>
-            <span className="text-[12px] font-extrabold text-warning-text">{toArabicDigits(pct)}٪</span>
+            <span className="text-[12px] font-extrabold text-warning-text">{pctText(lang, pct)}</span>
           </div>
         </div>
       )}
-      {done.length > 0 && <span className="ps-[4px] text-[12px] font-bold text-text-muted">مكتملة</span>}
+      {done.length > 0 && (
+        <span className="ps-[4px] text-[12px] font-bold text-text-muted">{t.completed}</span>
+      )}
       <div className="flex flex-col gap-[8px]">
         {done.map((e) => {
           const at = asDate(e.at);
           return (
             <DoneRow
               key={String(e.surah)}
-              name={`سورة ${quranMeta.surahName(e.surah as number)}`}
-              date={at ? hijriDayMonth(at) : ''}
-              tag="تم الحفظ"
+              name={surah(e.surah as number)}
+              date={at ? dayMonth(lang, at) : ''}
+              tag={t.memorized}
             />
           );
         })}
@@ -347,6 +353,8 @@ function AyatPanel({
   notRepeated: readonly string[];
   onClose: () => void;
 }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.detail;
   const skipped = notRepeatedBySurah(notRepeated);
   const bySurah = Object.entries((s.ayatBySurah as Record<string, number> | undefined) ?? {})
     .map(([k, v]) => [Number(k), v] as const)
@@ -362,23 +370,29 @@ function AyatPanel({
         Math.min(quranMeta.ayahCount(week), (s.ayatBySurah as Record<string, number>)?.[String(week)] ?? 1),
       )
     : 0;
-  const names = full.map(([k]) => quranMeta.surahName(k));
+  const names = full.map(([k]) => surahName(lang, k));
+  const ref =
+    week && lang !== 'ar'
+      ? fmt(lang, t.ayahRef, { name: surahName(lang, week), n: weekAyah })
+      : week
+        ? verifiedAyah(week, weekAyah).reference
+        : '';
   return (
     <>
-      <PanelHeader title="الآيات المحفوظة" onClose={onClose} />
+      <PanelHeader title={t.ayatTitle} onClose={onClose} />
       <div className="flex items-center gap-[16px] rounded-px-22 bg-sky-tint p-[18px]">
         <span className="font-heading text-[44px] leading-[1] font-extrabold text-text-dark">
-          {toArabicDigits(h.ayat)}
+          {fmt(lang, '{n}', { n: h.ayat })}
         </span>
         <div className="flex flex-col gap-[4px]">
-          <span className="text-[15px] font-bold">آية محفوظة</span>
+          <span className="text-[15px] font-bold">{t.ayahMemorized}</span>
           {names.length > 0 && (
             <span className="text-[12.5px] text-text-muted">
               {names.length === 1
-                ? `من سورة ${names[0]}`
+                ? fmt(lang, t.fromOne, { a: names[0]! })
                 : names.length === 2
-                  ? `من سورتَي ${names[0]} و${names[1]}`
-                  : `من ${toArabicDigits(names.length)} سور`}
+                  ? fmt(lang, t.fromTwo, { a: names[0]!, b: names[1]! })
+                  : fmt(lang, t.fromMany, { n: names.length })}
             </span>
           )}
         </div>
@@ -389,8 +403,7 @@ function AyatPanel({
             key={k}
             className="rounded-pill border border-border bg-background px-[13px] py-[8px] text-[12.5px] font-bold"
           >
-            {quranMeta.surahName(k)} ·{' '}
-            {plural(quranMeta.ayahCount(k), { one: 'آية', two: 'آيتان', few: 'آيات', many: 'آية' })}
+            {surahName(lang, k)} · {countPhrase(lang, quranMeta.ayahCount(k), t.ayahCount)}
           </span>
         ))}
         {partial.map(([k]) => (
@@ -398,19 +411,17 @@ function AyatPanel({
             key={k}
             className="rounded-pill border border-gold-border bg-gold-tint px-[13px] py-[8px] text-[12.5px] font-bold text-warning-text"
           >
-            {quranMeta.surahName(k)} · قيد الحفظ
+            {surahName(lang, k)} · {t.inProgress}
           </span>
         ))}
         <span className="rounded-pill border border-dashed border-border-strong bg-transparent px-[13px] py-[8px] text-[12.5px] font-bold text-text-subtle">
-          بعد الباقة التجريبية · قريبًا
+          {t.afterPilotSoon}
         </span>
       </div>
       {skipped.length > 0 && (
         <div className="flex flex-col gap-[8px] rounded-px-20 border-[1.5px] border-gold-border bg-gold-tint p-[14px]">
-          <span className="text-[13.5px] font-extrabold text-warning-text">لم يُردَّد</span>
-          <span className="text-[12.5px] leading-[1.7] text-on-gold">
-            بقي طفلك صامتًا عند هذه الآيات، فانتقل المعلّم دون أن يحسبها محفوظة — تستحق مراجعة معه.
-          </span>
+          <span className="text-[13.5px] font-extrabold text-warning-text">{t.notRepeated}</span>
+          <span className="text-[12.5px] leading-[1.7] text-on-gold">{t.notRepeatedBody}</span>
           <div className="flex flex-wrap gap-[6px]">
             {skipped.map(([surah, ayat]) =>
               ayat.map((a) => (
@@ -418,7 +429,7 @@ function AyatPanel({
                   key={`${surah}:${a}`}
                   className="rounded-pill border border-gold-border bg-surface px-[11px] py-[5px] text-[12.5px] font-bold text-warning-text"
                 >
-                  {quranMeta.surahName(surah)} · الآية {toArabicDigits(a)}
+                  {surahName(lang, surah)} · {fmt(lang, t.ayahN, { n: a })}
                 </span>
               )),
             )}
@@ -428,13 +439,18 @@ function AyatPanel({
       {week && (
         <div className="flex flex-col gap-[11px] rounded-px-20 border-[1.5px] border-border bg-background p-[16px]">
           <span className="text-[13.5px] font-extrabold">
-            آية هذا الأسبوع — سورة {quranMeta.surahName(week)}
+            {fmt(lang, t.weekAyah, { name: surahName(lang, week) })}
           </span>
-          <div className="rounded-px-16 border-[1.5px] border-dashed border-seed-dots bg-green-tint px-[16px] py-[14px]">
+          <div
+            dir="rtl"
+            lang="ar"
+            className="rounded-px-16 border-[1.5px] border-dashed border-seed-dots bg-green-tint px-[16px] py-[14px]"
+          >
             <AyahText text={verifiedAyah(week, weekAyah).text} className="text-[20px] leading-[1.9]" />
           </div>
           <span className="text-center text-[11.5px] text-text-muted">
-            {verifiedAyah(week, weekAyah).reference} — النصّ من مشروع تنزيل (رواية حفص)، لا يُكتب يدويًا.
+            {ref}
+            {t.tanzilNote}
           </span>
         </div>
       )}
@@ -446,8 +462,10 @@ function AyatPanel({
             <path d="M38 45 C48 45 54 39 54 31 C44 31 38 37 38 45 Z" fill={C.softGreen} />
           </svg>
           <span className="text-[12.5px] leading-[1.7] text-text-muted">
-            آخر إضافة: {plural(latest.count!, { one: 'آية واحدة', two: 'آيتان', few: 'آيات', many: 'آية' })}{' '}
-            هذا الأسبوع من سورة {quranMeta.surahName(latest.surah)}.
+            {fmt(lang, t.latest, {
+              count: countPhrase(lang, latest.count!, t.latestCount),
+              name: surahName(lang, latest.surah!),
+            })}
           </span>
         </div>
       )}
@@ -464,6 +482,8 @@ function HadithPanel({
   child: ChildProfile;
   onClose: () => void;
 }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.detail;
   const done = list(s.hadithDone)
     .reverse()
     .flatMap((e) => {
@@ -485,8 +505,8 @@ function HadithPanel({
   return (
     <>
       <PanelHeader
-        title="الأحاديث"
-        subtitle={`${plural(done.length, { one: '١ مكتمل', two: '٢ مكتملان', few: 'مكتملة', many: 'مكتملًا' })}${current ? ' · ١ هذا الأسبوع' : ''}`}
+        title={t.hadithTitle}
+        subtitle={`${countPhrase(lang, done.length, t.hadithDone)}${current ? t.hadithThisWeekSuffix : ''}`}
         onClose={onClose}
       />
       {current && (
@@ -498,23 +518,42 @@ function HadithPanel({
             >
               <Icon kind="hadith" />
             </span>
-            <span className="grow text-[15.5px] font-bold">حديث عن {current.topic}</span>
+            <span className="grow text-[15.5px] font-bold">
+              {fmt(lang, t.hadithAbout, { topic: hadithTopic(lang, current.id, current.topic) })}
+            </span>
             <span className="rounded-pill bg-surface px-[11px] py-[6px] text-[11.5px] font-extrabold whitespace-nowrap text-warning-text">
-              هذا الأسبوع
+              {t.thisWeek}
             </span>
           </div>
-          <span className="block rounded-px-16 border-[1.5px] border-dashed border-avatar-cream bg-hadith-placeholder-bg px-[16px] py-[14px] text-center font-body text-[14px] leading-[1.8] font-bold text-warning-text">
-            {current.isApproved ? current.displayText : 'قيد المراجعة'}
-          </span>
-          <span className="text-center text-[11.5px] font-bold text-ayah-bracket">
+          {current.isApproved ? (
+            <span
+              dir="rtl"
+              lang="ar"
+              className="block rounded-px-16 border-[1.5px] border-dashed border-avatar-cream bg-hadith-placeholder-bg px-[16px] py-[14px] text-center font-body text-[14px] leading-[1.8] font-bold text-warning-text"
+            >
+              {current.displayText}
+            </span>
+          ) : (
+            <span className="block rounded-px-16 border-[1.5px] border-dashed border-avatar-cream bg-hadith-placeholder-bg px-[16px] py-[14px] text-center font-body text-[14px] leading-[1.8] font-bold text-warning-text">
+              {t.underReview}
+            </span>
+          )}
+          <span dir="rtl" lang="ar" className="text-center text-[11.5px] font-bold text-ayah-bracket">
             {current.displayTakhrij}
           </span>
         </div>
       )}
-      {done.length > 0 && <span className="ps-[4px] text-[12px] font-bold text-text-muted">مكتملة</span>}
+      {done.length > 0 && (
+        <span className="ps-[4px] text-[12px] font-bold text-text-muted">{t.completed}</span>
+      )}
       <div className="flex flex-col gap-[8px]">
         {done.map((d) => (
-          <DoneRow key={d.h.id} name={d.h.topic} date={d.at ? hijriDayMonth(d.at) : ''} tag="تم" />
+          <DoneRow
+            key={d.h.id}
+            name={capitalize(hadithTopic(lang, d.h.id, d.h.topic))}
+            date={d.at ? dayMonth(lang, d.at) : ''}
+            tag={t.done}
+          />
         ))}
       </div>
       <ComingSoonRow />
@@ -532,8 +571,7 @@ function HadithPanel({
           <circle cx="12" cy="7.8" r="1.3" fill={C.berryDeep} />
         </svg>
         <p className="m-0 text-[12.5px] leading-[1.8] text-text-dark">
-          كل حديث يقابله مشروع عملي يطبّقه {child.name} في بيته أو حيّه. نصوص الأحاديث تُعتمد بتخريجها ودرجتها
-          من مختصّ قبل النشر.
+          {fmt(lang, t.hadithNote, { name: child.name })}
         </p>
       </div>
     </>
@@ -551,20 +589,17 @@ function ProjectsPanel({
   s: Record<string, unknown>;
   onClose: () => void;
 }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.detail;
+  const fallback = m.parent.recordings.projectFallback;
   const pending = typeof s.pendingProject === 'string' ? s.pendingProject : null;
-  const title = (id: string) => {
-    try {
-      return projectRepo.byId(id);
-    } catch {
-      return null;
-    }
-  };
+  const title = (id: string) => projectCopy(lang, id);
   const n = subs?.length ?? 0;
   return (
     <>
       <PanelHeader
-        title="المشاريع العملية"
-        subtitle={`${toArabicDigits(n)} منجزة${pending ? ' · ١ قيد التنفيذ' : ''}`}
+        title={t.projectsTitle}
+        subtitle={`${fmt(lang, t.projectsSubtitle, { n })}${pending ? t.projectsPendingSuffix : ''}`}
         onClose={onClose}
       />
       {subs === null && <div aria-busy="true" className="h-[80px]" />}
@@ -573,13 +608,13 @@ function ProjectsPanel({
         return (
           <div key={sub.id} className="flex flex-col gap-[10px] rounded-px-20 bg-background p-[14px]">
             <div className="flex items-center justify-between gap-[10px]">
-              <span className="text-[16px] font-bold">{p?.title ?? 'مشروع الأسبوع'}</span>
+              <span className="text-[16px] font-bold">{p?.title ?? fallback}</span>
               <span className="flex items-center gap-[5px] rounded-pill bg-green-tint px-[11px] py-[6px] text-[11.5px] font-extrabold whitespace-nowrap text-deep-green">
                 <CheckIcon size={12} strokeWidth={3.4} />
-                مكتمل
+                {t.projectDone}
               </span>
             </div>
-            <span className="text-[12px] text-text-muted">{hijriDayMonth(sub.createdAt)}</span>
+            <span className="text-[12px] text-text-muted">{dayMonth(lang, sub.createdAt)}</span>
             {p && <p className="m-0 text-[13px] leading-[1.8] text-text-dark">{p.intro}</p>}
             <CompactPlayer submission={sub} childName={child.name} />
           </div>
@@ -588,11 +623,9 @@ function ProjectsPanel({
       {pending && (
         <div className="flex flex-col gap-[10px] rounded-px-20 border-[1.5px] border-dashed border-border-strong bg-background p-[14px]">
           <div className="flex items-center justify-between gap-[10px]">
-            <span className="text-[16px] font-bold text-text-muted">
-              {title(pending)?.title ?? 'مشروع الأسبوع'}
-            </span>
+            <span className="text-[16px] font-bold text-text-muted">{title(pending)?.title ?? fallback}</span>
             <span className="rounded-pill bg-gold-tint px-[11px] py-[6px] text-[11.5px] font-extrabold whitespace-nowrap text-warning-text">
-              قيد التنفيذ
+              {t.projectPending}
             </span>
           </div>
           <div className="flex items-center gap-[10px]">
@@ -614,7 +647,7 @@ function ProjectsPanel({
               />
             </svg>
             <span className="text-[12.5px] leading-[1.7] text-text-muted">
-              لم يُسجّل بعد — يظهر تسجيل {child.name} هنا فور إتمام المشروع.
+              {fmt(lang, t.notRecorded, { name: child.name })}
             </span>
           </div>
         </div>
@@ -635,9 +668,7 @@ function ProjectsPanel({
             strokeLinejoin="round"
           />
         </svg>
-        <p className="m-0 text-[12.5px] leading-[1.8] text-text-dark">
-          التسجيلات للاستماع فقط — تبقى داخل حسابك ولا تُنشر.
-        </p>
+        <p className="m-0 text-[12.5px] leading-[1.8] text-text-dark">{t.privacy}</p>
       </div>
     </>
   );

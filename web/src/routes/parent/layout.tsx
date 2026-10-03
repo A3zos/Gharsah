@@ -5,6 +5,7 @@ import { paths } from '../../app/paths';
 import { ParentDataProvider } from '../../components/parent/ParentData';
 import { SSessionEnd } from '../../components/states/SSessionEnd';
 import { signOut } from '../../data/auth';
+import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Route } from './+types/layout';
 
 /** Guard: a signed-in parent (email/password), else → /login. */
@@ -21,7 +22,16 @@ export function HydrateFallback() {
 /** SSessionEnd: after this long without any input the web parent is signed out. */
 const IDLE_MS = 30 * 60_000;
 
-export default function ParentLayout({ loaderData }: Route.ComponentProps) {
+/** The parent area follows the chosen UI language (ar / en / id) on every page. */
+export default function ParentLayout(props: Route.ComponentProps) {
+  return (
+    <I18nProvider>
+      <ParentArea {...props} />
+    </I18nProvider>
+  );
+}
+
+function ParentArea({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const [ended, setEnded] = useState(false);
 

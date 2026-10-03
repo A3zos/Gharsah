@@ -1,19 +1,31 @@
 // /admin — aggregate statistics only (public.admin_stats()). Pure view: the route
 // loads, this renders loading / «غير مصرّح» / error / the dashboard.
 import type { AdminLoad, AdminStats, DailyPoint } from '../../data/admin';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { fill, formatNumber, useI18n, type UiLanguage } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 
-const n = (v: number) => toArabicDigits(Math.round(v * 10) / 10);
-const pct = (v: number) => `${toArabicDigits(Math.round(v * 10) / 10)}٪`;
-const time = (d: Date) =>
-  d.toLocaleTimeString('ar-SA-u-nu-arab', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' });
+/** Numbers / percentages in the UI language (Arabic-Indic digits in Arabic). */
+function useFormat() {
+  const { lang, m } = useI18n();
+  const t = m.admin;
+  const n = (v: number) => formatNumber(lang, Math.round(v * 10) / 10);
+  const pct = (v: number) => fill(lang, t.pct, { n: Math.round(v * 10) / 10 });
+  return { lang, t, n, pct };
+}
+
+const time = (lang: UiLanguage, d: Date) =>
+  d.toLocaleTimeString(lang === 'ar' ? 'ar-SA-u-nu-arab' : lang, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'Asia/Riyadh',
+  });
 
 export function AdminView({ state, onRefresh }: { state: AdminLoad; onRefresh: () => void }) {
+  const { lang, t } = useFormat();
   if (state.kind === 'forbidden') {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-background px-[16px] text-text-dark">
-        <h1 className="m-0 font-heading text-[28px] font-bold">غير مصرّح</h1>
+        <h1 className="m-0 font-heading text-[28px] font-bold">{t.forbidden}</h1>
       </main>
     );
   }
@@ -21,10 +33,12 @@ export function AdminView({ state, onRefresh }: { state: AdminLoad; onRefresh: (
     <main className="min-h-dvh bg-background px-[16px] py-[24px] text-text-dark md:px-[32px]">
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-[20px]">
         <header className="flex flex-wrap items-center justify-between gap-[12px]">
-          <h1 className="m-0 font-heading text-[28px] leading-[1.4] font-bold">إحصاءات غَرْسة</h1>
+          <h1 className="m-0 font-heading text-[28px] leading-[1.4] font-bold">{t.title}</h1>
           <div className="flex items-center gap-[12px]">
             {state.kind === 'ok' && (
-              <span className="text-[14px] text-text-muted">آخر تحديث: {time(state.loadedAt)}</span>
+              <span className="text-[14px] text-text-muted">
+                {t.updated.replace('{time}', time(lang, state.loadedAt))}
+              </span>
             )}
             <button
               type="button"
@@ -32,13 +46,13 @@ export function AdminView({ state, onRefresh }: { state: AdminLoad; onRefresh: (
               disabled={state.kind === 'loading'}
               className="h-[44px] cursor-pointer rounded-px-14 border-0 bg-deep-green px-[18px] text-[15px] font-extrabold text-surface disabled:opacity-60"
             >
-              تحديث
+              {t.refresh}
             </button>
           </div>
         </header>
         {state.kind === 'loading' && (
           <p aria-busy="true" className="m-0 text-text-muted">
-            جارٍ التحميل…
+            {t.loading}
           </p>
         )}
         {state.kind === 'error' && (
@@ -46,7 +60,7 @@ export function AdminView({ state, onRefresh }: { state: AdminLoad; onRefresh: (
             role="alert"
             className="m-0 rounded-px-18 bg-gold-tint px-[16px] py-[12px] font-bold text-on-gold"
           >
-            تعذّر تحميل الإحصاءات — حاول مرة أخرى.
+            {t.error}
           </p>
         )}
         {state.kind === 'ok' && <Dashboard s={state.stats} />}
@@ -56,77 +70,69 @@ export function AdminView({ state, onRefresh }: { state: AdminLoad; onRefresh: (
 }
 
 function Dashboard({ s }: { s: AdminStats }) {
+  const { lang, t, n, pct } = useFormat();
+  const f = (text: string, vars: Record<string, number>) => fill(lang, text, vars);
   return (
     <>
-      <section aria-label="المؤشرات" className="grid grid-cols-2 gap-[12px] md:grid-cols-3 xl:grid-cols-6">
-        <Kpi label="أولياء الأمور" value={n(s.parents.total)} sub={`+${n(s.parents.last7)} خلال ٧ أيام`} />
-        <Kpi label="الأطفال" value={n(s.children.total)} />
-        <Kpi label="الأجهزة المربوطة" value={n(s.pairedDevices)} />
-        <Kpi label="الاشتراكات الفعّالة" value={n(s.subscriptions.active)} />
-        <Kpi label="الحصص المكتملة" value={n(s.lessons.completed)} sub={`من ${n(s.lessons.started)} بدأت`} />
-        <Kpi label="نسبة الإكمال" value={pct(s.lessons.completionRate)} accent />
+      <section aria-label={t.kpis} className="grid grid-cols-2 gap-[12px] md:grid-cols-3 xl:grid-cols-6">
+        <Kpi label={t.parents} value={n(s.parents.total)} sub={f(t.in7, { n: s.parents.last7 })} />
+        <Kpi label={t.children} value={n(s.children.total)} />
+        <Kpi label={t.paired} value={n(s.pairedDevices)} />
+        <Kpi label={t.activeSubs} value={n(s.subscriptions.active)} />
+        <Kpi
+          label={t.lessonsDone}
+          value={n(s.lessons.completed)}
+          sub={f(t.ofStarted, { n: s.lessons.started })}
+        />
+        <Kpi label={t.completion} value={pct(s.lessons.completionRate)} accent />
       </section>
 
-      <section aria-label="آخر ٣٠ يومًا" className="grid gap-[12px] md:grid-cols-2">
-        <Chart
-          title="أولياء أمور جدد — آخر ٣٠ يومًا"
-          days={s.daily}
-          pick={(d) => d.newParents}
-          color="bg-primary"
-        />
-        <Chart
-          title="حصص مكتملة — آخر ٣٠ يومًا"
-          days={s.daily}
-          pick={(d) => d.lessonsCompleted}
-          color="bg-gold"
-        />
+      <section aria-label={t.last30} className="grid gap-[12px] md:grid-cols-2">
+        <Chart title={t.chartParents} days={s.daily} pick={(d) => d.newParents} color="bg-primary" />
+        <Chart title={t.chartLessons} days={s.daily} pick={(d) => d.lessonsCompleted} color="bg-gold" />
       </section>
 
       <section className="grid gap-[12px] md:grid-cols-2 xl:grid-cols-3">
         <Table
-          title="الحصص"
-          head={['الحصة', 'بدأت', 'اكتملت', 'النسبة']}
+          title={t.lessons}
+          head={[t.headLesson, t.headStarted, t.headCompleted, t.headRate]}
           rows={s.lessons.byLesson.map((l) => [l.title, n(l.started), n(l.completed), pct(l.rate)])}
         />
         <Table
-          title="الباقات"
-          head={['الباقة', 'العدد']}
+          title={t.plans}
+          head={[t.headPlan, t.headCount]}
           rows={[
-            ['سنوية', n(s.subscriptions.annual)],
-            ['شهرية', n(s.subscriptions.monthly)],
-            ['تجريبية', n(s.subscriptions.trial)],
-            ['بلا اشتراك', n(s.subscriptions.none)],
+            [t.annual, n(s.subscriptions.annual)],
+            [t.monthly, n(s.subscriptions.monthly)],
+            [t.trial, n(s.subscriptions.trial)],
+            [t.none, n(s.subscriptions.none)],
           ]}
         />
         <Table
-          title="الأطفال حسب العمر"
-          head={['العمر', 'العدد']}
+          title={t.byAge}
+          head={[t.headAge, t.headCount]}
           rows={[
-            ['٨–٩', n(s.children.byAge['8-9'])],
-            ['١٠–١١', n(s.children.byAge['10-11'])],
-            ['١٢–١٣', n(s.children.byAge['12-13'])],
-            ['أولاد / بنات', `${n(s.children.byGender.boy)} / ${n(s.children.byGender.girl)}`],
+            [t.age89, n(s.children.byAge['8-9'])],
+            [t.age1011, n(s.children.byAge['10-11'])],
+            [t.age1213, n(s.children.byAge['12-13'])],
+            [t.boysGirls, `${n(s.children.byGender.boy)} / ${n(s.children.byGender.girl)}`],
           ]}
         />
       </section>
 
-      <section aria-label="تفاصيل" className="grid grid-cols-2 gap-[12px] md:grid-cols-4">
-        <Kpi label="آيات محفوظة" value={n(s.memorization.ayat)} />
-        <Kpi label="سور مكتملة" value={n(s.memorization.surahs)} />
-        <Kpi label="أحاديث" value={n(s.memorization.hadith)} />
+      <section aria-label={t.details} className="grid grid-cols-2 gap-[12px] md:grid-cols-4">
+        <Kpi label={t.ayat} value={n(s.memorization.ayat)} />
+        <Kpi label={t.surahs} value={n(s.memorization.surahs)} />
+        <Kpi label={t.hadith} value={n(s.memorization.hadith)} />
         <Kpi
-          label="تقارير المشاريع"
+          label={t.reports}
           value={pct(s.projects.reportRate)}
-          sub={`${n(s.projects.reported)} من ${n(s.projects.assigned)}`}
+          sub={f(t.ofN, { a: s.projects.reported, b: s.projects.assigned })}
         />
-        <Kpi label="نشطون اليوم" value={n(s.engagement.activeToday)} />
-        <Kpi label="نشطون خلال ٧ أيام" value={n(s.engagement.active7)} />
-        <Kpi label="حصص لكل طفل نشط" value={n(s.engagement.lessonsPerActiveChild)} />
-        <Kpi
-          label="أولياء أمور جدد اليوم"
-          value={n(s.parents.today)}
-          sub={`${n(s.parents.last30)} خلال ٣٠ يومًا`}
-        />
+        <Kpi label={t.activeToday} value={n(s.engagement.activeToday)} />
+        <Kpi label={t.active7} value={n(s.engagement.active7)} />
+        <Kpi label={t.perChild} value={n(s.engagement.lessonsPerActiveChild)} />
+        <Kpi label={t.newToday} value={n(s.parents.today)} sub={f(t.in30, { n: s.parents.last30 })} />
       </section>
     </>
   );
@@ -159,7 +165,7 @@ function Kpi({
   );
 }
 
-/** Simple bar chart (no library): one bar per day, right = today (RTL). */
+/** Simple bar chart (no library): one bar per day, oldest → today from left to right. */
 function Chart({
   title,
   days,
@@ -171,13 +177,14 @@ function Chart({
   pick: (d: DailyPoint) => number;
   color: string;
 }) {
+  const { lang, t, n } = useFormat();
   const max = Math.max(1, ...days.map(pick));
   const total = days.reduce((t, d) => t + pick(d), 0);
   return (
     <figure className="m-0 flex flex-col gap-[10px] rounded-px-24 bg-surface px-[16px] py-[14px] shadow-card">
       <figcaption className="flex items-baseline justify-between gap-[8px]">
         <span className="text-[16px] font-extrabold">{title}</span>
-        <span className="text-[14px] text-text-muted">المجموع: {n(total)}</span>
+        <span className="text-[14px] text-text-muted">{fill(lang, t.total, { n: total })}</span>
       </figcaption>
       <div
         className="flex h-[140px] items-end gap-[2px] [direction:ltr]"
@@ -194,8 +201,8 @@ function Chart({
         ))}
       </div>
       <div className="flex justify-between text-[12px] text-text-muted [direction:ltr]">
-        <span>{toArabicDigits(days[0]?.day.slice(5) ?? '')}</span>
-        <span>{toArabicDigits(days.at(-1)?.day.slice(5) ?? '')}</span>
+        <span>{formatNumber(lang, days[0]?.day.slice(5) ?? '')}</span>
+        <span>{formatNumber(lang, days.at(-1)?.day.slice(5) ?? '')}</span>
       </div>
     </figure>
   );
@@ -209,7 +216,7 @@ function Table({ title, head, rows }: { title: string; head: string[]; rows: str
         <thead>
           <tr>
             {head.map((h) => (
-              <th key={h} className="border-b border-b-border py-[6px] text-right font-bold text-text-muted">
+              <th key={h} className="border-b border-b-border py-[6px] text-start font-bold text-text-muted">
                 {h}
               </th>
             ))}

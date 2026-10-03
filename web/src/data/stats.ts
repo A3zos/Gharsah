@@ -1,12 +1,20 @@
 // The server-written `stats` on a child document (functions/src/progress.ts) —
 // headline numbers only here; the dashboard parses the detail lists.
 import { PILOT_DAYS } from '../content/pilot';
+import { countPhrase, fill, MESSAGES, type UiLanguage } from '../i18n/i18n';
 import { planStage } from './planProgress';
-import { toArabicDigits } from '../lib/arabicDigits';
 import type { ChildProfile } from './children';
 
 export type Stage = 'seed' | 'sprout' | 'tree';
-export const STAGE_LABEL: Record<Stage, string> = { seed: 'بذرة', sprout: 'غَرْسة', tree: 'شجرة' };
+/** «بذرة» … in a UI language (parent.json → stage). */
+export const stageLabel = (stage: Stage, lang: UiLanguage = 'ar'): string =>
+  MESSAGES[lang].parent.stage[stage];
+/** The Arabic stage names (the child area). */
+export const STAGE_LABEL: Record<Stage, string> = {
+  seed: stageLabel('seed'),
+  sprout: stageLabel('sprout'),
+  tree: stageLabel('tree'),
+};
 
 export interface Headline {
   started: boolean;
@@ -43,18 +51,20 @@ export const pilotPct = (daysDone: number): number =>
   Math.round((Math.min(PILOT_DAYS.length, Math.max(0, daysDone)) * 100) / PILOT_DAYS.length);
 
 /** «اليوم ٢ من ٣» — the day the child is on; «أتمّ الباقة التجريبية» after the last one. */
-export function pilotChip(daysDone: number): string {
-  if (daysDone >= PILOT_DAYS.length) return 'أتمّ الباقة التجريبية ✓';
-  return `اليوم ${toArabicDigits(daysDone + 1)} من ${toArabicDigits(PILOT_DAYS.length)}`;
+export function pilotChip(daysDone: number, lang: UiLanguage = 'ar'): string {
+  const t = MESSAGES[lang].parent.pilotChip;
+  if (daysDone >= PILOT_DAYS.length) return t.done;
+  return fill(lang, t.day, { n: daysDone + 1, total: PILOT_DAYS.length });
 }
 
 /** «١٠ سنوات» / «١٢ سنة» */
-export const ageLabel = (age: number) => `${toArabicDigits(age)} ${age <= 10 ? 'سنوات' : 'سنة'}`;
+export const ageLabel = (age: number, lang: UiLanguage = 'ar') => {
+  const t = MESSAGES[lang].parent.age;
+  return fill(lang, age <= 10 ? t.young : t.old, { n: age });
+};
 
 /** «٣ أبناء» / «ابن واحد» / «ابنان» */
-export function childrenCount(n: number): string {
-  if (n === 0) return 'لا أبناء بعد';
-  if (n === 1) return 'ابن واحد';
-  if (n === 2) return 'ابنان';
-  return `${toArabicDigits(n)} ${n <= 10 ? 'أبناء' : 'ابنًا'}`;
+export function childrenCount(n: number, lang: UiLanguage = 'ar'): string {
+  const t = MESSAGES[lang].parent.childrenCount;
+  return n === 0 ? t.none : countPhrase(lang, n, t);
 }

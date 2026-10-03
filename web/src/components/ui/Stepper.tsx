@@ -1,13 +1,14 @@
 import { Fragment } from 'react';
 
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { formatNumber, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { C } from './color';
 
 /** The phone frames' step pills (AddChild → Schedule → AvatarPicker). `current` is 0-based. */
 export function Stepper({ steps, current }: { steps: string[]; current: number }) {
+  const { lang, m } = useI18n();
   return (
-    <ol aria-label="الخطوات" className="m-0 flex list-none items-center gap-[6px] p-0">
+    <ol aria-label={m.parent.stepper.label} className="m-0 flex list-none items-center gap-[6px] p-0">
       {steps.map((label, i) => {
         const done = i < current;
         const on = i === current;
@@ -43,7 +44,7 @@ export function Stepper({ steps, current }: { steps: string[]; current: number }
                     on ? 'bg-deep-green text-surface' : 'bg-border-strong text-text-muted',
                   )}
                 >
-                  {toArabicDigits(i + 1)}
+                  {formatNumber(lang, i + 1)}
                 </span>
               )}
               {label}
@@ -57,9 +58,10 @@ export function Stepper({ steps, current }: { steps: string[]; current: number }
 
 /** ParentWebAddChild's step bar (38px circles, gold = current). */
 export function StepperWide({ steps, current }: { steps: string[]; current: number }) {
+  const { lang, m } = useI18n();
   return (
     <ol
-      aria-label="الخطوات"
+      aria-label={m.parent.stepper.label}
       className="m-0 flex list-none items-center gap-[28px] rounded-px-26 bg-surface px-[28px] py-[20px] shadow-dark-12-26-4"
     >
       {steps.map((label, i) => {
@@ -90,7 +92,7 @@ export function StepperWide({ steps, current }: { steps: string[]; current: numb
                     />
                   </svg>
                 ) : (
-                  toArabicDigits(i + 1)
+                  formatNumber(lang, i + 1)
                 )}
               </span>
               <span

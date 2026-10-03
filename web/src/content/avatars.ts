@@ -3,24 +3,32 @@
 // its key in children.avatar ('boy-3', 'girl-1' …). Same keys as app/lib/widgets/child_avatar.dart
 // and the database trigger (20261003120000_child_avatars.sql).
 import type { Gender } from '../data/children';
+import { MESSAGES, type UiLanguage } from '../i18n/i18n';
 
 export interface AvatarStyle {
   /** children.avatar */
   key: string;
   gender: Gender;
+  /** The Arabic description (aria-label); avatarLabel() for a UI language. */
   label: string;
 }
 
+const LABELS = MESSAGES.ar.parent.avatars as Record<string, string>;
+
 export const AVATARS: readonly AvatarStyle[] = [
-  { key: 'boy-1', gender: 'boy', label: 'فتى بغترة بيضاء' },
-  { key: 'boy-2', gender: 'boy', label: 'فتى بطاقية' },
-  { key: 'boy-3', gender: 'boy', label: 'فتى بنظارة' },
-  { key: 'boy-4', gender: 'boy', label: 'فتى بشماغ أحمر' },
-  { key: 'girl-1', gender: 'girl', label: 'فتاة بحجاب وردي' },
-  { key: 'girl-2', gender: 'girl', label: 'فتاة بحجاب أزرق ونظارة' },
-  { key: 'girl-3', gender: 'girl', label: 'فتاة بحجاب نعناعي ونظارة' },
-  { key: 'girl-4', gender: 'girl', label: 'فتاة بحجاب خردلي' },
+  { key: 'boy-1', gender: 'boy', label: LABELS['boy-1']! },
+  { key: 'boy-2', gender: 'boy', label: LABELS['boy-2']! },
+  { key: 'boy-3', gender: 'boy', label: LABELS['boy-3']! },
+  { key: 'boy-4', gender: 'boy', label: LABELS['boy-4']! },
+  { key: 'girl-1', gender: 'girl', label: LABELS['girl-1']! },
+  { key: 'girl-2', gender: 'girl', label: LABELS['girl-2']! },
+  { key: 'girl-3', gender: 'girl', label: LABELS['girl-3']! },
+  { key: 'girl-4', gender: 'girl', label: LABELS['girl-4']! },
 ];
+
+/** The avatar's description in a UI language («فتاة بحجاب وردي» / "Girl in a pink hijab"). */
+export const avatarLabel = (a: AvatarStyle, lang: UiLanguage = 'ar'): string =>
+  (MESSAGES[lang].parent.avatars as Record<string, string>)[a.key] ?? a.label;
 
 /** The four choices of one gender («شخصية الابن»). */
 export const avatarsFor = (g: Gender) => AVATARS.filter((a) => a.gender === g);

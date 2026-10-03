@@ -12,7 +12,9 @@ import { CardIcon, ChildrenIcon, GearIcon, GridIcon, LogoutIcon, SproutMark } fr
 import { Blob } from '../ui/Page';
 import { initialOf, useParentData } from './ParentData';
 import { useSignOut } from './SignOut';
-import { PILOT_CTA, PILOT_NAME, PILOT_PRICE } from '../../content/pilot';
+import { pilotCopy } from '../../content/pilot';
+import { useI18n } from '../../i18n/i18n';
+import { LanguageSheetButton } from '../ui/LanguageSwitcher';
 
 export type ParentTab = 'home' | 'children' | 'plans' | 'settings' | null;
 
@@ -32,19 +34,33 @@ function HomeIcon({ color }: { color: ColorName }) {
 function Sidebar({ tab }: { tab: ParentTab }) {
   const { profile, subscription } = useParentData();
   const signOut = useSignOut();
+  const { lang, m } = useI18n();
+  const t = m.parent.shell;
+  const pilot = pilotCopy(lang);
   const items: { key: ParentTab; to: string; label: string; icon: (c: ColorName) => React.ReactNode }[] = [
-    { key: 'home', to: paths.parent.dashboard(), label: 'الرئيسية', icon: (c) => <GridIcon color={c} /> },
-    { key: 'children', to: paths.parent.children, label: 'أبنائي', icon: (c) => <ChildrenIcon color={c} /> },
-    { key: 'plans', to: paths.parent.plans, label: 'الباقات', icon: (c) => <CardIcon color={c} /> },
+    { key: 'home', to: paths.parent.dashboard(), label: t.home, icon: (c) => <GridIcon color={c} /> },
+    {
+      key: 'children',
+      to: paths.parent.children,
+      label: t.children,
+      icon: (c) => <ChildrenIcon color={c} />,
+    },
+    { key: 'plans', to: paths.parent.plans, label: t.plans, icon: (c) => <CardIcon color={c} /> },
   ];
   const name = profile?.name ?? '';
   return (
-    <aside className="sticky top-0 flex h-dvh w-[276px] shrink-0 flex-col gap-[26px] border-l border-l-border bg-surface px-[20px] py-[28px]">
-      <Link to={paths.parent.dashboard()} className="flex items-center gap-[11px] px-[6px] no-underline">
-        <SproutMark size={36} />
-        <span className="font-heading text-[25px] font-bold text-deep-green">غَرْسة</span>
-      </Link>
-      <nav aria-label="أقسام وليّ الأمر" className="flex flex-col gap-[7px]">
+    <aside className="sticky top-0 flex h-dvh w-[276px] shrink-0 flex-col gap-[26px] border-e border-e-border bg-surface px-[20px] py-[28px]">
+      <div className="flex items-center gap-[10px]">
+        <Link
+          to={paths.parent.dashboard()}
+          className="flex grow items-center gap-[11px] px-[6px] no-underline"
+        >
+          <SproutMark size={36} />
+          <span className="font-heading text-[25px] font-bold text-deep-green">{t.brand}</span>
+        </Link>
+        <LanguageSheetButton />
+      </div>
+      <nav aria-label={t.navLabel} className="flex flex-col gap-[7px]">
         {items.map((it) => {
           const on = it.key === tab;
           return (
@@ -75,7 +91,7 @@ function Sidebar({ tab }: { tab: ParentTab }) {
           )}
         >
           <GearIcon color={tab === 'settings' ? 'deepGreen' : 'textMuted'} />
-          الإعدادات
+          {t.settings}
         </Link>
         <div className="flex items-center gap-[12px] rounded-px-20 bg-background p-[14px]">
           <span className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-px-15 bg-green-tint font-heading text-[17px] font-extrabold text-deep-green">
@@ -85,17 +101,17 @@ function Sidebar({ tab }: { tab: ParentTab }) {
             <span className="truncate text-[14.5px] font-extrabold">{name}</span>
             {subscription && isSubscribed(subscription) ? (
               <span className="text-[12px] text-text-muted">
-                {PILOT_NAME} · {PILOT_PRICE}
+                {pilot.name} · {pilot.price}
               </span>
             ) : (
               <Link to={paths.parent.plans} className="text-[12px] font-extrabold text-deep-green">
-                {PILOT_CTA}
+                {pilot.cta}
               </Link>
             )}
           </span>
           <button
             type="button"
-            aria-label="تسجيل الخروج"
+            aria-label={t.signOut}
             onClick={signOut.ask}
             className="flex h-[36px] w-[36px] items-center justify-center rounded-px-12 border-0 bg-transparent"
           >
@@ -125,6 +141,7 @@ export function ParentPage({
   mobileDecor?: boolean;
 }) {
   const isDesktop = useMedia(DESKTOP);
+  const t = useI18n().m.parent.shell;
   const bar = tab === 'home' || tab === 'children' || tab === 'plans' || tab === 'settings';
   if (isDesktop) {
     return (
@@ -147,23 +164,23 @@ export function ParentPage({
       </main>
       {bar && (
         <BottomNav
-          label="أقسام وليّ الأمر"
+          label={t.navLabel}
           items={[
             {
               to: paths.parent.dashboard(),
-              label: 'الرئيسية',
+              label: t.home,
               active: tab === 'home',
               icon: (c) => <HomeIcon color={c} />,
             },
             {
               to: paths.parent.children,
-              label: 'أبنائي',
+              label: t.children,
               active: tab === 'children',
               icon: (c) => <ChildrenIcon size={26} color={c} />,
             },
             {
               to: paths.parent.plans,
-              label: 'الباقات',
+              label: t.plans,
               active: tab === 'plans',
               icon: (c) => <CardIcon size={26} color={c} />,
             },
@@ -198,16 +215,20 @@ export function MobileHeader({
   );
 }
 
-/** The square gear link to «الإعدادات» in the phone headers. */
+/** The phone headers' trailing buttons: the language globe + the square gear link to «الإعدادات». */
 export function SettingsButton() {
+  const t = useI18n().m.parent.shell;
   return (
-    <Link
-      to={paths.parent.settings}
-      aria-label="الإعدادات"
-      className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-px-15 border border-border bg-surface no-underline"
-    >
-      <GearIcon color="textDark" />
-    </Link>
+    <span className="flex shrink-0 items-center gap-[8px]">
+      <LanguageSheetButton />
+      <Link
+        to={paths.parent.settings}
+        aria-label={t.settings}
+        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-px-15 border border-border bg-surface no-underline"
+      >
+        <GearIcon color="textDark" />
+      </Link>
+    </span>
   );
 }
 

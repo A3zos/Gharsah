@@ -12,11 +12,14 @@ import { AlertIcon, ForwardIcon } from '../../components/ui/icons';
 import { Blob } from '../../components/ui/Page';
 import { pairingActive, type ChildProfile, type PairingInfo } from '../../data/children';
 import { issueCode, revokeAndReissue } from '../../data/pairing';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { formatNumber, MESSAGES, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
+import { failureText, fmt, useParentTitle } from '../../components/parent/parentText';
 import type { Route } from './+types/child-code';
 
-export const meta: Route.MetaFunction = () => [{ title: 'رمز الربط — غَرْسة' }];
+export const meta: Route.MetaFunction = () => [
+  { title: `${MESSAGES.ar.parent.meta.childCode} — ${MESSAGES.ar.parent.meta.brand}` },
+];
 
 /**
  * design/v2 PairingCode (+ SNewCode as a confirmation sheet, `?new=1`). The code
@@ -26,6 +29,8 @@ export const meta: Route.MetaFunction = () => [{ title: 'رمز الربط — �
 export default function ChildCodeRoute() {
   const { childId = '' } = useParams();
   const { children } = useParentData();
+  const { m } = useI18n();
+  useParentTitle('childCode');
   const child = children?.find((c) => c.id === childId) ?? null;
   const content =
     children === null ? (
@@ -34,7 +39,7 @@ export default function ChildCodeRoute() {
       <CodeView child={child} />
     ) : (
       <p className="m-0 text-[15px] text-text-muted">
-        لم نجد بيانات هذا الابن. <Link to={paths.parent.children}>العودة إلى أبنائي</Link>
+        {m.parent.common.notFound} <Link to={paths.parent.children}>{m.parent.common.backToChildren}</Link>
       </p>
     );
   return (
@@ -49,12 +54,17 @@ export default function ChildCodeRoute() {
 function CodeView({ child }: { child: ChildProfile }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { lang, m } = useI18n();
+  const t = m.parent.code;
   const [params, setParams] = useSearchParams();
   const fresh = (location.state as { fresh?: boolean } | null)?.fresh === true;
   const [issued, setIssued] = useState<PairingInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // A failure (shown in the current UI language) or a message key.
+  const [failure, setFailure] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const error = failure === null ? null : failure === 'copy' ? t.copyError : failureText(lang, failure);
+  const setError = (e: unknown) => setFailure(e);
   const asked = useRef(false);
   const confirmOpen = params.get('new') === '1';
 
@@ -66,11 +76,11 @@ function CodeView({ child }: { child: ChildProfile }) {
     asked.current = true;
     setBusy(true);
     issueCode(child.id)
-      .then(setIssued, (e: Error) => setError(e.message))
+      .then(setIssued, (e: unknown) => setFailure(e))
       .finally(() => setBusy(false));
   }, [needsCode, child.id, confirmOpen]);
 
-  const code = pairing && (pairingActive(pairing) || child.linked) ? toArabicDigits(pairing.code) : null;
+  const code = pairing && (pairingActive(pairing) || child.linked) ? formatNumber(lang, pairing.code) : null;
 
   const reissue = async () => {
     setBusy(true);
@@ -79,7 +89,7 @@ function CodeView({ child }: { child: ChildProfile }) {
       setIssued(await revokeAndReissue(child.id));
       setParams({}, { replace: true });
     } catch (e) {
-      setError((e as Error).message);
+      setError(e);
     } finally {
       setBusy(false);
     }
@@ -92,13 +102,13 @@ function CodeView({ child }: { child: ChildProfile }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2200);
     } catch {
-      setError('تعذّر النسخ — انسخ الرمز يدويًا.');
+      setError('copy');
     }
   };
   /** Web Share API where available; otherwise copy (with the «تم النسخ» toast). */
   const share = async () => {
     if (!code) return;
-    const text = `رمز دخول ${child.name} في غَرْسة: ${code}`;
+    const text = fmt(lang, t.shareText, { name: child.name, code });
     if (navigator.share) {
       try {
         await navigator.share({ text });
@@ -129,7 +139,7 @@ function CodeView({ child }: { child: ChildProfile }) {
     <div className="relative flex grow flex-col items-center gap-[20px] px-[4px] pt-[18px] pb-[4px]">
       <Blob className="-top-[196px] -right-[160px] h-[400px] w-[400px] bg-blob-green-strong" />
       <HomeBar className="z-1" />
-      <Toast message={copied ? 'تم النسخ' : null} />
+      <Toast message={copied ? t.copied : null} />
       <div className="relative z-1 animate-[gh-pop-4_0.6s_ease_both]">
         <svg width="104" height="104" viewBox="0 0 76 76" fill="none" aria-hidden="true">
           <circle cx="38" cy="38" r="36" fill={C.greenTint} />
@@ -142,7 +152,7 @@ function CodeView({ child }: { child: ChildProfile }) {
         </svg>
         {fresh && (
           <span
-            className="absolute bottom-[2px] left-0 flex h-[34px] w-[34px] items-center justify-center rounded-full bg-deep-green"
+            className="absolute end-0 bottom-[2px] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-deep-green"
             aria-hidden="true"
           >
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
@@ -159,19 +169,18 @@ function CodeView({ child }: { child: ChildProfile }) {
       </div>
       <div className="z-1 flex flex-col items-center gap-[8px]">
         <h1 className="m-0 text-center font-heading text-[27px] leading-[1.5] font-bold">
-          {fresh ? `تمت إضافة ${child.name}` : `رمز الربط — ${child.name}`}
+          {fmt(lang, fresh ? t.added : t.codeFor, { name: child.name })}
         </h1>
-        <p className="m-0 max-w-[280px] text-center text-[14.5px] leading-[1.8] text-text-muted">
-          أعطِ هذا الرمز لطفلك ليدخل به في تطبيق غَرْسة للأطفال.
-        </p>
+        <p className="m-0 max-w-[280px] text-center text-[14.5px] leading-[1.8] text-text-muted">{t.give}</p>
       </div>
       <div className="z-1 flex w-full flex-col items-center gap-[16px] rounded-px-28 bg-surface px-[18px] py-[24px] shadow-pairing-card">
-        <span className="text-[13px] font-bold text-text-muted">رمز الربط</span>
+        <span className="text-[13px] font-bold text-text-muted">{t.label}</span>
         <div
+          dir="ltr"
           className="flex gap-[8px] [direction:ltr]"
           aria-live="polite"
           aria-busy={busy}
-          aria-label={code ? `رمز الربط ${code}` : 'جارٍ إصدار الرمز'}
+          aria-label={code ? fmt(lang, t.aria, { code }) : t.issuing}
         >
           {Array.from({ length: 6 }, (_, i) => {
             const d = code ? [...code][i] : '';
@@ -206,7 +215,7 @@ function CodeView({ child }: { child: ChildProfile }) {
                 strokeLinecap="round"
               />
             </svg>
-            انسخ
+            {t.copy}
           </button>
           <button
             type="button"
@@ -229,7 +238,7 @@ function CodeView({ child }: { child: ChildProfile }) {
                 strokeLinecap="round"
               />
             </svg>
-            شارك
+            {t.share}
           </button>
         </div>
       </div>
@@ -256,15 +265,12 @@ function CodeView({ child }: { child: ChildProfile }) {
           />
           <path d="M12 10 V15" stroke={C.warningText} strokeWidth="1.9" strokeLinecap="round" />
         </svg>
-        <p className="m-0 text-[12.5px] leading-[1.85] text-on-gold">
-          لا ينشئ طفلك حسابًا ولا يُدخل بريدًا أو كلمة مرور — الرمز وحده يربط تطبيقه بحسابك. تجده دائمًا في
-          بطاقة الابن داخل تبويب «أبنائي».
-        </p>
+        <p className="m-0 text-[12.5px] leading-[1.85] text-on-gold">{t.privacy}</p>
       </div>
       <div className="z-1 mt-auto flex w-full flex-col gap-[12px]">
         <Link to={paths.parent.dashboard(child.id)} className={buttonClass('primary', 'lg', 'gap-[9px]')}>
-          تم — إلى لوحة التحكم
-          <ForwardIcon size={20} />
+          {t.done}
+          <ForwardIcon size={20} className="ltr:-scale-x-100" />
         </Link>
         <div className="flex gap-[10px]">
           <button
@@ -287,13 +293,13 @@ function CodeView({ child }: { child: ChildProfile }) {
                 strokeLinejoin="round"
               />
             </svg>
-            إصدار رمز جديد
+            {t.reissue}
           </button>
           <Link
             to={paths.parent.addChildFrom('children')}
             className="flex h-[50px] grow basis-0 items-center justify-center rounded-px-18 bg-transparent text-[14.5px] font-extrabold text-deep-green no-underline"
           >
-            إضافة ابن آخر
+            {t.addAnother}
           </Link>
         </div>
       </div>
@@ -317,12 +323,14 @@ function NewCodeSheet({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.code;
   return (
     <div className="relative flex grow flex-col gap-[14px]">
       <Blob className="-bottom-[166px] -left-[130px] h-[330px] w-[330px] bg-blob-gold-strong" />
       <div className="z-1 flex shrink-0 items-center gap-[12px] opacity-[0.45]" aria-hidden="true">
         <span className="flex h-[46px] w-[46px] items-center justify-center rounded-px-16 border border-border bg-surface">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="ltr:-scale-x-100">
             <path
               d="M9 5 L16 12 L9 19"
               stroke={C.textDark}
@@ -332,14 +340,16 @@ function NewCodeSheet({
             />
           </svg>
         </span>
-        <span className="font-heading text-[21px] font-bold">رمز الربط — {child.name}</span>
+        <span className="font-heading text-[21px] font-bold">
+          {fmt(lang, t.codeFor, { name: child.name })}
+        </span>
       </div>
       <div
         className="z-1 flex shrink-0 flex-col items-center gap-[12px] rounded-px-26 border-[1.5px] border-border bg-surface px-[18px] py-[22px] opacity-[0.45]"
         aria-hidden="true"
       >
-        <span className="text-[13.5px] font-bold text-text-muted">الرمز الحالي</span>
-        <div className="flex gap-[7px] [direction:ltr]">
+        <span className="text-[13.5px] font-bold text-text-muted">{t.current}</span>
+        <div dir="ltr" className="flex gap-[7px] [direction:ltr]">
           {Array.from({ length: 6 }, (_, i) => (
             <span
               key={i}
@@ -382,18 +392,16 @@ function NewCodeSheet({
           </span>
           <span className="flex flex-col gap-[8px]">
             <h1 id="new-code-title" className="m-0 font-heading text-[24px] font-bold text-text-dark">
-              إصدار رمز جديد؟
+              {t.confirmTitle}
             </h1>
             <span id="new-code-desc" className="text-[14.5px] leading-[1.95] text-text-muted">
-              سيتوقّف الرمز الحالي فورًا.
+              {t.confirmDesc}
             </span>
           </span>
         </div>
         <div className="flex items-start gap-[11px] rounded-px-20 border-[1.5px] border-berry-border bg-berry-tint px-[15px] py-[14px]">
           <AlertIcon size={20} />
-          <span className="text-[13.5px] leading-[1.85] font-bold text-error-text">
-            سيُفصل الجهاز المرتبط حاليًا، وسيحتاج ابنك إدخال الرمز الجديد لمتابعة حصصه.
-          </span>
+          <span className="text-[13.5px] leading-[1.85] font-bold text-error-text">{t.confirmWarn}</span>
         </div>
         {error && (
           <p role="alert" className="m-0 text-[13px] font-bold text-error-text">
@@ -408,7 +416,7 @@ function NewCodeSheet({
           onClick={onConfirm}
           className="h-[64px] gap-[10px] rounded-px-22 border-0 font-heading text-[20px] font-bold shadow-berry-12-24-24"
         >
-          إصدار رمز جديد
+          {t.confirm}
         </Button>
         <Button
           variant="quiet"
@@ -416,7 +424,7 @@ function NewCodeSheet({
           onClick={onCancel}
           className="h-[56px] gap-[9px] rounded-px-20 text-[15px] font-bold"
         >
-          إلغاء
+          {t.cancel}
         </Button>
       </div>
     </div>

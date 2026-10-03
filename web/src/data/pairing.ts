@@ -1,6 +1,7 @@
 // Pairing codes, parent side — issued/revoked ONLY by the Edge Functions
 // create-pairing-code / revoke-pairing-code (codes live 10 minutes, single use).
 import { callFunction, FunctionCallError } from '../supabase/functions';
+import { MESSAGES } from '../i18n/i18n';
 import { AuthFailure, authFailure } from './authFailure';
 import type { PairingInfo } from './children';
 
@@ -22,13 +23,15 @@ export const issueCode = (childId: string) => call('create-pairing-code', childI
 /** «إصدار رمز جديد»: the old code dies, the paired device is unpaired, a new code is issued. */
 export const revokeAndReissue = (childId: string) => call('revoke-pairing-code', childId);
 
+/**
+ * The failure carries the Arabic message (parent.json → errors) and its code; the parent
+ * pages show it in the UI language by the code (components/parent/parentText failureText).
+ */
 export function pairingFailure(code: string): AuthFailure {
-  if (code === 'no-active-subscription') {
-    return new AuthFailure('فعّل اشتراكك أولًا لإصدار رمز الربط.', 'general', code);
+  const t = MESSAGES.ar.parent.errors;
+  if (code === 'no-active-subscription' || code === 'child-not-found' || code === 'no-free-code') {
+    return new AuthFailure(t[code], 'general', code);
   }
-  if (code === 'child-not-found') return new AuthFailure('لم نجد بيانات هذا الابن.', 'general', code);
-  if (code === 'no-free-code')
-    return new AuthFailure('تعذّر إصدار رمز الآن — حاول بعد قليل.', 'general', code);
   if (code === 'network') return authFailure('network-request-failed');
   return authFailure('unavailable');
 }

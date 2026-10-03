@@ -6,17 +6,20 @@ import { paths } from '../../app/paths';
 import { signOut } from '../../data/auth';
 import { C } from '../ui/color';
 import { ConfirmSheet } from '../ui/ConfirmSheet';
+import { useI18n } from '../../i18n/i18n';
 
 export function useSignOut(): { ask: () => void; sheet: React.ReactNode } {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const t = useI18n().m.parent.signOut;
   const sheet = (
     <ConfirmSheet
       open={open}
-      title="تسجيل الخروج؟"
-      body="تعود إلى الصفحة الرئيسية، وتدخل متى شئت ببريدك وكلمة المرور."
-      confirmLabel="تسجيل الخروج"
+      title={t.title}
+      body={t.body}
+      confirmLabel={t.confirm}
+      cancelLabel={t.cancel}
       busy={busy}
       icon={
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none">

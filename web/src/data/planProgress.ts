@@ -2,8 +2,8 @@
 // from the card), each step's state, and progress = done steps ÷ total steps.
 // Today every child is on the pilot plan (content/pilot.ts); a paid plan adds its own
 // steps here later. Used by the parent dashboard and children page.
-import { PILOT_DAYS, PILOT_NAME } from '../content/pilot';
-import { toArabicDigits } from '../lib/arabicDigits';
+import { PILOT_DAYS, pilotCopy } from '../content/pilot';
+import { fill, MESSAGES, type UiLanguage } from '../i18n/i18n';
 import { riyadhDay } from '../lib/dates';
 import type { ChildProfile } from './children';
 import type { Stage } from './stats';
@@ -24,20 +24,31 @@ export interface Plan {
   steps: readonly PlanStep[];
 }
 
-export const PILOT_PLAN: Plan = {
-  name: PILOT_NAME,
-  cadence: 'حصة واحدة يوميًا',
-  steps: PILOT_DAYS.map((d) => ({
-    id: d.lessonId,
-    title: `اليوم ${toArabicDigits(d.day)}`,
-    detail: `سورة ${d.surahName} + ${d.hadithTitle}`,
-  })),
-};
+/** The pilot plan in a UI language (Arabic: the verified surah names and hadith titles). */
+export function pilotPlan(lang: UiLanguage = 'ar'): Plan {
+  const t = MESSAGES[lang].parent.plan;
+  const names = MESSAGES[lang].plans.names;
+  const surah = (d: (typeof PILOT_DAYS)[number]) =>
+    lang === 'ar' ? d.surahName : ((names.surah as Record<string, string>)[d.surah] ?? d.surahName);
+  const hadith = (d: (typeof PILOT_DAYS)[number]) =>
+    lang === 'ar' ? d.hadithTitle : ((names.hadith as Record<string, string>)[d.hadithId] ?? d.hadithTitle);
+  return {
+    name: pilotCopy(lang).name,
+    cadence: t.cadence,
+    steps: PILOT_DAYS.map((d) => ({
+      id: d.lessonId,
+      title: fill(lang, t.stepTitle, { n: d.day }),
+      detail: fill(lang, t.stepDetail, { surah: surah(d), hadith: hadith(d) }),
+    })),
+  };
+}
+
+export const PILOT_PLAN: Plan = pilotPlan('ar');
 
 /** The plan the child is on. TODO: paid plans get their own steps when they launch. */
-export const currentPlan = (child: ChildProfile): Plan => {
+export const currentPlan = (child: ChildProfile, lang: UiLanguage = 'ar'): Plan => {
   void child;
-  return PILOT_PLAN;
+  return lang === 'ar' ? PILOT_PLAN : pilotPlan(lang);
 };
 
 /**
@@ -77,8 +88,8 @@ const nextDay = (ymd: string): string =>
  * the Riyadh day after the previous one was finished; the first one when the child was
  * added.
  */
-export function planProgress(child: ChildProfile, now = new Date()): PlanProgress {
-  const plan = currentPlan(child);
+export function planProgress(child: ChildProfile, now = new Date(), lang: UiLanguage = 'ar'): PlanProgress {
+  const plan = currentPlan(child, lang);
   const today = riyadhDay(now);
   let prevDone: string | null = null;
   let current = -1;
@@ -107,9 +118,10 @@ export function planProgress(child: ChildProfile, now = new Date()): PlanProgres
 }
 
 /** «أتمّ ١ من ٣ أيام (٣٣٪) من الباقة التجريبية» / «أكمل الباقة التجريبية 🎉» */
-export function planSentence(p: PlanProgress): string {
-  if (p.total > 0 && p.done >= p.total) return `أكمل ${p.plan.name} 🎉`;
-  return `أتمّ ${toArabicDigits(p.done)} من ${toArabicDigits(p.total)} أيام (${toArabicDigits(p.pct)}٪) من ${p.plan.name}`;
+export function planSentence(p: PlanProgress, lang: UiLanguage = 'ar'): string {
+  const t = MESSAGES[lang].parent.plan;
+  if (p.total > 0 && p.done >= p.total) return fill(lang, t.sentenceDone, { plan: p.plan.name });
+  return fill(lang, t.sentence, { done: p.done, total: p.total, pct: p.pct, plan: p.plan.name });
 }
 
 /** «١٠ سنوات · حصة واحدة يوميًا · الباقة التجريبية» */

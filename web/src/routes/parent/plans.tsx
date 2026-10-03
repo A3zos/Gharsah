@@ -2,20 +2,14 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
-import {
-  ChildrenIcon,
-  CheckIcon,
-  PlusIcon,
-  SproutBadge,
-  ForwardIcon,
-} from '../../components/ui/icons';
+import { ChildrenIcon, CheckIcon, PlusIcon, SproutBadge, ForwardIcon } from '../../components/ui/icons';
 import { C } from '../../components/ui/color';
 import { buttonClass } from '../../components/ui/Button';
 import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage, SettingsButton } from '../../components/parent/ParentShell';
 import {
   isSubscribed,
-  PLAN_LABEL,
+  planLabel,
   startTrial,
   trialSubscribeEnabled,
   type PlanId,
@@ -23,15 +17,17 @@ import {
 } from '../../data/parent';
 import { AuthFailure } from '../../data/authFailure';
 import { childrenCount } from '../../data/stats';
-import { toArabicDigits } from '../../lib/arabicDigits';
-import { hijriDayMonth } from '../../lib/dates';
 import { PlanCards } from '../../components/plans/PlanCards';
 import { PILOT_BUTTON } from '../../components/plans/pilotButton';
 import { maxChildren } from '../../content/plans';
-import { PILOT_CTA, PILOT_NAME } from '../../content/pilot';
+import { pilotCopy } from '../../content/pilot';
+import { MESSAGES, useI18n } from '../../i18n/i18n';
+import { dayMonth, failureText, fmt, useParentTitle } from '../../components/parent/parentText';
 import type { Route } from './+types/plans';
 
-export const meta: Route.MetaFunction = () => [{ title: 'الباقات — غَرْسة' }];
+export const meta: Route.MetaFunction = () => [
+  { title: `${MESSAGES.ar.parent.meta.plans} — ${MESSAGES.ar.parent.meta.brand}` },
+];
 
 /**
  * design/v3 ParentWebPlans (desktop) / Packages (phone). Review notes B6: each
@@ -47,6 +43,7 @@ export default function PlansRoute() {
   // design/v3 PackagesLimit: shown when the add-child flow sent a monthly parent here.
   const max = sub ? maxChildren(sub.plan) : null;
   const limit = params.get('limit') === '1' && max !== null && count >= max;
+  useParentTitle('plans');
   return (
     <ParentPage
       tab="plans"
@@ -58,9 +55,11 @@ export default function PlansRoute() {
 }
 
 function Desktop({ sub, count, limit }: { sub: Subscription | null; count: number; limit: number | null }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.plans;
   return (
     <div className="flex grow flex-col gap-[24px]">
-      <DesktopHeader title="الباقات" subtitle="الباقة التجريبية: ثلاثة أيام، حصة واحدة كل يوم" />
+      <DesktopHeader title={t.title} subtitle={t.subtitle} />
       {limit !== null && <LimitBanner max={limit} />}
       <PlanCards pilotAction={<PilotAction sub={sub} />} />
       <div className="flex grow items-end gap-[20px]">
@@ -75,12 +74,12 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
             <ChildrenIcon size={26} color="deepGreen" />
           </span>
           <span className="flex grow flex-col gap-[4px]">
-            <span className="text-[17px] font-extrabold">أبنائي — {childrenCount(count)}</span>
-            <span className="text-[13.5px] text-text-muted">
-              رموز الربط، المتابعة التفصيلية، وإضافة ابن جديد
+            <span className="text-[17px] font-extrabold">
+              {fmt(lang, t.myChildrenCount, { count: childrenCount(count, lang) })}
             </span>
+            <span className="text-[13.5px] text-text-muted">{t.childrenLinks}</span>
           </span>
-          <ForwardIcon size={22} color="deepGreen" strokeWidth={2.4} />
+          <ForwardIcon size={22} color="deepGreen" strokeWidth={2.4} className="ltr:-scale-x-100" />
         </Link>
       </div>
     </div>
@@ -88,13 +87,15 @@ function Desktop({ sub, count, limit }: { sub: Subscription | null; count: numbe
 }
 
 function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number; limit: number | null }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.plans;
   return (
     <div className="flex flex-col gap-[18px] pt-[4px]">
       <div className="flex items-center gap-[12px]">
         <span className="shrink-0">
           <SproutBadge size={40} />
         </span>
-        <h1 className="m-0 grow font-heading text-[26px] leading-[1.5] font-bold">الباقات</h1>
+        <h1 className="m-0 grow font-heading text-[26px] leading-[1.5] font-bold">{t.title}</h1>
         <SettingsButton />
       </div>
 
@@ -107,7 +108,7 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
         className={buttonClass('primary', 'lg', 'gap-[10px] shadow-green-button')}
       >
         <PlusIcon size={22} color="surface" />
-        إضافة ابن
+        {m.parent.common.addChild}
       </Link>
       <Link
         to={paths.parent.children}
@@ -120,12 +121,12 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
           <ChildrenIcon size={26} color="deepGreen" />
         </span>
         <span className="flex grow flex-col gap-[3px]">
-          <span className="text-[16px] font-extrabold">أبنائي</span>
+          <span className="text-[16px] font-extrabold">{t.myChildren}</span>
           <span className="text-[12.5px] text-text-muted">
-            {childrenCount(count)} · {count === 1 ? 'رمز الربط والإدارة' : 'رموز الربط والإدارة'}
+            {childrenCount(count, lang)} · {count === 1 ? t.codeOne : t.codeMany}
           </span>
         </span>
-        <ForwardIcon size={20} color="deepGreen" strokeWidth={2.3} />
+        <ForwardIcon size={20} color="deepGreen" strokeWidth={2.3} className="ltr:-scale-x-100" />
       </Link>
     </div>
   );
@@ -133,6 +134,8 @@ function Mobile({ sub, count, limit }: { sub: Subscription | null; count: number
 
 /** design/v3 PackagesLimit — a one-child plan (the pilot) and a second child was added. */
 function LimitBanner({ max }: { max: number }) {
+  const { lang, m } = useI18n();
+  const t = m.parent.plans;
   return (
     <div
       role="alert"
@@ -161,11 +164,9 @@ function LimitBanner({ max }: { max: number }) {
         </span>
         <span className="flex min-w-0 grow flex-col gap-[6px]">
           <span className="font-heading text-[19px] leading-[1.45] font-bold text-error-text">
-            {max === 1 ? 'باقتك لابن واحد' : `${PILOT_NAME} حتى ${toArabicDigits(max)} أبناء`}
+            {max === 1 ? t.limitOne : fmt(lang, t.limitMany, { plan: pilotCopy(lang).name, n: max })}
           </span>
-          <span className="text-[14px] leading-[1.8] text-error-text">
-            وصلت إلى عدد الأبناء الذي تشمله باقتك — نخبرك حين تتوفّر الباقات لكل الأبناء.
-          </span>
+          <span className="text-[14px] leading-[1.8] text-error-text">{t.limitBody}</span>
         </span>
       </div>
     </div>
@@ -177,25 +178,27 @@ function LimitBanner({ max }: { max: number }) {
  * «ابدأ مجانًا» (free — no payment). No separate «current plan» block above the cards.
  */
 function PilotAction({ sub }: { sub: Subscription | null }) {
+  const { lang, m } = useI18n();
   if (sub) {
     return (
       <span className="flex flex-col gap-[6px]">
         <CurrentChip />
         <span className="text-center text-[13px] text-text-muted">
-          تنتهي في {hijriDayMonth(sub.expiresAt)}
+          {fmt(lang, m.parent.plans.endsOn, { date: dayMonth(lang, sub.expiresAt) })}
         </span>
       </span>
     );
   }
   return (
     <SubscribeButton plan="trial" className={PILOT_BUTTON}>
-      {PILOT_CTA}
-      <ForwardIcon size={20} />
+      {pilotCopy(lang).cta}
+      <ForwardIcon size={20} className="ltr:-scale-x-100" />
     </SubscribeButton>
   );
 }
 
 function CurrentChip({ muted }: { muted?: boolean }) {
+  const t = useI18n().m.parent.plans;
   return (
     <span
       className={
@@ -205,7 +208,7 @@ function CurrentChip({ muted }: { muted?: boolean }) {
       }
     >
       <CheckIcon size={19} color={muted ? 'textMuted' : 'deepGreen'} />
-      باقتك الحالية
+      {t.current}
     </span>
   );
 }
@@ -225,13 +228,15 @@ function SubscribeButton({
   children: React.ReactNode;
 }) {
   const navigate = useNavigate();
+  const { lang, m } = useI18n();
+  const t = m.parent.plans;
   const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle');
   const [error, setError] = useState<string | null>(null);
   // The free pilot needs no purchase; paid plans only through Google Play (off on the web).
   if (plan !== 'trial' && !trialSubscribeEnabled()) {
     return (
       <button type="button" disabled className={className}>
-        قريبًا من التطبيق
+        {t.soonApp}
       </button>
     );
   }
@@ -244,7 +249,7 @@ function SubscribeButton({
       setTimeout(() => navigate(paths.parent.dashboard()), 1200);
     } catch (e) {
       setState('idle');
-      setError(e instanceof AuthFailure ? e.message : 'تعذّر تفعيل الباقة — حاول مرة أخرى.');
+      setError(e instanceof AuthFailure ? failureText(lang, e) : t.activateError);
     }
   };
   return (
@@ -259,7 +264,7 @@ function SubscribeButton({
         {state === 'done' ? (
           <>
             <CheckIcon size={19} color="surface" />
-            تم تفعيل الباقة
+            {t.activated}
           </>
         ) : (
           children
@@ -267,7 +272,12 @@ function SubscribeButton({
       </button>
       {state === 'done' && (
         <span role="status" className="text-center text-[13px] font-bold text-deep-green">
-          تم تفعيل {plan === 'trial' ? PILOT_NAME : `الباقة ${PLAN_LABEL[plan]}`} — ننتقل إلى لوحة التحكم…
+          {fmt(lang, t.activatedNote, {
+            plan:
+              plan === 'trial'
+                ? pilotCopy(lang).name
+                : fmt(lang, t.planNamed, { label: planLabel(plan, lang) }),
+          })}
         </span>
       )}
       {error && (

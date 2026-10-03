@@ -13,15 +13,17 @@ import { ForwardIcon, PlusIcon } from '../../components/ui/icons';
 import { projectValue } from '../../content/library';
 import { reviewDayNames, type ChildProfile } from '../../data/children';
 import { planProgress, planSentence, planSubtitle } from '../../data/planProgress';
-import { ageLabel, headline, pilotChip, STAGE_LABEL, type Headline } from '../../data/stats';
+import { ageLabel, headline, pilotChip, stageLabel, type Headline } from '../../data/stats';
 import { watchSubmissions, type ProjectSubmission } from '../../data/submissions';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { countPhrase, formatNumber, MESSAGES, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
-import { daysPhrase } from '../../lib/plural';
 import { DashDetail, type DashCard } from '../../components/parent/DashDetail';
+import { fmt, useParentTitle, valueText } from '../../components/parent/parentText';
 import type { Route } from './+types/dashboard';
 
-export const meta: Route.MetaFunction = () => [{ title: 'لوحة التحكم — غَرْسة' }];
+export const meta: Route.MetaFunction = () => [
+  { title: `${MESSAGES.ar.parent.meta.dashboard} — ${MESSAGES.ar.parent.meta.brand}` },
+];
 
 function useSubmissions(uid: string, childId: string | undefined) {
   // Keyed by child so switching children never shows the previous child's list.
@@ -50,6 +52,7 @@ export default function DashboardRoute() {
   const kids = children ?? [];
   const child = kids.find((c) => c.id === childId) ?? (childId ? undefined : kids[0]);
   const subs = useSubmissions(uid, child?.id);
+  useParentTitle('dashboard');
 
   if (children === null) return <ParentPage tab="home" desktop={<div aria-busy="true" />} />;
   if (childId && !child) return <Navigate to={paths.parent.dashboard()} replace />;
@@ -69,12 +72,10 @@ export default function DashboardRoute() {
 
 /** TODO(design): no designed dashboard for a parent without children. */
 function NoChildren() {
+  const t = useI18n().m.parent.dashboard;
   return (
     <>
-      <DesktopHeader
-        title="لوحة التحكم"
-        subtitle="متابعة تقدّم أبنائك — كل ما يحفظه ابنك وما أنجزه من مشاريع."
-      />
+      <DesktopHeader title={t.title} subtitle={t.subtitle} />
       <Link
         to={paths.parent.addChildFrom('dashboard')}
         className="flex min-h-[200px] flex-col items-center justify-center gap-[12px] rounded-px-30 border-[2px] border-dashed border-input-border bg-transparent text-deep-green no-underline"
@@ -85,8 +86,8 @@ function NoChildren() {
         >
           <PlusIcon size={28} color="deepGreen" />
         </span>
-        <span className="font-heading text-[20px] font-bold">أضف ابنك الأول</span>
-        <span className="text-[13.5px] text-text-muted">ثم أعطه رمز الربط ليبدأ حصته الأولى</span>
+        <span className="font-heading text-[20px] font-bold">{t.firstChild}</span>
+        <span className="text-[13.5px] text-text-muted">{t.firstChildNote}</span>
       </Link>
     </>
   );
@@ -175,9 +176,10 @@ function ReviewIcon({ size = 26 }: { size?: number }) {
  * «آخر مراجعة أسبوعية» — empty until the weekly-review contract exists
  * (product decision): it only tells which day the review is set for.
  */
-function lastReviewLine(child: ChildProfile): string {
-  const days = reviewDayNames(child.schedule);
-  return days ? `لم تبدأ بعد — أيام المراجعة: ${days}` : 'لم تبدأ بعد — اختر أيام المراجعة من الجدول';
+function useLastReviewLine(child: ChildProfile): string {
+  const { lang, m } = useI18n();
+  const days = reviewDayNames(child.schedule, lang);
+  return days ? fmt(lang, m.parent.dashboard.reviewDays, { days }) : m.parent.dashboard.reviewPick;
 }
 
 // ── Desktop: ParentWebDash ──
@@ -193,16 +195,19 @@ function Desktop({
   h: Headline;
   subs: ProjectSubmission[] | null;
 }) {
-  const plan = planProgress(child);
+  const { lang, m } = useI18n();
+  const t = m.parent.dashboard;
+  const reviewLine = useLastReviewLine(child);
+  const plan = planProgress(child, undefined, lang);
   const pending =
     typeof child.stats?.pendingProject === 'string' ? (child.stats.pendingProject as string) : null;
   return (
     <div className="flex grow flex-col gap-[24px]">
       <DesktopHeader
-        title="لوحة التحكم"
-        subtitle="متابعة تقدّم أبنائك — كل ما يحفظه ابنك وما أنجزه من مشاريع."
+        title={t.title}
+        subtitle={t.subtitle}
         action={
-          <nav aria-label="الأبناء" className="flex items-center gap-[10px]">
+          <nav aria-label={t.childrenNav} className="flex items-center gap-[10px]">
             {kids.map((k) => {
               const on = k.id === child.id;
               return (
@@ -211,7 +216,7 @@ function Desktop({
                   to={paths.parent.dashboard(k.id)}
                   aria-current={on ? 'page' : undefined}
                   className={cx(
-                    'flex items-center gap-[10px] rounded-pill py-[10px] pr-[18px] pl-[12px] text-[15px] no-underline',
+                    'flex items-center gap-[10px] rounded-pill py-[10px] ps-[18px] pe-[12px] text-[15px] no-underline',
                     on
                       ? 'bg-deep-green font-extrabold text-surface hover:text-surface'
                       : 'border-[1.5px] border-border bg-surface font-bold text-text-muted hover:text-text-muted',
@@ -224,7 +229,7 @@ function Desktop({
             })}
             <Link
               to={paths.parent.addChildFrom('dashboard')}
-              aria-label="إضافة ابن"
+              aria-label={m.parent.common.addChild}
               className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-[1.5px] border-dashed border-input-border bg-surface no-underline"
             >
               <PlusIcon size={20} color="deepGreen" strokeWidth={2.4} />
@@ -240,42 +245,44 @@ function Desktop({
           <ReviewIcon />
         </span>
         <span className="flex min-w-0 grow flex-col gap-[5px]">
-          <span className="text-[13px] font-bold text-text-muted">آخر مراجعة أسبوعية</span>
-          <span className="text-[17px] font-extrabold">{lastReviewLine(child)}</span>
+          <span className="text-[13px] font-bold text-text-muted">{t.lastReview}</span>
+          <span className="text-[17px] font-extrabold">{reviewLine}</span>
         </span>
         <span className="flex items-center gap-[7px] rounded-pill bg-gold-tint px-[14px] py-[8px] text-[13px] font-extrabold whitespace-nowrap text-warning-text">
-          قريبًا
+          {m.parent.common.soon}
         </span>
       </div>
       <div className="flex gap-[20px]">
         <section
-          aria-label={`نموّ ${child.name}`}
+          aria-label={fmt(lang, t.growthOf, { name: child.name })}
           className="flex grow flex-col gap-[20px] rounded-px-32 bg-surface px-[32px] py-[30px] shadow-dark-16-34-5"
         >
           <div className="flex items-center gap-[16px]">
             <ChildAvatar id={child.avatarId} size={58} className="rounded-px-20" />
             <span className="flex grow flex-col gap-[4px]">
               <h2 className="m-0 font-heading text-[24px] font-bold">{child.name}</h2>
-              <span className="text-[13.5px] text-text-muted">{planSubtitle(ageLabel(child.age), plan)}</span>
+              <span className="text-[13.5px] text-text-muted">
+                {planSubtitle(ageLabel(child.age, lang), plan)}
+              </span>
             </span>
             {h.streak > 0 && (
               <span className="rounded-pill bg-gold-tint px-[16px] py-[9px] text-[13px] font-extrabold text-warning-text">
-                {daysPhrase(h.streak)} متتالية
+                {countPhrase(lang, h.streak, t.streak)}
               </span>
             )}
           </div>
           <div className="h-[1px] bg-border" />
           {/* the stages by the CURRENT plan's %: بذرة 0–33, غَرْسة 34–99, شجرة 100 */}
           <GrowthPath stage={plan.stage} pct={plan.pct} size={74} />
-          <span className="text-[13.5px] font-bold text-text-muted">{planSentence(plan)}</span>
+          <span className="text-[13.5px] font-bold text-text-muted">{planSentence(plan, lang)}</span>
         </section>
         {pending && (
           <section
-            aria-label="مشروع هذا الأسبوع"
+            aria-label={t.weekProject}
             className="flex w-[330px] shrink-0 flex-col gap-[16px] rounded-px-32 border-[2px] border-gold-border bg-gold-tint px-[26px] py-[28px]"
           >
             <span className="self-start rounded-pill bg-gold px-[14px] py-[7px] text-[12.5px] font-extrabold text-on-gold">
-              مشروع هذا الأسبوع
+              {t.weekProject}
             </span>
             <span className="animate-[gh-pop-5_.5s_ease-out_both]" aria-hidden="true">
               <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
@@ -290,14 +297,16 @@ function Desktop({
               </svg>
             </span>
             <h3 className="m-0 font-heading text-[24px] leading-[1.5] font-bold text-on-gold">
-              {projectTitle(pending)}
+              {projectTitle(pending, lang)}
             </h3>
             <span className="text-[13.5px] leading-[1.9] text-hadith-note-text">
-              حديث الأسبوع: {projectValue(pending)}. يحكي {child.name} ما فعله في حصة الغد.
+              {fmt(lang, t.weekHadith, { value: valueText(lang, projectValue(pending)), name: child.name })}
             </span>
             <span className="mt-auto flex items-center gap-[9px] rounded-px-16 bg-surface px-[14px] py-[12px]">
               <span className="h-[9px] w-[9px] rounded-full bg-gold" />
-              <span className="text-[13px] font-bold text-warning-text">بانتظار تسجيل {child.name}</span>
+              <span className="text-[13px] font-bold text-warning-text">
+                {fmt(lang, t.awaiting, { name: child.name })}
+              </span>
             </span>
           </section>
         )}
@@ -305,10 +314,10 @@ function Desktop({
       <div className="flex gap-[16px]">
         {(
           [
-            ['surahs', h.surahs, 'سور مكتملة', 'text-deep-green'],
-            ['ayat', h.ayat, 'آية محفوظة', 'text-sky-text'],
-            ['hadith', h.hadith, h.hadith === 1 ? 'حديث' : 'حديثًا', 'text-berry-deep'],
-            ['projects', h.projects, 'مشاريع منجزة', 'text-warning-text'],
+            ['surahs', h.surahs, t.countSurahs, 'text-deep-green'],
+            ['ayat', h.ayat, t.countAyat, 'text-sky-text'],
+            ['hadith', h.hadith, h.hadith === 1 ? t.countHadithOne : t.countHadithMany, 'text-berry-deep'],
+            ['projects', h.projects, t.countProjects, 'text-warning-text'],
           ] as const
         ).map(([kind, n, label, ink]) => (
           <div
@@ -325,7 +334,7 @@ function Desktop({
               <CountIcon kind={kind} />
             </span>
             <span className={cx('font-heading text-[38px] leading-[1] font-extrabold', ink)}>
-              {toArabicDigits(n)}
+              {formatNumber(lang, n)}
             </span>
             <span className="text-[14.5px] font-bold text-text-muted">{label}</span>
           </div>
@@ -334,10 +343,10 @@ function Desktop({
       <section aria-labelledby="recordings" className="flex min-h-0 grow flex-col gap-[14px]">
         <div className="flex items-center gap-[12px]">
           <h2 id="recordings" className="m-0 font-heading text-[22px] font-bold">
-            تسجيلات المشاريع
+            {t.recordings}
           </h2>
           <span className="rounded-pill bg-green-tint px-[13px] py-[6px] text-[12.5px] font-extrabold text-deep-green">
-            بصوت {child.name} · لك وحدك
+            {fmt(lang, t.recordingsPill, { name: child.name })}
           </span>
         </div>
         <Recordings child={child} subs={subs} pending={pending} />
@@ -362,20 +371,23 @@ function Mobile({
   card: DashCard | null;
 }) {
   const [, setParams] = useSearchParams();
+  const { lang, m } = useI18n();
+  const t = m.parent.dashboard;
+  const reviewLine = useLastReviewLine(child);
   const cards: [DashCard, number, string][] = [
-    ['surahs', h.surahs, 'السور المنجزة'],
-    ['ayat', h.ayat, 'الآيات المحفوظة'],
-    ['hadith', h.hadith, 'الأحاديث'],
-    ['projects', h.projects, 'المشاريع المنجزة'],
+    ['surahs', h.surahs, m.parent.cards.surahs],
+    ['ayat', h.ayat, m.parent.cards.ayat],
+    ['hadith', h.hadith, m.parent.cards.hadith],
+    ['projects', h.projects, m.parent.cards.projects],
   ];
   return (
     <div className="mx-auto flex w-full max-w-[640px] flex-col gap-[18px] pt-[4px]">
-      <div className="flex items-center justify-between">
-        <h1 className="m-0 font-heading text-[26px] leading-[1.5] font-bold">لوحة التحكم</h1>
+      <div className="flex items-center justify-between gap-[10px]">
+        <h1 className="m-0 font-heading text-[26px] leading-[1.5] font-bold">{t.title}</h1>
         <SettingsButton />
       </div>
       {kids.length > 1 && (
-        <nav aria-label="الأبناء" className="flex flex-wrap items-center gap-[10px]">
+        <nav aria-label={t.childrenNav} className="flex flex-wrap items-center gap-[10px]">
           {kids.map((k) => {
             const on = k.id === child.id;
             return (
@@ -384,7 +396,7 @@ function Mobile({
                 to={paths.parent.dashboard(k.id)}
                 aria-current={on ? 'page' : undefined}
                 className={cx(
-                  'flex h-[46px] items-center gap-[8px] rounded-px-16 pr-[16px] pl-[10px] text-[14.5px] font-bold no-underline',
+                  'flex h-[46px] items-center gap-[8px] rounded-px-16 ps-[16px] pe-[10px] text-[14.5px] font-bold no-underline',
                   on
                     ? 'bg-deep-green text-surface hover:text-surface'
                     : 'border border-border bg-surface text-text-dark hover:text-text-dark',
@@ -425,11 +437,11 @@ function Mobile({
                   <CountIcon kind={kind} size={22} />
                 </span>
                 <span className="font-heading text-[32px] leading-[1.2] font-extrabold">
-                  {toArabicDigits(n)}
+                  {formatNumber(lang, n)}
                 </span>
                 <span className="text-[13px] font-bold text-text-muted">{label}</span>
-                <span className="absolute top-[18px] left-[16px]">
-                  <ForwardIcon size={18} color="textSubtle" strokeWidth={2.2} />
+                <span className="absolute end-[16px] top-[18px]">
+                  <ForwardIcon size={18} color="textSubtle" strokeWidth={2.2} className="ltr:-scale-x-100" />
                 </span>
               </Link>
             ))}
@@ -442,32 +454,33 @@ function Mobile({
               <ReviewIcon size={24} />
             </span>
             <span className="flex min-w-0 grow flex-col gap-[5px]">
-              <span className="text-[12.5px] font-bold text-text-muted">آخر مراجعة أسبوعية</span>
-              <span className="text-[15px] font-extrabold">{lastReviewLine(child)}</span>
+              <span className="text-[12.5px] font-bold text-text-muted">{t.lastReview}</span>
+              <span className="text-[15px] font-extrabold">{reviewLine}</span>
             </span>
             <span className="flex items-center gap-[6px] rounded-pill bg-gold-tint px-[11px] py-[6px] text-[11.5px] font-extrabold whitespace-nowrap text-warning-text">
-              قريبًا
+              {m.parent.common.soon}
             </span>
           </div>
-          <p className="m-0 text-center text-[12.5px] text-text-muted">اضغط أي بطاقة لعرض تفاصيلها.</p>
+          <p className="m-0 text-center text-[12.5px] text-text-muted">{t.tapHint}</p>
         </>
       )}
-      <span className="sr-only">{STAGE_LABEL[h.stage]}</span>
+      <span className="sr-only">{stageLabel(h.stage, lang)}</span>
     </div>
   );
 }
 
 /** Phones: the growth hero (stages + bar) by the CURRENT plan's %. */
 function MobileGrowth({ child }: { child: ChildProfile }) {
-  const plan = planProgress(child);
+  const { lang } = useI18n();
+  const plan = planProgress(child, undefined, lang);
   return (
     <GrowthHero
       name={child.name}
-      subtitle={planSubtitle(ageLabel(child.age), plan)}
+      subtitle={planSubtitle(ageLabel(child.age, lang), plan)}
       stage={plan.stage}
       pct={plan.pct}
-      planChip={pilotChip(child.pilotDaysDone)}
-      sentence={planSentence(plan)}
+      planChip={pilotChip(child.pilotDaysDone, lang)}
+      sentence={planSentence(plan, lang)}
     />
   );
 }

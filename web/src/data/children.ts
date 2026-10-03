@@ -5,20 +5,23 @@ import { watch } from '../supabase/live';
 import { toAuthFailure } from './authFailure';
 import { issueCode } from './pairing';
 import { avatarKey } from '../content/avatars';
+import { MESSAGES, type UiLanguage } from '../i18n/i18n';
 
 export type Gender = 'girl' | 'boy';
 
 /** Week starts on Saturday (design Schedule). */
-export const WEEK_DAYS = [
-  { id: 'sat', label: 'السبت', short: 'سبت' },
-  { id: 'sun', label: 'الأحد', short: 'أحد' },
-  { id: 'mon', label: 'الاثنين', short: 'إثنين' },
-  { id: 'tue', label: 'الثلاثاء', short: 'ثلاثاء' },
-  { id: 'wed', label: 'الأربعاء', short: 'أربعاء' },
-  { id: 'thu', label: 'الخميس', short: 'خميس' },
-  { id: 'fri', label: 'الجمعة', short: 'جمعة' },
-] as const;
-export type WeekDay = (typeof WEEK_DAYS)[number]['id'];
+const DAY_IDS = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'] as const;
+export type WeekDay = (typeof DAY_IDS)[number];
+
+/** A weekday's names in a UI language (parent.json → schedule.days): «السبت» / «سبت» / «س». */
+export const dayNames = (d: WeekDay, lang: UiLanguage = 'ar') => MESSAGES[lang].parent.schedule.days[d];
+
+/** The days with their Arabic names (label «السبت», short «سبت»). */
+export const WEEK_DAYS: readonly { id: WeekDay; label: string; short: string }[] = DAY_IDS.map((id) => ({
+  id,
+  label: dayNames(id).label,
+  short: dayNames(id).short,
+}));
 
 export const DURATIONS = [30, 45, 60] as const;
 
@@ -363,17 +366,22 @@ export function nextReviewDay(
 }
 
 /** «الخميس، الأحد» — the review days in week order. */
-export const reviewDayNames = (s: ChildSchedule | null): string =>
+export const reviewDayNames = (s: ChildSchedule | null, lang: UiLanguage = 'ar'): string =>
   s
     ? WEEK_DAYS.filter((d) => s.reviewDays.includes(d.id))
-        .map((d) => d.label)
-        .join('، ')
+        .map((d) => dayNames(d.id, lang).label)
+        .join(MESSAGES[lang].parent.common.listSep)
     : '';
 
-/** «٥:٠٠ مساءً» */
-export function formatTime(minutes: number): string {
+/** «٥:٠٠ مساءً» (Arabic, as the design shows it); "5:00 PM" / "17.00" through Intl in en / id. */
+export function formatTime(minutes: number, lang: UiLanguage = 'ar'): string {
   const h24 = Math.floor(minutes / 60);
   const m = minutes % 60;
+  if (lang !== 'ar') {
+    return new Intl.DateTimeFormat(lang, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(
+      new Date(Date.UTC(2000, 0, 1, h24, m)),
+    );
+  }
   const h = h24 % 12 === 0 ? 12 : h24 % 12;
   const ar = (n: number) => n.toLocaleString('ar-SA-u-nu-arab', { useGrouping: false });
   return `${ar(h)}:${ar(m).padStart(2, '٠')} ${h24 < 12 ? 'صباحًا' : 'مساءً'}`;

@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 
 import type { AdminStats } from '../../data/admin';
+import { STORAGE_KEY } from '../../i18n/i18n';
+import { I18nProvider } from '../../i18n/I18nProvider';
 import { AdminView } from './AdminView';
 
 test('not an admin: a plain «غير مصرّح» page — no numbers, no refresh', () => {
@@ -45,4 +47,25 @@ test('an admin: KPI cards, the charts and «آخر تحديث» with Arabic-Indi
   expect(screen.getByText(/آخر تحديث/)).toBeInTheDocument();
   expect(screen.getAllByRole('img')).toHaveLength(2);
   expect(screen.getByRole('button', { name: 'تحديث' })).toBeEnabled();
+});
+
+test('English and Indonesian: the same page, ltr, Latin digits', () => {
+  localStorage.setItem(STORAGE_KEY, 'en');
+  const { unmount } = render(
+    <I18nProvider>
+      <AdminView state={{ kind: 'forbidden' }} onRefresh={() => {}} />
+    </I18nProvider>,
+  );
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Not authorized');
+  expect(document.documentElement).toHaveAttribute('dir', 'ltr');
+  unmount();
+  localStorage.setItem(STORAGE_KEY, 'id');
+  render(
+    <I18nProvider>
+      <AdminView state={{ kind: 'error', code: 'x' }} onRefresh={() => {}} />
+    </I18nProvider>,
+  );
+  expect(screen.getByRole('alert')).toHaveTextContent('Statistik tidak bisa dimuat');
+  expect(screen.getByRole('button', { name: 'Perbarui' })).toBeEnabled();
+  localStorage.clear();
 });
