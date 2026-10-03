@@ -55,8 +55,8 @@ function TalkingTeacher() {
   }, [reduce]);
   const frame: TeacherFrame = reduce ? 'idle' : LOOP[tick % LOOP.length]!;
   return (
-    <div className="relative h-[264px] w-full shrink-0">
-      <span className="absolute top-[22px] left-1/2 h-[236px] w-[236px] -translate-x-1/2 rounded-full bg-green-tint" />
+    <div className="relative h-[300px] w-full shrink-0">
+      <span className="absolute top-[26px] left-1/2 h-[268px] w-[268px] -translate-x-1/2 rounded-full bg-green-tint" />
       {/* all frames stacked, only one visible — no flicker while switching */}
       {SHOWN.map((f) => (
         <img
@@ -66,14 +66,14 @@ function TalkingTeacher() {
           loading="eager"
           draggable={false}
           className={cx(
-            'absolute bottom-0 left-1/2 h-[264px] w-[202px] -translate-x-1/2 object-cover object-top',
+            'absolute bottom-0 left-1/2 h-[300px] w-[230px] -translate-x-1/2 object-cover object-top',
             f === frame ? 'opacity-100' : 'opacity-0',
           )}
         />
       ))}
       {/* the talking glow */}
       {!reduce && (
-        <span className="absolute top-[40px] left-1/2 h-[200px] w-[200px] -translate-x-1/2 animate-[gh-pulse_2.4s_ease-in-out_infinite] rounded-full" />
+        <span className="absolute top-[46px] left-1/2 h-[228px] w-[228px] -translate-x-1/2 animate-[gh-pulse_2.4s_ease-in-out_infinite] rounded-full" />
       )}
     </div>
   );
@@ -162,7 +162,7 @@ function CallScreen() {
   return (
     <div className="flex h-full flex-col bg-background">
       <StatusBar />
-      <div className="flex grow flex-col items-center gap-[10px] px-[14px] pt-[10px] pb-[16px]">
+      <div className="flex grow flex-col items-center gap-[10px] px-[14px] pt-[10px] pb-[28px]">
         {/* LiveHeader */}
         <div className="flex w-full items-center gap-[8px]">
           <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-berry-border bg-berry-tint">
@@ -223,10 +223,34 @@ function FloatCard({ className, children }: { className: string; children: React
   );
 }
 
-/** The hero phone: 340×700, perfectly upright; on phones scaled to ~300 wide. */
+// The phone is laid out at 323×700 (a real ~9:19.5 phone) and scaled as one piece to
+// its box's height, so the teacher, card, mic and the parent card all shrink together.
+const BASE_H = 700;
+
+/** Scales the 323×700 phone to the height of `box` (sized in CSS). */
+function useFitScale(fallback: number) {
+  const box = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(fallback);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const fit = () => setScale(el.clientHeight / BASE_H);
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return { box, scale };
+}
+
+/**
+ * The hero phone, perfectly upright. Desktop: min(600px, 78vh) tall (~277×600);
+ * phones: under the hero text, at most 520px tall.
+ */
 export function LivePhone({ desktop }: { desktop?: boolean }) {
+  const { box, scale } = useFitScale((desktop ? 600 : 520) / BASE_H);
   const phone = (
-    <div className="relative h-[700px] w-[340px] rounded-px-44 bg-text-dark p-[10px] shadow-phone-mock">
+    <div className="relative h-[700px] w-[323px] rounded-px-44 bg-text-dark p-[10px] shadow-phone-mock">
       {/* side buttons */}
       <span className="absolute top-[150px] -left-[3px] h-[56px] w-[3px] rounded-l-px-3 bg-text-dark" />
       <span className="absolute top-[220px] -left-[3px] h-[56px] w-[3px] rounded-l-px-3 bg-text-dark" />
@@ -236,11 +260,9 @@ export function LivePhone({ desktop }: { desktop?: boolean }) {
         {/* dynamic island */}
         <span className="absolute top-[9px] left-1/2 h-[26px] w-[92px] -translate-x-1/2 rounded-pill bg-text-dark" />
       </div>
+      {/* overlaps the lower-left corner, beside the mic — never over the ayah or the mic */}
       <FloatCard
-        className={cx(
-          'bottom-[110px] animate-[gh-float-3_5.2s_ease-in-out_.8s_infinite]',
-          desktop ? '-left-[58px]' : '-left-[14px]',
-        )}
+        className="bottom-[22px] -left-[56px] animate-[gh-float-3_5.2s_ease-in-out_.8s_infinite]"
       >
         <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary">
           <CheckIcon size={15} color="surface" strokeWidth={3.2} />
@@ -254,16 +276,16 @@ export function LivePhone({ desktop }: { desktop?: boolean }) {
       </FloatCard>
     </div>
   );
-  if (desktop)
-    return (
-      <div aria-hidden="true" className="shrink-0 px-[40px]">
-        {phone}
-      </div>
-    );
-  // phones: the same phone, upright, scaled to fit under the hero text
   return (
-    <div aria-hidden="true" className="relative mx-auto h-[616px] w-[300px]">
-      <div className="absolute top-0 left-1/2 origin-top -translate-x-1/2 scale-[0.88]">{phone}</div>
+    <div aria-hidden="true" className={cx('shrink-0', desktop ? 'px-[40px]' : 'mx-auto')}>
+      <div
+        ref={box}
+        className={cx('relative aspect-[323/700]', desktop ? 'h-[min(600px,78vh)]' : 'h-[min(520px,78svh)]')}
+      >
+        <div className="absolute top-0 left-0 origin-top-left" style={{ transform: `scale(${scale})` }}>
+          {phone}
+        </div>
+      </div>
     </div>
   );
 }
