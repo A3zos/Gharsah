@@ -471,18 +471,6 @@ export const SourceIcons = {
       />
     </svg>
   ),
-  noMic: (s: number) => (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-      <rect x="9" y="3" width="6" height="11" rx="3" stroke={C.berryDeep} strokeWidth="2" />
-      <path
-        d="M5.5 11.5 C5.5 15.1 8.4 18 12 18 C15.6 18 18.5 15.1 18.5 11.5 M12 18 V21.2"
-        stroke={C.berryDeep}
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path d="M4.2 19.8 L19.8 4.2" stroke={C.berryDeep} strokeWidth="2.2" strokeLinecap="round" />
-    </svg>
-  ),
   project: (s: number) => (
     <svg width={s} height={s} viewBox="0 0 64 64" fill="none">
       <path d="M32 38 V18" stroke={C.berryDeep} strokeWidth="3.4" strokeLinecap="round" />

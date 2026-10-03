@@ -1,12 +1,11 @@
 // design/v2 WebLanding (≥1024px). Content column 1200px (fluid below that).
-// Everything follows the landing language (src/i18n) except «الخصوصية» (Arabic for now).
+// Everything follows the landing language (src/i18n).
 import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { fill, LANDING_AGES, useI18n } from '../../i18n/i18n';
-import { ArabicOnly } from '../../i18n/LandingI18n';
 import { buttonClass } from '../ui/Button';
-import { BookIcon, CodeIcon, ForwardIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
+import { BookIcon, CodeIcon, ForwardIcon, MicIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
 import { LivePhone } from './LivePhone';
 import { ParentFeatures, ParentPreview } from './ParentPreview';
@@ -15,6 +14,8 @@ import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
 import { LanguageMenu } from '../ui/LanguageSwitcher';
 
 const COL = 'mx-auto w-full max-w-[1200px] px-[24px] min-[1248px]:px-0';
+
+const NAV_LINK = 'text-[15px] font-bold whitespace-nowrap text-text-dark no-underline';
 
 const STEP_ICONS: Record<HowStep['key'], React.ReactNode> = {
   quran: <MicIcon size={30} color="deepGreen" strokeWidth={1.9} filled={false} />,
@@ -38,20 +39,25 @@ export function LandingDesktop() {
               </span>
             </span>
             <div className="flex grow items-center gap-[30px]">
-              {[
-                ['#how', m.header.how],
-                ['#sources', m.header.sources],
-                ['#privacy', m.header.privacy],
-                ['#plans', m.header.plans],
-              ].map(([href, label]) => (
-                <a
-                  key={href}
-                  href={href}
-                  className="text-[15px] font-bold whitespace-nowrap text-text-dark no-underline"
-                >
-                  {label}
-                </a>
-              ))}
+              {(
+                [
+                  ['#how', m.header.how],
+                  ['#sources', m.header.sources],
+                  [paths.privacy, m.header.privacy],
+                  ['#plans', m.header.plans],
+                ] as const
+              ).map(([href, label]) =>
+                // «الخصوصية» opens the privacy policy page; the others scroll to their section
+                href.startsWith('#') ? (
+                  <a key={href} href={href} className={NAV_LINK}>
+                    {label}
+                  </a>
+                ) : (
+                  <Link key={href} to={href} className={NAV_LINK}>
+                    {label}
+                  </Link>
+                ),
+              )}
             </div>
             <LanguageMenu />
             <Link
@@ -168,7 +174,7 @@ export function LandingDesktop() {
 
           <section
             id="sources"
-            className={`${COL} flex scroll-mt-[20px] flex-col gap-[32px] pt-[84px] pb-[20px]`}
+            className={`${COL} flex scroll-mt-[20px] flex-col gap-[32px] pt-[84px] pb-[84px]`}
           >
             <div className="flex flex-col items-center gap-[12px]">
               <span className="rounded-pill bg-gold-tint px-[16px] py-[8px] text-[13px] font-extrabold text-warning-text">
@@ -192,33 +198,6 @@ export function LandingDesktop() {
               </p>
             </div>
           </section>
-
-          {/* not translated yet: Arabic, rtl in every language */}
-          <ArabicOnly>
-            <section
-              id="privacy"
-              className={`${COL} flex scroll-mt-[20px] flex-col gap-[28px] pt-[70px] pb-[80px]`}
-            >
-              <div className="flex flex-col items-center gap-[10px]">
-                <h2 className="m-0 font-heading text-[36px] font-bold text-text-dark">خصوصية طفلك أولًا</h2>
-              </div>
-              <div className="flex gap-[18px]">
-                <PrivacyCard tint="bg-green-tint" icon={<PersonIcon />} title="الطفل لا يعطي أي بيانات">
-                  لا بريد، لا كلمة مرور، لا اسم عائلة. الحساب لوليّ الأمر وحده.
-                </PrivacyCard>
-                <PrivacyCard
-                  tint="bg-sky-tint"
-                  icon={<CodeIcon size={24} color="skyText" strokeWidth={2} />}
-                  title="يدخل برمز فقط"
-                >
-                  رمز ربط من ستّ خانات يصدره وليّ الأمر، ويستطيع إلغاءه متى شاء.
-                </PrivacyCard>
-                <PrivacyCard tint="bg-berry-tint" icon={SourceIcons.noMic(24)} title="لا نخزّن صوته الحيّ">
-                  ترديد الآيات يُسمع ولا يُحفظ. تسجيل المشروع وحده يُحفظ — ويصل لوليّ الأمر فقط، وله حذفه.
-                </PrivacyCard>
-              </div>
-            </section>
-          </ArabicOnly>
 
           <section
             id="plans"
@@ -262,33 +241,6 @@ export function LandingDesktop() {
           </div>
         </footer>
       </div>
-    </div>
-  );
-}
-
-function PrivacyCard({
-  tint,
-  icon,
-  title,
-  children,
-}: {
-  tint: string;
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex grow basis-0 items-start gap-[16px] rounded-px-26 bg-surface px-[26px] py-[28px] shadow-dark-12-26-4">
-      <span
-        className={`flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-px-16 ${tint}`}
-        aria-hidden="true"
-      >
-        {icon}
-      </span>
-      <span className="flex flex-col gap-[7px]">
-        <h3 className="m-0 text-[17px] font-extrabold">{title}</h3>
-        <span className="text-[14.5px] leading-[1.9] text-text-muted">{children}</span>
-      </span>
     </div>
   );
 }

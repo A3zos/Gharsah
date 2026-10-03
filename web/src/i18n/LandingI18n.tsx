@@ -34,12 +34,3 @@ export function LandingI18nProvider({ children }: { children: React.ReactNode })
   );
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
-
-/** The parts of the landing not translated yet: Arabic, rtl, whatever the page language. */
-export function ArabicOnly({ children }: { children: React.ReactNode }) {
-  return (
-    <div lang="ar" dir="rtl" className="contents">
-      {children}
-    </div>
-  );
-}

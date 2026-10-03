@@ -1,16 +1,15 @@
 // design/v2 WebLandingMobile (<1024px): sticky top bar with a menu, a single
 // column, and the fixed «للأعلى» button. Everything follows the landing language
-// (src/i18n) except «الخصوصية» (Arabic for now).
+// (src/i18n).
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { fill, LANDING_AGES, useI18n } from '../../i18n/i18n';
-import { ArabicOnly } from '../../i18n/LandingI18n';
 import { cx } from '../../lib/cx';
 import { buttonClass } from '../ui/Button';
 import { C } from '../ui/color';
-import { BookIcon, CodeIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
+import { BookIcon, CodeIcon, MicIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
 import { LanguageSheetButton } from '../ui/LanguageSwitcher';
 import { LivePhone } from './LivePhone';
@@ -27,7 +26,7 @@ const STEP_ICONS: Record<HowStep['key'], React.ReactNode> = {
 const MENU = [
   ['#m-how', 'how'],
   ['#m-sources', 'sources'],
-  ['#m-privacy', 'privacy'],
+  [paths.privacy, 'privacy'],
   ['#m-plans', 'plans'],
 ] as const;
 
@@ -104,19 +103,22 @@ export function LandingMobile() {
               aria-label={m.header.sectionsLabel}
               className="absolute inset-x-0 top-[72px] z-29 flex flex-col gap-[4px] border-b border-b-border bg-surface px-[16px] pt-[10px] pb-[16px] shadow-dark-14-28-8"
             >
-              {MENU.map(([href, key]) => (
-                <a
-                  key={href}
-                  href={href}
-                  onClick={() => setMenu(false)}
-                  className={cx(
-                    'flex h-[52px] items-center rounded-px-16 px-[14px] text-[16px] font-extrabold no-underline',
-                    href === '#m-plans' ? 'bg-green-tint text-deep-green' : 'text-text-dark',
-                  )}
-                >
-                  {m.header[key]}
-                </a>
-              ))}
+              {MENU.map(([href, key]) => {
+                const cls = cx(
+                  'flex h-[52px] items-center rounded-px-16 px-[14px] text-[16px] font-extrabold no-underline',
+                  href === '#m-plans' ? 'bg-green-tint text-deep-green' : 'text-text-dark',
+                );
+                // «الخصوصية» opens the privacy policy page; the others scroll to their section
+                return href.startsWith('#') ? (
+                  <a key={href} href={href} onClick={() => setMenu(false)} className={cls}>
+                    {m.header[key]}
+                  </a>
+                ) : (
+                  <Link key={href} to={href} className={cls}>
+                    {m.header[key]}
+                  </Link>
+                );
+              })}
             </nav>
           )}
         </header>
@@ -215,37 +217,6 @@ export function LandingMobile() {
           </div>
         </section>
 
-        {/* not translated yet: Arabic, rtl in every language */}
-        <ArabicOnly>
-          <section
-            id="m-privacy"
-            className="scroll-mt-[80px] border-y border-y-border bg-surface px-[20px] py-[36px]"
-          >
-            <div className="mx-auto flex max-w-[520px] flex-col gap-[13px]">
-              <h2 className="m-0 mb-[4px] text-center font-heading text-[25px] font-bold">
-                خصوصية طفلك أولًا
-              </h2>
-              <PrivacyRow
-                tint="bg-green-tint"
-                icon={<PersonIcon size={21} />}
-                title="الطفل لا يعطي أي بيانات"
-              >
-                لا بريد ولا كلمة مرور. الحساب لوليّ الأمر وحده.
-              </PrivacyRow>
-              <PrivacyRow
-                tint="bg-sky-tint"
-                icon={<CodeIcon size={21} color="skyText" strokeWidth={2} />}
-                title="يدخل برمز فقط"
-              >
-                رمز من ستّ خانات يصدره وليّ الأمر ويلغيه متى شاء.
-              </PrivacyRow>
-              <PrivacyRow tint="bg-berry-tint" icon={SourceIcons.noMic(21)} title="لا نخزّن صوته الحيّ">
-                ترديد الآيات يُسمع ولا يُحفظ. تسجيل المشروع وحده يصل لوليّ الأمر، وله حذفه.
-              </PrivacyRow>
-            </div>
-          </section>
-        </ArabicOnly>
-
         <section
           id="m-plans"
           className="mx-auto flex w-full max-w-[560px] scroll-mt-[80px] flex-col gap-[24px] px-[20px] py-[40px] min-[900px]:max-w-[1176px]"
@@ -322,33 +293,6 @@ function StepCard({ step, icon }: { step: HowStep; icon: React.ReactNode }) {
         </span>
       </div>
       <HowExample step={step} />
-    </div>
-  );
-}
-
-function PrivacyRow({
-  tint,
-  icon,
-  title,
-  children,
-}: {
-  tint: string;
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start gap-[13px]">
-      <span
-        className={`flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-px-14 ${tint}`}
-        aria-hidden="true"
-      >
-        {icon}
-      </span>
-      <span className="flex flex-col gap-[5px]">
-        <h3 className="m-0 text-[15.5px] font-extrabold">{title}</h3>
-        <span className="text-[13.5px] leading-[1.9] text-text-muted">{children}</span>
-      </span>
     </div>
   );
 }
