@@ -1,7 +1,10 @@
 // Pieces the desktop (WebLanding) and mobile (WebLandingMobile) landing share —
 // same art, different sizes, so sizes are props with the frames' exact values.
-import { teacherFrameSrc } from '../child/teacherCharacter';
+import { useEffect, useRef, useState } from 'react';
+
+import { toArabicDigits } from '../../lib/arabicDigits';
 import { C } from '../ui/color';
+import { PlayGlyph } from '../ui/icons';
 import { cx } from '../../lib/cx';
 
 /** «كيف تعمل غَرْسة»: the three cards. Examples are descriptive on purpose — no ayah, hadith or answer text. */
@@ -14,7 +17,8 @@ export const HOW_STEPS = [
     tint: 'bg-green-tint',
     labelColor: 'text-deep-green',
     childBubble: 'bg-primary/15',
-    child: 'boy',
+    accent: 'primary',
+    accentBg: 'bg-primary',
     chat: [
       { from: 'teacher', text: 'اليوم سورة الإخلاص 🌱 اسمعها من القارئ، ثم ردّدها معي آية آية.' },
       { from: 'child', text: 'جاهز!' },
@@ -28,7 +32,8 @@ export const HOW_STEPS = [
     tint: 'bg-gold-tint',
     labelColor: 'text-warning-text',
     childBubble: 'bg-gold/15',
-    child: 'girl',
+    accent: 'goldDeep',
+    accentBg: 'bg-gold-deep',
     chat: [
       { from: 'teacher', text: 'حديث اليوم عن برّ الوالدين 💛 ما الشيء الذي ستفعله لأمك اليوم؟' },
       { from: 'child', text: 'سأساعدها في ترتيب البيت' },
@@ -42,7 +47,8 @@ export const HOW_STEPS = [
     tint: 'bg-berry-tint',
     labelColor: 'text-berry-deep',
     childBubble: 'bg-berry/15',
-    child: 'boy',
+    accent: 'berry',
+    accentBg: 'bg-berry',
     chat: [
       { from: 'child', text: 'ليش خلق الله النار؟' },
       { from: 'child', text: 'ليش نصلي خمس صلوات في اليوم؟' },
@@ -58,7 +64,8 @@ export const HOW_STEPS = [
   tint: string;
   labelColor: string;
   childBubble: string;
-  child: 'boy' | 'girl';
+  accent: 'primary' | 'goldDeep' | 'berry';
+  accentBg: string;
   chat: readonly { from: 'teacher' | 'child'; text: string }[];
 }[];
 
@@ -73,75 +80,141 @@ export function HowLabel({ step, desktop }: { step: HowStep; desktop?: boolean }
   );
 }
 
-/** 28px round avatars: the teacher sprite cropped to his face, or the child's portrait. */
-function ChatAvatar({ who, tint }: { who: 'teacher' | 'boy' | 'girl'; tint: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cx('relative h-[28px] w-[28px] shrink-0 overflow-hidden rounded-full', tint)}
-    >
-      {who === 'teacher' ? (
-        <img
-          src={teacherFrameSrc('boy', 'idle')}
-          alt=""
-          loading="lazy"
-          className="absolute top-[-5px] left-[-14px] w-[56px] max-w-none"
-        />
-      ) : (
-        <img
-          src={`/avatars/child-${who}-1-256.webp`}
-          alt=""
-          loading="lazy"
-          className="h-full w-full scale-[1.3] object-cover [object-position:50%_30%]"
-        />
-      )}
-    </span>
-  );
+const BARS = 28;
+
+/** ~28 waveform bar heights (25–100%), fixed per line so every render draws the same note. */
+function waveform(text: string): number[] {
+  let h = 0;
+  for (const ch of text) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return Array.from({ length: BARS }, (_, i) => {
+    h = (h * 1103515245 + 12345) >>> 0;
+    const envelope = Math.sin(((i + 1) / (BARS + 1)) * Math.PI); // louder mid-note
+    return Math.round(25 + 75 * (0.35 * envelope + 0.65 * ((h >>> 16) / 65535)));
+  });
 }
 
-/**
- * «مثال»: a mini chat in a soft tinted box — the teacher's white bubble with his avatar
- * on the start side, the child's accent-tinted bubble with the child's on the other.
- */
-export function HowExample({ step, desktop }: { step: HowStep; desktop?: boolean }) {
-  const text = desktop ? 'text-[14px]' : 'text-[13.5px]';
+/** «٠:٠٤» — a plausible length for the line (no real audio). */
+function noteDuration(text: string): string {
+  const sec = Math.min(9, Math.max(1, Math.round(text.length / 13)));
+  return `${toArabicDigits(0)}:${toArabicDigits(0)}${toArabicDigits(sec)}`;
+}
+
+/** One voice note (WhatsApp-style): speaker tag, play button, waveform, duration, then the words. */
+function VoiceNote({
+  step,
+  from,
+  text,
+  playing,
+  desktop,
+}: {
+  step: HowStep;
+  from: 'teacher' | 'child';
+  text: string;
+  playing: boolean;
+  desktop?: boolean;
+}) {
+  const teacher = from === 'teacher';
   return (
     <div
       className={cx(
-        'flex flex-col gap-[8px] rounded-px-18',
+        'flex min-h-[84px] w-[calc(100%-40px)] flex-col gap-[6px] rounded-px-22 px-[14px] pt-[10px] pb-[12px] shadow-soft',
+        teacher ? 'self-start bg-surface' : cx('self-end', step.childBubble),
+      )}
+    >
+      <span className={cx('text-[12px] font-extrabold', step.labelColor)}>
+        {teacher ? 'المعلّم' : 'الطفل'}
+      </span>
+      <span className="flex items-center gap-[10px]">
+        <span
+          className={cx(
+            'flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full',
+            teacher ? step.accentBg : 'bg-surface shadow-soft',
+          )}
+        >
+          {/* the play triangle points right in RTL too (media icons are not mirrored) */}
+          <span className="translate-x-[1.5px]">
+            <PlayGlyph size={15} color={teacher ? 'surface' : step.accent} />
+          </span>
+        </span>
+        <span className="flex h-[28px] min-w-0 grow items-center gap-[2px]" dir="ltr">
+          {waveform(text).map((h, i) => (
+            <span
+              key={i}
+              className={cx(
+                'w-[3px] min-w-[2px] shrink rounded-pill',
+                step.accentBg,
+                playing && 'animate-[gh-wave_.5s_ease-in-out_4_alternate]',
+              )}
+              style={{ height: `${h}%`, animationDelay: playing ? `${(i % 7) * 60}ms` : undefined }}
+            />
+          ))}
+        </span>
+        <span dir="ltr" className="shrink-0 font-heading text-[12.5px] font-bold text-text-muted">
+          {noteDuration(text)}
+        </span>
+      </span>
+      <span
+        className={cx('leading-[1.7] font-bold text-text-dark', desktop ? 'text-[16.5px]' : 'text-[16px]')}
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
+
+/** Plays the first note's waveform for ~2 s when the card scrolls into view (not under reduced motion). */
+function usePlayOnView<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver !== 'function') return;
+    if (matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e?.isIntersecting) return;
+        io.disconnect();
+        setPlaying(true);
+        timer = setTimeout(() => setPlaying(false), 2000);
+      },
+      { threshold: 0.6 },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      clearTimeout(timer);
+    };
+  }, []);
+  return { ref, playing };
+}
+
+/**
+ * «مثال»: a soft tinted box with voice notes — the teacher's white notes on the start
+ * side, the child's accent-tinted ones on the other. The words are captions; no audio.
+ */
+export function HowExample({ step, desktop }: { step: HowStep; desktop?: boolean }) {
+  const { ref, playing } = usePlayOnView<HTMLDivElement>();
+  return (
+    <div
+      ref={ref}
+      className={cx(
+        'flex flex-col gap-[10px] rounded-px-18',
         step.tint,
         desktop ? 'px-[14px] pt-[10px] pb-[14px]' : 'px-[12px] pt-[8px] pb-[12px]',
       )}
     >
       <span className="text-[11.5px] font-extrabold text-text-muted">مثال</span>
-      {step.chat.map((m) =>
-        m.from === 'teacher' ? (
-          <span key={m.text} className="flex max-w-[94%] items-end gap-[7px] self-start">
-            <ChatAvatar who="teacher" tint="bg-surface" />
-            <span
-              className={cx(
-                'rounded-px-18 rounded-br-px-4 bg-surface px-[12px] py-[8px] leading-[1.75] font-bold text-text-dark shadow-soft',
-                text,
-              )}
-            >
-              {m.text}
-            </span>
-          </span>
-        ) : (
-          <span key={m.text} className="flex max-w-[94%] items-end gap-[7px] self-end">
-            <span
-              className={cx(
-                'rounded-px-18 rounded-bl-px-4 px-[12px] py-[8px] leading-[1.75] font-bold text-text-dark',
-                step.childBubble,
-                text,
-              )}
-            >
-              {m.text}
-            </span>
-            <ChatAvatar who={step.child} tint="bg-surface" />
-          </span>
-        ),
-      )}
+      {step.chat.map((m, i) => (
+        <VoiceNote
+          key={m.text}
+          step={step}
+          from={m.from}
+          text={m.text}
+          playing={playing && i === 0}
+          desktop={desktop}
+        />
+      ))}
     </div>
   );
 }

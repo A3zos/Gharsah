@@ -89,6 +89,16 @@
     transform: translateY(-6px);
   }
 }
+
+/* A voice note's waveform bar while it "plays" (landing examples). */
+@keyframes gh-wave {
+  0% {
+    transform: scaleY(1);
+  }
+  100% {
+    transform: scaleY(0.3);
+  }
+}
 @keyframes gh-float-4 {
   0%,
   100% {
