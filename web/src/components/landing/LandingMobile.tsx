@@ -10,8 +10,15 @@ import { C } from '../ui/color';
 import { BookIcon, CodeIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
 import { LanguageSheetButton } from '../ui/LanguageSwitcher';
-import { DashboardPreview, PhoneMock, SourceIcons } from './shared';
+import { LivePhone } from './LivePhone';
+import { DashboardPreview, HOW_STEPS, HowExample, HowLabel, SourceIcons, type HowStep } from './shared';
 import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
+
+const STEP_ICONS: Record<HowStep['key'], React.ReactNode> = {
+  quran: <MicIcon size={24} color="deepGreen" strokeWidth={1.9} filled={false} />,
+  hadith: <BookIcon size={24} color="ayahBracket" />,
+  questions: SourceIcons.question(26),
+};
 
 const MENU = [
   ['#m-how', 'كيف تعمل'],
@@ -145,31 +152,18 @@ export function LandingMobile() {
             </div>
           </section>
 
-          <div className="flex justify-center px-[20px] pb-[40px]">
-            <PhoneMock />
+          <div className="flex justify-center overflow-x-clip px-[20px] pt-[8px] pb-[40px]">
+            <LivePhone />
           </div>
 
           <section id="m-how" className="flex scroll-mt-[80px] flex-col gap-[16px] px-[20px] pb-[44px]">
             <h2 className="m-0 text-center font-heading text-[27px] font-bold">كيف تعمل غَرْسة</h2>
-            <StepCard
-              tint="bg-green-tint"
-              icon={<MicIcon size={24} color="deepGreen" strokeWidth={1.9} filled={false} />}
-              n="١"
-              title="حصة حيّة مع المعلّم"
-            >
-              مكالمة صوتية بضغطة واحدة — بلا قراءة ولا كتابة.
-            </StepCard>
-            <StepCard
-              tint="bg-gold-tint"
-              icon={<BookIcon size={24} color="ayahBracket" />}
-              n="٢"
-              title="ترديد كل آية ٣ مرات"
-            >
-              والمعلّم يعدّ معه بصوته: «باقي مرتين… باقي مرة… أحسنت».
-            </StepCard>
-            <StepCard tint="bg-berry-tint" icon={SourceIcons.project(26)} n="٣" title="مشروع عملي في البيت">
-              وفي اليوم التالي يحكي بصوته ماذا فعل.
-            </StepCard>
+            <p className="m-0 -mt-[6px] text-center text-[14.5px] leading-[1.8] text-text-muted">
+              معلّم ذكي يعلّم طفلك القرآن والحديث، ويجيب عن أسئلته عن دينه
+            </p>
+            {HOW_STEPS.map((s) => (
+              <StepCard key={s.key} step={s} icon={STEP_ICONS[s.key]} />
+            ))}
           </section>
         </main>
 
@@ -302,32 +296,23 @@ export function LandingMobile() {
   );
 }
 
-function StepCard({
-  tint,
-  icon,
-  n,
-  title,
-  children,
-}: {
-  tint: string;
-  icon: React.ReactNode;
-  n: string;
-  title: string;
-  children: React.ReactNode;
-}) {
+function StepCard({ step, icon }: { step: HowStep; icon: React.ReactNode }) {
   return (
-    <div className="flex gap-[14px] rounded-px-24 bg-surface px-[20px] py-[22px] shadow-dark-10-22-5">
-      <span
-        className={`flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-px-16 ${tint}`}
-        aria-hidden="true"
-      >
-        {icon}
-      </span>
-      <span className="flex flex-col gap-[6px]">
-        <span className="text-[12px] font-extrabold text-gold">الخطوة {n}</span>
-        <h3 className="m-0 font-heading text-[19px] font-bold">{title}</h3>
-        <span className="text-[14px] leading-[1.9] text-text-muted">{children}</span>
-      </span>
+    <div className="flex flex-col gap-[12px] rounded-px-24 bg-surface px-[20px] py-[22px] shadow-dark-10-22-5">
+      <div className="flex gap-[14px]">
+        <span
+          className={`flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-px-16 ${step.tint}`}
+          aria-hidden="true"
+        >
+          {icon}
+        </span>
+        <span className="flex flex-col gap-[6px]">
+          <HowLabel step={step} />
+          <h3 className="m-0 font-heading text-[19px] font-bold">{step.title}</h3>
+          <span className="text-[14px] leading-[1.9] text-text-muted">{step.body}</span>
+        </span>
+      </div>
+      <HowExample step={step} />
     </div>
   );
 }

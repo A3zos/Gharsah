@@ -5,35 +5,18 @@ import { paths } from '../../app/paths';
 import { buttonClass } from '../ui/Button';
 import { BookIcon, CheckIcon, CodeIcon, ForwardIcon, MicIcon, PersonIcon, SproutMark } from '../ui/icons';
 import { Blob } from '../ui/Page';
-import { DashboardPreview, PhoneMock, SourceIcons } from './shared';
+import { LivePhone } from './LivePhone';
+import { DashboardPreview, HOW_STEPS, HowExample, HowLabel, SourceIcons, type HowStep } from './shared';
 import { PilotSignupLink, PlanCards } from '../plans/PlanCards';
 import { LanguageMenu } from '../ui/LanguageSwitcher';
 
 const COL = 'mx-auto w-full max-w-[1200px] px-[24px] min-[1248px]:px-0';
 
-const STEPS = [
-  {
-    tint: 'bg-green-tint',
-    icon: <MicIcon size={30} color="deepGreen" strokeWidth={1.9} filled={false} />,
-    n: '١',
-    title: 'حصة حيّة مع المعلّم',
-    body: 'مكالمة صوتية يفتحها الطفل بضغطة واحدة. المعلّم يرحّب به باسمه، ويشرح خطة اليوم بصوته — بلا قراءة ولا كتابة.',
-  },
-  {
-    tint: 'bg-gold-tint',
-    icon: <BookIcon size={30} color="ayahBracket" />,
-    n: '٢',
-    title: 'ترديد كل آية ٣ مرات',
-    body: 'تُتلى الآية بصوت القارئ، ثم يردّدها الطفل والميكروفون مفتوح، والمعلّم يعدّ معه بصوته: «باقي مرتين… باقي مرة… أحسنت».',
-  },
-  {
-    tint: 'bg-berry-tint',
-    icon: SourceIcons.project(32),
-    n: '٣',
-    title: 'مشروع عملي في البيت',
-    body: 'حديث الأسبوع يتحوّل إلى عمل: برّ الوالدين، صدقة، إفشاء السلام… وفي اليوم التالي يحكي الطفل بصوته ماذا فعل.',
-  },
-];
+const STEP_ICONS: Record<HowStep['key'], React.ReactNode> = {
+  quran: <MicIcon size={30} color="deepGreen" strokeWidth={1.9} filled={false} />,
+  hadith: <BookIcon size={30} color="ayahBracket" />,
+  questions: SourceIcons.question(32),
+};
 
 export function LandingDesktop() {
   return (
@@ -121,7 +104,7 @@ export function LandingDesktop() {
                 </Link>
               </div>
             </div>
-            <PhoneMock desktop />
+            <LivePhone desktop />
           </section>
 
           <section
@@ -130,23 +113,26 @@ export function LandingDesktop() {
           >
             <div className="flex flex-col items-center gap-[10px]">
               <h2 className="m-0 font-heading text-[40px] font-bold text-text-dark">كيف تعمل غَرْسة</h2>
-              <p className="m-0 text-[17px] text-text-muted">حصة واحدة في اليوم… ثلاث خطوات فقط.</p>
+              <p className="m-0 text-center text-[17px] text-text-muted">
+                معلّم ذكي يعلّم طفلك القرآن والحديث، ويجيب عن أسئلته عن دينه
+              </p>
             </div>
             <div className="flex gap-[22px]">
-              {STEPS.map((s) => (
+              {HOW_STEPS.map((s) => (
                 <div
-                  key={s.n}
+                  key={s.key}
                   className="flex grow basis-0 flex-col gap-[16px] rounded-px-28 bg-surface px-[28px] py-[34px] shadow-dark-14-30-5"
                 >
                   <span
                     className={`flex h-[62px] w-[62px] items-center justify-center rounded-px-20 ${s.tint}`}
                     aria-hidden="true"
                   >
-                    {s.icon}
+                    {STEP_ICONS[s.key]}
                   </span>
-                  <span className="text-[13px] font-extrabold text-gold">الخطوة {s.n}</span>
+                  <HowLabel step={s} desktop />
                   <h3 className="m-0 font-heading text-[25px] font-bold text-text-dark">{s.title}</h3>
                   <p className="m-0 text-[15.5px] leading-[1.95] text-text-muted">{s.body}</p>
+                  <HowExample step={s} desktop />
                 </div>
               ))}
             </div>

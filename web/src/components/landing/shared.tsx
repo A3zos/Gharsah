@@ -1,77 +1,101 @@
 // Pieces the desktop (WebLanding) and mobile (WebLandingMobile) landing share —
 // same art, different sizes, so sizes are props with the frames' exact values.
-import { verifiedAyah } from '../../content/verified';
-import { TeacherArt } from '../child/TeacherArt';
-import { AyahText } from '../ui/AyahText';
 import { C } from '../ui/color';
-import { MicIcon } from '../ui/icons';
 import { cx } from '../../lib/cx';
 
-// Surah Al-Ikhlas 112:1 — the lesson's first ayah, from the verified asset.
-const AYAH = verifiedAyah(112, 1);
+/** «كيف تعمل غَرْسة»: the three cards. Examples are descriptive on purpose — no ayah or hadith text here. */
+export const HOW_STEPS = [
+  {
+    key: 'quran',
+    label: 'القرآن',
+    title: 'يحفظ القرآن مع معلّم ذكي',
+    body: 'يسمع الطفل الآية من قارئ متقن، ثم يردّدها بصوته، والمعلّم يشجّعه ويعدّ معه حتى يتقنها.',
+    tint: 'bg-green-tint',
+    teacher: ['اليوم سورة الإخلاص 🌱 اسمعها من القارئ، ثم ردّدها معي آية آية.'],
+    child: [],
+  },
+  {
+    key: 'hadith',
+    label: 'الحديث',
+    title: 'يفهم الحديث ويطبّقه',
+    body: 'يتعلّم الطفل حديثًا قصيرًا ومعناه بكلمات بسيطة، ثم يحوّله إلى عمل حقيقي في البيت.',
+    tint: 'bg-gold-tint',
+    teacher: ['حديث اليوم عن برّ الوالدين 💛 ما الشيء الذي ستفعله لأمك اليوم؟'],
+    child: [],
+  },
+  {
+    key: 'questions',
+    label: 'أسئلة الطفل',
+    soon: true,
+    title: 'يجيب عن تساؤلاته عن الإسلام',
+    body: 'يسأل الطفل بصوته عمّا يحيّره، فيجيبه المعلّم بلغة تناسب عمره، من إجابات مراجَعة من مختصين.',
+    tint: 'bg-berry-tint',
+    teacher: [],
+    child: ['ليش نصلي خمس صلوات في اليوم؟', 'ليش خلق الله النار؟'],
+  },
+] as const satisfies readonly {
+  key: string;
+  label: string;
+  soon?: boolean;
+  title: string;
+  body: string;
+  tint: string;
+  teacher: readonly string[];
+  child: readonly string[];
+}[];
 
-/** The phone showing a live lesson (hero). Desktop = design/v3 WebLandingLaptop; mobile = WebLandingMobile. */
-export function PhoneMock({ desktop }: { desktop?: boolean }) {
-  if (desktop) {
-    return (
-      <div
-        aria-hidden="true"
-        className="flex h-[540px] w-[320px] shrink-0 animate-[gh-float-4_5s_ease-in-out_infinite] flex-col items-center gap-[10px] overflow-hidden rounded-px-40 border-[9px] border-text-dark bg-surface px-[14px] py-[16px] shadow-dark-26-52-18"
-      >
-        <span className="flex shrink-0 items-center gap-[7px] rounded-pill bg-berry-tint px-[13px] py-[7px]">
-          <span className="h-[7px] w-[7px] rounded-full bg-berry" />
-          <span className="text-[14px] font-extrabold text-berry-deep">مباشر</span>
+export type HowStep = (typeof HOW_STEPS)[number];
+
+/** A card's label (the old «الخطوة n» slot) + «قريبًا» for features not live yet. */
+export function HowLabel({ step, desktop }: { step: HowStep; desktop?: boolean }) {
+  return (
+    <span className="flex items-center gap-[8px]">
+      <span className={cx('font-extrabold text-gold', desktop ? 'text-[13px]' : 'text-[12px]')}>
+        {step.label}
+      </span>
+      {'soon' in step && step.soon && (
+        <span className="rounded-pill bg-berry-tint px-[9px] py-[2px] text-[11px] font-extrabold text-berry-deep">
+          قريبًا
         </span>
-        <span className="shrink-0">
-          <svg width="104" height="104" viewBox="0 0 64 64" fill="none">
-            <circle cx="32" cy="32" r="32" fill={C.greenTint} />
-            <path d="M13 60 C13 47 21 40 32 40 C43 40 51 47 51 60 Z" fill={C.avatarCap} />
-            <ellipse cx="32" cy="29" rx="11.5" ry="13" fill={C.avatarSkinTan} />
-            <path d="M19 24 C19 16 24 11 32 11 C40 11 45 16 45 24 Z" fill={C.surface} />
-            <path d="M19.5 25 H44.5" stroke={C.borderStrong} strokeWidth="2" strokeLinecap="round" />
-            <circle cx="27.5" cy="30" r="2.2" fill={C.avatarFeatures} />
-            <circle cx="37" cy="30" r="2.2" fill={C.avatarFeatures} />
-            <path
-              d="M28.5 36.5 C30.5 38.5 34 38.5 36.5 36.5"
-              stroke={C.avatarFeatures}
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </span>
-        <span className="shrink-0 text-center text-[14px] leading-[1.7] font-bold text-text-muted">
-          استمع للآية… وأنا صامت معك
-        </span>
-        <span className="flex w-full shrink-0 flex-col items-center gap-[7px] rounded-px-20 border-[1.5px] border-border bg-background px-[12px] py-[16px]">
-          <AyahText text={AYAH.text} className="text-[25px] leading-[1.9]" />
-          <span className="text-[14px] font-bold text-text-muted">{AYAH.reference}</span>
-        </span>
-        <span className="mt-auto flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-full bg-gold">
-          <MicIcon size={28} />
-        </span>
-      </div>
-    );
-  }
+      )}
+    </span>
+  );
+}
+
+/** «مثال»: a soft tinted box with the teacher's bubble (start side) or the child's (end side). */
+export function HowExample({ step, desktop }: { step: HowStep; desktop?: boolean }) {
+  const text = desktop ? 'text-[14.5px]' : 'text-[13.5px]';
   return (
     <div
-      aria-hidden="true"
-      className="flex w-[290px] flex-col items-center gap-[10px] overflow-hidden rounded-px-36 border-[8px] border-text-dark bg-surface px-[13px] py-[16px] shadow-dark-22-44-16"
+      className={cx(
+        'flex flex-col gap-[8px] rounded-px-18',
+        step.tint,
+        desktop ? 'mt-auto px-[14px] pt-[10px] pb-[14px]' : 'px-[12px] pt-[8px] pb-[12px]',
+      )}
     >
-      <span className="flex items-center gap-[6px] rounded-pill border border-berry-border bg-surface px-[11px] py-[5px]">
-        <span className="h-[6px] w-[6px] animate-[gh-blink_1.4s_ease-in-out_infinite] rounded-full bg-berry" />
-        <span className="text-[11px] font-extrabold text-berry-deep">مباشر</span>
-      </span>
-      <span className="animate-[gh-bob-2_1.9s_ease-in-out_infinite]">
-        <TeacherArt size={118} detailed={false} arcs="single" />
-      </span>
-      <p className="m-0 text-center text-[13.5px] font-bold text-text-dark">استمع للآية… وأنا صامت معك</p>
-      <div className="flex w-full flex-col items-center gap-[7px] rounded-px-22 border-[1.5px] border-border bg-surface px-[12px] py-[14px]">
-        <AyahText text={AYAH.text} className="text-[21px] leading-[1.9]" bracketClassName="text-[24px]" />
-        <span className="text-[11px] font-bold text-text-muted">{AYAH.reference}</span>
-      </div>
-      <span className="flex h-[70px] w-[70px] items-center justify-center rounded-full bg-gold shadow-gold-10-20-40">
-        <MicIcon size={32} />
-      </span>
+      <span className="text-[11.5px] font-extrabold text-text-muted">مثال</span>
+      {step.teacher.map((t) => (
+        <span
+          key={t}
+          className={cx(
+            'max-w-[92%] self-start rounded-px-18 rounded-tr-px-4 bg-surface px-[13px] py-[9px] leading-[1.8] font-bold text-text-dark shadow-soft',
+            text,
+          )}
+        >
+          {t}
+        </span>
+      ))}
+      {step.child.map((t) => (
+        <span
+          key={t}
+          className={cx(
+            'max-w-[92%] self-end rounded-px-18 rounded-tl-px-4 bg-berry-deep px-[13px] py-[9px] leading-[1.8] font-bold text-surface',
+            text,
+          )}
+        >
+          {t}
+        </span>
+      ))}
     </div>
   );
 }
@@ -361,6 +385,18 @@ export const SourceIcons = {
         d="M6 38 C6 50 17 58 32 58 C47 58 58 50 58 38 C58 34 54 32 51 34 L40 41 L24 41 L13 34 C10 32 6 34 6 38 Z"
         fill={C.gold}
       />
+    </svg>
+  ),
+  question: (s: number) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke={C.berryDeep} strokeWidth="1.9" />
+      <path
+        d="M9.4 9.4 C9.4 7.9 10.6 6.9 12 6.9 C13.5 6.9 14.6 7.9 14.6 9.3 C14.6 11.3 12 11.4 12 13.6"
+        stroke={C.berryDeep}
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="16.9" r="1.2" fill={C.berryDeep} />
     </svg>
   ),
   phone: (s: number) => (
