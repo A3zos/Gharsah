@@ -9,9 +9,13 @@
 // Reliability first: any failure — timeout, Render cold start, 404/5xx, no ElevenLabs
 // key — returns null and the SpeechTeacher uses the browser's voice for that line.
 // The lesson never waits more than SERVER_VOICE_WAIT_MS on the server.
+//
+// English / Indonesian lines: the request carries `lang` and the slot values in that
+// language; the audio is accepted ONLY when ai-speak answers `X-Line-Lang: <lang>`
+// (an older deployment voices the Arabic bank → refused, the browser's voice is used).
 import { supabase } from '../../supabase/client';
 import { isBankLine, NAME_SLOT, slotKeysOf } from '../aiSpeakSlots';
-import type { TeacherLine } from '../teacherLines';
+import { localizedSlots, type LineLang, type TeacherLine } from '../teacherLines';
 
 /** A line waits at most this long for the server; later → the browser's voice. */
 export const SERVER_VOICE_WAIT_MS = 4000;
@@ -24,6 +28,8 @@ export type VoicePost = (body: Record<string, unknown>) => Promise<Response>;
 
 export class ServerVoice {
   private readonly cache = new Map<string, Promise<Blob | null>>();
+  /** Languages the deployed function answered without a matching X-Line-Lang. */
+  private readonly langUnsupported = new Set<LineLang>();
   private downUntil = 0;
   /** A warm-up or a late request is still out (cold start) — don't make lines wait. */
   private busy = 0;
@@ -53,14 +59,22 @@ export class ServerVoice {
     return this.warming!;
   }
 
-  /** The line's MP3, or null → use the browser's voice for it. */
-  async audioFor(line: TeacherLine, waitMs = SERVER_VOICE_WAIT_MS): Promise<Blob | null> {
-    const sent = serverRequestFor(line);
+  /**
+   * The line's MP3 in `lang` (the language the line is voiced in), or null → use the
+   * browser's voice for it.
+   */
+  async audioFor(
+    line: TeacherLine,
+    lang: LineLang = 'ar',
+    waitMs = SERVER_VOICE_WAIT_MS,
+  ): Promise<Blob | null> {
+    if (this.langUnsupported.has(lang)) return null; // the deployed function has no bank in it
+    const sent = serverRequestFor(line, lang);
     if (!sent) return null; // the child's name (or not a bank line) — stays on the device
-    const key = JSON.stringify([sent.id, sent.slots]);
+    const key = JSON.stringify([lang, sent.id, sent.slots]);
     const cached = this.cache.get(key);
     if (!cached && (this.busy > 0 || this.now() < this.downUntil)) return null;
-    const p = cached ?? this.fetchLine(key, sent);
+    const p = cached ?? this.fetchLine(key, sent, lang);
     let timer: ReturnType<typeof setTimeout> | undefined;
     let late = false;
     const timeout = new Promise<null>((resolve) => {
@@ -79,9 +93,17 @@ export class ServerVoice {
     return blob;
   }
 
-  private fetchLine(key: string, sent: { id: string; slots: Record<string, string> }): Promise<Blob | null> {
+  private fetchLine(key: string, sent: ServerLineRequest, lang: LineLang): Promise<Blob | null> {
     const p = this.post(sent)
       .then(async (r) => {
+        // en / id: only an answer the function marks as that language (X-Line-Lang). An
+        // older deployment voices the Arabic bank (or refuses the slots) without the
+        // header → never play it for an English / Indonesian line; the browser's voice
+        // says this language from now on.
+        if (lang !== 'ar' && r.headers.get(LINE_LANG_HEADER) !== lang) {
+          this.langUnsupported.add(lang);
+          return null;
+        }
         if (r.ok && (r.headers.get('content-type') ?? '').includes('audio')) return await r.blob();
         // 400 = not a bank line (only this line); anything else = the server can't voice now.
         if (r.status !== 400) this.markDown();
@@ -105,12 +127,19 @@ export class ServerVoice {
   }
 }
 
+/** The response header naming the language of ai-speak's audio (the line's bank). */
+export const LINE_LANG_HEADER = 'X-Line-Lang';
+
+/** A request body for ai-speak: Arabic = { id, slots } (unchanged); en / id add `lang`. */
+export type ServerLineRequest = { id: string; slots: Record<string, string>; lang?: 'en' | 'id' };
+
 /**
  * What goes to ai-speak for a line: its id + only the slots its template uses
- * (the agent attaches every slot, including the name, to every line). Null when
- * the line uses the child's name or isn't in the bank — the browser voices it.
+ * (the agent attaches every slot, including the name, to every line) — for en / id,
+ * the slot values in that language + `lang`. Null when the line uses the child's name,
+ * isn't in the bank, or can't be said in `lang` — the browser voices it.
  */
-export function serverRequestFor(line: TeacherLine): { id: string; slots: Record<string, string> } | null {
+export function serverRequestFor(line: TeacherLine, lang: LineLang = 'ar'): ServerLineRequest | null {
   const keys = slotKeysOf(line.id);
   if (!isBankLine(line.id)) return null;
   if (keys.includes(NAME_SLOT)) return null;
@@ -120,7 +149,14 @@ export function serverRequestFor(line: TeacherLine): { id: string; slots: Record
     if (v === undefined) return null;
     slots[k] = v;
   }
-  return { id: line.id, slots };
+  if (lang === 'ar') return { id: line.id, slots };
+  let localized: Record<string, string> | null;
+  try {
+    localized = localizedSlots(lang, { id: line.id, slots });
+  } catch {
+    return null;
+  }
+  return localized ? { id: line.id, slots: localized, lang } : null;
 }
 
 /** The ai-speak Edge Function with the device's (anonymous) session. */

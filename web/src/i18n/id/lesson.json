@@ -1,1 +1,145 @@
-{}
+{
+  "meta": "Pelajaran — Gharsah",
+  "busy": "Menyiapkan pelajaran",
+  "live": "Langsung",
+  "endCall": "Akhiri panggilan",
+  "timer": "Durasi pelajaran",
+  "teacherButton": "Ustaz",
+  "teacher": {
+    "boy": {
+      "name": "Ustaz Abdullah",
+      "talking": "Ustaz sedang berbicara…",
+      "readying": "Ustaz sedang bersiap… sebentar lagi kita mulai",
+      "voiceMissing": "Suara ustaz belum tersedia sekarang — baca tulisan di bawahnya.",
+      "allowMicTitle": "{teacher} ingin mendengarmu",
+      "allowMicBody": "Ketuk “Izinkan”, lalu setujui penggunaan mikrofon agar kamu bisa menjawab dengan suaramu.",
+      "allowSoundBody": "Ketuk “Izinkan” untuk menyalakan suara."
+    },
+    "girl": {
+      "name": "Ustazah Sarah",
+      "talking": "Ustazah sedang berbicara…",
+      "readying": "Ustazah sedang bersiap… sebentar lagi kita mulai",
+      "voiceMissing": "Suara ustazah belum tersedia sekarang — baca tulisan di bawahnya.",
+      "allowMicTitle": "{teacher} ingin mendengarmu",
+      "allowMicBody": "Ketuk “Izinkan”, lalu setujui penggunaan mikrofon agar kamu bisa menjawab dengan suaramu.",
+      "allowSoundBody": "Ketuk “Izinkan” untuk menyalakan suara."
+    }
+  },
+  "allow": {
+    "soundTitle": "Ayo dengarkan {teacher}",
+    "button": "Izinkan"
+  },
+  "heard": "Aku mendengarmu",
+  "problems": {
+    "saveFailed": "Kemajuanmu belum bisa disimpan — periksa koneksimu",
+    "contentUnavailable": "Tidak ada koneksi untuk memuat bacaan — sambungkan ke internet lalu coba lagi.",
+    "retry": "Coba lagi"
+  },
+  "review": {
+    "title": "Murajaah pekan ini",
+    "body": "Kita ulang hafalanmu pekan ini"
+  },
+  "stages": {
+    "1": "Dengar dan tirukan",
+    "2": "Ayat demi ayat",
+    "3": "Seluruh surah"
+  },
+  "stagePill": "Tahap {n} dari {total} — {name}",
+  "repeatsAria": "Ulangan {done} dari {target}",
+  "passPill": "Kali {n} dari {total}",
+  "surah": "Surah {name}",
+  "ayahRef": "Surah {name} · Ayat {n}",
+  "playFallback": "Ketuk untuk mendengar bacaan",
+  "plan": {
+    "title": "Rencana hari ini",
+    "ayat": {
+      "one": "{n} ayat",
+      "two": "{n} ayat",
+      "few": "{n} ayat",
+      "many": "{n} ayat"
+    },
+    "oneHadith": "Satu hadis",
+    "project": "Proyek hari ini",
+    "atHome": "Di rumah"
+  },
+  "surahDone": {
+    "title": "Kamu sudah menyelesaikan Surah {name}!",
+    "ayatToday": "Ayat hari ini",
+    "surahsDone": "Surah selesai",
+    "streak": "Hari berturut-turut"
+  },
+  "hadith": {
+    "replay": "Dengarkan hadisnya lagi",
+    "about": "Hadis hari ini tentang {topic}",
+    "pending": "Sedang ditinjau secara syar'i",
+    "today": "Hadis hari ini",
+    "newWords": "Kata-kata baru"
+  },
+  "project": {
+    "today": "Proyek hari ini",
+    "yesterday": "Proyek kemarin",
+    "recording": "Merekam · {time}",
+    "saved": "Suaramu tersimpan · {time}",
+    "private": "Rekaman ini sampai ke dasbor orang tuamu — tidak dibagikan ke orang lain.",
+    "reRecord": "Rekam ulang"
+  },
+  "end": {
+    "title": "Kamu sudah menyelesaikan pelajaran hari ini!",
+    "done": "Pelajaran hari ini selesai ✓",
+    "grew": "Tunasmu tumbuh satu langkah",
+    "streakTitle": "Hari berturut-turutmu",
+    "days": {
+      "one": "{n} hari",
+      "two": "{n} hari",
+      "few": "{n} hari",
+      "many": "{n} hari"
+    },
+    "today": "Hari ini",
+    "seeYou": "Sampai jumpa besok",
+    "home": "Kembali ke beranda"
+  },
+  "weekdays": {
+    "sat": "Sab",
+    "sun": "Min",
+    "mon": "Sen",
+    "tue": "Sel",
+    "wed": "Rab",
+    "thu": "Kam",
+    "fri": "Jum"
+  },
+  "mic": {
+    "report": "Aku mendengarkan… ceritakan padaku",
+    "yourTurn": "Giliranmu… aku mendengarkan",
+    "closed": "Mikrofon mati",
+    "reciter": "Qari sedang membaca… dengarkan",
+    "saving": "Menyimpan kemajuanmu…",
+    "moment": "Sebentar…",
+    "open": "Nyalakan mikrofon"
+  },
+  "exit": {
+    "title": "Keluar dari pelajaran?",
+    "body": "Kami simpan posisimu, nanti kamu bisa lanjut dari titik yang sama.",
+    "serverBody": "Bintang dan kemajuanmu tersimpan — kamu bisa lanjutkan pelajarannya nanti.",
+    "confirm": "Lanjutkan pelajaran",
+    "cancel": "Keluar",
+    "footnote": "Ulangan yang sudah kamu selesaikan tidak akan hilang.",
+    "placeLabel": "Posisi tersimpanmu",
+    "saved": "Tersimpan ✓"
+  },
+  "place": {
+    "ayah": "Surah {name} — ayat {n} dari {total}",
+    "surahDone": "Kamu sudah menyelesaikan Surah {name}",
+    "hadith": "Hadis hari ini",
+    "project": "Proyek minggu ini",
+    "report": "Laporan proyek kemarin",
+    "end": "Akhir pelajaran",
+    "startSurah": "Awal pelajaran — Surah {name}",
+    "start": "Awal pelajaran"
+  },
+  "failed": {
+    "text": "Tidak ada koneksi untuk memuat pelajaran — sambungkan ke internet, lalu coba lagi.",
+    "retry": "Coba lagi",
+    "home": "Kembali ke beranda"
+  },
+  "translationBy": "Terjemahan:"
+}

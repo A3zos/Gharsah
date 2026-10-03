@@ -6,7 +6,7 @@ import { PresenceDetector } from '../presenceDetector';
 import { PlaybackBlocked } from '../ports';
 import { lessonAudio } from './audioUnlock';
 import type { LipSync } from './lipSync';
-import { estimatedSpeechMs } from './speechTeacher';
+import { estimatedSpeechMs, pickVoiceFor } from './speechTeacher';
 import type { LessonMicrophone } from './microphone';
 import type { AgentLang, Gender } from '../server/api';
 import type { TtsProvider } from '../voice/tts';
@@ -420,7 +420,5 @@ export function pickBrowserVoice(
   voices: readonly SpeechSynthesisVoice[],
   lang: AgentLang,
 ): SpeechSynthesisVoice | null {
-  const preferred = { ar: 'ar-sa', en: 'en-us', id: 'id-id' }[lang];
-  const mine = voices.filter((v) => v.lang.toLowerCase().replace('_', '-').startsWith(lang));
-  return mine.find((v) => v.lang.toLowerCase().replace('_', '-') === preferred) ?? mine[0] ?? null;
+  return pickVoiceFor(voices, lang); // the built-in lesson's picker (Android's «in-ID» included)
 }

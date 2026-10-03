@@ -1,1 +1,217 @@
-{}
+{
+  "meta": {
+    "home": "Beranda — Gharsah",
+    "profile": "Profil saya — Gharsah",
+    "weeklyReview": "Murajaah — Gharsah",
+    "review": "Murajaah — Gharsah"
+  },
+  "nav": {
+    "label": "Aplikasi anak",
+    "home": "Beranda",
+    "review": "Murajaah",
+    "profile": "Profil saya"
+  },
+  "stages": {
+    "seed": "Benih",
+    "sprout": "Tunas",
+    "tree": "Pohon"
+  },
+  "days": {
+    "sat": "Sabtu",
+    "sun": "Minggu",
+    "mon": "Senin",
+    "tue": "Selasa",
+    "wed": "Rabu",
+    "thu": "Kamis",
+    "fri": "Jumat"
+  },
+  "surahs": {
+    "1": "Al-Fatihah",
+    "112": "Al-Ikhlas",
+    "113": "Al-Falaq",
+    "114": "An-Nas"
+  },
+  "hadithTopics": {
+    "PLACEHOLDER-birr-alwalidayn": "Berbakti kepada orang tua",
+    "PLACEHOLDER-al-kadhib": "Berbohong",
+    "PLACEHOLDER-al-ghadab": "Marah"
+  },
+  "hadithTitles": {
+    "PLACEHOLDER-birr-alwalidayn": "Hadis berbakti kepada orang tua",
+    "PLACEHOLDER-al-kadhib": "Hadis tentang berbohong",
+    "PLACEHOLDER-al-ghadab": "Hadis tentang marah"
+  },
+  "lessonValues": {
+    "pilot-day-1": "Berbakti kepada orang tua",
+    "pilot-day-2": "Kejujuran",
+    "pilot-day-3": "Sabar dan lemah lembut"
+  },
+  "surahName": "Surah {name}",
+  "hadithAbout": "Hadis: {topic}",
+  "soon": "Segera hadir",
+  "lockedTitle": "Setelah paket uji coba gratis",
+  "weekReview": "Murajaah pekan ini",
+  "weekReviewOn": "Murajaah pekan ini — {day}",
+  "stageOf": "Tahapmu: {stage}",
+  "streak": {
+    "one": "{n} hari berturut-turut",
+    "two": "{n} hari berturut-turut",
+    "few": "{n} hari berturut-turut",
+    "many": "{n} hari berturut-turut"
+  },
+  "count": {
+    "surahs": { "one": "{n} surah", "two": "{n} surah", "few": "{n} surah", "many": "{n} surah" },
+    "ayat": { "one": "{n} ayat", "two": "{n} ayat", "few": "{n} ayat", "many": "{n} ayat" },
+    "hadith": { "one": "{n} hadis", "two": "{n} hadis", "few": "{n} hadis", "many": "{n} hadis" },
+    "projects": { "one": "{n} proyek", "two": "{n} proyek", "few": "{n} proyek", "many": "{n} proyek" }
+  },
+  "home": {
+    "hello": "Halo {name}",
+    "todayTitle": "Pelajaran hari ini",
+    "dayOf": "Hari {day} dari {total}",
+    "badge": {
+      "planDone": "Paket selesai ✓",
+      "finished": "Pelajaran hari ini selesai",
+      "started": "Dimulai hari ini",
+      "dayTwo": "Hari kedua",
+      "new": "Baru"
+    },
+    "progressDone": "Kamu sudah {done} dari {total} langkah",
+    "progressTodo": "{n} langkah menunggumu",
+    "reportFirst": " — dimulai dengan laporanmu",
+    "cta": {
+      "planDone": "Masya Allah!",
+      "finished": "Sampai jumpa besok",
+      "started": "Lanjutkan pelajaran",
+      "start": "Mulai pelajaran"
+    },
+    "planDoneText": "Kamu sudah menyelesaikan tiga hari — kamu hafal {n} surah dan belajar {n} hadis. Barakallahu fiik!",
+    "reportIntro": "Kita mulai dengan laporan proyekmu: {value}",
+    "reportChip": "Pertama: laporan proyek",
+    "duration": "Sekitar 15 menit",
+    "progressLabel": "Kemajuan pelajaran hari ini",
+    "browse": "Jelajahi dan murajaah",
+    "quran": "Al-Qur'an",
+    "hadith": "Hadis",
+    "projects": "Proyek",
+    "projectsDone": "{n} selesai",
+    "lockedBody": "3 surah dan 3 hadis tersedia sekarang — sisanya dibuka di pembaruan berikutnya"
+  },
+  "board": {
+    "title": "Papan peringkat pekan ini",
+    "left": {
+      "one": "{n} hari lagi",
+      "two": "{n} hari lagi",
+      "few": "{n} hari lagi",
+      "many": "{n} hari lagi"
+    },
+    "me": "{name} — kamu",
+    "first": "Kamu juara pertama pekan ini — terus semangat!",
+    "gap": "Tinggal {stars} lagi untuk menyalip peringkat {rank}",
+    "stars": { "one": "{n} bintang", "two": "{n} bintang", "few": "{n} bintang", "many": "{n} bintang" },
+    "starsLabel": "bintang",
+    "reset": "Kompetisi dimulai lagi setiap pekan — kesempatan baru untuk semua."
+  },
+  "growth": {
+    "planLabel": "dari paket uji coba gratis"
+  },
+  "profile": {
+    "title": "Profil saya",
+    "shortDays": ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"],
+    "today": "Hari ini",
+    "sinceToday": "Bersamaku sejak hari ini",
+    "sinceDays": {
+      "one": "Bersamaku selama {n} hari",
+      "two": "Bersamaku selama {n} hari",
+      "few": "Bersamaku selama {n} hari",
+      "many": "Bersamaku selama {n} hari"
+    },
+    "sinceWeeks": {
+      "one": "Bersamaku selama seminggu",
+      "two": "Bersamaku selama {n} minggu",
+      "few": "Bersamaku selama {n} minggu",
+      "many": "Bersamaku selama {n} minggu"
+    },
+    "sinceMonths": {
+      "one": "Bersamaku selama sebulan",
+      "two": "Bersamaku selama {n} bulan",
+      "few": "Bersamaku selama {n} bulan",
+      "many": "Bersamaku selama {n} bulan"
+    },
+    "age": { "upToTen": "{n} tahun", "overTen": "{n} tahun" },
+    "stageTitle": "Tahapmu",
+    "toNext": "Tinggal {pct}% lagi dari rencanamu dan kamu jadi {stage}!",
+    "treeReached": "Kamu sudah jadi Pohon — terus semangat!",
+    "streakTitle": "Rangkaian harimu",
+    "startToday": "Mulai hari ini",
+    "dayDone": "{day} — selesai",
+    "badgesTitle": "Lencanamu",
+    "badges": {
+      "firstSurah": "Surah pertama",
+      "ayat50": "50 ayat",
+      "days5": "5 hari",
+      "firstProject": "Proyek pertama",
+      "days30": "30 hari",
+      "hadith10": "10 hadis"
+    },
+    "badgeLocked": "{badge} — belum terbuka",
+    "parent": "Saya orang tua"
+  },
+  "weekly": {
+    "title": "Murajaah",
+    "subtitle": "Satu pelajaran setiap pekan untuk mengulang hafalanmu",
+    "today": "Hari ini",
+    "tomorrow": "Besok",
+    "inDays": {
+      "one": "{n} hari lagi",
+      "two": "{n} hari lagi",
+      "few": "{n} hari lagi",
+      "many": "{n} hari lagi"
+    },
+    "at": "{when} — pukul {time}",
+    "what": "Apa yang kita murajaah?",
+    "emptyChips": "Hafalanmu pekan ini — mulai pelajaran hari ini!",
+    "start": "Mulai murajaah",
+    "unlocksOn": "Tombol aktif hari {day} pagi",
+    "unlocksOnReviewDay": "Tombol aktif di hari murajaah",
+    "last": "Murajaah terakhir",
+    "notYet": "Belum ada murajaah — {rest}",
+    "firstOn": "murajaah pertama hari {day}",
+    "firstScheduled": "murajaah pertama pada harinya di jadwal",
+    "all": "Semua hafalanmu",
+    "lockedBody": "Surah dan hadis lainnya dibuka di pembaruan berikutnya",
+    "openLists": "Buka daftar lengkap",
+    "thisWeek": "Pekan ini"
+  },
+  "reviewItems": {
+    "completedOn": " · selesai pada {date}",
+    "surahThisWeek": " · surah pekan ini",
+    "hadithDoneOn": "Selesai pada {date}",
+    "hadithThisWeek": "Hadis pekan ini"
+  },
+  "review": {
+    "quranTitle": "Surah yang aku hafal",
+    "quranCount": "selesai · {ayat}",
+    "inProgress": "{done} dari {total} ayat — selesaikan",
+    "hadithTitle": "Hadis yang aku hafal",
+    "hadithCount": "sudah hafal",
+    "projectsTitle": "Proyekku",
+    "projectsCount": "dikerjakan di rumah",
+    "pendingProject": "Menunggu ceritamu besok",
+    "toldOn": "Diceritakan pada {date}",
+    "told": "Sudah diceritakan",
+    "done": "Selesai",
+    "now": "Sekarang",
+    "empty": "Belum ada apa-apa di sini — mulai pelajaran hari ini!"
+  },
+  "session": {
+    "endedTitle": "Sesi berakhir",
+    "errorTitle": "Terjadi kesalahan",
+    "endedBody": "Kami mengeluarkanmu agar akunmu tetap aman. Masuk lagi dan lanjutkan dari tempat terakhir.",
+    "errorBody": "Kami tidak bisa menyelesaikannya. Coba lagi — kalau terus terjadi, kirimkan kode masalahnya kepada kami.",
+    "errorCode": "Kode masalah: {code}",
+    "signInAgain": "Masuk lagi",
+    "retry": "Coba lagi",
+    "home": "Kembali ke awal"
+  }
+}

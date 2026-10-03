@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { I18nContext, MESSAGES } from '../../i18n/i18n';
 import { initialServerState, type ServerLessonState } from '../../lesson/server/serverLesson';
 import { ServerLessonView, type ServerLessonActions } from './ServerLessonView';
 
@@ -155,5 +156,40 @@ describe('ServerLessonView — the live call', () => {
     const a = view(live({ phase: 'finished' }));
     fireEvent.click(screen.getByRole('button', { name: 'عودة للرئيسية' }));
     expect(a.goHome).toHaveBeenCalled();
+  });
+
+  describe('in English', () => {
+    const en = (s: ServerLessonState) =>
+      render(
+        <I18nContext.Provider value={{ lang: 'en', m: MESSAGES.en, dir: 'ltr' }}>
+          <ServerLessonView state={s} actions={actions()} desktop={false} />
+        </I18nContext.Provider>,
+      );
+
+    it('the call chrome, the surah card label and the mic line are English; the ayat stay Arabic', () => {
+      en(
+        live({
+          ayat: [{ ayah: 1, text: 'AYAH-ONE' }],
+          currentAyah: 1,
+          surahName: 'الإخلاص',
+          reciting: true,
+        }),
+      );
+      expect(screen.getByText('Live')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Teacher Abdullah' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Surah Al-Ikhlas' })).toBeInTheDocument();
+      expect(screen.getByText('The reciter is reciting… listen')).toBeInTheDocument();
+      expect(screen.getByText('AYAH-ONE').closest('[dir]')).toHaveAttribute('dir', 'rtl');
+    });
+
+    it('the hadith card and the review badge; the finished call', () => {
+      const { unmount } = en(live({ segment: 'hadith', hadith: { title: 'برّ الوالدين', source: null } }));
+      expect(screen.getByText("Today's hadith is about kindness to parents")).toBeInTheDocument();
+      expect(screen.getByText('Under Sharia review')).toBeInTheDocument();
+      unmount();
+      en(live({ phase: 'finished' }));
+      expect(screen.getByRole('button', { name: 'Back to home' })).toBeInTheDocument();
+      expect(screen.getByText("Today's lesson complete ✓")).toBeInTheDocument();
+    });
   });
 });

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { TEACHER_CAPTIONS, TEACHER_LINES } from './teacherLines';
+import { TEACHER_LINES_I18N } from './teacherLinesI18n';
 
 const dartFile = path.resolve(__dirname, '../../../app/lib/features/lesson/ai/teacher_lines.dart');
 
@@ -26,3 +27,16 @@ test('the ai-speak function voices exactly the approved bank (supabase/functions
   const file = path.resolve(__dirname, '../../../supabase/functions/ai-speak/lines.json');
   expect(JSON.parse(fs.readFileSync(file, 'utf8'))).toEqual(TEACHER_LINES);
 });
+
+// Regenerate after editing teacherLinesI18n.ts: UPDATE_AI_SPEAK_LINES=1 npx vitest run src/lesson/teacherLines.drift.test.ts
+test.each(['en', 'id'] as const)(
+  'the ai-speak function voices exactly the %s bank (lines.%s.json)',
+  (lang) => {
+    const file = path.resolve(__dirname, `../../../supabase/functions/ai-speak/lines.${lang}.json`);
+    const bank = TEACHER_LINES_I18N[lang];
+    if (process.env.UPDATE_AI_SPEAK_LINES === '1') {
+      fs.writeFileSync(file, `${JSON.stringify(bank, null, 2)}\n`);
+    }
+    expect(JSON.parse(fs.readFileSync(file, 'utf8'))).toEqual(bank);
+  },
+);

@@ -3,19 +3,20 @@ import { useParams } from 'react-router';
 import { paths } from '../../app/paths';
 import { useChildData } from '../../components/child/ChildData';
 import { ChildPage } from '../../components/child/ChildShell';
+import { useChildTitle } from '../../components/child/useChildTitle';
 import { HadithIcon, ProjectIcon, QuranIcon } from '../../components/child/childIcons';
 import { BackButton } from '../../components/ui/BackButton';
 import { C } from '../../components/ui/color';
-import { hadithRepo, projectRepo, quranMeta } from '../../content/library';
+import { projectRepo, quranMeta } from '../../content/library';
+import { dayMonth, hadithTopic, surahLabel } from '../../content/review';
 import { headline } from '../../data/stats';
 import type { StoredProgress } from '../../data/student';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { countPhrase, fill, MESSAGES, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
-import { hijriDayMonth, toDateOrNull } from '../../lib/dates';
-import { plural } from '../../lib/plural';
+import { toDateOrNull } from '../../lib/dates';
 import type { Route } from './+types/review';
 
-export const meta: Route.MetaFunction = () => [{ title: 'مراجعة — غَرْسة' }];
+export const meta: Route.MetaFunction = () => [{ title: MESSAGES.ar.child.meta.review }];
 
 type Kind = 'quran' | 'hadith' | 'projects';
 interface Item {
@@ -33,6 +34,10 @@ export default function ReviewRoute() {
   const { kind: raw } = useParams();
   const kind: Kind = raw === 'hadith' || raw === 'projects' ? raw : 'quran';
   const { child, progress } = useChildData();
+  const { lang, m } = useI18n();
+  const t = m.child.review;
+  const n = m.child.count;
+  useChildTitle(m.child.meta.review);
   if (!child) {
     return (
       <ChildPage tab="home" blob="page">
@@ -46,17 +51,17 @@ export default function ReviewRoute() {
   let items: Item[] = [];
 
   if (kind === 'quran') {
-    title = 'ما حفظته من السور';
-    count = plural(h.surahs, { one: 'سورة واحدة', two: 'سورتان', few: 'سور', many: 'سورة' });
-    countLabel = `اكتملت · ${plural(h.ayat, { one: 'آية واحدة', two: 'آيتان', few: 'آيات', many: 'آية' })}`;
+    title = t.quranTitle;
+    count = countPhrase(lang, h.surahs, n.surahs);
+    countLabel = t.quranCount.replace('{ayat}', countPhrase(lang, h.ayat, n.ayat));
     icon = <QuranIcon size={26} />;
     tint = 'bg-green-tint';
     ink = 'text-deep-green';
     const prog = s.surahInProgress as { surah?: number; done?: number } | undefined;
     if (prog?.surah && prog.surah >= 1 && prog.surah <= 114) {
       items.push({
-        name: `سورة ${quranMeta.surahName(prog.surah)}`,
-        meta: `${toArabicDigits(prog.done ?? 0)} من ${toArabicDigits(quranMeta.ayahCount(prog.surah))} آيات — أكملها`,
+        name: surahLabel(lang, prog.surah),
+        meta: fill(lang, t.inProgress, { done: prog.done ?? 0, total: quranMeta.ayahCount(prog.surah) }),
         state: 'now',
       });
     }
@@ -65,19 +70,19 @@ export default function ReviewRoute() {
         .reverse()
         .filter((e) => typeof e.surah === 'number' && e.surah >= 1 && e.surah <= 114)
         .map((e): Item => {
-          const n = quranMeta.ayahCount(e.surah as number);
+          const ayat = quranMeta.ayahCount(e.surah as number);
           const at = asDate(e.at);
           return {
-            name: `سورة ${quranMeta.surahName(e.surah as number)}`,
-            meta: `${plural(n, { one: 'آية واحدة', two: 'آيتان', few: 'آيات', many: 'آية' })}${at ? ` · ${hijriDayMonth(at)}` : ''}`,
+            name: surahLabel(lang, e.surah as number),
+            meta: `${countPhrase(lang, ayat, n.ayat)}${at ? ` · ${dayMonth(lang, at)}` : ''}`,
             state: 'done',
           };
         }),
     );
   } else if (kind === 'hadith') {
-    title = 'ما حفظته من الأحاديث';
-    count = plural(h.hadith, { one: 'حديث واحد', two: 'حديثان', few: 'أحاديث', many: 'حديثًا' });
-    countLabel = 'محفوظة';
+    title = t.hadithTitle;
+    count = countPhrase(lang, h.hadith, n.hadith);
+    countLabel = t.hadithCount;
     icon = <HadithIcon size={26} />;
     tint = 'bg-berry-tint';
     ink = 'text-berry-deep';
@@ -88,23 +93,23 @@ export default function ReviewRoute() {
           const at = asDate(e.at);
           // Topic only («برّ الوالدين») — never the hadith text.
           return [
-            { name: hadithRepo.byId(String(e.id)).topic, meta: at ? hijriDayMonth(at) : '', state: 'done' },
+            { name: hadithTopic(lang, String(e.id)), meta: at ? dayMonth(lang, at) : '', state: 'done' },
           ];
         } catch {
           return [];
         }
       });
   } else {
-    title = 'مشاريعي';
-    count = plural(h.projects, { one: 'مشروع واحد', two: 'مشروعان', few: 'مشاريع', many: 'مشروعًا' });
-    countLabel = 'أنجزتها في البيت';
+    title = t.projectsTitle;
+    count = countPhrase(lang, h.projects, n.projects);
+    countLabel = t.projectsCount;
     icon = <ProjectIcon size={28} />;
     tint = 'bg-gold-tint';
     ink = 'text-warning-text';
     const pending = typeof s.pendingProject === 'string' ? s.pendingProject : null;
     if (pending) {
       try {
-        items.push({ name: projectRepo.byId(pending).title, meta: 'بانتظار حكايتك غدًا', state: 'now' });
+        items.push({ name: projectRepo.byId(pending).title, meta: t.pendingProject, state: 'now' });
       } catch {
         // unknown id — skip
       }
@@ -115,7 +120,7 @@ export default function ReviewRoute() {
       try {
         items.push({
           name: projectRepo.byId(id).title,
-          meta: p.updatedAt ? `حكيتها في ${hijriDayMonth(p.updatedAt)}` : 'حكيتها',
+          meta: p.updatedAt ? fill(lang, t.toldOn, { date: dayMonth(lang, p.updatedAt) }) : t.told,
           state: 'done',
         });
       } catch {
@@ -153,7 +158,7 @@ export default function ReviewRoute() {
                 'flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-px-15',
                 it.state === 'done' ? 'bg-green-tint' : 'bg-gold-tint',
               )}
-              aria-label={it.state === 'done' ? 'أنجزت' : 'الآن'}
+              aria-label={it.state === 'done' ? t.done : t.now}
             >
               {it.state === 'done' ? (
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -179,7 +184,7 @@ export default function ReviewRoute() {
         ))}
         {items.length === 0 && (
           // TODO(design): no designed empty list.
-          <li className="text-center text-[14px] text-text-muted">لا شيء هنا بعد — ابدأ حصة اليوم!</li>
+          <li className="text-center text-[14px] text-text-muted">{t.empty}</li>
         )}
       </ul>
     </ChildPage>

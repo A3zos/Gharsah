@@ -14,6 +14,7 @@ import type { LessonProgressSink } from '../ports';
 import { QuranText } from '../quran';
 import type { LessonScript } from '../script';
 import type { LessonProgress } from '../state';
+import { TeacherLineBank, type LineLang } from '../teacherLines';
 import { LipSync } from './lipSync';
 import { LessonMicrophone } from './microphone';
 import { SupabaseProgressSink } from './progressSink';
@@ -101,6 +102,8 @@ export function createWebLesson(o: {
   progressFrom?: LessonProgress;
   /** Replaces the Supabase sink (the DEV-only child preview keeps progress in memory). */
   sink?: LessonProgressSink;
+  /** The UI language the teacher speaks (default Arabic). Ayat / hadith stay Arabic. */
+  lang?: LineLang;
 }): WebLesson {
   const cache = new CacheStorageAudioStore();
   const content: LessonContent = {
@@ -122,7 +125,8 @@ export function createWebLesson(o: {
   const server = serverVoiceEnabled() && !o.sink ? new ServerVoice(aiSpeakPost) : null;
   server?.warm();
   const lip = new LipSync();
-  const teacher = new SpeechTeacher(mic, undefined, server, lip);
+  const lang = o.lang ?? 'ar';
+  const teacher = new SpeechTeacher(mic, undefined, server, lip, lang);
   const recorder = new WavProjectRecorder(mic);
   const agent = new LessonAgent({
     script: o.script,
@@ -142,6 +146,8 @@ export function createWebLesson(o: {
       silenceMs: 6000,
       watchdogMs: 8000,
     },
+    // the teacher's lines (and silent captions) in the UI language — Arabic unchanged
+    lineBank: new TeacherLineBank(lang),
     log: (m, e) => lessonLog('builtin', m, e === undefined ? undefined : String((e as Error)?.message ?? e)),
     childFirstName: o.childFirstName,
     debugTapCountsRepeat: import.meta.env.DEV,

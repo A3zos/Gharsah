@@ -1,0 +1,21 @@
+{
+  "_notice": "Hadith translations (en / id) copied VERBATIM from HadeethEnc by web/tools/fetch-hadith-translations.mjs — never written by hand or by any AI. A Sharia reviewer sets hadeethencId (with approving the Arabic text in hadith.json); then run the script. Shown only under an approved, displayed Arabic hadith.",
+  "source": "HadeethEnc — Encyclopedia of Translated Prophetic Hadiths (https://hadeethenc.com)",
+  "hadith": {
+    "PLACEHOLDER-birr-alwalidayn": {
+      "hadeethencId": null,
+      "en": null,
+      "id": null
+    },
+    "PLACEHOLDER-al-kadhib": {
+      "hadeethencId": null,
+      "en": null,
+      "id": null
+    },
+    "PLACEHOLDER-al-ghadab": {
+      "hadeethencId": null,
+      "en": null,
+      "id": null
+    }
+  }
+}

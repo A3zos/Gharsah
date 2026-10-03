@@ -3,7 +3,7 @@
 // rank. Other children are never identified: rank + their chosen avatar + points only.
 // The data is get_leaderboard() (aggregate only, server-side).
 import { buildBoard, daysUntilReset, type BoardRow, type LeaderBoard } from '../../data/student';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { countPhrase, formatNumber, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { C } from '../ui/color';
 import { ChildAvatar } from './ChildAvatar';
@@ -17,7 +17,9 @@ export function Leaderboard({
   myFirstName: string;
   avatarId: string;
 }) {
-  const { rows, own, separator, note } = buildBoard(board, `${myFirstName} — أنت`);
+  const { lang, m } = useI18n();
+  const t = m.child.board;
+  const { rows, own, separator, note } = buildBoard(board, t.me.replace('{name}', myFirstName), lang);
   const left = daysUntilReset();
   return (
     <section
@@ -39,10 +41,10 @@ export function Leaderboard({
               strokeLinecap="round"
             />
           </svg>
-          المتصدّرون هذا الأسبوع
+          {t.title}
         </h2>
         <span className="rounded-pill bg-border-soft px-[10px] py-[5px] text-[11px] font-extrabold whitespace-nowrap text-text-muted">
-          يتبقّى {left === 1 ? 'يوم' : left === 2 ? 'يومان' : `${toArabicDigits(left)} أيام`}
+          {countPhrase(lang, left, t.left)}
         </span>
       </div>
       <ol className="m-0 flex list-none flex-col gap-[7px] p-0">
@@ -67,14 +69,13 @@ export function Leaderboard({
           <span className="grow text-[13px] leading-[1.7] font-bold">{note}</span>
         </div>
       )}
-      <span className="text-center text-[11.5px] text-text-muted">
-        تبدأ المنافسة من جديد كل أسبوع — فرصة جديدة للجميع.
-      </span>
+      <span className="text-center text-[11.5px] text-text-muted">{t.reset}</span>
     </section>
   );
 }
 
 function LeaderRow({ row, avatarId }: { row: BoardRow; avatarId: string }) {
+  const { lang, m } = useI18n();
   const medal = row.me
     ? 'bg-deep-green text-surface'
     : row.rank === 1
@@ -98,7 +99,7 @@ function LeaderRow({ row, avatarId }: { row: BoardRow; avatarId: string }) {
           medal,
         )}
       >
-        {toArabicDigits(row.rank)}
+        {formatNumber(lang, row.rank)}
       </span>
       <span className="shrink-0">
         {/* other children: their chosen avatar key only — never who they are */}
@@ -112,7 +113,7 @@ function LeaderRow({ row, avatarId }: { row: BoardRow; avatarId: string }) {
           row.me ? 'text-deep-green' : 'text-text-dark',
         )}
       >
-        {toArabicDigits(row.points)} <span aria-label="نجوم">⭐</span>
+        {formatNumber(lang, row.points)} <span aria-label={m.child.board.starsLabel}>⭐</span>
       </span>
     </li>
   );

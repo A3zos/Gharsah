@@ -4,27 +4,32 @@ import { paths } from '../../app/paths';
 import { ChildAvatar } from '../../components/child/ChildAvatar';
 import { useChildData } from '../../components/child/ChildData';
 import { ChildPage } from '../../components/child/ChildShell';
+import { useChildTitle } from '../../components/child/useChildTitle';
 import { GrowthPath } from '../../components/child/GrowthPath';
 import { C } from '../../components/ui/color';
-import { ageLabel, headline, STAGE_LABEL } from '../../data/stats';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { LanguageSheetButton } from '../../components/ui/LanguageSwitcher';
+import { headline } from '../../data/stats';
+import { countPhrase, fill, MESSAGES, useI18n, type UiLanguage } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
-import { daysPhrase, plural } from '../../lib/plural';
 import type { Route } from './+types/profile';
 
-export const meta: Route.MetaFunction = () => [{ title: 'ملفّي — غَرْسة' }];
-
-const SHORT_DAY = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
+export const meta: Route.MetaFunction = () => [{ title: MESSAGES.ar.child.meta.profile }];
 
 /** «معي منذ ٣ أشهر» from when the parent added the child. */
-function sinceText(created: Date | null, now = new Date()): string {
+function sinceText(lang: UiLanguage, created: Date | null, now = new Date()): string {
   if (!created) return '';
+  const t = MESSAGES[lang].child.profile;
   const days = Math.max(0, Math.floor((now.getTime() - created.getTime()) / 86_400_000));
-  if (days < 7) return days <= 1 ? 'معي منذ اليوم' : `معي منذ ${daysPhrase(days)}`;
-  if (days < 30)
-    return `معي منذ ${plural(Math.floor(days / 7), { one: 'أسبوع', two: 'أسبوعين', few: 'أسابيع', many: 'أسبوعًا' })}`;
-  return `معي منذ ${plural(Math.floor(days / 30), { one: 'شهر', two: 'شهرين', few: 'أشهر', many: 'شهرًا' })}`;
+  if (days < 7) return days <= 1 ? t.sinceToday : countPhrase(lang, days, t.sinceDays);
+  if (days < 30) return countPhrase(lang, Math.floor(days / 7), t.sinceWeeks);
+  return countPhrase(lang, Math.floor(days / 30), t.sinceMonths);
 }
+
+/** «١٠ سنوات» / «١١ سنة» (the parent area's ageLabel rule) — «10 years old». */
+const ageText = (lang: UiLanguage, age: number) => {
+  const t = MESSAGES[lang].child.profile.age;
+  return fill(lang, age <= 10 ? t.upToTen : t.overTen, { n: age });
+};
 
 /** Riyadh-date key YYYY-MM-DD (stats.lessonDays uses the plan time zone). */
 const dayKey = (d: Date) => new Date(d.getTime() + 3 * 3_600_000).toISOString().slice(0, 10);
@@ -32,6 +37,9 @@ const dayKey = (d: Date) => new Date(d.getTime() + 3 * 3_600_000).toISOString().
 /** design/v2 ChildProfile — «ملفّي»: avatar, stage, streak, badges. */
 export default function ChildProfileRoute() {
   const { child } = useChildData();
+  const { lang, m } = useI18n();
+  const t = m.child.profile;
+  useChildTitle(m.child.meta.profile);
   if (!child) {
     return (
       <ChildPage tab="profile" blob="page">
@@ -50,50 +58,60 @@ export default function ChildProfileRoute() {
     const d = new Date(now.getTime() - back * 86_400_000);
     return {
       key: dayKey(d),
-      label: back === 0 ? 'اليوم' : SHORT_DAY[new Date(d.getTime() + 3 * 3_600_000).getUTCDay()]!,
+      label: back === 0 ? t.today : t.shortDays[new Date(d.getTime() + 3 * 3_600_000).getUTCDay()]!,
       today: back === 0,
     };
   });
   const next =
-    h.stage === 'seed' ? { at: 34, name: 'غَرْسة' } : h.stage === 'sprout' ? { at: 100, name: 'شجرة' } : null;
+    h.stage === 'seed'
+      ? { at: 34, name: m.child.stages.sprout }
+      : h.stage === 'sprout'
+        ? { at: 100, name: m.child.stages.tree }
+        : null;
   // REVIEW: the design's «باقٍ ٤ حصص وتصير شجرة!» — lessons-to-go isn't known yet, so it counts plan percent.
   const toNext = next
-    ? `باقٍ ${toArabicDigits(next.at - h.planPct)}٪ من خطتك وتصير ${next.name}!`
-    : 'وصلت إلى الشجرة — استمر!';
+    ? fill(lang, t.toNext, { pct: next.at - h.planPct }).replace('{stage}', next.name)
+    : t.treeReached;
 
   const badges = [
     {
       on: h.surahs >= 1,
-      label: 'أول سورة',
+      label: t.badges.firstSurah,
       tint: 'bg-green-tint',
       ink: 'text-deep-green',
       icon: <BadgeBook />,
     },
-    { on: h.ayat >= 50, label: '٥٠ آية', tint: 'bg-sky-tint', ink: 'text-sky-text', icon: <BadgeSpark /> },
+    {
+      on: h.ayat >= 50,
+      label: t.badges.ayat50,
+      tint: 'bg-sky-tint',
+      ink: 'text-sky-text',
+      icon: <BadgeSpark />,
+    },
     {
       on: h.streak >= 5,
-      label: '٥ أيام',
+      label: t.badges.days5,
       tint: 'bg-berry-tint',
       ink: 'text-berry-deep',
       icon: <BadgeFlame />,
     },
     {
       on: h.projects >= 1,
-      label: 'أول مشروع',
+      label: t.badges.firstProject,
       tint: 'bg-gold-tint',
       ink: 'text-warning-text',
       icon: <BadgeProject />,
     },
     {
       on: h.streak >= 30,
-      label: '٣٠ يومًا',
+      label: t.badges.days30,
       tint: 'bg-berry-tint',
       ink: 'text-berry-deep',
       icon: <BadgeFlame />,
     },
     {
       on: h.hadith >= 10,
-      label: '١٠ أحاديث',
+      label: t.badges.hadith10,
       tint: 'bg-berry-tint',
       ink: 'text-berry-deep',
       icon: <BadgeBook color="berryDeep" />,
@@ -102,7 +120,10 @@ export default function ChildProfileRoute() {
 
   return (
     <ChildPage tab="profile" blob="page" className="gap-[16px] pt-[26px]">
-      <h1 className="m-0 font-heading text-[26px] leading-[1.4] font-bold">ملفّي</h1>
+      <div className="flex items-center justify-between gap-[12px]">
+        <h1 className="m-0 font-heading text-[26px] leading-[1.4] font-bold">{t.title}</h1>
+        <LanguageSheetButton />
+      </div>
 
       <section className="flex flex-col items-center gap-[12px] rounded-px-30 bg-surface px-[20px] py-[24px] shadow-dark-14-30-5">
         <span className="animate-[gh-float_4s_ease-in-out_infinite]">
@@ -110,8 +131,8 @@ export default function ChildProfileRoute() {
         </span>
         <span className="font-heading text-[28px] font-bold">{child.name}</span>
         <span className="text-[13.5px] font-bold text-text-muted">
-          {ageLabel(child.age)}
-          {child.createdAt && ` · ${sinceText(child.createdAt)}`}
+          {ageText(lang, child.age)}
+          {child.createdAt && ` · ${sinceText(lang, child.createdAt)}`}
         </span>
       </section>
 
@@ -121,10 +142,10 @@ export default function ChildProfileRoute() {
       >
         <div className="flex items-center gap-[10px]">
           <h2 id="stage-title" className="m-0 font-heading text-[19px] font-bold">
-            مرحلتك
+            {t.stageTitle}
           </h2>
           <span className="rounded-pill bg-gold-tint px-[12px] py-[6px] text-[12px] font-extrabold text-warning-text">
-            {STAGE_LABEL[h.stage]}
+            {m.child.stages[h.stage]}
           </span>
         </div>
         <GrowthPath stage={h.stage} pct={h.planPct} />
@@ -137,10 +158,10 @@ export default function ChildProfileRoute() {
       >
         <div className="flex items-center justify-between">
           <h2 id="streak-title" className="m-0 font-heading text-[19px] font-bold">
-            سلسلتك
+            {t.streakTitle}
           </h2>
           <span className="rounded-pill bg-berry-tint px-[12px] py-[6px] text-[12.5px] font-extrabold text-berry-deep">
-            {h.streak > 0 ? `${daysPhrase(h.streak)} متتالية` : 'ابدأ اليوم'}
+            {h.streak > 0 ? countPhrase(lang, h.streak, m.child.streak) : t.startToday}
           </span>
         </div>
         <ol className="m-0 flex list-none gap-[6px] p-0">
@@ -149,7 +170,7 @@ export default function ChildProfileRoute() {
             return (
               <li
                 key={d.key}
-                aria-label={`${d.label}${done ? ' — أنجزت' : ''}`}
+                aria-label={done ? t.dayDone.replace('{day}', d.label) : d.label}
                 className={cx(
                   'flex h-[34px] grow items-center justify-center rounded-px-12 text-[11.5px] font-extrabold',
                   d.today
@@ -168,13 +189,13 @@ export default function ChildProfileRoute() {
 
       <section aria-labelledby="badges-title" className="flex flex-col gap-[12px]">
         <h2 id="badges-title" className="m-0 font-heading text-[19px] font-bold">
-          شاراتك
+          {t.badgesTitle}
         </h2>
         <ul className="m-0 grid list-none grid-cols-3 gap-[10px] p-0">
           {badges.map((b) => (
             <li
               key={b.label}
-              aria-label={`${b.label}${b.on ? '' : ' — لم تُفتح بعد'}`}
+              aria-label={b.on ? b.label : t.badgeLocked.replace('{badge}', b.label)}
               className={cx(
                 'flex flex-col items-center gap-[9px] rounded-px-22 bg-surface px-[10px] py-[16px] shadow-soft',
                 !b.on && 'opacity-[0.42]',
@@ -208,7 +229,7 @@ export default function ChildProfileRoute() {
         className="mt-auto flex h-[48px] items-center justify-center gap-[9px] self-center rounded-px-16 border-[1.5px] border-input-border bg-transparent px-[20px] text-[14px] font-bold text-text-muted no-underline hover:text-text-muted"
       >
         <Lock color="textMuted" size={18} />
-        أنا وليّ الأمر
+        {t.parent}
       </Link>
     </ChildPage>
   );

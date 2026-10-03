@@ -1,1 +1,212 @@
-{}
+{
+  "meta": {
+    "home": "Home — Gharsah",
+    "profile": "My profile — Gharsah",
+    "weeklyReview": "Review — Gharsah",
+    "review": "Review — Gharsah"
+  },
+  "nav": {
+    "label": "Child app",
+    "home": "Home",
+    "review": "Review",
+    "profile": "My profile"
+  },
+  "stages": {
+    "seed": "Seed",
+    "sprout": "Sapling",
+    "tree": "Tree"
+  },
+  "days": {
+    "sat": "Saturday",
+    "sun": "Sunday",
+    "mon": "Monday",
+    "tue": "Tuesday",
+    "wed": "Wednesday",
+    "thu": "Thursday",
+    "fri": "Friday"
+  },
+  "surahs": {
+    "1": "Al-Fatihah",
+    "112": "Al-Ikhlas",
+    "113": "Al-Falaq",
+    "114": "An-Nas"
+  },
+  "hadithTopics": {
+    "PLACEHOLDER-birr-alwalidayn": "Kindness to parents",
+    "PLACEHOLDER-al-kadhib": "Lying",
+    "PLACEHOLDER-al-ghadab": "Anger"
+  },
+  "hadithTitles": {
+    "PLACEHOLDER-birr-alwalidayn": "Hadith on kindness to parents",
+    "PLACEHOLDER-al-kadhib": "Hadith on lying",
+    "PLACEHOLDER-al-ghadab": "Hadith on anger"
+  },
+  "lessonValues": {
+    "pilot-day-1": "Kindness to parents",
+    "pilot-day-2": "Honesty",
+    "pilot-day-3": "Forbearance"
+  },
+  "surahName": "Surah {name}",
+  "hadithAbout": "Hadith: {topic}",
+  "soon": "Coming soon",
+  "lockedTitle": "After the free trial plan",
+  "weekReview": "This week's review",
+  "weekReviewOn": "This week's review — {day}",
+  "stageOf": "Your stage: {stage}",
+  "streak": {
+    "one": "{n}-day streak",
+    "two": "{n}-day streak",
+    "few": "{n}-day streak",
+    "many": "{n}-day streak"
+  },
+  "count": {
+    "surahs": { "one": "{n} surah", "two": "{n} surahs", "few": "{n} surahs", "many": "{n} surahs" },
+    "ayat": { "one": "{n} ayah", "two": "{n} ayat", "few": "{n} ayat", "many": "{n} ayat" },
+    "hadith": { "one": "{n} hadith", "two": "{n} hadiths", "few": "{n} hadiths", "many": "{n} hadiths" },
+    "projects": { "one": "{n} project", "two": "{n} projects", "few": "{n} projects", "many": "{n} projects" }
+  },
+  "home": {
+    "hello": "Hi {name}",
+    "todayTitle": "Today's lesson",
+    "dayOf": "Day {day} of {total}",
+    "badge": {
+      "planDone": "Plan complete ✓",
+      "finished": "Today's lesson done",
+      "started": "Started today",
+      "dayTwo": "Day two",
+      "new": "New"
+    },
+    "progressDone": "You did {done} of {total} steps",
+    "progressTodo": "{n} steps waiting for you",
+    "reportFirst": " — starting with your report",
+    "cta": {
+      "planDone": "Masha'Allah!",
+      "finished": "See you tomorrow",
+      "started": "Continue the lesson",
+      "start": "Start the lesson"
+    },
+    "planDoneText": "You finished all three days — you memorized {n} surahs and learned {n} hadiths. May Allah bless you!",
+    "reportIntro": "We start with your project report: {value}",
+    "reportChip": "First: the project report",
+    "duration": "About 15 minutes",
+    "progressLabel": "Today's lesson progress",
+    "browse": "Browse and review",
+    "quran": "Quran",
+    "hadith": "Hadiths",
+    "projects": "Projects",
+    "projectsDone": "{n} done",
+    "lockedBody": "3 surahs and 3 hadiths available now — the rest open in the next update"
+  },
+  "board": {
+    "title": "This week's leaderboard",
+    "left": {
+      "one": "{n} day left",
+      "two": "{n} days left",
+      "few": "{n} days left",
+      "many": "{n} days left"
+    },
+    "me": "{name} — you",
+    "first": "You're in first place this week — keep going!",
+    "gap": "Just {stars} more to pass place {rank}",
+    "stars": { "one": "{n} star", "two": "{n} stars", "few": "{n} stars", "many": "{n} stars" },
+    "starsLabel": "stars",
+    "reset": "The competition starts again every week — a new chance for everyone."
+  },
+  "growth": {
+    "planLabel": "of the free trial plan"
+  },
+  "profile": {
+    "title": "My profile",
+    "shortDays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "today": "Today",
+    "sinceToday": "With me since today",
+    "sinceDays": {
+      "one": "With me for {n} day",
+      "two": "With me for {n} days",
+      "few": "With me for {n} days",
+      "many": "With me for {n} days"
+    },
+    "sinceWeeks": {
+      "one": "With me for a week",
+      "two": "With me for {n} weeks",
+      "few": "With me for {n} weeks",
+      "many": "With me for {n} weeks"
+    },
+    "sinceMonths": {
+      "one": "With me for a month",
+      "two": "With me for {n} months",
+      "few": "With me for {n} months",
+      "many": "With me for {n} months"
+    },
+    "age": { "upToTen": "{n} years old", "overTen": "{n} years old" },
+    "stageTitle": "Your stage",
+    "toNext": "{pct}% more of your plan and you'll be a {stage}!",
+    "treeReached": "You reached the Tree — keep going!",
+    "streakTitle": "Your streak",
+    "startToday": "Start today",
+    "dayDone": "{day} — done",
+    "badgesTitle": "Your badges",
+    "badges": {
+      "firstSurah": "First surah",
+      "ayat50": "50 ayat",
+      "days5": "5 days",
+      "firstProject": "First project",
+      "days30": "30 days",
+      "hadith10": "10 hadiths"
+    },
+    "badgeLocked": "{badge} — not unlocked yet",
+    "parent": "I'm the parent"
+  },
+  "weekly": {
+    "title": "Review",
+    "subtitle": "One lesson every week to go back over what you memorized",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "inDays": { "one": "In {n} day", "two": "In {n} days", "few": "In {n} days", "many": "In {n} days" },
+    "at": "{when} — at {time}",
+    "what": "What are we reviewing?",
+    "emptyChips": "What you memorize this week — start today's lesson!",
+    "start": "Start the review",
+    "unlocksOn": "The button turns on {day} morning",
+    "unlocksOnReviewDay": "The button turns on on review day",
+    "last": "Last review",
+    "notYet": "No review yet — {rest}",
+    "firstOn": "first review on {day}",
+    "firstScheduled": "first review on its day in the schedule",
+    "all": "Everything you memorized",
+    "lockedBody": "The rest of the surahs and hadiths open in the next update",
+    "openLists": "Open the full lists",
+    "thisWeek": "This week"
+  },
+  "reviewItems": {
+    "completedOn": " · completed on {date}",
+    "surahThisWeek": " · this week's surah",
+    "hadithDoneOn": "Completed on {date}",
+    "hadithThisWeek": "This week's hadith"
+  },
+  "review": {
+    "quranTitle": "Surahs I memorized",
+    "quranCount": "completed · {ayat}",
+    "inProgress": "{done} of {total} ayat — finish it",
+    "hadithTitle": "Hadiths I memorized",
+    "hadithCount": "memorized",
+    "projectsTitle": "My projects",
+    "projectsCount": "done at home",
+    "pendingProject": "Waiting for your story tomorrow",
+    "toldOn": "Told on {date}",
+    "told": "Told",
+    "done": "Done",
+    "now": "Now",
+    "empty": "Nothing here yet — start today's lesson!"
+  },
+  "session": {
+    "endedTitle": "Session ended",
+    "errorTitle": "Something went wrong",
+    "endedBody": "We signed you out to keep your account safe. Sign in again and pick up where you left off.",
+    "errorBody": "We couldn't finish that. Try again — and if it keeps happening, send us the problem code.",
+    "errorCode": "Problem code: {code}",
+    "signInAgain": "Sign in again",
+    "retry": "Try again",
+    "home": "Back to the start"
+  }
+}

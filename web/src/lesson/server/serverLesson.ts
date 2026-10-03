@@ -191,6 +191,8 @@ export interface ServerLessonState {
   readonly ayat: readonly { ayah: number; text: string }[];
   readonly currentAyah: number | null;
   readonly surahName: string | null;
+  /** The surah shown (for its translation in English / Indonesian). */
+  readonly surahNo: number | null;
   readonly hadith: { title: string | null; source: string | null } | null;
   readonly words: readonly { word: string; meaning: string }[];
   /** What the child can do now (null while the teacher talks or the server thinks). */
@@ -236,6 +238,7 @@ export const initialServerState: ServerLessonState = {
   ayat: [],
   currentAyah: null,
   surahName: null,
+  surahNo: null,
   hadith: null,
   words: [],
   expects: null,
@@ -324,6 +327,62 @@ export const SKIP_AYAH = 'تخطّي الآية';
 export const TO_HADITH = 'أحسنت يا بطل! الحين نتعلّم حديثًا عن النبي ﷺ';
 /** The hadith part can't be served by the server: said, then the call ends (never a silent card). */
 export const HADITH_LATER = 'أحسنت يا بطل! نكمل الحديث في المرة القادمة إن شاء الله';
+
+/** The fixed lines above, by key (the teacher speaks to a boy / a girl where Arabic differs). */
+export type FixedLine =
+  | 'nudgeAnswer'
+  | 'nudgeRepeat'
+  | 'moveOnUnrepeated'
+  | 'repeatsStart'
+  | 'repeatsStartReply'
+  | 'wholeSurahTurn'
+  | 'toHadith'
+  | 'hadithLater';
+type FixedLines = Record<FixedLine, string | Record<Gender, string>>;
+
+/**
+ * The fixed lines in each session language (the session's `lang` — the language the
+ * AI server speaks too, so a call never mixes languages). Arabic = the constants above,
+ * unchanged; English / Indonesian say the same thing (GLOSSARY.md: champ / jagoan).
+ */
+export const FIXED_LINES: Record<AgentLang, FixedLines> = {
+  ar: {
+    nudgeAnswer: NUDGE_ANSWER,
+    nudgeRepeat: NUDGE_REPEAT,
+    moveOnUnrepeated: MOVE_ON_UNREPEATED,
+    repeatsStart: REPEATS_START,
+    repeatsStartReply: REPEATS_START_REPLY,
+    wholeSurahTurn: WHOLE_SURAH_TURN,
+    toHadith: TO_HADITH,
+    hadithLater: HADITH_LATER,
+  },
+  en: {
+    nudgeAnswer: "I'm listening, champ — say it out loud",
+    nudgeRepeat: "I'm listening… repeat it out loud",
+    moveOnUnrepeated: "Let's hear it once more from the reciter, then carry on",
+    repeatsStart: "Now let's repeat the ayat together… ready?",
+    repeatsStartReply: "Excellent! Let's start with the first ayah",
+    wholeSurahTurn: "Now it's your turn… recite the whole surah to me",
+    toHadith: "Well done, champ! Now let's learn a hadith of the Prophet, peace and blessings be upon him",
+    hadithLater: "Well done, champ! We'll continue the hadith next time, in sha Allah",
+  },
+  id: {
+    nudgeAnswer: 'Aku mendengarkan, jagoan — ucapkan dengan suaramu',
+    nudgeRepeat: 'Aku mendengarkan… tirukan dengan suaramu',
+    moveOnUnrepeated: 'Kita dengarkan sekali lagi dari qari, lalu kita lanjutkan',
+    repeatsStart: 'Sekarang kita tirukan ayat-ayatnya bersama… siap?',
+    repeatsStartReply: 'Hebat! Ayo kita mulai dari ayat pertama',
+    wholeSurahTurn: 'Sekarang giliranmu… setorkan seluruh surahnya padaku',
+    toHadith: "Bagus sekali, jagoan! Sekarang kita belajar hadis Nabi Muhammad shallallahu 'alaihi wa sallam",
+    hadithLater: 'Bagus sekali, jagoan! Kita lanjutkan hadisnya lain kali, insya Allah',
+  },
+};
+
+/** A fixed line in the session language, for this child's gender. */
+export function fixedLine(lang: AgentLang, key: FixedLine, gender: Gender): string {
+  const l = (FIXED_LINES[lang] ?? FIXED_LINES.ar)[key];
+  return typeof l === 'string' ? l : l[gender];
+}
 
 /**
  * The answer to the server's «أي حديث تحب أن نتعلم اليوم؟» (hadith stage `intro`):
@@ -639,7 +698,7 @@ export class ServerLesson {
     });
     const abort = new AbortController();
     this.turnAbort = abort;
-    await this.say(HADITH_LATER, abort).catch(() => {});
+    await this.say(this.fixed('hadithLater'), abort).catch(() => {});
     if (this.disposed) return;
     this.set({ phase: 'ended' });
     this.halt();
@@ -781,9 +840,9 @@ export class ServerLesson {
       if (judged && !audio.length) for (const u of this.turnAudio) await this.recite(u, abort);
       // After the reciter played the whole surah the mic never opens silently: the teacher speaks first.
       let startsRepeats = false;
-      if (wholeSurah && turn.expects === 'repeat') await this.say(WHOLE_SURAH_TURN[this.d.gender], abort);
+      if (wholeSurah && turn.expects === 'repeat') await this.say(this.fixed('wholeSurahTurn'), abort);
       else if (wholeSurah && turn.expects !== 'none' && !this.repeatsStarted) {
-        await this.say(REPEATS_START[this.d.gender], abort);
+        await this.say(this.fixed('repeatsStart'), abort);
         startsRepeats = true;
       }
       if (turn.expects === 'repeat') this.repeatsStarted = true;
@@ -808,6 +867,11 @@ export class ServerLesson {
   }
 
   /** The teacher's line, voiced; the caption follows the piece being said. */
+  /** A fixed client line in the session language (Arabic = the constants, unchanged). */
+  private fixed(key: FixedLine): string {
+    return fixedLine(this.d.lang ?? 'ar', key, this.d.gender);
+  }
+
   private async say(text: string, abort: AbortController): Promise<void> {
     lessonLog('ai', 'voice start', { text: text.slice(0, 40) });
     this.set({ speaking: true });
@@ -849,7 +913,7 @@ export class ServerLesson {
       const text = this.d.verifiedAyah(surah, a);
       if (text) ayat.push({ ayah: a, text });
     }
-    this.set({ ayat, currentAyah: current, surahName: this.d.surahName(surah) });
+    this.set({ ayat, currentAyah: current, surahName: this.d.surahName(surah), surahNo: surah });
   }
 
   /** show_ayat / show_words — the display only. */
@@ -936,7 +1000,7 @@ export class ServerLesson {
       const heard = await this.hear(turn, abort);
       if (heard !== 'silent' && heard.spoke) {
         if (!repeat) {
-          if (startsRepeats) await this.say(REPEATS_START_REPLY, abort);
+          if (startsRepeats) await this.say(this.fixed('repeatsStartReply'), abort);
           return this.respond(turn, heard);
         }
         const v = await this.verifyRepeat(turn, heard);
@@ -973,7 +1037,7 @@ export class ServerLesson {
    * is «لم يُردَّد» for the parent and doesn't count as memorized.
    */
   private async moveOnUnrepeated(turn: ServerTurn, abort: AbortController): Promise<void> {
-    await this.say(MOVE_ON_UNREPEATED, abort);
+    await this.say(this.fixed('moveOnUnrepeated'), abort);
     await this.guard(abort, this.beat(LINE_GAP_MS));
     await this.replayTurnAudio(abort);
     if ((turn.kind === 'quran' || turn.kind === 'taseem') && turn.ayah !== null) {
@@ -1074,7 +1138,7 @@ export class ServerLesson {
   /** One gentle nudge after a silence (an approved line, in the teacher's voice). */
   private async nudge(turn: ServerTurn, abort: AbortController): Promise<void> {
     const repeat = turn.expects === 'repeat';
-    await this.say(repeat ? NUDGE_REPEAT[this.d.gender] : NUDGE_ANSWER[this.d.gender], abort);
+    await this.say(this.fixed(repeat ? 'nudgeRepeat' : 'nudgeAnswer'), abort);
     if (repeat) {
       // «أنا أسمعك… ردّدها بصوتك» → the reciter once more → listen again
       await this.guard(abort, this.beat(LINE_GAP_MS));
@@ -1142,7 +1206,7 @@ export class ServerLesson {
       this.set({ phase: 'segmentDone', nextSegment: next.kind });
       if (next.kind === 'hadith') {
         const abort = this.turnAbort ?? new AbortController();
-        await this.say(TO_HADITH, abort).catch(() => {});
+        await this.say(this.fixed('toHadith'), abort).catch(() => {});
       }
       // a voice call: no «next» button — the next part starts by itself after a pause
       const abort = this.turnAbort;

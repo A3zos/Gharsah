@@ -7,16 +7,19 @@
 // under 16px. Religious text only from the verified content (never generated).
 import { useState, useSyncExternalStore } from 'react';
 
+import { countPhrase, fill, formatNumber, useI18n, type UiLanguage } from '../../i18n/i18n';
 import type { Subscribe } from '../../lesson/observable';
 import { isMicLive, isTeacherListening, isTeacherQuiet, type LessonState } from '../../lesson/state';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { hadithCopyIn, projectCopyIn, surahNameIn } from '../../lesson/teacherLines';
 import { cx } from '../../lib/cx';
 import { TeacherArt } from '../child/TeacherArt';
-import { TEACHER_NAME, TEACHER_TEXT, type TeacherGender } from '../child/teacherCharacter';
+import { type TeacherGender } from '../child/teacherCharacter';
 import { TeacherSprite, type MouthSource } from '../child/TeacherSprite';
 import { C } from '../ui/color';
 import { SproutMark } from '../ui/icons';
 import { MushafSurahCard } from './Mushaf';
+import { TranslationNote } from './Translation';
+import { ayahTranslation, hadithTranslation } from '../../content/translations';
 import { AllowPrompt, VoiceMic } from './VoiceCall';
 
 /** What the plan card (L1) and the celebration frames (L6, L10) need beyond the state. */
@@ -54,16 +57,16 @@ export interface LevelSource {
   readonly subscribe: Subscribe<number>;
 }
 
-const STAGE_NAMES = { 1: 'استمع وردّد', 2: 'آية آية', 3: 'السورة كاملة' } as const;
-export const SAVE_FAILED_TEXT = 'لم نتمكّن من حفظ تقدّمك — تحقّق من الاتصال';
-
-const clock = (ms: number) => {
+const clock = (lang: UiLanguage, ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
-  return toArabicDigits(`${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`);
+  return formatNumber(
+    lang,
+    `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`,
+  );
 };
-const shortClock = (ms: number) => {
+const shortClock = (lang: UiLanguage, ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
-  return toArabicDigits(`${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
+  return formatNumber(lang, `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
 };
 
 export function LessonView({
@@ -137,12 +140,13 @@ export function ReadyingCall({
   desktop: boolean;
   onExit: () => void;
 }) {
+  const { m } = useI18n();
   return (
     <CallFrame desktop={desktop}>
       <LiveHeader elapsedMs={0} onEnd={onExit} />
       <TeacherStage gender={gender} desktop={desktop} pose="quiet" talking={false} happy={false}>
         <p role="status" className="m-0 text-center text-[17px] font-bold text-text-muted">
-          {TEACHER_TEXT[gender].readying}
+          {m.lesson.teacher[gender].readying}
         </p>
       </TeacherStage>
     </CallFrame>
@@ -151,6 +155,7 @@ export function ReadyingCall({
 
 /** The call's page: phone column, or the centered card on desktop (LessonDesktop). Shared with the AI-server lesson. */
 export function CallFrame({ desktop, children }: { desktop: boolean; children: React.ReactNode }) {
+  const { m } = useI18n();
   if (desktop) {
     return (
       <main className="relative flex h-dvh items-center justify-center overflow-hidden bg-background px-[16px] py-[24px] text-text-dark">
@@ -164,7 +169,9 @@ export function CallFrame({ desktop, children }: { desktop: boolean; children: R
         />
         <div className="absolute top-0 right-0 left-0 z-2 flex h-[64px] items-center gap-[10px] px-[36px]">
           <SproutMark size={30} />
-          <span className="font-heading text-[21px] font-bold text-deep-green">غَرْسة</span>
+          <span className="font-heading text-[21px] font-bold text-deep-green">
+            {m.footer.brandLatin || 'غَرْسة'}
+          </span>
         </div>
         <div className="relative z-1 flex h-full max-h-[860px] w-[560px] max-w-full flex-col gap-[12px] rounded-px-40 border-[1.5px] border-border bg-surface px-[28px] pt-[22px] pb-[20px] shadow-dark-30-70-10">
           {children}
@@ -184,12 +191,13 @@ export function CallFrame({ desktop, children }: { desktop: boolean; children: R
 }
 
 export function LiveHeader({ elapsedMs, onEnd }: { elapsedMs: number; onEnd: () => void }) {
+  const { lang, m } = useI18n();
   return (
     <div className="flex w-full shrink-0 items-center gap-[11px]">
       <button
         type="button"
         onClick={onEnd}
-        aria-label="إنهاء المكالمة"
+        aria-label={m.lesson.endCall}
         className="flex h-[48px] w-[48px] shrink-0 cursor-pointer items-center justify-center rounded-full border border-berry-border bg-berry-tint p-0"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -199,15 +207,15 @@ export function LiveHeader({ elapsedMs, onEnd }: { elapsedMs: number; onEnd: () 
       <span className="flex grow items-center justify-center gap-[9px]">
         <span className="flex items-center gap-[6px] rounded-pill border border-berry-border bg-surface px-[14px] py-[6px]">
           <span className="h-[8px] w-[8px] animate-[gh-blink_1.4s_ease-in-out_infinite] rounded-full bg-berry" />
-          <span className="text-[16px] font-extrabold text-berry-deep">مباشر</span>
+          <span className="text-[16px] font-extrabold text-berry-deep">{m.lesson.live}</span>
         </span>
         <span
           role="timer"
           dir="ltr"
-          aria-label="مدة الحصة"
+          aria-label={m.lesson.timer}
           className="font-heading text-[16px] font-bold text-text-muted"
         >
-          {clock(elapsedMs)}
+          {clock(lang, elapsedMs)}
         </span>
       </span>
       <span className="w-[48px] shrink-0" />
@@ -280,6 +288,7 @@ export function TeacherStage({
   onTap?: () => void;
   children?: React.ReactNode;
 }) {
+  const { m } = useI18n();
   return (
     <div className="flex shrink-0 flex-col items-center gap-[8px]">
       <div
@@ -311,7 +320,7 @@ export function TeacherStage({
       </div>
       {!compact && (
         <span className="rounded-pill bg-green-tint px-[14px] py-[4px] text-[16px] font-extrabold text-deep-green">
-          {TEACHER_NAME[gender]}
+          {m.lesson.teacher[gender].name}
         </span>
       )}
       {children}
@@ -334,6 +343,7 @@ export function TeacherAvatar({
   talking: boolean;
   happy: boolean;
 }) {
+  const { m } = useI18n();
   const quiet = pose === 'quiet';
   const listening = pose === 'listening';
   const speaking = pose === 'speaking';
@@ -341,7 +351,7 @@ export function TeacherAvatar({
     <button
       type="button"
       onClick={onTap}
-      aria-label="المعلّم"
+      aria-label={m.lesson.teacherButton}
       className="relative flex shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0"
       style={{ width: size, height: size }}
     >
@@ -386,14 +396,15 @@ function Problems({
   voiceMissing: boolean;
   gender: TeacherGender;
 }) {
+  const { m } = useI18n();
   const text =
     s.progressSaveFailed || s.saveFailed
-      ? SAVE_FAILED_TEXT
+      ? m.lesson.problems.saveFailed
       : s.contentUnavailable
-        ? 'لا يوجد اتصال لتحميل التلاوة — اتصل بالإنترنت وحاول مجددًا.'
+        ? m.lesson.problems.contentUnavailable
         : voiceMissing
           ? // TODO(design): no designed state — the teacher's voice is unavailable.
-            TEACHER_TEXT[gender].voiceMissing
+            m.lesson.teacher[gender].voiceMissing
           : null;
   if (!text) return null;
   const retry = s.beat === 'saveFailed' || (s.beat === 'recorded' && s.saveFailed);
@@ -409,7 +420,7 @@ function Problems({
           onClick={actions.continueTapped}
           className="h-[48px] shrink-0 cursor-pointer rounded-px-14 border-0 bg-deep-green px-[16px] text-[16px] font-extrabold text-surface"
         >
-          حاول مجددًا
+          {m.lesson.problems.retry}
         </button>
       )}
     </div>
@@ -429,14 +440,15 @@ function Middle({
   glance: ChildGlance;
   actions: LessonActions;
 }) {
+  const { m } = useI18n();
   switch (s.screen) {
     case 'intro':
       return <Plan state={s} plan={plan} />;
     case 'reviewIntro':
       return (
         <Card className="items-center justify-center gap-[10px] text-center">
-          <span className="font-heading text-[26px] font-bold">المراجعة الأسبوعية</span>
-          <span className="text-[16px] text-text-muted">نراجع ما حفظته هذا الأسبوع</span>
+          <span className="font-heading text-[26px] font-bold">{m.lesson.review.title}</span>
+          <span className="text-[16px] text-text-muted">{m.lesson.review.body}</span>
         </Card>
       );
     case 'ayah':
@@ -475,20 +487,29 @@ export function Card({ children, className }: { children: React.ReactNode; class
  * bar between stages. The card scrolls inside itself and keeps the current ayah visible.
  */
 function SurahStage({ state: s, actions }: { state: LessonState; actions: LessonActions }) {
+  const { lang, m } = useI18n();
   const currentAyah = s.ayahRef?.ayah ?? null;
   const stage = s.stage === 1 || s.stage === 2 || s.stage === 3 ? s.stage : null;
+  const name = surahNameIn(lang, s.surahName ?? '');
+  // Arabic: the agent's own reference, as before; en / id: the same, in the UI language
+  const label =
+    lang === 'ar'
+      ? (s.ayahReference ?? `سورة ${s.surahName ?? ''}`)
+      : s.ayahRef
+        ? fill(lang, m.lesson.ayahRef, { name, n: s.ayahRef.ayah })
+        : fill(lang, m.lesson.surah, { name });
   return (
     <div className="flex min-h-0 grow flex-col gap-[8px]">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-[8px]">
         {stage && (
           <span className="rounded-pill bg-green-tint px-[14px] py-[6px] text-[16px] font-extrabold text-deep-green">
-            المرحلة {toArabicDigits(stage)} من ٣ — {STAGE_NAMES[stage]}
+            {fill(lang, m.lesson.stagePill, { n: stage, total: 3, name: m.lesson.stages[stage] })}
           </span>
         )}
         {stage === 2 && !s.stageTransition && (
           <span
             className="flex items-center gap-[6px]"
-            aria-label={`التكرار ${toArabicDigits(s.repeatsDone)} من ${toArabicDigits(s.repeatsTarget)}`}
+            aria-label={fill(lang, m.lesson.repeatsAria, { done: s.repeatsDone, target: s.repeatsTarget })}
           >
             {Array.from({ length: s.repeatsTarget }, (_, k) => (
               <span
@@ -503,14 +524,16 @@ function SurahStage({ state: s, actions }: { state: LessonState; actions: Lesson
         )}
         {stage === 3 && !s.stageTransition && s.passesTarget > 0 && (
           <span className="rounded-pill bg-gold-tint px-[14px] py-[6px] text-[16px] font-extrabold text-warning-text">
-            المرة {toArabicDigits(Math.min(s.passesDone + 1, s.passesTarget))} من{' '}
-            {toArabicDigits(s.passesTarget)}
+            {fill(lang, m.lesson.passPill, {
+              n: Math.min(s.passesDone + 1, s.passesTarget),
+              total: s.passesTarget,
+            })}
           </span>
         )}
       </div>
       {s.stageTransition && (
         <div className="h-[4px] shrink-0 overflow-hidden rounded-pill bg-border-soft" aria-hidden="true">
-          <div className="h-full origin-right animate-[gh-line_2s_linear_both] rounded-pill bg-primary" />
+          <div className="h-full origin-right animate-[gh-line_2s_linear_both] rounded-pill bg-primary ltr:origin-left" />
         </div>
       )}
       <SurahCard
@@ -519,10 +542,13 @@ function SurahStage({ state: s, actions }: { state: LessonState; actions: Lesson
         currentAyah={currentAyah}
         reciting={s.beat === 'reciting'}
         playbackBlocked={false}
-        label={s.ayahReference ?? `سورة ${s.surahName ?? ''}`}
+        label={label}
+        bannerLabel={lang === 'ar' ? undefined : fill(lang, m.lesson.surah, { name })}
         onTap={actions.replayAyah}
         onPlay={actions.play}
       />
+      {/* English / Indonesian: the current ayah's translation (QuranEnc) under the Arabic */}
+      {s.ayahRef && <TranslationNote t={ayahTranslation(lang, s.ayahRef.surah, s.ayahRef.ayah)} />}
     </div>
   );
 }
@@ -534,6 +560,7 @@ export function SurahCard(props: Omit<React.ComponentProps<typeof MushafSurahCar
 
 /** Small fallback play when the browser blocked autoplay (the only visible play control). */
 export function PlayFallback({ onTap }: { onTap: () => void }) {
+  const { m } = useI18n();
   return (
     <span
       role="button"
@@ -554,13 +581,14 @@ export function PlayFallback({ onTap }: { onTap: () => void }) {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M8 5.5 V18.5 L18.5 12 Z" fill={C.deepGreen} />
       </svg>
-      اضغط لتسمع التلاوة
+      {m.lesson.playFallback}
     </span>
   );
 }
 
 /** L1 «خطة اليوم» — no مكية/مدنية (no verified dataset yet). */
 function Plan({ state: s, plan }: { state: LessonState; plan: LessonPlanInfo }) {
+  const { lang, m } = useI18n();
   const i = s.lineIndex;
   const row = (lit: boolean, title: string, meta: string) => (
     <div
@@ -576,22 +604,32 @@ function Plan({ state: s, plan }: { state: LessonState; plan: LessonPlanInfo }) 
   return (
     <section aria-labelledby="plan-title" className="flex flex-col gap-[8px]">
       <h2 id="plan-title" className="m-0 font-heading text-[19px] leading-[1.5] font-bold">
-        خطة اليوم
+        {m.lesson.plan.title}
       </h2>
       {plan.surahName &&
-        row(i >= 1 && i <= 3, `سورة ${plan.surahName}`, `${toArabicDigits(plan.surahAyat ?? 0)} آيات`)}
-      {plan.hadithTitle && row(i === 1, plan.hadithTitle, 'حديث واحد')}
-      {plan.hasProject && row(i === 1, 'مشروع اليوم', 'في البيت')}
+        row(
+          i >= 1 && i <= 3,
+          fill(lang, m.lesson.surah, { name: surahNameIn(lang, plan.surahName) }),
+          countPhrase(lang, plan.surahAyat ?? 0, m.lesson.plan.ayat),
+        )}
+      {plan.hadithTitle &&
+        row(
+          i === 1,
+          hadithCopyIn(lang, { title: plan.hadithTitle, topic: plan.hadithTitle }).title,
+          m.lesson.plan.oneHadith,
+        )}
+      {plan.hasProject && row(i === 1, m.lesson.plan.project, m.lesson.plan.atHome)}
     </section>
   );
 }
 
 function SurahDone({ state: s, glance }: { state: LessonState; glance: ChildGlance }) {
+  const { lang, m } = useI18n();
   // Real values, never empty: this surah is complete now, and today counts in the streak.
   const stat = (n: number, label: string, color: string) => (
     <div className="flex grow basis-0 flex-col items-center gap-[4px] rounded-px-22 bg-surface px-[10px] py-[12px] shadow-child-card">
       <span className={cx('font-heading text-[28px] leading-[1.2] font-extrabold', color)}>
-        {toArabicDigits(n)}
+        {formatNumber(lang, n)}
       </span>
       <span className="text-center text-[16px] font-bold text-text-muted">{label}</span>
     </div>
@@ -599,63 +637,75 @@ function SurahDone({ state: s, glance }: { state: LessonState; glance: ChildGlan
   return (
     <div className="flex grow flex-col items-center justify-center gap-[12px]">
       <h1 className="m-0 text-center font-heading text-[28px] leading-[1.5] font-bold text-deep-green">
-        أتممت سورة {s.surahName ?? ''}!
+        {fill(lang, m.lesson.surahDone.title, { name: surahNameIn(lang, s.surahName ?? '') })}
       </h1>
       <div className="flex w-full gap-[8px]">
-        {stat(s.surahAyahCount ?? 0, 'آيات اليوم', 'text-deep-green')}
-        {stat(Math.max(glance.surahsTotal, 1), 'سور مكتملة', 'text-warning-text')}
-        {stat(Math.max(glance.streak, 1), 'أيام متتالية', 'text-berry-deep')}
+        {stat(s.surahAyahCount ?? 0, m.lesson.surahDone.ayatToday, 'text-deep-green')}
+        {stat(Math.max(glance.surahsTotal, 1), m.lesson.surahDone.surahsDone, 'text-warning-text')}
+        {stat(Math.max(glance.streak, 1), m.lesson.surahDone.streak, 'text-berry-deep')}
       </div>
     </div>
   );
 }
 
 function HadithCard({ state: s, actions }: { state: LessonState; actions: LessonActions }) {
+  const { lang, m } = useI18n();
   const h = s.hadith;
   if (!h) return null;
+  const topic = hadithCopyIn(lang, h).topic;
   if (!h.isApproved) {
     // Unapproved: the topic only — never a placeholder, bracket or internal note (C11).
-    return <HadithPendingCard topic={h.topic} />;
+    return <HadithPendingCard topic={topic} />;
   }
   return (
     <button
       type="button"
       onClick={actions.replayAyah}
-      aria-label="أعد سماع الحديث"
+      aria-label={m.lesson.hadith.replay}
       className={cx(
         'flex min-h-0 grow cursor-pointer flex-col items-center gap-[12px] overflow-y-auto rounded-px-28 bg-surface px-[18px] py-[16px] font-body text-text-dark shadow-lesson-ayah-card',
         s.beat === 'reciting' ? 'border-[2px] border-primary' : 'border-[1.5px] border-border',
       )}
     >
       <span className="rounded-pill bg-berry-tint px-[14px] py-[6px] text-[16px] font-extrabold text-berry-deep">
-        حديث اليوم عن {h.topic}
+        {fill(lang, m.lesson.hadith.about, { topic })}
       </span>
-      {/* Approved, vetted text exactly as in content/hadith/hadith.json. */}
-      <span className="font-classical text-[24px] leading-[1.9]">«{h.displayText}»</span>
-      <span className="text-[16px] font-bold text-text-subtle">{h.displayTakhrij}</span>
+      {/* Approved, vetted text exactly as in content/hadith/hadith.json — Arabic in every language. */}
+      <span dir="rtl" lang="ar" className="font-classical text-[24px] leading-[1.9]">
+        «{h.displayText}»
+      </span>
+      <span dir="rtl" lang="ar" className="text-[16px] font-bold text-text-subtle">
+        {h.displayTakhrij}
+      </span>
+      {/* English / Indonesian: HadeethEnc's translation, once a reviewer linked it */}
+      <TranslationNote t={hadithTranslation(lang, h.id, h.isApproved)} />
     </button>
   );
 }
 
 /** An unapproved hadith: the topic only — never a placeholder, bracket or internal note (C11). */
 export function HadithPendingCard({ topic }: { topic: string }) {
+  const { lang, m } = useI18n();
   return (
     <Card className="items-center justify-center gap-[14px] text-center">
-      <span className="font-heading text-[26px] font-bold">حديث اليوم عن {topic}</span>
+      <span className="font-heading text-[26px] font-bold">
+        {fill(lang, m.lesson.hadith.about, { topic })}
+      </span>
       <span className="rounded-pill bg-gold-tint px-[14px] py-[6px] text-[16px] font-extrabold text-warning-text">
-        قيد المراجعة الشرعية
+        {m.lesson.hadith.pending}
       </span>
     </Card>
   );
 }
 
 function ProjectAssign({ state: s }: { state: LessonState }) {
-  const p = s.project;
-  if (!p) return null;
+  const { lang, m } = useI18n();
+  if (!s.project) return null;
+  const p = projectCopyIn(lang, s.project);
   return (
     <Card className="gap-[10px] border-gold-border bg-gold-tint">
       <span className="self-start rounded-pill bg-gold px-[14px] py-[6px] text-[16px] font-extrabold text-on-gold">
-        مشروع اليوم
+        {m.lesson.project.today}
       </span>
       <p className="m-0 font-heading text-[22px] leading-[1.5] font-bold text-on-gold">{p.title}</p>
       <ol className="m-0 flex list-none flex-col gap-[8px] overflow-y-auto p-0">
@@ -663,7 +713,7 @@ function ProjectAssign({ state: s }: { state: LessonState }) {
           s.lineIndex >= i + 1 ? (
             <li key={h} className="flex items-center gap-[10px] rounded-px-18 bg-surface px-[12px] py-[10px]">
               <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-green-tint font-heading text-[16px] font-extrabold text-deep-green">
-                {toArabicDigits(i + 1)}
+                {formatNumber(lang, i + 1)}
               </span>
               <span className="text-[17px] font-bold">{h}</span>
             </li>
@@ -675,6 +725,7 @@ function ProjectAssign({ state: s }: { state: LessonState }) {
 }
 
 function ProjectReport({ state: s, actions }: { state: LessonState; actions: LessonActions }) {
+  const { lang, m } = useI18n();
   const recording = s.beat === 'recording';
   const saved = s.beat === 'recorded' || (s.beat === 'advancing' && s.recordedDurationMs !== null);
   return (
@@ -686,26 +737,26 @@ function ProjectReport({ state: s, actions }: { state: LessonState; actions: Les
       )}
     >
       <span className="rounded-pill border border-gold-border bg-gold-tint px-[14px] py-[6px] text-[16px] font-extrabold text-warning-text">
-        مشروع الأمس
+        {m.lesson.project.yesterday}
       </span>
       <p className="m-0 text-center font-heading text-[22px] leading-[1.5] font-bold">
-        {s.project?.title ?? ''}
+        {s.project ? projectCopyIn(lang, s.project).title : ''}
       </p>
       {recording && (
         <span className="flex items-center gap-[8px] rounded-pill bg-berry-tint px-[15px] py-[8px]">
           <span className="h-[9px] w-[9px] animate-[gh-blink_1.1s_ease-in-out_infinite] rounded-full bg-berry" />
           <span className="text-[16px] font-extrabold text-berry-deep">
-            جارٍ التسجيل · {shortClock(s.recordingElapsedMs)}
+            {fill(lang, m.lesson.project.recording, { time: shortClock(lang, s.recordingElapsedMs) })}
           </span>
         </span>
       )}
       {saved && (
         <>
           <span className="rounded-pill bg-green-tint px-[15px] py-[8px] text-[16px] font-extrabold text-deep-green">
-            حُفظ صوتك · {shortClock(s.recordedDurationMs ?? 0)}
+            {fill(lang, m.lesson.project.saved, { time: shortClock(lang, s.recordedDurationMs ?? 0) })}
           </span>
           <span className="text-center text-[16px] leading-[1.7] font-bold text-text-muted">
-            يصل إلى لوحة والدك — لا يُنشر لأحد غيره.
+            {m.lesson.project.private}
           </span>
           <button
             type="button"
@@ -713,7 +764,7 @@ function ProjectReport({ state: s, actions }: { state: LessonState; actions: Les
             disabled={s.beat !== 'recorded'}
             className="h-[48px] cursor-pointer rounded-px-16 border-[1.5px] border-input-border bg-surface px-[18px] font-body text-[16px] font-bold text-text-muted disabled:opacity-60"
           >
-            أعِد التسجيل
+            {m.lesson.project.reRecord}
           </button>
         </>
       )}
@@ -722,24 +773,25 @@ function ProjectReport({ state: s, actions }: { state: LessonState; actions: Les
 }
 
 function LessonEnd({ glance }: { glance: ChildGlance }) {
-  const days = glance.streakDays.length ? glance.streakDays : ['اليوم'];
+  const { lang, m } = useI18n();
+  const days = glance.streakDays.length ? glance.streakDays : [m.lesson.end.today];
   const n = Math.max(glance.streak, 1);
   return (
     <div className="flex grow flex-col justify-center gap-[12px]">
       <h1 className="m-0 text-center font-heading text-[28px] leading-[1.5] font-bold text-deep-green">
-        أكملت حصة اليوم!
+        {m.lesson.end.title}
       </h1>
       <div className="flex items-center gap-[10px] rounded-px-24 bg-surface p-[14px] shadow-lesson-done-card">
-        <span className="font-heading text-[20px] font-bold text-deep-green">أكملت درس اليوم ✓</span>
+        <span className="font-heading text-[20px] font-bold text-deep-green">{m.lesson.end.done}</span>
         <span className="rounded-pill bg-green-tint px-[14px] py-[6px] text-[16px] font-extrabold text-deep-green">
-          غرستك كبرت خطوة
+          {m.lesson.end.grew}
         </span>
       </div>
       <div className="flex flex-col gap-[10px] rounded-px-24 bg-surface px-[14px] py-[12px] shadow-lesson-done-card">
         <div className="flex items-center justify-between">
-          <span className="text-[16px] font-extrabold">أيامك المتتالية</span>
+          <span className="text-[16px] font-extrabold">{m.lesson.end.streakTitle}</span>
           <span className="rounded-pill bg-gold-tint px-[12px] py-[5px] text-[16px] font-extrabold text-warning-text">
-            {toArabicDigits(n)} {n >= 3 && n <= 10 ? 'أيام' : 'يوم'}
+            {countPhrase(lang, n, m.lesson.end.days)}
           </span>
         </div>
         <div className="flex gap-[6px]">
@@ -798,6 +850,7 @@ function Bottom({
   level: LevelSource;
   gender: TeacherGender;
 }) {
+  const { m } = useI18n();
   // «I heard you»: each counted repeat / pass (the counters reset per step, this one only grows)
   const total = s.repeatsDone + s.passesDone;
   const [heard, setHeard] = useState({ prev: total, n: 0 });
@@ -805,13 +858,13 @@ function Bottom({
   if (s.beat === 'done') {
     return (
       <div className="flex shrink-0 flex-col gap-[8px]">
-        <span className="text-center text-[16px] font-bold text-text-muted">إلى اللقاء غدًا</span>
+        <span className="text-center text-[16px] font-bold text-text-muted">{m.lesson.end.seeYou}</span>
         <button
           type="button"
           onClick={actions.goHome}
           className="flex h-[56px] w-full cursor-pointer items-center justify-center gap-[10px] rounded-px-22 border-0 bg-deep-green font-heading text-[20px] font-bold text-surface shadow-lesson-home-button"
         >
-          عودة للرئيسية
+          {m.lesson.end.home}
         </button>
       </div>
     );
@@ -820,15 +873,15 @@ function Bottom({
   const denied = s.beat === 'awaitMic';
   const label = live
     ? s.beat === 'recording'
-      ? 'أسمعك… احكِ لي'
-      : 'دورك… أنا أسمعك'
+      ? m.lesson.mic.report
+      : m.lesson.mic.yourTurn
     : denied
-      ? 'الميكروفون مغلق'
+      ? m.lesson.mic.closed
       : s.beat === 'reciting'
-        ? 'القارئ يقرأ… استمع'
+        ? m.lesson.mic.reciter
         : s.beat === 'saving' || s.beat === 'saveFailed'
-          ? 'نحفظ تقدّمك…'
-          : TEACHER_TEXT[gender].talking;
+          ? m.lesson.mic.saving
+          : m.lesson.teacher[gender].talking;
   // A voice call: only the mic animation — no «ردّدت», no text (the label is for screen readers).
   return <VoiceMic live={live && !denied} heardKey={heard.n} level={level} label={label} />;
 }
@@ -853,6 +906,7 @@ export function MicIndicator({
   /** A voice call shows no text: the label is for screen readers only. */
   hideLabel?: boolean;
 }) {
+  const { m } = useI18n();
   const mic = (
     <span
       className={cx(
@@ -890,7 +944,7 @@ export function MicIndicator({
         <button
           type="button"
           onClick={onMicTap}
-          aria-label="افتح الميكروفون"
+          aria-label={m.lesson.mic.open}
           className="cursor-pointer border-0 bg-transparent p-0"
         >
           {mic}

@@ -5,11 +5,15 @@
 // buttons, no text field. The only button during the call: the «سماح» prompt when
 // the mic (or the sound) needs a tap; «عودة للرئيسية» once the lesson is over.
 // Rendered from the ServerLesson's state only.
+import { ayahTranslation } from '../../content/translations';
+import { TranslationNote } from './Translation';
 import { useEffect, useState } from 'react';
 
+import { fill, useI18n } from '../../i18n/i18n';
 import type { ServerLessonState } from '../../lesson/server/serverLesson';
+import { hadithLabelIn, surahNameIn } from '../../lesson/teacherLines';
 import { cx } from '../../lib/cx';
-import { TEACHER_TEXT, type TeacherGender } from '../child/teacherCharacter';
+import { type TeacherGender } from '../child/teacherCharacter';
 import type { MouthSource } from '../child/TeacherSprite';
 import {
   CallFrame,
@@ -47,15 +51,16 @@ export function ServerLessonView({
   /** The teacher's lip-sync. */
   mouth?: MouthSource;
 }) {
+  const { m } = useI18n();
   const elapsedMs = useElapsed();
   const starting = s.phase === 'starting' || s.phase === 'warming';
   const listening = s.repeat === 'listening' || s.hearing;
   // Only the teacher talks — nothing of what he says is written; the line appears as
   // text only when no voice could say it. Status lines (getting ready, done) stay.
   const caption = starting
-    ? TEACHER_TEXT[gender].readying
+    ? m.lesson.teacher[gender].readying
     : s.phase === 'finished'
-      ? 'أكملت درس اليوم ✓'
+      ? m.lesson.end.done
       : s.voiceMissing
         ? s.caption
         : '';
@@ -91,7 +96,7 @@ export function ServerLessonView({
       {s.saveFailed && (
         <div role="alert" className="shrink-0 rounded-px-18 bg-gold-tint px-[14px] py-[10px]">
           <span className="text-[16px] leading-[1.6] font-bold text-on-gold">
-            لم نتمكّن من حفظ تقدّمك — تحقّق من الاتصال
+            {m.lesson.problems.saveFailed}
           </span>
         </div>
       )}
@@ -116,6 +121,7 @@ function useElapsed(): number {
 
 /** The ayah card (verified text) or the hadith card — the child reads along. */
 function Middle({ state: s, onAyat }: { state: ServerLessonState; onAyat: boolean }) {
+  const { lang, m } = useI18n();
   if (s.phase === 'finished') return null;
   if (s.ayat.length && s.surahName) {
     // shrinks away when the recitation ends (the teacher grows back at the same time)
@@ -133,10 +139,16 @@ function Middle({ state: s, onAyat }: { state: ServerLessonState; onAyat: boolea
           currentAyah={s.currentAyah}
           reciting={s.reciting}
           playbackBlocked={false}
-          label={`سورة ${s.surahName}`}
+          label={fill(lang, m.lesson.surah, { name: surahNameIn(lang, s.surahName) })}
+          bannerLabel={
+            lang === 'ar' ? undefined : fill(lang, m.lesson.surah, { name: surahNameIn(lang, s.surahName) })
+          }
           onTap={() => {}}
           onPlay={() => {}}
         />
+        {s.surahNo !== null && s.currentAyah !== null && (
+          <TranslationNote t={ayahTranslation(lang, s.surahNo, s.currentAyah)} />
+        )}
       </div>
     );
   }
@@ -144,7 +156,9 @@ function Middle({ state: s, onAyat }: { state: ServerLessonState; onAyat: boolea
     // The server's hadith text is never shown until vetted — the built-in «قيد المراجعة» card.
     return (
       <>
-        <HadithPendingCard topic={s.hadith.title ?? 'حديث اليوم'} />
+        <HadithPendingCard
+          topic={s.hadith.title ? hadithLabelIn(lang, s.hadith.title) : m.lesson.hadith.today}
+        />
         {s.words.length > 0 && <WordsTable words={s.words} />}
       </>
     );
@@ -154,9 +168,10 @@ function Middle({ state: s, onAyat }: { state: ServerLessonState; onAyat: boolea
 
 /** show_words — the hadith's new words and their meanings (filled only once the hadith is approved). */
 function WordsTable({ words }: { words: ServerLessonState['words'] }) {
+  const { m } = useI18n();
   return (
     <Card className="mt-[10px] shrink-0 grow-0 gap-[6px]">
-      <span className="text-[16px] font-extrabold text-text-muted">كلمات جديدة</span>
+      <span className="text-[16px] font-extrabold text-text-muted">{m.lesson.hadith.newWords}</span>
       <dl className="m-0 flex flex-col gap-[6px]">
         {words.map((w) => (
           <div key={w.word} className="flex gap-[8px] text-[16px] leading-[1.6]">
@@ -178,6 +193,7 @@ function Bottom({
   actions: ServerLessonActions;
   gender: TeacherGender;
 }) {
+  const { m } = useI18n();
   if (s.phase === 'finished') {
     return (
       <button
@@ -185,17 +201,17 @@ function Bottom({
         onClick={actions.goHome}
         className="flex h-[56px] w-full shrink-0 cursor-pointer items-center justify-center gap-[10px] rounded-px-22 border-0 bg-deep-green font-heading text-[20px] font-bold text-surface shadow-lesson-home-button"
       >
-        عودة للرئيسية
+        {m.lesson.end.home}
       </button>
     );
   }
   const live = !s.paused && !s.listenOnly && (s.hearing || s.repeat === 'listening');
   const label = live
-    ? 'دورك… أنا أسمعك'
+    ? m.lesson.mic.yourTurn
     : s.reciting
-      ? 'القارئ يقرأ… استمع'
+      ? m.lesson.mic.reciter
       : s.speaking
-        ? TEACHER_TEXT[gender].talking
-        : 'لحظة…';
+        ? m.lesson.teacher[gender].talking
+        : m.lesson.mic.moment;
   return <VoiceMic live={live} heardKey={s.heard} level={STEADY_LEVEL} label={label} />;
 }

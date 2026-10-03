@@ -1,6 +1,7 @@
 // The child app frame (StudentHome / ChildProfile / ReviewList): one centered
 // column (≤560px on every screen size) + the «الرئيسية / ملفّي» bottom bar.
 import { paths } from '../../app/paths';
+import { useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { BottomNav } from '../ui/BottomNav';
 import { C, type ColorName } from '../ui/color';
@@ -81,6 +82,7 @@ export function ChildPage({
   blob?: 'home' | 'page';
   className?: string;
 }) {
+  const t = useI18n().m.child.nav;
   return (
     <div className="relative min-h-dvh overflow-hidden bg-background text-text-dark">
       <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[500px] max-w-[560px]">
@@ -100,23 +102,23 @@ export function ChildPage({
       </main>
       {/* design/v3: الرئيسية / المراجعة / ملفّي, at the parent bar's sizes. */}
       <BottomNav
-        label="تطبيق الطفل"
+        label={t.label}
         items={[
           {
             to: paths.child.home,
-            label: 'الرئيسية',
+            label: t.home,
             active: tab === 'home',
             icon: (c) => <HomeGlyph color={c} strokeWidth={2.2} />,
           },
           {
             to: paths.child.weeklyReview,
-            label: 'المراجعة',
+            label: t.review,
             active: tab === 'review',
             icon: (c) => <ReviewTabGlyph color={c} />,
           },
           {
             to: paths.child.profile,
-            label: 'ملفّي',
+            label: t.profile,
             active: tab === 'profile',
             icon: (c) => <PersonGlyph color={c} />,
           },

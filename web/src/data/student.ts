@@ -4,6 +4,7 @@
 import { hadithStepIndex, lessonScripts } from '../content/library';
 import type { LessonScript } from '../lesson/script';
 import type { LessonProgress } from '../lesson/state';
+import { countPhrase, fill, MESSAGES, type UiLanguage } from '../i18n/i18n';
 import { toArabicDigits } from '../lib/arabicDigits';
 import { supabase } from '../supabase/client';
 import { watch } from '../supabase/live';
@@ -294,8 +295,9 @@ export interface BoardRow {
   label: string | null;
 }
 
-/** «نجمة واحدة» / «نجمتان» / «٣ نجوم» / «١١ نجمة» */
-export function starsPhrase(n: number): string {
+/** «نجمة واحدة» / «نجمتان» / «٣ نجوم» / «١١ نجمة» (en / id: «1 star» / «3 stars», «3 bintang»). */
+export function starsPhrase(n: number, lang: UiLanguage = 'ar'): string {
+  if (lang !== 'ar') return countPhrase(lang, n, MESSAGES[lang].child.board.stars);
   if (n === 1) return 'نجمة واحدة';
   if (n === 2) return 'نجمتان';
   if (n >= 3 && n <= 10) return `${toArabicDigits(n)} نجوم`;
@@ -310,6 +312,7 @@ export function starsPhrase(n: number): string {
 export function buildBoard(
   board: LeaderBoard | null,
   myLabel: string,
+  lang: UiLanguage = 'ar',
 ): { rows: BoardRow[]; own: BoardRow | null; separator: boolean; note: string | null } {
   const top = (board?.top ?? []).slice(0, TOP_ROWS);
   const me = board?.me ?? null;
@@ -319,10 +322,11 @@ export function buildBoard(
   let note: string | null = null;
   if (me && (me.points > 0 || (board?.total ?? 0) > 0)) {
     // To pass the rank above, one star more than the gap (a tie would share the rank).
+    const t = MESSAGES[lang].child.board;
     note =
       me.rank === 1 || me.gapToAbove === null
-        ? 'أنت في المركز الأول هذا الأسبوع — استمر!'
-        : `باقي لك ${starsPhrase(me.gapToAbove + 1)} وتسبق المركز ${toArabicDigits(me.rank - 1)}`;
+        ? t.first
+        : fill(lang, t.gap, { rank: me.rank - 1 }).replace('{stars}', starsPhrase(me.gapToAbove + 1, lang));
   }
   return { rows, own, separator: !!own && rows.length >= TOP_ROWS, note };
 }

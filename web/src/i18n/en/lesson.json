@@ -1,1 +1,145 @@
-{}
+{
+  "meta": "Lesson — Gharsah",
+  "busy": "Getting the lesson ready",
+  "live": "Live",
+  "endCall": "End the call",
+  "timer": "Lesson time",
+  "teacherButton": "The teacher",
+  "teacher": {
+    "boy": {
+      "name": "Teacher Abdullah",
+      "talking": "The teacher is talking…",
+      "readying": "The teacher is getting ready… we'll start in a moment",
+      "voiceMissing": "The teacher's voice isn't available right now — read his words below.",
+      "allowMicTitle": "{teacher} wants to hear you",
+      "allowMicBody": "Tap “Allow”, then let the app use the microphone so you can answer with your voice.",
+      "allowSoundBody": "Tap “Allow” to turn the sound on."
+    },
+    "girl": {
+      "name": "Teacher Sarah",
+      "talking": "The teacher is talking…",
+      "readying": "The teacher is getting ready… we'll start in a moment",
+      "voiceMissing": "The teacher's voice isn't available right now — read her words below.",
+      "allowMicTitle": "{teacher} wants to hear you",
+      "allowMicBody": "Tap “Allow”, then let the app use the microphone so you can answer with your voice.",
+      "allowSoundBody": "Tap “Allow” to turn the sound on."
+    }
+  },
+  "allow": {
+    "soundTitle": "Let's hear {teacher}",
+    "button": "Allow"
+  },
+  "heard": "I heard you",
+  "problems": {
+    "saveFailed": "We couldn't save your progress — check your connection",
+    "contentUnavailable": "No connection to load the recitation — connect to the internet and try again.",
+    "retry": "Try again"
+  },
+  "review": {
+    "title": "Weekly review",
+    "body": "Let's review what you memorized this week"
+  },
+  "stages": {
+    "1": "Listen and repeat",
+    "2": "Ayah by ayah",
+    "3": "The whole surah"
+  },
+  "stagePill": "Stage {n} of {total} — {name}",
+  "repeatsAria": "Repeat {done} of {target}",
+  "passPill": "Time {n} of {total}",
+  "surah": "Surah {name}",
+  "ayahRef": "Surah {name} · Ayah {n}",
+  "playFallback": "Tap to hear the recitation",
+  "plan": {
+    "title": "Today's plan",
+    "ayat": {
+      "one": "{n} ayah",
+      "two": "{n} ayat",
+      "few": "{n} ayat",
+      "many": "{n} ayat"
+    },
+    "oneHadith": "One hadith",
+    "project": "Today's project",
+    "atHome": "At home"
+  },
+  "surahDone": {
+    "title": "You finished Surah {name}!",
+    "ayatToday": "Ayat today",
+    "surahsDone": "Surahs completed",
+    "streak": "Days in a row"
+  },
+  "hadith": {
+    "replay": "Hear the hadith again",
+    "about": "Today's hadith is about {topic}",
+    "pending": "Under Sharia review",
+    "today": "Today's hadith",
+    "newWords": "New words"
+  },
+  "project": {
+    "today": "Today's project",
+    "yesterday": "Yesterday's project",
+    "recording": "Recording · {time}",
+    "saved": "Your voice is saved · {time}",
+    "private": "It goes to your parent's dashboard — no one else sees it.",
+    "reRecord": "Record again"
+  },
+  "end": {
+    "title": "You finished today's lesson!",
+    "done": "Today's lesson complete ✓",
+    "grew": "Your sapling grew a step",
+    "streakTitle": "Your streak",
+    "days": {
+      "one": "{n} day",
+      "two": "{n} days",
+      "few": "{n} days",
+      "many": "{n} days"
+    },
+    "today": "Today",
+    "seeYou": "See you tomorrow",
+    "home": "Back to home"
+  },
+  "weekdays": {
+    "sat": "Sat",
+    "sun": "Sun",
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri"
+  },
+  "mic": {
+    "report": "I'm listening… tell me",
+    "yourTurn": "Your turn… I'm listening",
+    "closed": "The microphone is off",
+    "reciter": "The reciter is reciting… listen",
+    "saving": "Saving your progress…",
+    "moment": "One moment…",
+    "open": "Turn on the microphone"
+  },
+  "exit": {
+    "title": "Leave the lesson?",
+    "body": "We'll save your place so you can carry on later from the same spot.",
+    "serverBody": "Your stars and progress are saved — you can finish the lesson later.",
+    "confirm": "Continue the lesson",
+    "cancel": "Leave",
+    "footnote": "You won't lose any repeat you've done.",
+    "placeLabel": "Your saved place",
+    "saved": "Saved ✓"
+  },
+  "place": {
+    "ayah": "Surah {name} — ayah {n} of {total}",
+    "surahDone": "You finished Surah {name}",
+    "hadith": "Today's hadith",
+    "project": "This week's project",
+    "report": "Yesterday's project report",
+    "end": "End of the lesson",
+    "startSurah": "Start of the lesson — Surah {name}",
+    "start": "Start of the lesson"
+  },
+  "failed": {
+    "text": "No connection to load the lesson — connect to the internet, then try again.",
+    "retry": "Try again",
+    "home": "Back to home"
+  },
+  "translationBy": "Translation:"
+}

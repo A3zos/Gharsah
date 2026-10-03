@@ -3,25 +3,35 @@ import { Link } from 'react-router';
 import { paths } from '../../app/paths';
 import { useChildData } from '../../components/child/ChildData';
 import { ChildPage, ReviewTabGlyph } from '../../components/child/ChildShell';
+import { useChildTitle } from '../../components/child/useChildTitle';
 import { C } from '../../components/ui/color';
 import { CheckIcon, ForwardIcon } from '../../components/ui/icons';
 import { Blob } from '../../components/ui/Page';
 import { reviewItems, type ReviewItem } from '../../content/review';
 import { formatTime, nextReviewDay, type ChildProfile } from '../../data/children';
+import { countPhrase, fill, MESSAGES, useI18n, type UiLanguage } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
-import { daysPhrase, plural } from '../../lib/plural';
 import type { Route } from './+types/weekly-review';
 
-export const meta: Route.MetaFunction = () => [{ title: 'المراجعة — غَرْسة' }];
+export const meta: Route.MetaFunction = () => [{ title: MESSAGES.ar.child.meta.weeklyReview }];
+
+/** «٥:٠٠ مساءً» in Arabic (as before); «5:00 PM» / «17.00» in en / id. */
+function timeText(lang: UiLanguage, minutes: number): string {
+  if (lang === 'ar') return formatTime(minutes);
+  return new Intl.DateTimeFormat(lang, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(2000, 0, 1, Math.floor(minutes / 60), minutes % 60)),
+  );
+}
 
 /** «بعد يومين — الساعة ٥:٠٠ مساءً» for the child's next review day. */
-function whenText(child: ChildProfile, now = new Date()): string | null {
+function whenText(lang: UiLanguage, child: ChildProfile, now = new Date()): string | null {
+  const t = MESSAGES[lang].child.weekly;
   const s = child.schedule;
   const next = nextReviewDay(s, now);
   if (!s || !next) return null;
   const diff = next.inDays;
-  const when = diff === 0 ? 'اليوم' : diff === 1 ? 'غدًا' : `بعد ${daysPhrase(diff)}`;
-  return `${when} — الساعة ${formatTime(s.custom[next.day] ?? s.time)}`;
+  const when = diff === 0 ? t.today : diff === 1 ? t.tomorrow : countPhrase(lang, diff, t.inDays);
+  return t.at.replace('{when}', when).replace('{time}', timeText(lang, s.custom[next.day] ?? s.time));
 }
 
 /**
@@ -31,6 +41,9 @@ function whenText(child: ChildProfile, now = new Date()): string | null {
  */
 export default function WeeklyReviewRoute() {
   const { child, progress } = useChildData();
+  const { lang, m } = useI18n();
+  const t = m.child.weekly;
+  useChildTitle(m.child.meta.weeklyReview);
   if (!child) {
     return (
       <ChildPage tab="review" blob="page">
@@ -38,8 +51,10 @@ export default function WeeklyReviewRoute() {
       </ChildPage>
     );
   }
-  const dayName = nextReviewDay(child.schedule)?.label ?? null;
-  const items = reviewItems(child, progress);
+  const nextDay = nextReviewDay(child.schedule)?.day;
+  const dayName = nextDay ? m.child.days[nextDay] : null;
+  const when = whenText(lang, child);
+  const items = reviewItems(child, progress, lang);
   const toReview = items.filter((i) => i.state === 'done');
   const surahs = items.filter((i) => i.kind === 'surah').length;
   const hadith = items.filter((i) => i.kind === 'hadith').length;
@@ -48,8 +63,8 @@ export default function WeeklyReviewRoute() {
       <Blob className="-top-[150px] -left-[130px] h-[380px] w-[380px] bg-blob-gold-strong" />
       <div className="relative flex items-center gap-[12px]">
         <span className="flex grow flex-col gap-[5px]">
-          <h1 className="m-0 font-heading text-[26px] leading-[1.4] font-bold">المراجعة</h1>
-          <span className="text-[13px] text-text-muted">حصة واحدة كل أسبوع نرجع فيها لما حفظته</span>
+          <h1 className="m-0 font-heading text-[26px] leading-[1.4] font-bold">{t.title}</h1>
+          <span className="text-[13px] text-text-muted">{t.subtitle}</span>
         </span>
         <span
           className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-px-19 bg-gold-tint"
@@ -65,11 +80,11 @@ export default function WeeklyReviewRoute() {
       >
         <div
           aria-hidden="true"
-          className="absolute -top-[46px] -left-[36px] h-[160px] w-[160px] rounded-full bg-surface/24"
+          className="absolute -end-[36px] -top-[46px] h-[160px] w-[160px] rounded-full bg-surface/24"
         />
         <div className="relative flex items-center justify-between gap-[10px]">
           <h2 id="week-review" className="m-0 font-heading text-[23px] leading-[1.4] font-bold text-on-gold">
-            مراجعة هذا الأسبوع
+            {m.child.weekReview}
           </h2>
           {dayName && (
             <span className="rounded-pill bg-on-gold px-[12px] py-[6px] text-[12px] font-extrabold whitespace-nowrap text-gold-tint">
@@ -77,13 +92,9 @@ export default function WeeklyReviewRoute() {
             </span>
           )}
         </div>
-        {whenText(child) && (
-          <span className="relative text-[14.5px] leading-[1.8] font-bold text-on-gold">
-            {whenText(child)}
-          </span>
-        )}
+        {when && <span className="relative text-[14.5px] leading-[1.8] font-bold text-on-gold">{when}</span>}
         <div className="relative flex flex-col gap-[9px]">
-          <span className="text-[12.5px] font-extrabold text-on-gold">وش نراجع؟</span>
+          <span className="text-[12.5px] font-extrabold text-on-gold">{t.what}</span>
           <div className="flex flex-wrap gap-[8px]">
             {toReview.length ? (
               toReview.map((i) => (
@@ -95,9 +106,7 @@ export default function WeeklyReviewRoute() {
                 </span>
               ))
             ) : (
-              <span className="text-[13px] font-bold text-on-gold">
-                ما تحفظه هذا الأسبوع — ابدأ حصة اليوم!
-              </span>
+              <span className="text-[13px] font-bold text-on-gold">{t.emptyChips}</span>
             )}
           </div>
         </div>
@@ -114,10 +123,10 @@ export default function WeeklyReviewRoute() {
               strokeLinecap="round"
             />
           </svg>
-          ابدأ المراجعة
+          {t.start}
         </span>
         <span className="relative text-center text-[12.5px] font-bold text-on-gold">
-          {dayName ? `يتفعّل الزر صباح ${dayName}` : 'يتفعّل الزر في يوم المراجعة'}
+          {dayName ? fill(lang, t.unlocksOn, { day: dayName }) : t.unlocksOnReviewDay}
         </span>
       </section>
 
@@ -130,24 +139,24 @@ export default function WeeklyReviewRoute() {
           <ReviewTabGlyph color="textSubtle" size={24} strokeWidth={2} />
         </span>
         <span className="flex min-w-0 grow flex-col gap-[4px]">
-          <span className="text-[15px] font-extrabold">آخر مراجعة</span>
+          <span className="text-[15px] font-extrabold">{t.last}</span>
           <span className="text-[12.5px] leading-[1.7] text-text-muted">
-            لم تُراجع بعد — {dayName ? `أول مراجعة يوم ${dayName}` : 'أول مراجعة في يومها من الجدول'}
+            {t.notYet.replace('{rest}', dayName ? fill(lang, t.firstOn, { day: dayName }) : t.firstScheduled)}
           </span>
         </span>
         <span className="rounded-pill bg-border-soft px-[11px] py-[6px] text-[11.5px] font-extrabold whitespace-nowrap text-text-muted">
-          قريبًا
+          {m.child.soon}
         </span>
       </div>
 
       <section aria-labelledby="all-memorized" className="relative flex flex-col gap-[11px]">
         <div className="flex items-baseline justify-between gap-[10px]">
           <h2 id="all-memorized" className="m-0 font-heading text-[17px] leading-[1.5] font-bold">
-            كل ما حفظته
+            {t.all}
           </h2>
           <span className="text-[12px] font-bold text-text-muted">
-            {plural(surahs, { one: 'سورة واحدة', two: 'سورتان', few: 'سور', many: 'سورة' })} ·{' '}
-            {plural(hadith, { one: 'حديث واحد', two: 'حديثان', few: 'أحاديث', many: 'حديثًا' })}
+            {countPhrase(lang, surahs, m.child.count.surahs)} ·{' '}
+            {countPhrase(lang, hadith, m.child.count.hadith)}
           </span>
         </div>
         {items.map((i) => (
@@ -169,11 +178,11 @@ export default function WeeklyReviewRoute() {
             </svg>
           </span>
           <span className="flex min-w-0 grow flex-col gap-[4px]">
-            <span className="text-[15px] font-extrabold text-text-subtle">بعد الباقة التجريبية</span>
-            <span className="text-[12px] text-text-muted">تُفتح بقية السور والأحاديث في التحديث القادم</span>
+            <span className="text-[15px] font-extrabold text-text-subtle">{m.child.lockedTitle}</span>
+            <span className="text-[12px] text-text-muted">{t.lockedBody}</span>
           </span>
           <span className="rounded-pill bg-border-soft px-[10px] py-[5px] text-[11px] font-extrabold whitespace-nowrap text-text-muted">
-            قريبًا
+            {m.child.soon}
           </span>
         </div>
       </section>
@@ -182,8 +191,8 @@ export default function WeeklyReviewRoute() {
         to={paths.child.review('quran')}
         className="relative flex h-[56px] items-center justify-center gap-[9px] rounded-px-19 border-[1.5px] border-input-border bg-surface text-[15.5px] font-extrabold text-deep-green no-underline"
       >
-        افتح القوائم الكاملة
-        <ForwardIcon size={19} color="deepGreen" strokeWidth={2.4} />
+        {t.openLists}
+        <ForwardIcon size={19} color="deepGreen" strokeWidth={2.4} className="ltr:-scale-x-100" />
       </Link>
     </ChildPage>
   );
@@ -191,6 +200,7 @@ export default function WeeklyReviewRoute() {
 
 function ItemRow({ item }: { item: ReviewItem }) {
   const now = item.state === 'now';
+  const { m } = useI18n();
   return (
     <div className="flex items-center gap-[12px] rounded-px-20 border-[1.5px] border-border bg-surface px-[15px] py-[13px]">
       <span
@@ -214,7 +224,7 @@ function ItemRow({ item }: { item: ReviewItem }) {
       </span>
       {now && (
         <span className="rounded-pill bg-gold-tint px-[10px] py-[5px] text-[11px] font-extrabold whitespace-nowrap text-warning-text">
-          هذا الأسبوع
+          {m.child.weekly.thisWeek}
         </span>
       )}
     </div>

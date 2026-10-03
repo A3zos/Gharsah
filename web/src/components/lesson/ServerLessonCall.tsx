@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useBlocker, useNavigate } from 'react-router';
 
 import { paths } from '../../app/paths';
+import { aiLessonLanguage, useI18n } from '../../i18n/i18n';
 import type { ChildProfile } from '../../data/children';
 import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
 import { createServerLesson, type WebServerLesson } from '../../lesson/web/createServerLesson';
@@ -31,6 +32,7 @@ export function ServerLessonCall({
   /** `quranDone`: today's surah part is finished → the built-in lesson resumes at the hadith. */
   onFallback: (quranDone: boolean) => void;
 }) {
+  const { m } = useI18n();
   const navigate = useNavigate();
   const desktop = useMedia(DESKTOP);
   const [web, setWeb] = useState<WebServerLesson | null>(null);
@@ -39,6 +41,7 @@ export function ServerLessonCall({
   // Read once on entry: a consent change applies from the next lesson.
   const consent = useRef(child.aiVoiceConsent);
   const planRef = useRef(plan);
+  const aiLang = useRef(aiLessonLanguage(useI18n().lang));
   const startAtRef = useRef(startAt);
   // Only for scrubbing the child's own words — never sent (read once, like consent).
   const childName = useRef(child.name);
@@ -59,6 +62,8 @@ export function ServerLessonCall({
       gender: child.gender,
       childName: childName.current,
       consent: consent.current,
+      // Arabic unless AI_LESSON_FOLLOWS_UI (i18n.ts) — read once, like consent
+      lang: aiLang.current,
     }).then(
       (w) => {
         if (!alive) return w.dispose();
@@ -143,7 +148,7 @@ export function ServerLessonCall({
   );
 
   if (state.phase === 'fallback' || state.phase === 'ended') {
-    return <main className="min-h-dvh bg-background" aria-busy="true" aria-label="جارٍ تجهيز الحصة" />;
+    return <main className="min-h-dvh bg-background" aria-busy="true" aria-label={m.lesson.busy} />;
   }
   return (
     <>
@@ -156,10 +161,10 @@ export function ServerLessonCall({
       />
       <ConfirmSheet
         open={exitOpen || blocked}
-        title="تخرج من الحصة؟"
-        body="نجومك وتقدّمك محفوظة، وتكمل الحصة لاحقًا."
-        confirmLabel="أكمل الحصة"
-        cancelLabel="خروج"
+        title={m.lesson.exit.title}
+        body={m.lesson.exit.serverBody}
+        confirmLabel={m.lesson.exit.confirm}
+        cancelLabel={m.lesson.exit.cancel}
         onConfirm={() => {
           unlockLessonAudio();
           closeSheet();

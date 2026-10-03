@@ -35,5 +35,10 @@ describe('pickBrowserVoice', () => {
 
   it('none for that language → null (the line shows as text, never another language)', () => {
     expect(pickBrowserVoice([v('fr-FR')], 'en')).toBeNull();
+    expect(pickBrowserVoice([v('ar-SA'), v('ms-MY')], 'id')).toBeNull();
+  });
+
+  it("Android's old Indonesian code «in-ID» counts as Indonesian", () => {
+    expect(pickBrowserVoice([v('en-US'), v('in_ID')], 'id')?.lang).toBe('in_ID');
   });
 });

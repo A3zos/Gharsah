@@ -12,9 +12,13 @@ import { loadScript, realContent, Rig } from './testing/fakes';
 import { stageOf } from './web/progressSink';
 import aiLines from '../../../supabase/functions/ai-speak/lines.json';
 import aiSlots from '../../../supabase/functions/ai-speak/slots.json';
+import aiLinesEn from '../../../supabase/functions/ai-speak/lines.en.json';
+import aiLinesId from '../../../supabase/functions/ai-speak/lines.id.json';
+import aiSlotsEn from '../../../supabase/functions/ai-speak/slots.en.json';
+import aiSlotsId from '../../../supabase/functions/ai-speak/slots.id.json';
 import { resolveLine } from '../../../supabase/functions/ai-speak/resolve';
 import { NAME_SLOT, slotKeysOf } from './aiSpeakSlots';
-import { TeacherLineBank } from './teacherLines';
+import { lineLanguage, TeacherLineBank } from './teacherLines';
 import { serverRequestFor } from './web/serverVoice';
 
 const AI_LINES = aiLines as Record<string, string>;
@@ -483,6 +487,30 @@ test('server voice: every line of a real lesson is either kept on the device (na
   }
   expect(sent).toBeGreaterThan(20);
   expect(kept).toBeGreaterThan(3);
+
+  // English / Indonesian: the same lines, sent with their language's slot values, resolve
+  // in that language's bank exactly as the lesson says them — and never with the name.
+  const other = {
+    en: { lines: aiLinesEn as Record<string, string>, slots: aiSlotsEn as Record<string, string[]> },
+    id: { lines: aiLinesId as Record<string, string>, slots: aiSlotsId as Record<string, string[]> },
+  };
+  for (const lang of ['en', 'id'] as const) {
+    const b = new TeacherLineBank(lang);
+    let voiced = 0;
+    for (const l of [...day1.teacher.spokenLines, ...day2.teacher.spokenLines]) {
+      const req = serverRequestFor(l, lang);
+      if (slotKeysOf(l.id).includes(NAME_SLOT) || lineLanguage(lang, l) === 'ar') {
+        expect(req).toBeNull();
+        continue;
+      }
+      expect(req).toMatchObject({ id: l.id, lang });
+      expect(resolveLine(other[lang].lines, other[lang].slots, req!.id, req!.slots)).toEqual({
+        text: b.resolve(l),
+      });
+      voiced++;
+    }
+    expect(voiced, lang).toBe(sent); // every Arabic server line has its en / id version
+  }
   await day1.agent.dispose();
   await day2.agent.dispose();
 });

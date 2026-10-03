@@ -51,7 +51,21 @@ export function mappedStage(turn: ServerTurn): ProgressStage | null {
 }
 
 /** Matches the server's hadith title to the day's topic (any spelling; «لا تغضب» ~ «الغضب»). */
+/**
+ * The AI server's own en / id titles of today's hadiths (live, 2026-10-03), so an en / id
+ * session is still recognised as today's hadith. Keyed by our Arabic topic.
+ */
+export const SERVER_HADITH_TITLES: Record<string, readonly string[]> = {
+  'برّ الوالدين': ['Kindness to Parents', 'Berbakti kepada Orang Tua'],
+  الكذب: ['Lying', 'Berbohong'],
+  الغضب: ["Don't Get Angry", 'Jangan Marah'],
+};
+
+const latin = (s: string) => s.toLowerCase().replace(/[^a-z']/g, '');
+
 export function hadithMatchesTopic(title: string, topic: string, normalize: (t: string) => string): boolean {
+  if ((SERVER_HADITH_TITLES[topic] ?? []).some((x) => latin(x) === latin(title) && latin(x) !== ''))
+    return true;
   const t = normalize(title);
   const words = normalize(topic)
     .split(' ')

@@ -5,30 +5,57 @@ import { paths } from '../../app/paths';
 import { ChildAvatar } from '../../components/child/ChildAvatar';
 import { useChildData } from '../../components/child/ChildData';
 import { ChildPage, PersonGlyph, ReviewTabGlyph } from '../../components/child/ChildShell';
+import { useChildTitle } from '../../components/child/useChildTitle';
 import { Leaderboard } from '../../components/child/Leaderboard';
 import { C } from '../../components/ui/color';
 import { ForwardIcon } from '../../components/ui/icons';
+import { LanguageSheetButton } from '../../components/ui/LanguageSwitcher';
 import { HadithIcon, ProjectIcon, QuranIcon } from '../../components/child/childIcons';
 import { lessonChips, lessonScripts, lessonValue } from '../../content/library';
-import { PILOT_DAYS, PILOT_NAME } from '../../content/pilot';
-import { reviewItems } from '../../content/review';
+import { PILOT_DAYS, pilotCopy } from '../../content/pilot';
+import { hadithTitle, reviewItems, surahLabel } from '../../content/review';
 import { nextReviewDay } from '../../data/children';
-import { headline, STAGE_LABEL } from '../../data/stats';
+import { headline } from '../../data/stats';
+import { countPhrase, fill, MESSAGES, useI18n, type UiLanguage } from '../../i18n/i18n';
 import { agentEnabled, warmAgent } from '../../lesson/server/api';
+import type { LessonScript } from '../../lesson/script';
 import { serverVoiceEnabled, warmAiSpeak } from '../../lesson/web/serverVoice';
 import { preloadTeacher } from '../../components/child/teacherCharacter';
 import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
 import { lessonStepGroups, pickTodayLesson } from '../../data/student';
-import { toArabicDigits } from '../../lib/arabicDigits';
 import { cx } from '../../lib/cx';
-import { daysPhrase, plural } from '../../lib/plural';
 import type { Route } from './+types/home';
 
-export const meta: Route.MetaFunction = () => [{ title: 'الرئيسية — غَرْسة' }];
+export const meta: Route.MetaFunction = () => [{ title: MESSAGES.ar.child.meta.home }];
+
+type Chip = { label: string; kind: 'surah' | 'hadith' | 'report' };
+
+/** The hero chips: Arabic exactly as lessonChips(); en / id from child.json. */
+function chipsOf(s: LessonScript, lang: UiLanguage): Chip[] {
+  if (lang === 'ar') return lessonChips(s);
+  const chips: Chip[] = [];
+  for (const st of s.steps) {
+    if (st.type === 'project_report')
+      chips.push({ label: MESSAGES[lang].child.home.reportChip, kind: 'report' });
+    if (st.type === 'intro') chips.push({ label: surahLabel(lang, st.surah), kind: 'surah' });
+    if (st.type === 'hadith_loop') chips.push({ label: hadithTitle(lang, st.hadithId), kind: 'hadith' });
+  }
+  return chips;
+}
+
+/** The lesson's value («برّ الوالدين» / «Kindness to parents»). */
+function valueOf(lessonId: string, lang: UiLanguage): string {
+  const ar = lessonValue(lessonId);
+  if (lang === 'ar') return ar;
+  return (MESSAGES[lang].child.lessonValues as Record<string, string>)[lessonId] ?? ar;
+}
 
 /** design/v3 StudentHome (+ StudentHomeDay2 when today's lesson starts with the project report). */
 export default function ChildHome() {
   const { child, progress, board } = useChildData();
+  const { lang, m } = useI18n();
+  const t = m.child.home;
+  useChildTitle(m.child.meta.home);
   // Before «ابدأ الحصة»: wake the AI server and its voice (Render cold start ~50 s),
   // and load the teacher's frames — so the call opens with the real teacher.
   useEffect(warmAgent, []);
@@ -60,33 +87,29 @@ export default function ChildHome() {
   const started = today.kind === 'available' && done > 0;
   const finished = today.kind !== 'available';
   const planDone = today.kind === 'planDone';
-  const dayLabel = `اليوم ${toArabicDigits(today.day)} من ${toArabicDigits(PILOT_DAYS.length)}`;
+  const dayLabel = fill(lang, t.dayOf, { day: today.day, total: PILOT_DAYS.length });
+  const pilotName = pilotCopy(lang).name;
   const reportFirst = script?.steps[0]?.type === 'project_report';
-  const reviewDay = nextReviewDay(child.schedule)?.label;
-  const reviewLine = reviewItems(child, progress)
+  const nextReview = nextReviewDay(child.schedule);
+  const reviewDay = nextReview ? m.child.days[nextReview.day] : undefined;
+  const reviewLine = reviewItems(child, progress, lang)
     .map((i) => i.label)
     .join(' · ');
 
   const badge = planDone
-    ? 'أتممت الباقة ✓'
+    ? t.badge.planDone
     : finished
-      ? 'أكملت حصة اليوم'
+      ? t.badge.finished
       : started
-        ? 'بدأتها اليوم'
+        ? t.badge.started
         : reportFirst
-          ? 'اليوم الثاني'
-          : 'جديدة';
+          ? t.badge.dayTwo
+          : t.badge.new;
   const progressText =
     finished || started
-      ? `أنجزت ${toArabicDigits(done)} من ${toArabicDigits(groups.length)} خطوات`
-      : `${toArabicDigits(groups.length)} خطوات في انتظارك${reportFirst ? ' — تبدأ بتقريرك' : ''}`;
-  const cta = planDone
-    ? 'ما شاء الله!'
-    : finished
-      ? 'إلى اللقاء غدًا'
-      : started
-        ? 'أكمل الحصة'
-        : 'ابدأ الحصة';
+      ? fill(lang, t.progressDone, { done, total: groups.length })
+      : `${fill(lang, t.progressTodo, { n: groups.length })}${reportFirst ? t.reportFirst : ''}`;
+  const cta = planDone ? t.cta.planDone : finished ? t.cta.finished : started ? t.cta.started : t.cta.start;
   const pct = groups.length ? Math.round((done / groups.length) * 100) : 0;
   const report = script?.steps[0]?.type === 'project_report' ? script.steps[0] : null;
 
@@ -97,7 +120,9 @@ export default function ChildHome() {
           <ChildAvatar id={child.avatarId} size={62} />
         </span>
         <div className="flex min-w-0 grow flex-col gap-[7px]">
-          <h1 className="m-0 font-heading text-[25px] leading-[1.4] font-bold">مرحبًا {firstName}</h1>
+          <h1 className="m-0 font-heading text-[25px] leading-[1.4] font-bold">
+            {t.hello.replace('{name}', firstName)}
+          </h1>
           <div className="flex flex-wrap gap-[7px]">
             <span className="flex items-center gap-[6px] rounded-pill bg-green-tint px-[11px] py-[6px] text-[12px] font-extrabold text-deep-green">
               <svg width="15" height="15" viewBox="0 0 76 76" fill="none" aria-hidden="true">
@@ -105,23 +130,26 @@ export default function ChildHome() {
                 <path d="M38 42 C28 42 22 36 22 27 C32 27 38 33 38 42 Z" fill={C.primary} />
                 <path d="M38 47 C48 47 54 41 54 32 C44 32 38 38 38 47 Z" fill={C.softGreen} />
               </svg>
-              مرحلتك: {STAGE_LABEL[h.stage]}
+              {fill(lang, m.child.stageOf, { stage: m.child.stages[h.stage] })}
             </span>
             {h.streak > 0 && (
               <span className="flex items-center gap-[5px] rounded-pill bg-gold-tint px-[11px] py-[6px] text-[12px] font-extrabold text-warning-text">
                 <Flame />
-                {daysPhrase(h.streak)} متتالية
+                {countPhrase(lang, h.streak, m.child.streak)}
               </span>
             )}
           </div>
         </div>
-        <Link
-          to={paths.child.profile}
-          aria-label="ملفّي"
-          className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-px-15 border border-border bg-surface no-underline"
-        >
-          <PersonGlyph color="textDark" size={21} strokeWidth={1.9} />
-        </Link>
+        <div className="flex shrink-0 items-center gap-[8px]">
+          <LanguageSheetButton />
+          <Link
+            to={paths.child.profile}
+            aria-label={m.child.nav.profile}
+            className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-px-15 border border-border bg-surface no-underline"
+          >
+            <PersonGlyph color="textDark" size={21} strokeWidth={1.9} />
+          </Link>
+        </div>
       </header>
 
       <Leaderboard board={board} myFirstName={firstName} avatarId={child.avatarId} />
@@ -132,10 +160,10 @@ export default function ChildHome() {
       >
         <div
           aria-hidden="true"
-          className="absolute -top-[46px] -left-[36px] h-[160px] w-[160px] rounded-full bg-hero-circle"
+          className="absolute -end-[36px] -top-[46px] h-[160px] w-[160px] rounded-full bg-hero-circle"
         />
         <span
-          className="absolute -bottom-[12px] left-[4px] animate-[gh-float-3_3.4s_ease-in-out_infinite]"
+          className="absolute end-[4px] -bottom-[12px] animate-[gh-float-3_3.4s_ease-in-out_infinite]"
           aria-hidden="true"
         >
           <svg width="112" height="112" viewBox="0 0 100 100" fill="none" opacity="0.5">
@@ -150,11 +178,11 @@ export default function ChildHome() {
               id="today-title"
               className="m-0 font-heading text-[24px] leading-[1.4] font-bold text-surface"
             >
-              {planDone ? PILOT_NAME : 'حصة اليوم'}
+              {planDone ? pilotName : t.todayTitle}
             </h2>
             {!planDone && (
               <span className="text-[13px] font-bold text-on-deep-green-muted">
-                {PILOT_NAME} · {dayLabel}
+                {pilotName} · {dayLabel}
               </span>
             )}
           </span>
@@ -165,20 +193,19 @@ export default function ChildHome() {
         {planDone && (
           // TODO(design): no designed plan-complete hero.
           <p role="status" className="relative m-0 text-[16px] leading-[1.8] font-bold text-surface">
-            أتممت الأيام الثلاثة — حفظت {toArabicDigits(PILOT_DAYS.length)} سور وتعلّمت{' '}
-            {toArabicDigits(PILOT_DAYS.length)} أحاديث. بارك الله فيك!
+            {fill(lang, t.planDoneText, { n: PILOT_DAYS.length })}
           </p>
         )}
         {report && !finished && (
           <p className="relative m-0 text-[16px] leading-[1.8] font-bold text-surface">
-            نبدأ بتقرير مشروعك: {lessonValue(today.lessonId)}
+            {fill(lang, t.reportIntro, { value: valueOf(today.lessonId, lang) })}
           </p>
         )}
         <div className="relative flex flex-wrap gap-[8px]">
           {(planDone
-            ? PILOT_DAYS.map((d) => ({ label: `سورة ${d.surahName}`, kind: 'surah' as const }))
+            ? PILOT_DAYS.map((d) => ({ label: surahLabel(lang, d.surah), kind: 'surah' as const }))
             : script
-              ? lessonChips(script)
+              ? chipsOf(script, lang)
               : []
           ).map((c) => (
             <span
@@ -198,7 +225,7 @@ export default function ChildHome() {
         <div className="relative flex flex-col gap-[7px]">
           <div className="flex items-baseline justify-between">
             <span className="text-[12.5px] font-bold text-on-deep-green-muted">{progressText}</span>
-            <span className="text-[12.5px] text-on-deep-green-muted">نحو ١٥ دقيقة</span>
+            <span className="text-[12.5px] text-on-deep-green-muted">{t.duration}</span>
           </div>
           <div
             className="h-[10px] overflow-hidden rounded-px-6 bg-hero-track"
@@ -206,7 +233,7 @@ export default function ChildHome() {
             aria-valuenow={pct}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label="تقدّم حصة اليوم"
+            aria-label={t.progressLabel}
           >
             <div className="h-full rounded-px-6 bg-gold" style={{ width: `${pct}%` }} />
           </div>
@@ -227,7 +254,7 @@ export default function ChildHome() {
             className="relative flex h-[68px] animate-[gh-breathe_2.8s_ease-in-out_infinite] items-center justify-center gap-[10px] rounded-px-22 bg-gold font-heading text-[22px] font-bold text-on-gold no-underline hover:text-on-gold"
           >
             {cta}
-            <ForwardIcon size={24} color="onGold" strokeWidth={2.8} />
+            <ForwardIcon size={24} color="onGold" strokeWidth={2.8} className="ltr:-scale-x-100" />
           </Link>
         )}
       </section>
@@ -244,11 +271,11 @@ export default function ChildHome() {
         </span>
         <span className="flex min-w-0 grow flex-col gap-[4px]">
           <span className="text-[15.5px] font-extrabold">
-            {reviewDay ? `مراجعة هذا الأسبوع — ${reviewDay}` : 'مراجعة هذا الأسبوع'}
+            {reviewDay ? fill(lang, m.child.weekReviewOn, { day: reviewDay }) : m.child.weekReview}
           </span>
           {reviewLine && <span className="text-[12.5px] text-warning-text">{reviewLine}</span>}
         </span>
-        <ForwardIcon size={20} color="ayahBracket" strokeWidth={2.3} />
+        <ForwardIcon size={20} color="ayahBracket" strokeWidth={2.3} className="ltr:-scale-x-100" />
       </Link>
 
       <section
@@ -256,27 +283,32 @@ export default function ChildHome() {
         className="flex shrink-0 animate-[gh-rise_.5s_ease-out_.45s_both] flex-col gap-[11px]"
       >
         <h2 id="browse-title" className="m-0 font-heading text-[17px] leading-[1.5] font-bold">
-          تصفّح ومراجعة
+          {t.browse}
         </h2>
         <div className="grid grid-cols-3 gap-[10px]">
-          <Shortcut to={paths.child.review('quran')} tint="bg-green-tint" icon={<QuranIcon />} title="القرآن">
-            {plural(h.surahs, { one: 'سورة واحدة', two: 'سورتان', few: 'سور', many: 'سورة' })}
+          <Shortcut
+            to={paths.child.review('quran')}
+            tint="bg-green-tint"
+            icon={<QuranIcon />}
+            title={t.quran}
+          >
+            {countPhrase(lang, h.surahs, m.child.count.surahs)}
           </Shortcut>
           <Shortcut
             to={paths.child.review('hadith')}
             tint="bg-berry-tint"
             icon={<HadithIcon />}
-            title="الأحاديث"
+            title={t.hadith}
           >
-            {plural(h.hadith, { one: 'حديث واحد', two: 'حديثان', few: 'أحاديث', many: 'حديثًا' })}
+            {countPhrase(lang, h.hadith, m.child.count.hadith)}
           </Shortcut>
           <Shortcut
             to={paths.child.review('projects')}
             tint="bg-gold-tint"
             icon={<ProjectIcon />}
-            title="المشاريع"
+            title={t.projects}
           >
-            {`${toArabicDigits(h.projects)} منجزة`}
+            {fill(lang, t.projectsDone, { n: h.projects })}
           </Shortcut>
           <div className="col-span-3 flex items-center gap-[12px] rounded-px-22 border-[1.5px] border-dashed border-border-strong px-[16px] py-[14px]">
             <span
@@ -294,13 +326,11 @@ export default function ChildHome() {
               </svg>
             </span>
             <span className="flex grow flex-col gap-[3px]">
-              <span className="text-[14.5px] font-extrabold text-text-subtle">بعد الباقة التجريبية</span>
-              <span className="text-[12px] text-text-subtle">
-                ٣ سور و٣ أحاديث متاحة الآن — والبقية تُفتح في التحديث القادم
-              </span>
+              <span className="text-[14.5px] font-extrabold text-text-subtle">{m.child.lockedTitle}</span>
+              <span className="text-[12px] text-text-subtle">{t.lockedBody}</span>
             </span>
             <span className="rounded-pill bg-border-soft px-[11px] py-[6px] text-[11.5px] font-extrabold whitespace-nowrap text-text-muted">
-              قريبًا
+              {m.child.soon}
             </span>
           </div>
         </div>

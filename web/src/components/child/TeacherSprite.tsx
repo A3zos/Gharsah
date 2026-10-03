@@ -8,17 +8,12 @@
 // Any frame that fails to load → `fallback` (the old SVG teacher).
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
+import { useI18n } from '../../i18n/i18n';
 import type { MouthFrame } from '../../lesson/mouth';
 import type { Subscribe } from '../../lesson/observable';
 import { cx } from '../../lib/cx';
 
-import {
-  FRAMES,
-  TEACHER_NAME,
-  teacherFrameSrc,
-  type TeacherFrame,
-  type TeacherGender,
-} from './teacherCharacter';
+import { FRAMES, teacherFrameSrc, type TeacherFrame, type TeacherGender } from './teacherCharacter';
 
 export type { TeacherGender };
 type Frame = TeacherFrame;
@@ -62,6 +57,7 @@ export function TeacherSprite({
   /** Shown when a frame can't load (the SVG teacher). */
   fallback: React.ReactNode;
 }) {
+  const { m } = useI18n();
   const [failed, setFailed] = useState(false);
   // Frames that have loaded, and frames already retried once (a second failure → SVG).
   const [loaded, setLoaded] = useState<ReadonlySet<Frame>>(() => new Set());
@@ -127,7 +123,7 @@ export function TeacherSprite({
     <button
       type="button"
       onClick={onTap}
-      aria-label={TEACHER_NAME[gender]}
+      aria-label={m.lesson.teacher[gender].name}
       className="relative flex h-full w-full cursor-pointer items-end justify-center border-0 bg-transparent p-0"
     >
       {/* soft glow behind the character while it talks or listens */}

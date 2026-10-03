@@ -68,7 +68,7 @@ export function SurahBanner({
 export function Basmala({ surahName, className }: { surahName: string; className?: string }) {
   if (!showsBasmala(surahName)) return null;
   return (
-    <p dir="rtl" className={cx('m-0 text-center font-ayah leading-[2] text-text-dark', className)}>
+    <p dir="rtl" lang="ar" className={cx('m-0 text-center font-ayah leading-[2] text-text-dark', className)}>
       {BASMALA}
     </p>
   );
@@ -130,6 +130,7 @@ export function MushafSurahCard({
   reciting,
   playbackBlocked,
   label,
+  bannerLabel,
   onTap,
   onPlay,
   playFallback,
@@ -140,6 +141,8 @@ export function MushafSurahCard({
   reciting: boolean;
   playbackBlocked: boolean;
   label: string;
+  /** The banner's text in the UI language («Surah Al-Ikhlas»); default «سورة {name}». */
+  bannerLabel?: string;
   onTap: () => void;
   onPlay: () => void;
   /** The small «play» shown when autoplay was refused. */
@@ -187,9 +190,14 @@ export function MushafSurahCard({
           reciting ? 'border-[1.5px] border-primary' : 'border border-primary/40',
         )}
       >
-        <SurahBanner name={surahName} />
+        <SurahBanner name={surahName} label={bannerLabel} />
         <Basmala surahName={surahName} className="text-[length:calc(var(--ayah-px)*0.85)]" />
-        <div dir="rtl" className="font-ayah text-[length:var(--ayah-px)] leading-[2.1] [word-spacing:0.08em]">
+        {/* The verified ayat: Arabic, right-to-left, in every UI language. */}
+        <div
+          dir="rtl"
+          lang="ar"
+          className="font-ayah text-[length:var(--ayah-px)] leading-[2.1] [word-spacing:0.08em]"
+        >
           {short ? (
             // ONE AYAH PER LINE, centered; an ayah never breaks (unless it can't fit even at 22 px)
             ayat.map((a) => {

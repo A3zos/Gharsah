@@ -1,3 +1,4 @@
+import { formatNumber, useI18n } from '../../i18n/i18n';
 import { C } from '../ui/color';
 import { SproutMark } from '../ui/icons';
 import { buttonClass } from '../ui/Button';
@@ -11,13 +12,17 @@ export function SSessionEnd({
   kind = 'ended',
   onPrimary,
   onHome,
-  errorCode = 'GH-٥٠٣',
+  errorCode,
 }: {
   kind?: 'ended' | 'error';
   onPrimary: () => void;
   onHome: () => void;
+  /** Default «GH-٥٠٣» (Latin digits in English / Indonesian). */
   errorCode?: string;
 }) {
+  const { lang, m } = useI18n();
+  const t = m.child.session;
+  const code = errorCode ?? `GH-${formatNumber(lang, 503)}`;
   const ended = kind === 'ended';
   return (
     <MobilePage
@@ -55,16 +60,14 @@ export function SSessionEnd({
             )}
           </span>
           <h1 className="m-0 text-center font-heading text-[28px] leading-[1.5] font-bold text-text-dark">
-            {ended ? 'انتهت الجلسة' : 'حدث خطأ غير متوقّع'}
+            {ended ? t.endedTitle : t.errorTitle}
           </h1>
           <p className="m-0 max-w-[300px] text-center text-[15.5px] leading-[1.95] text-text-muted">
-            {ended
-              ? 'سجّلنا خروجك للحفاظ على حسابك. ادخل مرة أخرى وتكمل من حيث وقفت.'
-              : 'لم نستطع إتمام العملية. حاول مرة أخرى — وإن تكرّر الأمر أرسل لنا رمز المشكلة.'}
+            {ended ? t.endedBody : t.errorBody}
           </p>
           {!ended && (
             <span className="rounded-pill bg-border-soft px-[16px] py-[8px] text-[12.5px] font-bold text-text-muted">
-              رمز المشكلة: {errorCode}
+              {t.errorCode.replace('{code}', code)}
             </span>
           )}
         </div>
@@ -78,7 +81,7 @@ export function SSessionEnd({
               'h-[64px] gap-[10px] rounded-px-22 border-0 font-heading text-[20px] font-bold shadow-lesson-home-button',
             )}
           >
-            {ended ? 'سجّل الدخول مرة أخرى' : 'أعد المحاولة'}
+            {ended ? t.signInAgain : t.retry}
           </button>
           <button
             type="button"
@@ -89,7 +92,7 @@ export function SSessionEnd({
               'h-[56px] gap-[9px] rounded-px-20 text-[15px] font-bold',
             )}
           >
-            العودة للبداية
+            {t.home}
           </button>
         </div>
       </div>

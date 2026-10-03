@@ -1,11 +1,11 @@
 // بذرة ← غَرْسة ← شجرة (seed on the right in RTL — drawn LTR like the frames).
 // Passed stages: green tint; the current stage: gold ring; later stages: grey.
 import type { Stage } from '../../data/stats';
+import { fill, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { C } from '../ui/color';
 
 const ORDER: Stage[] = ['seed', 'sprout', 'tree'];
-const LABEL: Record<Stage, string> = { seed: 'بذرة', sprout: 'غَرْسة', tree: 'شجرة' };
 
 function Art({ stage, on, size }: { stage: Stage; on: boolean; size: number }) {
   const stem = on ? C.deepGreen : C.textSubtle;
@@ -45,13 +45,15 @@ function Art({ stage, on, size }: { stage: Stage; on: boolean; size: number }) {
  * 52px circles, or the web dashboard's 74px (ParentWebDash).
  */
 export function GrowthPath({ stage, pct, size = 52 }: { stage: Stage; pct: number; size?: 52 | 74 }) {
+  const { lang, m } = useI18n();
+  const LABEL = m.child.stages;
   const at = ORDER.indexOf(stage);
   const big = size === 74;
   return (
     <>
       <ol
         className={cx('m-0 flex list-none items-start p-0 [direction:ltr]', big ? 'gap-[10px]' : 'gap-[6px]')}
-        aria-label={`مرحلتك: ${LABEL[stage]}`}
+        aria-label={fill(lang, m.child.stageOf, { stage: LABEL[stage] })}
       >
         {ORDER.map((s, i) => {
           const current = i === at;
@@ -94,7 +96,7 @@ export function GrowthPath({ stage, pct, size = 52 }: { stage: Stage; pct: numbe
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label="من الباقة التجريبية"
+        aria-label={m.child.growth.planLabel}
       >
         <span
           className={cx('block rounded-px-5 bg-primary', big ? 'h-[10px]' : 'h-[9px]')}

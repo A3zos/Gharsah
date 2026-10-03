@@ -3,8 +3,9 @@
 // full-screen «سماح» prompt when the mic (or the sound) needs the child's tap.
 import { useEffect, useState } from 'react';
 
+import { fill, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
-import { TEACHER_NAME, type TeacherGender } from '../child/teacherCharacter';
+import { type TeacherGender } from '../child/teacherCharacter';
 import { C } from '../ui/color';
 import { MicIndicator, type LevelSource } from './LessonView';
 
@@ -22,6 +23,7 @@ export function VoiceMic({
   /** For screen readers only. */
   label: string;
 }) {
+  const { m } = useI18n();
   const [flashFor, setFlashFor] = useState(heardKey);
   const flashing = heardKey !== 0 && flashFor !== heardKey;
   useEffect(() => {
@@ -31,7 +33,7 @@ export function VoiceMic({
   }, [heardKey, flashing]);
   return (
     <div className="relative flex shrink-0 justify-center">
-      <MicIndicator live={live} level={level} label={flashing ? 'سمعتك' : label} hideLabel />
+      <MicIndicator live={live} level={level} label={flashing ? m.lesson.heard : label} hideLabel />
       {flashing && (
         <span
           aria-hidden="true"
@@ -65,7 +67,9 @@ export function AllowPrompt({
   gender: TeacherGender;
   onAllow: () => void;
 }) {
-  const teacher = TEACHER_NAME[gender];
+  const { lang, m } = useI18n();
+  const t = m.lesson.teacher[gender];
+  const teacher = t.name;
   return (
     <div
       role="dialog"
@@ -102,17 +106,11 @@ export function AllowPrompt({
         </span>
         <h2 id="allow-title" className="m-0 font-heading text-[26px] leading-[1.4] font-bold">
           {reason === 'mic'
-            ? `${teacher} ${gender === 'girl' ? 'تريد' : 'يريد'} أن ${gender === 'girl' ? 'تسمعكِ' : 'يسمعك'}`
-            : `لنسمع ${teacher}`}
+            ? fill(lang, t.allowMicTitle, { teacher })
+            : fill(lang, m.lesson.allow.soundTitle, { teacher })}
         </h2>
         <p className="m-0 text-[17px] leading-[1.8] font-bold text-text-muted">
-          {reason === 'mic'
-            ? gender === 'girl'
-              ? 'اضغطي «سماح» ثم وافقي على استخدام الميكروفون، لتجيبي بصوتكِ.'
-              : 'اضغط «سماح» ثم وافق على استخدام الميكروفون، لتجيب بصوتك.'
-            : gender === 'girl'
-              ? 'اضغطي «سماح» ليبدأ الصوت.'
-              : 'اضغط «سماح» ليبدأ الصوت.'}
+          {reason === 'mic' ? t.allowMicBody : t.allowSoundBody}
         </p>
         <button
           type="button"
@@ -122,7 +120,7 @@ export function AllowPrompt({
             'flex h-[64px] w-full max-w-[320px] cursor-pointer items-center justify-center rounded-px-22 border-0 bg-deep-green font-heading text-[22px] font-bold text-surface shadow-lesson-home-button',
           )}
         >
-          سماح
+          {m.lesson.allow.button}
         </button>
       </div>
     </div>

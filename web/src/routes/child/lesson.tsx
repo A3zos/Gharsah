@@ -3,6 +3,7 @@ import { Navigate, useBlocker, useNavigate, useParams, useSearchParams } from 'r
 
 import { paths } from '../../app/paths';
 import { useChildData } from '../../components/child/ChildData';
+import { useChildTitle } from '../../components/child/useChildTitle';
 import {
   LessonView,
   ReadyingCall,
@@ -24,7 +25,8 @@ import { agentBaseUrl, SPEAK_WARM_TIMEOUT_MS } from '../../lesson/server/api';
 import { preloadTeacher } from '../../components/child/teacherCharacter';
 import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
 import { createWebLesson, type WebLesson } from '../../lesson/web/createLesson';
-import { toArabicDigits } from '../../lib/arabicDigits';
+import { fill, useI18n, type Messages, type UiLanguage } from '../../i18n/i18n';
+import { hadithCopyIn, surahNameIn } from '../../lesson/teacherLines';
 import { DESKTOP, useMedia } from '../../lib/useMedia';
 import { ServerLessonCall } from '../../components/lesson/ServerLessonCall';
 import type { Route } from './+types/lesson';
@@ -49,39 +51,45 @@ function planOf(script: LessonScript): LessonPlanInfo {
 }
 
 /** The child's totals for L6/L10 — the streak's last scheduled days, ending «اليوم». */
-function glanceOf(c: ChildProfile | null | undefined, now = new Date()): ChildGlance {
+function glanceOf(
+  c: ChildProfile | null | undefined,
+  words: { today: string; weekdays: Record<WeekDay, string> },
+  now = new Date(),
+): ChildGlance {
   const stats = (c?.stats ?? {}) as Record<string, unknown>;
   const num = (v: unknown) => (typeof v === 'number' ? v : 0);
   const streak = num(stats.streak);
   const days = new Set<WeekDay>(c?.schedule?.days ?? []);
-  const labels = ['اليوم'];
+  const labels = [words.today];
   const d = new Date(now);
   const want = Math.min(Math.max(streak, 1), 5);
   for (let i = 0; i < 14 && labels.length < want; i++) {
     d.setDate(d.getDate() - 1);
     const w = WEEK_DAYS[(d.getDay() + 1) % 7]!; // JS Sun=0 → index 1 (sat=0)
-    if (days.has(w.id)) labels.unshift(w.short);
+    if (days.has(w.id)) labels.unshift(words.weekdays[w.id]);
   }
   return { surahsTotal: num(stats.surahs), streak, streakDays: labels };
 }
 
 /** ExitConfirm «مكانك المحفوظ». */
-function placeOf(s: LessonState): string {
+function placeOf(s: LessonState, lang: UiLanguage, m: Messages): string {
+  const p = m.lesson.place;
+  const name = surahNameIn(lang, s.surahName ?? '');
   switch (s.screen) {
     case 'ayah':
-      return `سورة ${s.surahName ?? ''} — الآية ${toArabicDigits(s.ayahRef?.ayah ?? 1)} من ${toArabicDigits(s.surahAyahCount ?? 0)}`;
+      return fill(lang, p.ayah, { name, n: s.ayahRef?.ayah ?? 1, total: s.surahAyahCount ?? 0 });
     case 'surahDone':
-      return `أتممت سورة ${s.surahName ?? ''}`;
+      return fill(lang, p.surahDone, { name });
     case 'hadith':
-      return s.hadith?.title ?? 'حديث اليوم';
+      return s.hadith ? hadithCopyIn(lang, s.hadith).title : p.hadith;
     case 'projectAssign':
-      return 'مشروع الأسبوع';
+      return p.project;
     case 'projectReport':
-      return 'تقرير مشروع الأمس';
+      return p.report;
     case 'lessonEnd':
-      return 'نهاية الحصة';
+      return p.end;
     default:
-      return s.surahName ? `بداية الحصة — سورة ${s.surahName}` : 'بداية الحصة';
+      return s.surahName ? fill(lang, p.startSurah, { name }) : p.start;
   }
 }
 
@@ -97,6 +105,8 @@ export default function LessonRoute() {
   // DEV only: ?resetLesson=1 ignores today's saved part progress (start from the surah).
   const [params] = useSearchParams();
   const resetLesson = import.meta.env.DEV && params.get('resetLesson') === '1';
+  // the tab title in the chosen language (the route meta keeps the Arabic one)
+  useChildTitle(useI18n().m.lesson.meta);
   // Decided once on entry: the call keeps running when its own checkpoints
   // later mark the lesson completed (L10 must still show).
   const [entry, setEntry] = useState<{ lessonId: string; resume: LessonProgress | null } | 'denied' | null>(
@@ -165,7 +175,8 @@ export default function LessonRoute() {
 }
 
 function Busy() {
-  return <main className="min-h-dvh bg-background" aria-busy="true" aria-label="جارٍ تجهيز الحصة" />;
+  const { m } = useI18n();
+  return <main className="min-h-dvh bg-background" aria-busy="true" aria-label={m.lesson.busy} />;
 }
 
 function LessonCall({
@@ -179,6 +190,9 @@ function LessonCall({
   session: ReturnType<typeof useChildData>['session'];
   resume: LessonProgress | null;
 }) {
+  const { lang, m } = useI18n();
+  // The teacher's language is read once per call (switching mid-call never restarts it).
+  const langRef = useRef(lang);
   const navigate = useNavigate();
   const desktop = useMedia(DESKTOP);
   const [attempt, setAttempt] = useState(0);
@@ -199,6 +213,7 @@ function LessonCall({
       progressFrom: resumeRef.current ?? undefined,
       // DEV-only preview: progress stays in memory, the report is never uploaded.
       sink: import.meta.env.DEV && session.childId === 'preview' ? new PreviewProgressSink() : undefined,
+      lang: langRef.current,
     });
     setLesson(l);
     // «المعلم يتجهز…» first: the server voice (≤ ~45 s) and the character's frames —
@@ -280,7 +295,7 @@ function LessonCall({
   );
 
   const plan = useMemo(() => planOf(script), [script]);
-  const glance = glanceOf(child);
+  const glance = glanceOf(child, { today: m.lesson.end.today, weekdays: m.lesson.weekdays });
 
   if (agent && readying) return <ReadyingCall gender={gender} desktop={desktop} onExit={goHome} />;
   if (!agent || state.screen === 'loading' || state.screen === 'ended') return <Busy />;
@@ -310,8 +325,8 @@ function LessonCall({
       />
       <ConfirmSheet
         open={sheetOpen}
-        title="تخرج من الحصة؟"
-        body="نحفظ مكانك وتكمل بعدين من نفس النقطة."
+        title={m.lesson.exit.title}
+        body={m.lesson.exit.body}
         icon={
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
             <path
@@ -327,9 +342,9 @@ function LessonCall({
             />
           </svg>
         }
-        confirmLabel="أكمل الحصة"
-        cancelLabel="خروج"
-        footnote="لن تفقد أي تكرار أنجزته."
+        confirmLabel={m.lesson.exit.confirm}
+        cancelLabel={m.lesson.exit.cancel}
+        footnote={m.lesson.exit.footnote}
         onConfirm={() => {
           closeSheet();
           agent.resume();
@@ -360,11 +375,11 @@ function LessonCall({
             </svg>
           </span>
           <span className="flex min-w-0 grow flex-col gap-[4px]">
-            <span className="text-[12.5px] font-bold text-text-muted">مكانك المحفوظ</span>
-            <span className="text-[15px] font-extrabold">{placeOf(state)}</span>
+            <span className="text-[12.5px] font-bold text-text-muted">{m.lesson.exit.placeLabel}</span>
+            <span className="text-[15px] font-extrabold">{placeOf(state, lang, m)}</span>
           </span>
           <span className="rounded-pill bg-green-tint px-[11px] py-[6px] text-[11.5px] font-extrabold whitespace-nowrap text-deep-green">
-            محفوظ ✓
+            {m.lesson.exit.saved}
           </span>
         </div>
       </ConfirmSheet>
@@ -374,25 +389,26 @@ function LessonCall({
 
 /** TODO(design): Tier 3 SOffline — the lesson audio couldn't be prepared. Retry + back to the child home. */
 function Failed({ onRetry, onHome }: { onRetry: () => void; onHome: () => void }) {
+  const { m } = useI18n();
   return (
     <main className="flex min-h-dvh justify-center bg-background px-[20px] py-[40px]">
       <div className="flex w-full max-w-[520px] flex-col justify-center gap-[16px]">
         <Note tone="gold" className="text-[14px] leading-[1.8] font-bold">
-          <span role="alert">لا يوجد اتصال لتحميل الحصة — اتصل بالإنترنت ثم حاول مجددًا.</span>
+          <span role="alert">{m.lesson.failed.text}</span>
         </Note>
         <button
           type="button"
           onClick={onRetry}
           className="flex h-[60px] cursor-pointer items-center justify-center rounded-px-20 border-0 bg-deep-green font-heading text-[19px] font-bold text-surface"
         >
-          حاول مجددًا
+          {m.lesson.failed.retry}
         </button>
         <button
           type="button"
           onClick={onHome}
           className="flex h-[54px] cursor-pointer items-center justify-center rounded-px-20 border-[1.5px] border-input-border bg-surface text-[15.5px] font-extrabold text-text-muted"
         >
-          عودة للرئيسية
+          {m.lesson.failed.home}
         </button>
       </div>
     </main>

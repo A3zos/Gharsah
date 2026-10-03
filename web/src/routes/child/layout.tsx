@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Outlet } from 'react-router';
 
 import { ChildDataProvider } from '../../components/child/ChildData';
+import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Route } from './+types/layout';
 
 /** Guard: this browser is a child device linked by the server, else → child code tab. */
@@ -23,8 +24,11 @@ export default function ChildLayout({ loaderData }: Route.ComponentProps) {
   const { deviceUid, parentUid, childId } = loaderData;
   const session = useMemo(() => ({ deviceUid, parentUid, childId }), [deviceUid, parentUid, childId]);
   return (
-    <ChildDataProvider session={session}>
-      <Outlet />
-    </ChildDataProvider>
+    // The child area follows the chosen language (the live lesson inside it too).
+    <I18nProvider>
+      <ChildDataProvider session={session}>
+        <Outlet />
+      </ChildDataProvider>
+    </I18nProvider>
   );
 }

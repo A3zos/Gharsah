@@ -1,7 +1,11 @@
 // The teacher character's data (shared by TeacherSprite and the lesson screens).
 export type TeacherGender = 'boy' | 'girl';
 
-/** The teacher's name follows the child's gender. */
+/**
+ * The teacher's name follows the child's gender. Arabic reference copy — the screens
+ * read the name and the status lines in the UI language from i18n lesson.json
+ * (`m.lesson.teacher[gender]`: المعلم عبدالله / Teacher Abdullah / Ustaz Abdullah).
+ */
 export const TEACHER_NAME: Record<TeacherGender, string> = { boy: 'المعلم عبدالله', girl: 'المعلمة سارة' };
 
 export const FRAMES = [

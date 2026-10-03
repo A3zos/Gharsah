@@ -5,6 +5,8 @@
 //   (serverVoice.ts); otherwise — or whenever the server fails or is slow — the
 //   browser's Arabic speech synthesis reading the approved line bank (no Arabic
 //   voice → silent, paced by the caption length, and `voiceMissing` turns true).
+//   English / Indonesian UI: the same, in that language (server audio only when
+//   ai-speak confirms the language — serverVoice.ts; browser voice of that language).
 // * Listening: on-device presence detection on the shared mic. Presence only —
 //   no grading; nothing is stored or uploaded.
 // * Short answers: any detected speech in answer mode counts as «yes» (INTERIM,
@@ -19,7 +21,7 @@ import {
 import { Emitter } from '../observable';
 import { REPEAT_MIN_SPEECH_MS } from '../voice/recitationVerifier';
 import { PresenceDetector } from '../presenceDetector';
-import type { TeacherLine } from '../teacherLines';
+import { lineLanguage, type LineLang, type TeacherLine } from '../teacherLines';
 import type { LessonMicrophone } from './microphone';
 import type { LipSync } from './lipSync';
 import type { ServerVoice } from './serverVoice';
@@ -49,7 +51,7 @@ export class SpeechTeacher implements AiTeacher {
   private speaking = false;
   private finishSpeech: (() => void) | null = null;
   private volume = 1;
-  private voice: Promise<SpeechSynthesisVoice | null> | null = null;
+  private readonly voices = new Map<LineLang, Promise<SpeechSynthesisVoice | null>>();
   private lastLineEnd = 0;
   private detector: PresenceDetector | null = null;
   private speakToken: object | null = null;
@@ -62,6 +64,11 @@ export class SpeechTeacher implements AiTeacher {
     private readonly server: ServerVoice | null = null,
     /** The character's mouth follows the voice (optional). */
     private readonly lip: LipSync | null = null,
+    /**
+     * The UI language: each line is voiced in it (server or browser voice of that
+     * language) — or in Arabic when that line can't be translated (teacherLines.ts).
+     */
+    private readonly lang: LineLang = 'ar',
   ) {}
 
   get isVoiceMissing(): boolean {
@@ -80,7 +87,9 @@ export class SpeechTeacher implements AiTeacher {
     this.speaking = true; // deaf from now — also while the server voice loads
     const mine = {};
     this.speakToken = mine;
-    const blob = this.server ? await this.server.audioFor(line) : null;
+    // the language this line is said in (the text was resolved the same way by the agent's bank)
+    const spoken = lineLanguage(this.lang, line);
+    const blob = this.server ? await this.server.audioFor(line, spoken) : null;
     if (this.speakToken !== mine) return; // stopped or replaced meanwhile
     if (blob && (await this.playServer(blob, text, mine))) {
       this.setMissing(false);
@@ -88,7 +97,7 @@ export class SpeechTeacher implements AiTeacher {
       return;
     }
     if (this.speakToken !== mine) return;
-    const voice = await this.arabicVoice();
+    const voice = await this.browserVoice(spoken);
     if (this.speakToken !== mine) return;
     this.setMissing(!this.synth || !voice);
     this.speaking = true;
@@ -232,16 +241,14 @@ export class SpeechTeacher implements AiTeacher {
     this._voiceMissing.clear();
   }
 
-  /** ar-SA first, then any Arabic voice; null if the browser has none. */
-  private arabicVoice(): Promise<SpeechSynthesisVoice | null> {
+  /** ar-SA / en-US / id-ID first, then any voice of that language; null if the browser has none. */
+  private browserVoice(lang: LineLang): Promise<SpeechSynthesisVoice | null> {
     const synth = this.synth;
     if (!synth) return Promise.resolve(null);
-    this.voice ??= new Promise((resolve) => {
-      const pick = () => {
-        const voices = synth.getVoices();
-        const ar = voices.filter((v) => v.lang.toLowerCase().startsWith('ar'));
-        return ar.find((v) => v.lang.toLowerCase() === 'ar-sa') ?? ar[0] ?? null;
-      };
+    const known = this.voices.get(lang);
+    if (known) return known;
+    const p = new Promise<SpeechSynthesisVoice | null>((resolve) => {
+      const pick = () => pickVoiceFor(synth.getVoices(), lang);
       if (synth.getVoices().length) return resolve(pick());
       const timer = setTimeout(() => resolve(pick()), VOICES_WAIT_MS);
       synth.addEventListener(
@@ -253,6 +260,22 @@ export class SpeechTeacher implements AiTeacher {
         { once: true },
       );
     });
-    return this.voice;
+    this.voices.set(lang, p);
+    return p;
   }
+}
+
+const PREFERRED_VOICE: Record<LineLang, string> = { ar: 'ar-sa', en: 'en-us', id: 'id-id' };
+
+/**
+ * The browser voice for a language: ar-SA / en-US / id-ID first, then any voice of
+ * that language (Android may still name Indonesian «in-ID»); null if there is none.
+ */
+export function pickVoiceFor(
+  voices: readonly SpeechSynthesisVoice[],
+  lang: LineLang,
+): SpeechSynthesisVoice | null {
+  const code = (v: SpeechSynthesisVoice) => v.lang.toLowerCase().replace('_', '-');
+  const mine = voices.filter((v) => code(v).startsWith(lang) || (lang === 'id' && code(v).startsWith('in-')));
+  return mine.find((v) => code(v) === PREFERRED_VOICE[lang]) ?? mine[0] ?? null;
 }

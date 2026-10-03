@@ -2,9 +2,13 @@
 // lines with exactly their own slots, each value from the allow-list built from our
 // content — never the child's name, an ayah, a hadith or free text.
 import lines from '../../../../supabase/functions/ai-speak/lines.json';
+import linesEn from '../../../../supabase/functions/ai-speak/lines.en.json';
+import linesId from '../../../../supabase/functions/ai-speak/lines.id.json';
 import slots from '../../../../supabase/functions/ai-speak/slots.json';
-import { resolveLine } from '../../../../supabase/functions/ai-speak/resolve';
-import { line, TeacherLineBank } from '../teacherLines';
+import slotsEn from '../../../../supabase/functions/ai-speak/slots.en.json';
+import slotsId from '../../../../supabase/functions/ai-speak/slots.id.json';
+import { pickBank, resolveLine, type Banks } from '../../../../supabase/functions/ai-speak/resolve';
+import { line, localizedSlots, TeacherLineBank } from '../teacherLines';
 
 const LINES = lines as Record<string, string>;
 const ALLOW = slots as Record<string, string[]>;
@@ -60,4 +64,45 @@ test('free text or an unknown id is refused', () => {
   expect(resolve('__proto__', {})).toEqual({ refused: 'unknown-line' });
   expect(resolve('toString', {})).toEqual({ refused: 'unknown-line' });
   expect(resolve('ui.hearing', {})).toEqual({ refused: 'unknown-line' }); // captions aren't voiced
+});
+
+describe('English / Indonesian banks (lines.{en,id}.json + slots.{en,id}.json)', () => {
+  const banks: Banks = {
+    ar: { lines: LINES, slots: ALLOW },
+    en: { lines: linesEn as Record<string, string>, slots: slotsEn as Record<string, string[]> },
+    id: { lines: linesId as Record<string, string>, slots: slotsId as Record<string, string[]> },
+  };
+
+  test('`lang` picks the bank: absent → Arabic (as before); anything unknown is refused', () => {
+    expect(pickBank(banks, undefined)?.lang).toBe('ar');
+    expect(pickBank(banks, 'en')?.bank).toBe(banks.en);
+    expect(pickBank(banks, 'id')?.bank).toBe(banks.id);
+    for (const bad of ['fr', 'EN', '', 3, {}, '__proto__']) expect(pickBank(banks, bad)).toBeNull();
+  });
+
+  test('an en / id line resolves exactly as the lesson says it; Arabic values are refused there', () => {
+    const l = line('praise.next', { ordinal: 'الثانية' });
+    expect(resolveLine(banks.en.lines, banks.en.slots, l.id, localizedSlots('en', l))).toEqual({
+      text: new TeacherLineBank('en').resolve(l),
+    });
+    expect(resolveLine(banks.id.lines, banks.id.slots, 'intro.surah', { surah: 'Al-Ikhlas' })).toEqual({
+      text: 'Kita mulai dengan Surah Al-Ikhlas.',
+    });
+    expect(resolveLine(banks.en.lines, banks.en.slots, 'intro.surah', { surah: 'الإخلاص' })).toEqual({
+      refused: 'bad-slot',
+    });
+    expect(resolveLine(banks.en.lines, banks.en.slots, 'intro.surah', { surah: 'Made-Up' })).toEqual({
+      refused: 'bad-slot',
+    });
+  });
+
+  test("the child's name is refused in every language", () => {
+    for (const lang of ['en', 'id'] as const) {
+      const b = banks[lang];
+      expect(resolveLine(b.lines, b.slots, 'end.praise', { name: 'Badr' })).toEqual({ refused: 'name-slot' });
+      expect(resolveLine(b.lines, b.slots, 'praise.good', { name: 'Badr' })).toEqual({
+        refused: 'name-slot',
+      });
+    }
+  });
 });

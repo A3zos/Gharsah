@@ -104,9 +104,17 @@ export function countPhrase(lang: UiLanguage, n: number, f: CountForms): string 
 }
 
 /**
- * The AI lesson's session language (/agent/start, /speak). Arabic until phase 5 wires the
- * UI language through (the server's en / id hadith titles need matching first).
+ * Does the AI lesson (/agent/start, /speak) follow the UI language? OFF — product-owner
+ * decision pending: in an en / id session the AI server's teacher SPEAKS its own hadith
+ * translation (not HadeethEnc; its docs say it still needs Sharia review). Until then the
+ * AI lesson runs in Arabic (the screens around it are translated). Flip to true to enable.
  */
+export const AI_LESSON_FOLLOWS_UI = false;
+
+/** The AI lesson's session language for a UI language (see AI_LESSON_FOLLOWS_UI). */
+export const aiLessonLanguage = (ui: UiLanguage): UiLanguage => (AI_LESSON_FOLLOWS_UI ? ui : 'ar');
+
+/** @deprecated the AI lesson's default session language — use aiLessonLanguage(lang). */
 export const APP_UI_LANGUAGE = 'ar' as const;
 
 /** The hero pill's age range («للأطفال من ٨ إلى ١٣ سنة» / «For children aged 8–13»). */

@@ -12,6 +12,25 @@ export const QURANIC = /[\uFD3E\uFD3F\u0610-\u061A\u06D6-\u06ED\u0671\u08D3-\u08
 
 export type Refusal = 'unknown-line' | 'name-slot' | 'bad-slot';
 
+/** The languages ai-speak voices: one approved bank + slot allow-list each. */
+export type LineLang = 'ar' | 'en' | 'id';
+export const LINE_LANGS: readonly LineLang[] = ['ar', 'en', 'id'];
+/** Names the language of every answer once it is known; the client checks it for en / id. */
+export const LINE_LANG_HEADER = 'X-Line-Lang';
+
+export interface Bank {
+  lines: Record<string, string>;
+  slots: Record<string, readonly string[]>;
+}
+export type Banks = Record<LineLang, Bank>;
+
+/** The request's `lang` (absent → Arabic, as before) → its bank; null for anything else. */
+export function pickBank(banks: Banks, lang: unknown): { lang: LineLang; bank: Bank } | null {
+  if (lang === undefined || lang === null) return { lang: 'ar', bank: banks.ar };
+  if (typeof lang !== 'string' || !(LINE_LANGS as readonly string[]).includes(lang)) return null;
+  return { lang: lang as LineLang, bank: banks[lang as LineLang] };
+}
+
 /** The approved line with its slots filled, or why it is refused. */
 export function resolveLine(
   lines: Record<string, string>,

@@ -1,1 +1,212 @@
-{}
+{
+  "meta": {
+    "home": "الرئيسية — غَرْسة",
+    "profile": "ملفّي — غَرْسة",
+    "weeklyReview": "المراجعة — غَرْسة",
+    "review": "مراجعة — غَرْسة"
+  },
+  "nav": {
+    "label": "تطبيق الطفل",
+    "home": "الرئيسية",
+    "review": "المراجعة",
+    "profile": "ملفّي"
+  },
+  "stages": {
+    "seed": "بذرة",
+    "sprout": "غَرْسة",
+    "tree": "شجرة"
+  },
+  "days": {
+    "sat": "السبت",
+    "sun": "الأحد",
+    "mon": "الاثنين",
+    "tue": "الثلاثاء",
+    "wed": "الأربعاء",
+    "thu": "الخميس",
+    "fri": "الجمعة"
+  },
+  "surahs": {
+    "1": "الفاتحة",
+    "112": "الإخلاص",
+    "113": "الفلق",
+    "114": "الناس"
+  },
+  "hadithTopics": {
+    "PLACEHOLDER-birr-alwalidayn": "برّ الوالدين",
+    "PLACEHOLDER-al-kadhib": "الكذب",
+    "PLACEHOLDER-al-ghadab": "الغضب"
+  },
+  "hadithTitles": {
+    "PLACEHOLDER-birr-alwalidayn": "حديث برّ الوالدين",
+    "PLACEHOLDER-al-kadhib": "حديث عن الكذب",
+    "PLACEHOLDER-al-ghadab": "حديث عن الغضب"
+  },
+  "lessonValues": {
+    "pilot-day-1": "برّ الوالدين",
+    "pilot-day-2": "الصدق",
+    "pilot-day-3": "الحِلم"
+  },
+  "surahName": "سورة {name}",
+  "hadithAbout": "حديث عن {topic}",
+  "soon": "قريبًا",
+  "lockedTitle": "بعد الباقة التجريبية",
+  "weekReview": "مراجعة هذا الأسبوع",
+  "weekReviewOn": "مراجعة هذا الأسبوع — {day}",
+  "stageOf": "مرحلتك: {stage}",
+  "streak": {
+    "one": "يوم واحد متتالية",
+    "two": "يومان متتالية",
+    "few": "{n} أيام متتالية",
+    "many": "{n} يومًا متتالية"
+  },
+  "count": {
+    "surahs": { "one": "سورة واحدة", "two": "سورتان", "few": "{n} سور", "many": "{n} سورة" },
+    "ayat": { "one": "آية واحدة", "two": "آيتان", "few": "{n} آيات", "many": "{n} آية" },
+    "hadith": { "one": "حديث واحد", "two": "حديثان", "few": "{n} أحاديث", "many": "{n} حديثًا" },
+    "projects": { "one": "مشروع واحد", "two": "مشروعان", "few": "{n} مشاريع", "many": "{n} مشروعًا" }
+  },
+  "home": {
+    "hello": "مرحبًا {name}",
+    "todayTitle": "حصة اليوم",
+    "dayOf": "اليوم {day} من {total}",
+    "badge": {
+      "planDone": "أتممت الباقة ✓",
+      "finished": "أكملت حصة اليوم",
+      "started": "بدأتها اليوم",
+      "dayTwo": "اليوم الثاني",
+      "new": "جديدة"
+    },
+    "progressDone": "أنجزت {done} من {total} خطوات",
+    "progressTodo": "{n} خطوات في انتظارك",
+    "reportFirst": " — تبدأ بتقريرك",
+    "cta": {
+      "planDone": "ما شاء الله!",
+      "finished": "إلى اللقاء غدًا",
+      "started": "أكمل الحصة",
+      "start": "ابدأ الحصة"
+    },
+    "planDoneText": "أتممت الأيام الثلاثة — حفظت {n} سور وتعلّمت {n} أحاديث. بارك الله فيك!",
+    "reportIntro": "نبدأ بتقرير مشروعك: {value}",
+    "reportChip": "أولًا: تقرير المشروع",
+    "duration": "نحو ١٥ دقيقة",
+    "progressLabel": "تقدّم حصة اليوم",
+    "browse": "تصفّح ومراجعة",
+    "quran": "القرآن",
+    "hadith": "الأحاديث",
+    "projects": "المشاريع",
+    "projectsDone": "{n} منجزة",
+    "lockedBody": "٣ سور و٣ أحاديث متاحة الآن — والبقية تُفتح في التحديث القادم"
+  },
+  "board": {
+    "title": "المتصدّرون هذا الأسبوع",
+    "left": {
+      "one": "يتبقّى يوم",
+      "two": "يتبقّى يومان",
+      "few": "يتبقّى {n} أيام",
+      "many": "يتبقّى {n} أيام"
+    },
+    "me": "{name} — أنت",
+    "first": "أنت في المركز الأول هذا الأسبوع — استمر!",
+    "gap": "باقي لك {stars} وتسبق المركز {rank}",
+    "stars": { "one": "نجمة واحدة", "two": "نجمتان", "few": "{n} نجوم", "many": "{n} نجمة" },
+    "starsLabel": "نجوم",
+    "reset": "تبدأ المنافسة من جديد كل أسبوع — فرصة جديدة للجميع."
+  },
+  "growth": {
+    "planLabel": "من الباقة التجريبية"
+  },
+  "profile": {
+    "title": "ملفّي",
+    "shortDays": ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"],
+    "today": "اليوم",
+    "sinceToday": "معي منذ اليوم",
+    "sinceDays": {
+      "one": "معي منذ يوم واحد",
+      "two": "معي منذ يومان",
+      "few": "معي منذ {n} أيام",
+      "many": "معي منذ {n} يومًا"
+    },
+    "sinceWeeks": {
+      "one": "معي منذ أسبوع",
+      "two": "معي منذ أسبوعين",
+      "few": "معي منذ {n} أسابيع",
+      "many": "معي منذ {n} أسبوعًا"
+    },
+    "sinceMonths": {
+      "one": "معي منذ شهر",
+      "two": "معي منذ شهرين",
+      "few": "معي منذ {n} أشهر",
+      "many": "معي منذ {n} شهرًا"
+    },
+    "age": { "upToTen": "{n} سنوات", "overTen": "{n} سنة" },
+    "stageTitle": "مرحلتك",
+    "toNext": "باقٍ {pct}٪ من خطتك وتصير {stage}!",
+    "treeReached": "وصلت إلى الشجرة — استمر!",
+    "streakTitle": "سلسلتك",
+    "startToday": "ابدأ اليوم",
+    "dayDone": "{day} — أنجزت",
+    "badgesTitle": "شاراتك",
+    "badges": {
+      "firstSurah": "أول سورة",
+      "ayat50": "٥٠ آية",
+      "days5": "٥ أيام",
+      "firstProject": "أول مشروع",
+      "days30": "٣٠ يومًا",
+      "hadith10": "١٠ أحاديث"
+    },
+    "badgeLocked": "{badge} — لم تُفتح بعد",
+    "parent": "أنا وليّ الأمر"
+  },
+  "weekly": {
+    "title": "المراجعة",
+    "subtitle": "حصة واحدة كل أسبوع نرجع فيها لما حفظته",
+    "today": "اليوم",
+    "tomorrow": "غدًا",
+    "inDays": { "one": "بعد يوم واحد", "two": "بعد يومان", "few": "بعد {n} أيام", "many": "بعد {n} يومًا" },
+    "at": "{when} — الساعة {time}",
+    "what": "وش نراجع؟",
+    "emptyChips": "ما تحفظه هذا الأسبوع — ابدأ حصة اليوم!",
+    "start": "ابدأ المراجعة",
+    "unlocksOn": "يتفعّل الزر صباح {day}",
+    "unlocksOnReviewDay": "يتفعّل الزر في يوم المراجعة",
+    "last": "آخر مراجعة",
+    "notYet": "لم تُراجع بعد — {rest}",
+    "firstOn": "أول مراجعة يوم {day}",
+    "firstScheduled": "أول مراجعة في يومها من الجدول",
+    "all": "كل ما حفظته",
+    "lockedBody": "تُفتح بقية السور والأحاديث في التحديث القادم",
+    "openLists": "افتح القوائم الكاملة",
+    "thisWeek": "هذا الأسبوع"
+  },
+  "reviewItems": {
+    "completedOn": " · اكتملت في {date}",
+    "surahThisWeek": " · سورة هذا الأسبوع",
+    "hadithDoneOn": "اكتمل في {date}",
+    "hadithThisWeek": "حديث هذا الأسبوع"
+  },
+  "review": {
+    "quranTitle": "ما حفظته من السور",
+    "quranCount": "اكتملت · {ayat}",
+    "inProgress": "{done} من {total} آيات — أكملها",
+    "hadithTitle": "ما حفظته من الأحاديث",
+    "hadithCount": "محفوظة",
+    "projectsTitle": "مشاريعي",
+    "projectsCount": "أنجزتها في البيت",
+    "pendingProject": "بانتظار حكايتك غدًا",
+    "toldOn": "حكيتها في {date}",
+    "told": "حكيتها",
+    "done": "أنجزت",
+    "now": "الآن",
+    "empty": "لا شيء هنا بعد — ابدأ حصة اليوم!"
+  },
+  "session": {
+    "endedTitle": "انتهت الجلسة",
+    "errorTitle": "حدث خطأ غير متوقّع",
+    "endedBody": "سجّلنا خروجك للحفاظ على حسابك. ادخل مرة أخرى وتكمل من حيث وقفت.",
+    "errorBody": "لم نستطع إتمام العملية. حاول مرة أخرى — وإن تكرّر الأمر أرسل لنا رمز المشكلة.",
+    "errorCode": "رمز المشكلة: {code}",
+    "signInAgain": "سجّل الدخول مرة أخرى",
+    "retry": "أعد المحاولة",
+    "home": "العودة للبداية"
+  }
+}
