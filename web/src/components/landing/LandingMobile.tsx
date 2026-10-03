@@ -118,14 +118,15 @@ export function LandingMobile() {
           <section className="flex flex-col items-center gap-[18px] px-[20px] pt-[32px] pb-[36px]">
             <span className="flex items-center gap-[7px] rounded-pill bg-green-tint px-[14px] py-[8px]">
               <span className="h-[7px] w-[7px] rounded-full bg-primary" />
-              <span className="text-[12.5px] font-extrabold text-deep-green">حصة صوتية حيّة · ٨–١٣ سنة</span>
+              <span className="text-[12.5px] font-extrabold text-deep-green">للأطفال من ٨ إلى ١٣ سنة</span>
             </span>
             <h1 className="m-0 text-center font-heading text-[34px] leading-[1.45] font-bold">
               غَرْسة — نغرس حُبّ القرآن <span className="text-deep-green">… ويكبر معهم</span>
             </h1>
             <p className="m-0 text-center text-[15.5px] leading-[1.95] text-text-muted">
-              معلّم صوتي يجلس مع ابنك كل يوم: يحفّظه آية آية، ويعلّمه حديثًا، ويكلّفه بعمل صالح يحكيه بصوته
-              غدًا.
+              اغرس في طفلك تعلّم دينه من مصادره الشرعية الموثوقة: القرآن الكريم والسنّة النبوية. معلّم ذكي
+              يحفّظه الآيات بصوت قارئ متقن، ويعلّمه الأحاديث ويطبّقها بعمل صالح، ويجيب عن تساؤلاته بلغة تناسب
+              عمره، وأنت تتابع كل خطوة من لوحتك.
             </p>
             <div className="flex w-full flex-col gap-[11px] pt-[4px]">
               <Link
