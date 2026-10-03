@@ -1,7 +1,7 @@
 import { LandingDesktop } from '../components/landing/LandingDesktop';
 import { LandingMobile } from '../components/landing/LandingMobile';
 import { useI18n } from '../i18n/i18n';
-import { LandingI18nProvider } from '../i18n/LandingI18n';
+import { I18nProvider } from '../i18n/I18nProvider';
 import type { Route } from './+types/landing';
 
 export const meta: Route.MetaFunction = () => [
@@ -19,9 +19,9 @@ export const meta: Route.MetaFunction = () => [
  */
 export default function Landing() {
   return (
-    <LandingI18nProvider>
+    <I18nProvider>
       <LandingPage />
-    </LandingI18nProvider>
+    </I18nProvider>
   );
 }
 

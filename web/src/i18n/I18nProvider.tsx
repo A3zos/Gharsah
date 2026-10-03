@@ -1,5 +1,5 @@
-// The language provider (see i18n.ts) of the translated pages: the landing and the
-// login's two tabs. Pages without it are Arabic.
+// The language provider (see i18n.ts) of the translated pages. A page without it is
+// Arabic (the default context) — areas get it as they are translated.
 import { useEffect, useMemo } from 'react';
 
 import {
@@ -9,18 +9,18 @@ import {
   rememberUrlLanguage,
   resetPickedLanguage,
   setDocumentLanguage,
-  useLandingLanguage,
+  useUiLanguage,
   type I18n,
 } from './i18n';
 
 /**
  * Wraps a translated page. Starts in Arabic (the landing's prerendered HTML), then
  * applies ?lang= (and stores it) / the stored choice after hydration. Sets
- * <html lang dir> while mounted and puts Arabic back on the way out, since the other
- * app pages are Arabic only.
+ * <html lang dir> while mounted and puts Arabic back on the way out, since a page
+ * without a provider is Arabic.
  */
-export function LandingI18nProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useLandingLanguage();
+export function I18nProvider({ children }: { children: React.ReactNode }) {
+  const [lang, setLang] = useUiLanguage();
 
   useEffect(() => {
     rememberUrlLanguage();

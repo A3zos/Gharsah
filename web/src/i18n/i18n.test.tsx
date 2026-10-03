@@ -1,11 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { LanguageMenu, LanguageSheetButton } from '../components/ui/LanguageSwitcher';
 import ar from './ar.json';
 import en from './en.json';
-import id from './id.json';
-import { fill, STORAGE_KEY, useI18n } from './i18n';
-import { LandingI18nProvider } from './LandingI18n';
+import { countPhrase, fill, STORAGE_KEY, useI18n, withFallback } from './i18n';
+import { I18nProvider } from './I18nProvider';
 
 function Probe() {
   const { lang, m } = useI18n();
@@ -18,10 +17,10 @@ function Probe() {
 
 const landing = (ui: React.ReactNode = <LanguageMenu />) =>
   render(
-    <LandingI18nProvider>
+    <I18nProvider>
       {ui}
       <Probe />
-    </LandingI18nProvider>,
+    </I18nProvider>,
   );
 
 const keysOf = (o: object, prefix = ''): string[] =>
@@ -39,10 +38,38 @@ afterEach(() => {
   document.documentElement.dir = 'rtl';
 });
 
-test('ar.json and en.json have the same keys', () => {
-  expect(keysOf(en)).toEqual(keysOf(ar));
-  // Indonesian: the English text for now (translated later), the same keys
-  expect(keysOf(id)).toEqual(keysOf(ar));
+// Every locale file (the core + one per area) has exactly Arabic's keys.
+const files = import.meta.glob<{ default: object }>(['./*.json', './*/*.json'], { eager: true });
+const AREA_FILES = Object.keys(files).filter((f) => f.startsWith('./ar'));
+
+test.each(AREA_FILES)('%s: en and id have exactly the same keys', (arFile) => {
+  const base = keysOf(files[arFile]!.default);
+  for (const lang of ['en', 'id']) {
+    const file = arFile.replace(/^\.\/ar/, `./${lang}`);
+    expect(files[file], `${file} exists`).toBeDefined();
+    expect(keysOf(files[file]!.default), file).toEqual(base);
+  }
+});
+
+test('a key missing in en / id falls back to the Arabic text', () => {
+  const out = withFallback({ a: 'عربي', b: { c: 'ج' } }, { a: 'English' }, 'en');
+  expect(out).toEqual({ a: 'English', b: { c: 'ج' } });
+});
+
+test('countPhrase: Arabic keeps its rules; English / Indonesian by Intl plural rules', () => {
+  const ar4 = { one: 'يوم واحد', two: 'يومان', few: '{n} أيام', many: '{n} يومًا' };
+  expect([1, 2, 3, 10, 11, 0].map((n) => countPhrase('ar', n, ar4))).toEqual([
+    'يوم واحد',
+    'يومان',
+    '٣ أيام',
+    '١٠ أيام',
+    '١١ يومًا',
+    '٠ أيام',
+  ]);
+  const en4 = { one: '{n} day', two: '{n} days', few: '{n} days', many: '{n} days' };
+  expect([1, 2, 5].map((n) => countPhrase('en', n, en4))).toEqual(['1 day', '2 days', '5 days']);
+  const id4 = { one: '{n} hari', two: '{n} hari', few: '{n} hari', many: '{n} hari' };
+  expect(countPhrase('id', 3, id4)).toBe('3 hari');
 });
 
 test('fill: the age range in each language’s digits', () => {
@@ -68,21 +95,15 @@ test('the landing switches to English: text, <html lang dir>, stored choice; and
   expect(localStorage.getItem(STORAGE_KEY)).toBe('ar');
 });
 
-test('Indonesian still shows «قريبًا» (in the page language) and keeps the language', () => {
-  vi.useFakeTimers();
+test('Indonesian is a real choice now: ltr, stored', () => {
   landing();
   fireEvent.click(screen.getByRole('button', { name: 'اللغة: العربية' }));
   fireEvent.click(screen.getByRole('option', { name: /Indonesia/ }));
-  expect(screen.getByRole('status')).toHaveTextContent('قريبًا — نعمل على دعم هذه اللغة');
-  expect(screen.getByTestId('probe')).toHaveAttribute('data-lang', 'ar');
-  act(() => vi.advanceTimersByTime(3000));
-
-  fireEvent.click(screen.getByRole('button', { name: 'اللغة: العربية' }));
-  fireEvent.click(screen.getByRole('option', { name: /English/ }));
-  fireEvent.click(screen.getByRole('button', { name: 'Language: English' }));
-  fireEvent.click(screen.getByRole('option', { name: /Indonesia/ }));
-  expect(screen.getByRole('status')).toHaveTextContent('Coming soon');
-  expect(screen.getByTestId('probe')).toHaveAttribute('data-lang', 'en');
+  expect(screen.getByTestId('probe')).toHaveAttribute('data-lang', 'id');
+  expect(document.documentElement).toHaveAttribute('lang', 'id');
+  expect(document.documentElement).toHaveAttribute('dir', 'ltr');
+  expect(localStorage.getItem(STORAGE_KEY)).toBe('id');
+  expect(screen.queryByRole('status')).toBeEmptyDOMElement();
 });
 
 test('?lang=en is remembered for the next page (the login from «Log in»)', () => {

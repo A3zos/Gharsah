@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 
 import { STORAGE_KEY } from '../../i18n/i18n';
-import { LandingI18nProvider } from '../../i18n/LandingI18n';
+import { I18nProvider } from '../../i18n/I18nProvider';
 import { PlanCards } from './PlanCards';
 
 afterEach(() => localStorage.clear());
@@ -9,9 +9,9 @@ afterEach(() => localStorage.clear());
 test('in English on the landing: English copy, Western digits', () => {
   localStorage.setItem(STORAGE_KEY, 'en');
   render(
-    <LandingI18nProvider>
+    <I18nProvider>
       <PlanCards pilotAction={<button type="button">Start free</button>} />
-    </LandingI18nProvider>,
+    </I18nProvider>,
   );
   const [pilot, monthly, yearly] = screen.getAllByRole('region') as [HTMLElement, HTMLElement, HTMLElement];
   expect(pilot).toHaveAccessibleName('Pilot plan');

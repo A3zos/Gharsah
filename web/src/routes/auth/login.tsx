@@ -15,7 +15,7 @@ import { TextField } from '../../components/ui/TextField';
 import { isValidEmail, signIn } from '../../data/auth';
 import { bareCode } from '../../data/authFailure';
 import { useI18n, type Messages } from '../../i18n/i18n';
-import { LandingI18nProvider } from '../../i18n/LandingI18n';
+import { I18nProvider } from '../../i18n/I18nProvider';
 import { ClaimFailure, claimCode } from '../../data/childSession';
 import { toLatinDigits } from '../../lib/arabicDigits';
 import { safeNext } from '../../lib/nav';
@@ -62,7 +62,7 @@ export default function LoginRoute({ loaderData }: Route.ComponentProps) {
   // The welcome choice is Arabic only for now; the two tabs follow the chosen language.
   if (!tab) return <Welcome />;
   return (
-    <LandingI18nProvider>
+    <I18nProvider>
       <Login
         tab={tab}
         childDevice={childDevice}
@@ -73,7 +73,7 @@ export default function LoginRoute({ loaderData }: Route.ComponentProps) {
           setParams(next, { replace: true });
         }}
       />
-    </LandingI18nProvider>
+    </I18nProvider>
   );
 }
 
