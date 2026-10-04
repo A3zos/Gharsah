@@ -73,7 +73,8 @@ export function ServerLessonView({
         : '';
   const prompt = s.micPrompt ? 'mic' : s.playbackBlocked ? 'sound' : null;
   // The reciter or the child is on the ayat: the card gets the room, the teacher a small avatar.
-  const onAyat = s.ayat.length > 0 && (s.reciting || s.expects === 'repeat' || s.repeat !== 'idle');
+  // Waiting on the server (busy) keeps the last card, dimmed — never an empty stage.
+  const onAyat = s.ayat.length > 0 && (s.reciting || s.expects === 'repeat' || s.repeat !== 'idle' || s.busy);
   return (
     <CallFrame desktop={desktop}>
       <LiveHeader elapsedMs={elapsedMs} onEnd={actions.exit} />
@@ -109,7 +110,7 @@ export function ServerLessonView({
         </div>
       )}
       <div className="flex min-h-0 grow flex-col">
-        <Middle state={s} onAyat={onAyat} />
+        <Middle state={s} onAyat={onAyat} dim={s.busy} />
       </div>
       {!starting && <Bottom state={s} actions={actions} gender={gender} />}
       {prompt && (
@@ -130,7 +131,7 @@ function useElapsed(): number {
 }
 
 /** The ayah card (verified text) or the hadith card — the child reads along. */
-function Middle({ state: s, onAyat }: { state: ServerLessonState; onAyat: boolean }) {
+function Middle({ state: s, onAyat, dim }: { state: ServerLessonState; onAyat: boolean; dim: boolean }) {
   const { lang, m } = useI18n();
   if (s.phase === 'finished') return null;
   if (s.ayat.length && s.surahName) {
@@ -140,7 +141,11 @@ function Middle({ state: s, onAyat }: { state: ServerLessonState; onAyat: boolea
         aria-hidden={!onAyat}
         className={cx(
           'flex min-h-0 origin-top flex-col transition-[flex-grow,opacity,transform] duration-500 ease-out motion-reduce:transition-none',
-          onAyat ? 'grow opacity-100' : 'pointer-events-none grow-0 scale-95 opacity-0',
+          onAyat
+            ? dim
+              ? 'grow opacity-60'
+              : 'grow opacity-100'
+            : 'pointer-events-none grow-0 scale-95 opacity-0',
         )}
       >
         <SurahCard

@@ -37,6 +37,7 @@ import {
 } from './api';
 import type { ActionItem, AgentAction, AgentMode, AgentStage, Expects, ServerTurn, TurnKind } from './parse';
 import { doneRefsOf, hadithMatchesTopic, mappedStage, type ServerProgressSink } from './progressMap';
+import type { ProgressStage } from '../web/progressSink';
 import type { TeacherVoice } from '../voice/tts';
 import {
   canGiveWordFeedback,
@@ -101,6 +102,12 @@ export interface LessonPlan {
   /** The built-in script's hadith step / last step (so a fallback resumes in the right place). */
   hadithStepIndex: number;
   lastStepIndex: number;
+  /**
+   * The AI server's quran stages run today (pilot.ts quranStages; undefined = all of them).
+   * A stage not listed is skipped: before the recitation it is continued silently; after
+   * the recitation it means the surah part is done → straight to the hadith.
+   */
+  quranStages?: readonly string[];
 }
 
 export interface ServerLessonDeps {
@@ -138,10 +145,33 @@ export interface ServerLessonDeps {
   warmingAfterMs?: number;
   /** Dead-end guard: idle this long (nothing playing, listening or pending) → recover. false = off. */
   watchdog?: { idleMs: number; tickMs: number } | false;
+  /** Waiting on the server (tests pass short ones): filler after `fillerMs`, a retry after `timeoutMs`. */
+  waits?: { fillerMs: number; timeoutMs: number; longEveryMs?: number };
 }
 
 /** Idle (no audio, not listening, no request) this long = stuck → recover. */
 export const WATCHDOG_IDLE_MS = 20_000;
+/** Waiting on the server longer than this → the teacher's short filler (never a silent call). */
+export const FILLER_AFTER_MS = 1200;
+/** At most one filler in this window (a repeat's reply often takes ~1.5 s — no filler every ayah). */
+export const FILLER_EVERY_MS = 20_000;
+/** A wait that goes on (a slow server): a «getting it ready» line this far in, whatever the window above… */
+export const FILLER_LONG_FIRST_MS = 3000;
+/** …then this often until the reply. */
+export const FILLER_LONG_EVERY_MS = 5000;
+/** No answer from the server in this long → the request once more; still nothing → move on. */
+export const SERVER_WAIT_MS = 15_000;
+/** The server's quran stage of the ayah-by-ayah recitation (ai/API_web.md). */
+const RECITATION_STAGE = 'recitation';
+/** Skipped stages in a row before giving up on the day plan (a server that never moves on). */
+const MAX_SKIPS = 4;
+
+/** The server took longer than SERVER_WAIT_MS (twice). */
+export class ServerSlow extends Error {
+  constructor() {
+    super('the AI server did not answer in time');
+  }
+}
 const WATCHDOG_TICK_MS = 1000;
 /** State fields logged on every transition. */
 const LOGGED: readonly (keyof ServerLessonState)[] = [
@@ -347,8 +377,21 @@ export const CANT_HEAR: Record<Gender, string> = {
   girl: 'أهلًا يا بطلة! اليوم ما أقدر أسمع كلامكِ، بس تكلّمي وردّدي بصوتكِ وأنا أكمل معكِ',
 };
 // REVIEW: two fixed teacher lines of the day plan (surah → hadith).
-/** Today's surah is done: said before the hadith part starts. */
-export const TO_HADITH = 'أحسنت يا بطل! الحين نتعلّم حديثًا عن النبي ﷺ';
+/** Today's surah is done: said at once, while the hadith part is prepared. */
+export const TO_HADITH: Record<Gender, string> = {
+  boy: 'ما شاء الله يا بطل! خلّصت السورة. الحين نتعلّم حديثًا عن النبي ﷺ',
+  girl: 'ما شاء الله يا بطلة! خلّصتِ السورة. الحين نتعلّم حديثًا عن النبي ﷺ',
+};
+// REVIEW: the filler while the server is slow (> FILLER_AFTER_MS).
+export const FILLER: Record<Gender, string> = {
+  boy: 'ممتاز… لحظة يا بطل',
+  girl: 'ممتاز… لحظة يا بطلة',
+};
+// REVIEW: the server is still slow (every FILLER_LONG_EVERY_MS of a long wait).
+export const FILLER_LONG: Record<Gender, string> = {
+  boy: 'لحظات يا بطل، أجهّز لك الدرس…',
+  girl: 'لحظات يا بطلة، أجهّز لكِ الدرس…',
+};
 /** The hadith part can't be served by the server: said, then the call ends (never a silent card). */
 export const HADITH_LATER = 'أحسنت يا بطل! نكمل الحديث في المرة القادمة إن شاء الله';
 
@@ -362,7 +405,9 @@ export type FixedLine =
   | 'wholeSurahTurn'
   | 'toHadith'
   | 'hadithLater'
-  | 'cantHear';
+  | 'cantHear'
+  | 'filler'
+  | 'fillerLong';
 type FixedLines = Record<FixedLine, string | Record<Gender, string>>;
 
 /**
@@ -381,6 +426,8 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     toHadith: TO_HADITH,
     hadithLater: HADITH_LATER,
     cantHear: CANT_HEAR,
+    filler: FILLER,
+    fillerLong: FILLER_LONG,
   },
   en: {
     nudgeAnswer: "I'm listening, champ — say it out loud",
@@ -389,10 +436,13 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     repeatsStart: "Now let's repeat the ayat together… ready?",
     repeatsStartReply: "Excellent! Let's start with the first ayah",
     wholeSurahTurn: "Now it's your turn… recite the whole surah to me",
-    toHadith: "Well done, champ! Now let's learn a hadith of the Prophet, peace and blessings be upon him",
+    toHadith:
+      "Masha Allah, champ! You finished the surah. Now let's learn a hadith of the Prophet, peace and blessings be upon him",
     hadithLater: "Well done, champ! We'll continue the hadith next time, in sha Allah",
     cantHear:
       "Hi champ! Today I can't hear what you say, but speak and repeat out loud and I'll carry on with you",
+    filler: 'Great… one moment, champ',
+    fillerLong: "Just a few seconds, champ, I'm getting it ready…",
   },
   id: {
     nudgeAnswer: 'Aku mendengarkan, jagoan — ucapkan dengan suaramu',
@@ -401,10 +451,13 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     repeatsStart: 'Sekarang kita tirukan ayat-ayatnya bersama… siap?',
     repeatsStartReply: 'Hebat! Ayo kita mulai dari ayat pertama',
     wholeSurahTurn: 'Sekarang giliranmu… setorkan seluruh surahnya padaku',
-    toHadith: "Bagus sekali, jagoan! Sekarang kita belajar hadis Nabi Muhammad shallallahu 'alaihi wa sallam",
+    toHadith:
+      "Masya Allah, jagoan! Kamu sudah menyelesaikan surahnya. Sekarang kita belajar hadis Nabi Muhammad shallallahu 'alaihi wa sallam",
     hadithLater: 'Bagus sekali, jagoan! Kita lanjutkan hadisnya lain kali, insya Allah',
     cantHear:
       'Halo jagoan! Hari ini aku belum bisa mendengar ucapanmu, tapi bicara dan tirukan dengan suaramu, aku akan terus bersamamu',
+    filler: 'Bagus… sebentar ya, jagoan',
+    fillerLong: 'Sebentar lagi, jagoan, aku sedang menyiapkannya…',
   },
 };
 
@@ -465,6 +518,13 @@ export class ServerLesson {
   private speechBroken = false;
   /** CANT_HEAR said (no consent: once, before the call's first line). */
   private cantHearSaid = false;
+  /** The hadith session started (and its greeting / «which hadith?» answered) in the background. */
+  private prewarm: Promise<ServerTurn> | null = null;
+  /** A new segment's first turn replaces the last card (kept, dimmed, until then). */
+  private freshSegment = false;
+  /** Day-plan stages skipped in a row. */
+  private skips = 0;
+  private lastFillerAt = -Infinity;
   private quizUnscored = false;
   private allowAnswer: ((ok: boolean) => void) | null = null;
   private readonly verifier: RecitationVerifier;
@@ -646,14 +706,23 @@ export class ServerLesson {
       expects: null,
       segment: seg.kind,
       nextSegment: null,
-      ayat: [],
-      words: [],
-      hadith: null,
-      currentAyah: null,
+      // the last card stays (dimmed while busy) until the new segment's first turn
       notice: restarted ? 'restarted' : null,
       ...(this.state.value.phase === 'segmentDone' ? { phase: 'live' as const } : {}),
     });
+    this.freshSegment = true;
+    this.skips = 0;
     const { deviceId, gender } = this.d;
+    const warm = seg.kind === 'hadith' && !restarted ? this.prewarm : null;
+    this.prewarm = null;
+    if (warm) {
+      const turn = await this.waiting(warm).catch((e: unknown) => {
+        this.fallback(e);
+        return null;
+      });
+      if (turn) await this.play(turn);
+      return;
+    }
     const turn = await this.call(
       () =>
         seg.kind === 'taseem'
@@ -830,13 +899,32 @@ export class ServerLesson {
       this.set({ busy: true, expects: null });
       return this.send(this.d.plan.surahName);
     }
+    // The day's stage plan (pilot.ts quranStages).
+    const run = this.d.plan.quranStages;
+    if (turn.kind === 'quran' && run && !run.includes(turn.stage)) {
+      const rec = turn.stages.findIndex((s) => s.id === RECITATION_STAGE);
+      const at = turn.stages.findIndex((s) => s.id === turn.stage);
+      // After the recitation: the surah part is done — straight to the hadith.
+      if (rec >= 0 && at > rec) return this.surahDone(turn);
+      // Before it (the meanings, …): continued silently, never voiced or shown.
+      if (turn.expects !== 'none' && turn.expects !== 'repeat' && this.skips < MAX_SKIPS) {
+        this.skips++;
+        lessonLog('ai', 'stage skipped (day plan)', { stage: turn.stage });
+        this.set({ busy: true, expects: null });
+        return this.send(turn.quickReplies[0] ?? CONTINUE_TEXT);
+      }
+    }
+    if (turn.kind === 'quran') this.skips = 0;
     // Arrived while ExitConfirm is open — resume() plays it.
     if (this.state.value.paused) {
       this.set({ busy: false });
       return;
     }
 
+    const fresh = this.freshSegment ? { ayat: [], words: [], hadith: null, currentAyah: null } : {};
+    this.freshSegment = false;
     this.set({
+      ...fresh,
       phase: 'live',
       teacher: turn.teacher,
       female: turn.female,
@@ -1285,12 +1373,17 @@ export class ServerLesson {
     if (next) {
       this.set({ phase: 'segmentDone', nextSegment: next.kind });
       if (next.kind === 'hadith') {
+        // the hadith session gets ready WHILE the teacher praises (no gap after the line)
+        this.prewarm ??= this.prewarmHadith();
+        this.prewarm.catch(() => {}); // handled where it is awaited
         const abort = this.turnAbort ?? new AbortController();
         await this.say(this.fixed('toHadith'), abort).catch(() => {});
       }
-      // a voice call: no «next» button — the next part starts by itself after a pause
+      // a voice call: no «next» button — the next part starts by itself (the hadith right
+      // after the praise line; anything else after a short pause)
+      const pause = next.kind === 'hadith' ? LINE_GAP_MS : SEGMENT_PAUSE_MS;
       const abort = this.turnAbort;
-      await (abort ? this.guard(abort, this.beat(SEGMENT_PAUSE_MS)) : this.beat(SEGMENT_PAUSE_MS));
+      await (abort ? this.guard(abort, this.beat(pause)) : this.beat(pause));
       if (this.state.value.phase === 'segmentDone' && !this.state.value.paused) this.continueTapped();
       return;
     }
@@ -1300,8 +1393,8 @@ export class ServerLesson {
   // ── progress ──
 
   /** Today's progress row — the same one the built-in lesson writes. */
-  private saveProgress(turn: ServerTurn): void {
-    const stage = mappedStage(turn);
+  private saveProgress(turn: ServerTurn, forced?: ProgressStage): void {
+    const stage = forced ?? mappedStage(turn);
     if (!stage) return;
     const { plan } = this.d;
     if (turn.kind === 'quran' && stage === 'hadith' && !this.state.value.quranDone)
@@ -1357,10 +1450,112 @@ export class ServerLesson {
     this.answeredRepeat = repeated || (t.expects === 'repeat' && text === SKIP_AYAH);
     this.cancelTurn();
     this.set({ busy: true, expects: null, quickReplies: [], repeat: 'idle', hearing: false, notice: null });
-    const next = await this.call(() =>
-      this.d.api.message(t.sessionId, text, modeOf(this.segments[this.segIndex]!)),
+    const mode = modeOf(this.segments[this.segIndex]!);
+    const next = await this.waiting(
+      this.call(() => this.patient(() => this.d.api.message(t.sessionId, text, mode))),
     );
     if (next) await this.play(next);
+  }
+
+  // ── the surah → the hadith ──
+
+  /**
+   * The recitation of today's surah is complete (the server's first stage after it):
+   * the surah part is done — saved at once (a resume starts at the hadith), then the
+   * praise line and the hadith, with no stage of the server's in between.
+   */
+  private async surahDone(turn: ServerTurn): Promise<void> {
+    lessonLog('ai', 'surah recitation complete → hadith', { stage: turn.stage });
+    this.set({ quranDone: true, busy: false });
+    this.saveProgress(turn, 'hadith');
+    return this.segmentEnded();
+  }
+
+  /**
+   * The hadith session, started in the background: its greeting (the child was already
+   * greeted), the name stand-in and «which hadith?» (today's) are answered silently, so
+   * the child goes straight from the surah to the hadith's own first stage.
+   */
+  private async prewarmHadith(): Promise<ServerTurn> {
+    const { deviceId, gender } = this.d;
+    let t = await this.patient(() => this.d.api.start({ mode: 'hadith', gender, deviceId, lang: this.lang }));
+    for (let i = 0; i < 4 && t.expects !== 'none'; i++) {
+      const reply =
+        t.stage === 'greet'
+          ? safeReply(t.quickReplies.length ? t.quickReplies : [DEFAULT_ANSWER])
+          : t.stage === 'name'
+            ? NAME_STAND_IN
+            : t.stage === HADITH_CHOOSE_STAGE
+              ? todayHadithAnswer(t.quickReplies, this.d.plan.hadithTopic)
+              : null;
+      if (!reply) break;
+      lessonLog('ai', 'hadith preamble answered in the background', { stage: t.stage });
+      const sid = t.sessionId;
+      t = await this.patient(() => this.d.api.message(sid, reply, 'hadith'));
+    }
+    return t;
+  }
+
+  // ── waiting on the server ──
+
+  /**
+   * A request that never leaves the call silent: no answer in SERVER_WAIT_MS → once
+   * more; still nothing → ServerSlow (the lesson moves on — see call / fallback).
+   */
+  private async patient<T>(f: () => Promise<T>): Promise<T> {
+    const limit = this.d.waits?.timeoutMs ?? SERVER_WAIT_MS;
+    for (let attempt = 0; ; attempt++) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const slow = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new ServerSlow()), limit);
+      });
+      try {
+        return await Promise.race([f(), slow]);
+      } catch (e) {
+        if (!(e instanceof ServerSlow) || attempt >= 1 || this.disposed) throw e;
+        lessonLog('ai', 'server slow → the request once more', { afterMs: limit });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+  }
+
+  /**
+   * Waits on the server, never silently: past FILLER_AFTER_MS a short filler (at most one
+   * per FILLER_EVERY_MS — a repeat's reply often takes ~1.5 s); a wait that goes on gets a
+   * «getting it ready» line at FILLER_LONG_FIRST_MS, then every FILLER_LONG_EVERY_MS. The
+   * sprite keeps blinking meanwhile.
+   */
+  private async waiting<T>(p: Promise<T>): Promise<T> {
+    let filler: Promise<void> | null = null;
+    const quiet = () => {
+      const s = this.state.value;
+      return !(this.disposed || this.halted || s.paused || s.speaking || s.reciting);
+    };
+    const sayFiller = (key: 'filler' | 'fillerLong') => {
+      this.lastFillerAt = Date.now();
+      lessonLog('ai', 'waiting on the server → filler', { key });
+      const prev = filler ?? Promise.resolve();
+      filler = prev.then(() => this.say(this.fixed(key), new AbortController())).catch(() => {});
+    };
+    const first = this.d.waits?.fillerMs ?? FILLER_AFTER_MS;
+    const every = this.d.waits?.longEveryMs ?? FILLER_LONG_EVERY_MS;
+    const timer = setTimeout(() => {
+      if (quiet() && Date.now() - this.lastFillerAt >= FILLER_EVERY_MS) sayFiller('filler');
+    }, first);
+    let long: ReturnType<typeof setInterval> | undefined;
+    const longStart = setTimeout(() => {
+      if (quiet()) sayFiller('fillerLong');
+      long = setInterval(() => quiet() && sayFiller('fillerLong'), every);
+    }, this.d.waits?.longEveryMs ?? FILLER_LONG_FIRST_MS);
+    try {
+      return await p;
+    } finally {
+      clearTimeout(timer);
+      clearTimeout(longStart);
+      clearInterval(long);
+      if (filler) await filler; // the filler ends before the next line starts
+    }
   }
 
   /** A quick reply / choice button, or the text field. */

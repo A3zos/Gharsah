@@ -155,7 +155,7 @@ describe('ServerLesson — the end of today’s surah (the live «old behaviour�
     expect(t.server.messages()).not.toContain('أكتفي اليوم');
     expect(t.server.messages()).not.toContain('نعم، سورة الناس');
     // the transition line, then the hadith session
-    expect(t.spoken).toContain(TO_HADITH);
+    expect(t.spoken).toContain(TO_HADITH.girl);
     const starts = t.server.calls.filter((c) => c.path === '/agent/start').map((c) => c.body?.mode);
     expect(starts).toEqual(['quran', 'hadith']);
     t.lesson.dispose();

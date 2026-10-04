@@ -22,7 +22,23 @@ export interface PilotDay {
   readonly hadithTopic: string;
   /** «حديث برّ الوالدين» */
   readonly hadithTitle: string;
+  /** The AI server's quran stages run this day (QURAN_STAGES_BY_DAY). */
+  readonly quranStages: readonly string[];
 }
+
+/**
+ * The AI-server lesson's surah part, per pilot day: the server's quran stage ids to RUN
+ * (ai/API_web.md: greet, surah, lesson_intro, tafsir, fadl, recitation, tajweed, plan, done).
+ * A stage not listed is skipped — before the recitation it is continued silently; after the
+ * recitation the surah part is done and the lesson goes straight to the day's hadith.
+ * Add 'tafsir' (the meanings) or 'fadl' back here to turn them on — no code change.
+ */
+export const DEFAULT_QURAN_STAGES: readonly string[] = ['greet', 'surah', 'lesson_intro', 'recitation'];
+export const QURAN_STAGES_BY_DAY: Readonly<Record<number, readonly string[]>> = {
+  1: DEFAULT_QURAN_STAGES,
+  2: DEFAULT_QURAN_STAGES,
+  3: DEFAULT_QURAN_STAGES,
+};
 
 type Step = { type: string; surah?: number; hadithId?: string };
 
@@ -39,6 +55,7 @@ function dayOf(j: { lessonId: string; pilotDay: number; steps: Step[] }): PilotD
     hadithId,
     hadithTopic: h.topic,
     hadithTitle: h.title,
+    quranStages: QURAN_STAGES_BY_DAY[j.pilotDay] ?? DEFAULT_QURAN_STAGES,
   };
 }
 

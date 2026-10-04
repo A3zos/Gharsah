@@ -4,8 +4,12 @@ import { PlaybackBlocked } from '../ports';
 import { AgentApi } from './api';
 import type { ProgressUpdate } from './progressMap';
 import { ENCOURAGE_RETRY } from '../voice/recitationVerifier';
+import { DEFAULT_QURAN_STAGES, PILOT_DAYS } from '../../content/pilot';
 import {
   CANT_HEAR,
+  FILLER,
+  FILLER_LONG,
+  TO_HADITH,
   HADITH_PLACEHOLDER,
   MOVE_ON_UNREPEATED,
   NUDGE_REPEAT,
@@ -81,10 +85,13 @@ function setup(o: Partial<ServerLessonDeps> & { server?: FakeAgentServer; childN
 }
 
 const until = (l: ServerLesson, f: (s: ServerLessonState) => boolean) =>
-  vi.waitFor(() => {
-    if (!f(l.state.value))
-      throw new Error(`not yet: ${JSON.stringify({ ...l.state.value, stages: undefined })}`);
-  });
+  vi.waitFor(
+    () => {
+      if (!f(l.state.value))
+        throw new Error(`not yet: ${JSON.stringify({ ...l.state.value, stages: undefined })}`);
+    },
+    { timeout: 5000 }, // whole lessons run here; a loaded machine needs more than the 1 s default
+  );
 const at = (l: ServerLesson, stage: string, expects: ServerLessonState['expects']) =>
   until(l, (s) => s.stages[s.stageIndex]?.id === stage && s.expects === expects && !s.busy);
 
@@ -148,12 +155,12 @@ describe('ServerLesson — mocked end-to-end', () => {
     const ranks = t.updates.map((u) => u.stage);
     expect(ranks).toEqual([...ranks].sort((a, b) => order(a) - order(b)));
 
-    // ── hadith ──
-    await at(lesson, 'greet', 'text');
-    lesson.answer('تمام');
-    await at(lesson, 'intro', 'continue');
-    lesson.continueTapped();
+    // ── hadith ── its greeting and «which hadith?» were answered in the background (the
+    // child was already greeted): straight to the hadith's text, nothing of them voiced
     await at(lesson, 'text', 'continue');
+    expect(t.spoken).toContain(TO_HADITH.boy);
+    expect(t.spoken).not.toContain('أهلًا من جديد!');
+    expect(t.spoken).not.toContain('حديث اليوم عن برّ الوالدين.');
     expect(lesson.state.value.hadith).toEqual({ title: 'برّ الوالدين', source: 'متفق عليه' });
     expect(JSON.stringify(lesson.state.value)).not.toContain('SERVER-HADITH-TEXT');
     expect(HADITH_PLACEHOLDER).toMatch(/يُعتمد لاحقًا/);
@@ -208,14 +215,10 @@ describe('ServerLesson — mocked end-to-end', () => {
       t.lesson.continueTapped();
     }
     await until(t.lesson, (s) => s.segment === 'hadith');
-    await at(t.lesson, 'greet', 'text');
-    t.lesson.answer('تمام');
-    await at(t.lesson, 'intro', 'continue');
-    t.lesson.continueTapped();
-    // today's hadith was asked for by name (not the first option)…
-    expect(t.server.messages()).toContain('الكذب');
     // …but the fake server still teaches برّ الوالدين → graceful end
     await until(t.lesson, (s) => s.phase === 'ended');
+    // today's hadith was asked for by name (not the first option)
+    expect(t.server.messages()).toContain('الكذب');
     expect(t.spoken.at(-1)).toBe(HADITH_LATER);
     expect(t.lesson.state.value.quranDone).toBe(true);
   });
@@ -1060,5 +1063,174 @@ describe('ServerLesson — recitation', () => {
     await vi.waitFor(() => expect(t!.server.messages()).toContain('REF-AYAH-4'));
     expect(during.length).toBeGreaterThan(0); // answers do use it (consent)…
     expect(during).not.toContain('repeat'); // …a recitation never does
+  });
+});
+
+describe('ServerLesson — the day plan: surah → hadith directly, no silent gaps', () => {
+  const DAY_PLAN = { ...PLAN, quranStages: DEFAULT_QURAN_STAGES };
+  /** The fake server, each request delayed by `ms(path, n)` (n = that path's call number). */
+  const slowFetch = (
+    server: FakeAgentServer,
+    ms: (path: string, n: number) => number,
+  ): typeof server.fetch => {
+    const seen = new Map<string, number>();
+    return async (url, init) => {
+      const path = new URL(url).pathname;
+      const n = seen.get(path) ?? 0;
+      seen.set(path, n + 1);
+      const wait = ms(path, n);
+      if (wait === Infinity) return new Promise<never>(() => {});
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      return server.fetch(url, init);
+    };
+  };
+
+  it('the meanings and every stage after the recitation are never run; the hadith follows at once', async () => {
+    const server = new FakeAgentServer();
+    let startsWhenPraised = -1;
+    const t = setup({
+      server,
+      plan: DAY_PLAN,
+      voice: {
+        speak: async (line) => {
+          t.spoken.push(line);
+          if (line === TO_HADITH.boy) {
+            await new Promise((r) => setTimeout(r, 20));
+            startsWhenPraised = server.calls.filter((c) => c.path === '/agent/start').length;
+          }
+        },
+        stop: () => {},
+      },
+    });
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('الحمد لله بخير');
+    await at(t.lesson, 'lesson_intro', 'continue');
+    t.lesson.continueTapped();
+    await at(t.lesson, 'text', 'continue');
+    // tafsir / fadl: continued silently; tajweed / plan / done: never reached (no answer sent)
+    for (const line of ['معنى السورة…', 'فضلها عظيم.', 'أحسنت!', 'بكرة نراجع.', 'في أمان الله.'])
+      expect(t.spoken).not.toContain(line);
+    const quran = t.server.calls.filter((c) => c.path === '/agent/message' && c.body?.session_id === 's1');
+    expect(quran.at(-1)!.body!.text).toBe('REF-AYAH-4');
+    // the praise line right after the last ayah, the hadith session already starting meanwhile
+    const i = t.spoken.indexOf(TO_HADITH.boy);
+    expect(i).toBeGreaterThan(0);
+    expect(startsWhenPraised).toBe(2);
+    // the surah part is saved as done before the hadith (a resume starts at the hadith)
+    expect(t.updates).toContainEqual({
+      lessonId: 'pilot-day-1',
+      stage: 'hadith',
+      stepIndex: PLAN.hadithStepIndex,
+      doneRefs: ['112:1', '112:2', '112:3', '112:4'],
+    });
+    expect(t.lesson.state.value.quranDone).toBe(true);
+  });
+
+  it('pilot days run the same surah plan: greet, surah, intro, recitation', () => {
+    expect(DEFAULT_QURAN_STAGES).toEqual(['greet', 'surah', 'lesson_intro', 'recitation']);
+    for (const d of PILOT_DAYS) expect(d.quranStages).toEqual(DEFAULT_QURAN_STAGES);
+  });
+
+  it('waiting on the server > the filler time → one short filler, then the reply', async () => {
+    const server = new FakeAgentServer();
+    const t = setup({
+      server,
+      plan: DAY_PLAN,
+      api: new AgentApi(
+        'https://ai.test',
+        slowFetch(server, (p) => (p === '/agent/message' ? 40 : 0)),
+      ),
+      waits: { fillerMs: 10, timeoutMs: 5000 },
+    });
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('الحمد لله بخير');
+    await at(t.lesson, 'lesson_intro', 'continue');
+    // at most one filler in FILLER_EVERY_MS — not one after every reply
+    expect(t.spoken.filter((x) => x === FILLER.boy)).toHaveLength(1);
+  });
+
+  it('a wait that goes on → a «getting it ready» line every so often (even right after a filler)', async () => {
+    const server = new FakeAgentServer();
+    const t = setup({
+      server,
+      plan: DAY_PLAN,
+      api: new AgentApi(
+        'https://ai.test',
+        slowFetch(server, (p, n) => (p === '/agent/message' ? (n === 1 ? 120 : 15) : 0)),
+      ),
+      waits: { fillerMs: 5, timeoutMs: 5000, longEveryMs: 40 },
+    });
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('الحمد لله بخير');
+    await at(t.lesson, 'lesson_intro', 'continue');
+    expect(t.spoken).toContain(FILLER.boy);
+    expect(t.spoken.filter((x) => x === FILLER_LONG.boy).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('no answer in the wait limit → the request once more (the lesson goes on)', async () => {
+    const server = new FakeAgentServer();
+    const t = setup({
+      server,
+      plan: DAY_PLAN,
+      // the first answer to the greeting never comes back; the retry does
+      api: new AgentApi(
+        'https://ai.test',
+        slowFetch(server, (p, n) => (p === '/agent/message' && n === 0 ? Infinity : 0)),
+      ),
+      waits: { fillerMs: 1000, timeoutMs: 30 },
+    });
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('الحمد لله بخير');
+    await at(t.lesson, 'lesson_intro', 'continue');
+    expect(t.lesson.state.value.phase).toBe('live');
+  });
+
+  it('still nothing after the retry → the lesson moves on (never a frozen call)', async () => {
+    const server = new FakeAgentServer();
+    const t = setup({
+      server,
+      plan: DAY_PLAN,
+      api: new AgentApi(
+        'https://ai.test',
+        slowFetch(server, (p) => (p === '/agent/message' ? Infinity : 0)),
+      ),
+      waits: { fillerMs: 1000, timeoutMs: 30 },
+    });
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('الحمد لله بخير');
+    await until(t.lesson, (s) => s.phase === 'fallback');
+    expect(t.lesson.state.value.fallbackReason).toMatch(/did not answer in time/);
+  });
+
+  it('the surah card stays (dimmed: busy) until the hadith is ready — never an empty stage', async () => {
+    const server = new FakeAgentServer();
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    const t = setup({
+      server,
+      plan: DAY_PLAN,
+      api: new AgentApi('https://ai.test', async (url, init) => {
+        const body = init?.body ? JSON.parse(String(init.body)) : null;
+        if (new URL(url).pathname === '/agent/start' && body?.mode === 'hadith') await gate;
+        return server.fetch(url, init);
+      }),
+      waits: { fillerMs: 5000, timeoutMs: 5000 },
+    });
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('الحمد لله بخير');
+    await at(t.lesson, 'lesson_intro', 'continue');
+    t.lesson.continueTapped();
+    await until(t.lesson, (s) => s.segment === 'hadith' && s.busy);
+    expect(t.lesson.state.value.ayat).toHaveLength(4);
+    release();
+    await at(t.lesson, 'text', 'continue');
+    expect(t.lesson.state.value.ayat).toEqual([]);
+    expect(t.lesson.state.value.hadith).not.toBeNull();
   });
 });

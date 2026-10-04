@@ -150,6 +150,7 @@ export default function LessonRoute() {
           hadithTopic: day.hadithTopic,
           hadithStepIndex: hIdx,
           lastStepIndex: script.steps.length - 1,
+          quranStages: day.quranStages,
         }}
         child={child}
         session={session}
