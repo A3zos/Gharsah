@@ -16,6 +16,8 @@ export interface TeacherVoice {
    */
   speak(text: string, onPiece?: (piece: string, voiced: boolean) => void): Promise<void>;
   stop(): void;
+  /** Fades the line out over `ms`, then stops it (optional; stop() is the fallback). */
+  fadeOut?(ms: number): Promise<void>;
   /** Wakes the voice service at lesson start (optional). */
   warm?(): void;
   /** Resolves once the real voice is ready (or has failed) — the lesson waits for it. */

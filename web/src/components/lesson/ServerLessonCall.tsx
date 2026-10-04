@@ -55,7 +55,7 @@ export function ServerLessonCall({
     };
   }, [lockedTeacher]);
   const startAtRef = useRef(startAt);
-  // Only for scrubbing the child's own words — never sent (read once).
+  // The first name goes in /agent/start; the full name scrubs the child's own words (read once).
   const childName = useRef(child.name);
   const fallbackRef = useRef(onFallback);
   useEffect(() => {

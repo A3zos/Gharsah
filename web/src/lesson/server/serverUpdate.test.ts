@@ -1,7 +1,7 @@
 // AI server update 2026-10-04: the recitation wait line text (GET /agent/status), POST /agent/warm,
 // and the hadith project's voice check (POST /agent/actions/verify) — against the fake server.
 import { AgentProjectVerifier, SERVER_HADITH_BY_PROJECT } from '../web/projectVerifier';
-import { AgentApi, parseVerify, SCORE_TIMEOUT_MS } from './api';
+import { AgentApi, firstName, parseVerify, resetWarmDebounce, SCORE_TIMEOUT_MS, WARM_EVERY_MS } from './api';
 import { FakeAgentServer } from './testing/fakeServer';
 import {
   loadRecitationWaitSay,
@@ -51,12 +51,46 @@ describe('the recitation wait line', () => {
     expect(SCORE_TIMEOUT_MS).toBeGreaterThanOrEqual(35_000);
   });
 
-  it('POST /agent/warm (no body) wakes the recitation model', async () => {
+  it('POST /agent/warm (no body) wakes the recitation model — at most once per 30 s, errors ignored', async () => {
+    resetWarmDebounce();
     const server = new FakeAgentServer();
-    await new AgentApi('https://ai.test', server.fetch).warmRecitation();
+    const api = new AgentApi('https://ai.test', server.fetch);
+    let now = 1000;
+    await api.warmRecitation(() => now);
+    await api.warmRecitation(() => (now += 29_000));
     expect(server.calls).toEqual([
       expect.objectContaining({ path: '/agent/warm', method: 'POST', body: null }),
     ]);
+    await api.warmRecitation(() => (now += 2000)); // 31 s after the first
+    expect(server.calls.filter((c) => c.path === '/agent/warm')).toHaveLength(2);
+    expect(WARM_EVERY_MS).toBe(30_000);
+    server.failures.push(['/agent/warm', 500]);
+    await expect(api.warmRecitation(() => (now += 31_000))).resolves.toBeUndefined();
+  });
+
+  it('child_name = the first word of the profile name, on every start endpoint; omitted when empty', async () => {
+    expect(firstName('  أحمد علي ')).toBe('أحمد');
+    expect(firstName('')).toBe('');
+    expect(firstName(null)).toBe('');
+    const server = new FakeAgentServer();
+    const api = new AgentApi('https://ai.test', server.fetch);
+    await api.start({ mode: 'quran', gender: 'girl', deviceId: 'd', lang: 'en', childName: 'Sara Ali' });
+    await api.start({ mode: 'open', gender: 'boy', deviceId: 'd', childName: '   ' });
+    await api.taseemStart({ deviceId: 'd', gender: 'boy', surahNo: 112, chunk: 0, childName: 'Adam' });
+    await api
+      .htaseemStart({ deviceId: 'd', gender: 'girl', hadithId: 9, childName: 'Maryam' })
+      .catch(() => {}); // the fake has no htaseem — the body is what counts
+    const bodies = server.calls.map((c) => c.body);
+    expect(bodies[0]).toEqual({
+      mode: 'quran',
+      gender: 'girl',
+      device_id: 'd',
+      lang: 'en',
+      child_name: 'Sara',
+    });
+    expect(bodies[1]).not.toHaveProperty('child_name');
+    expect(bodies[2]).toMatchObject({ child_name: 'Adam' });
+    expect(bodies[3]).toMatchObject({ child_name: 'Maryam' });
   });
 });
 

@@ -6,6 +6,7 @@ import type { ProgressUpdate } from './progressMap';
 import { ENCOURAGE_LINE } from '../voice/recitationVerifier';
 import { DEFAULT_QURAN_STAGES, PILOT_DAYS } from '../../content/pilot';
 import { RECITATION_WAIT_FALLBACK } from './waitLine';
+import { resetWarmDebounce } from './api';
 import {
   FILLER,
   FILLER_LONG,
@@ -709,7 +710,7 @@ describe('ServerLesson — stages bar, autoplay, pause', () => {
   });
 });
 
-describe("ServerLesson — the child's name never leaves the device", () => {
+describe("ServerLesson — the child's first name: /agent/start only", () => {
   const NAME = 'أحمد علي';
   /** Any spelling of either name part (diacritics, hamza forms) in what was sent. */
   const leaks = (server: FakeAgentServer) =>
@@ -717,17 +718,22 @@ describe("ServerLesson — the child's name never leaves the device", () => {
       .map((c) => `${c.path}?${new URLSearchParams(c.query).toString()} ${JSON.stringify(c.body)}`)
       .filter((sent) => /[اأإآ]حمد|(?<![\p{L}])علي(?![\p{L}])/u.test(normalizeArabic(sent)));
 
-  it("no request body or query ever contains the child's name — typed, spoken or chosen", async () => {
-    // Consent + speech: the child SAYS their name in answers, in many spellings.
+  it('child_name = the first name in every /agent/start — and nowhere else (typed, spoken or chosen)', async () => {
+    // the child SAYS their name in answers, in many spellings
     const said = ['أنا أَحمد', 'اسمي أحمد علي ويناديني بابا علي', 'وأحمد يحب السورة'];
     const listen = vi.fn(async () => said.shift() ?? null);
-    const t = setup({ speechInput: { listen }, childName: NAME });
+    const t = setup({ speechInput: { listen }, childName: NAME, childFirstName: 'أحمد' });
     void t.lesson.start();
     await until(t.lesson, (s) => s.phase === 'finished');
 
-    expect(t.server.calls.length).toBeGreaterThan(5);
-    expect(leaks(t.server)).toEqual([]);
-    for (const c of t.server.calls) {
+    const starts = t.server.calls.filter((c) => c.path === '/agent/start');
+    expect(starts.length).toBeGreaterThanOrEqual(2); // the surah and the hadith sessions
+    for (const c of starts) expect(c.body).toMatchObject({ child_name: 'أحمد', gender: 'boy' });
+    // nowhere else: every other request is scrubbed
+    expect(
+      leaks({ calls: t.server.calls.filter((c) => c.path !== '/agent/start') } as FakeAgentServer),
+    ).toEqual([]);
+    for (const c of t.server.calls.filter((c) => c.path !== '/agent/start')) {
       expect(Object.keys(c.body ?? {})).not.toContain('child_name');
       expect(Object.keys(c.body ?? {})).not.toContain('name');
     }
@@ -735,6 +741,23 @@ describe("ServerLesson — the child's name never leaves the device", () => {
     expect(t.server.messages()).toEqual(
       expect.arrayContaining(['أنا بطل', 'بطل', 'اسمي بطل ويناديني بابا بطل', 'وبطل يحب السورة']),
     );
+  });
+
+  it('no name in the profile → no child_name at all (the server picks its nickname)', async () => {
+    const t = setup({ childFirstName: '' });
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    const start = t.server.calls.find((c) => c.path === '/agent/start')!;
+    expect(start.body).not.toHaveProperty('child_name');
+  });
+
+  it('the recitation model is woken right after /agent/start (debounced in the API)', async () => {
+    resetWarmDebounce();
+    const t = setup();
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    const paths = t.server.calls.map((c) => c.path);
+    expect(paths.indexOf('/agent/warm')).toBeGreaterThan(paths.indexOf('/agent/start'));
   });
 
   it('the name stage is never shown: asked again → «بطل» again; a third time → the built-in lesson', async () => {
@@ -1248,6 +1271,89 @@ describe('ServerLesson — the recitation wait line', () => {
     void t.lesson.start();
     await vi.waitFor(() => expect(t.recitations().length).toBeGreaterThan(1));
     expect(t.spoken).not.toContain(RECITATION_WAIT_FALLBACK.ar);
+    t.lesson.dispose();
+  });
+
+  it('the reply arrives mid-line: the wait line FADES out first, then the evaluation is said (never overlapping)', async () => {
+    const server = new FakeAgentServer(withStage('recitation', REAL_RECITATION));
+    const events: string[] = [];
+    let speaking = false;
+    let overlap = false;
+    const t = setup({
+      server,
+      api: new AgentApi('https://ai.test', slowScore(server, 80, { n: 0 })),
+      recorder: { record: async () => new Blob(['x']) },
+      voice: {
+        speak: async (x) => {
+          if (speaking) overlap = true; // never two voices at once
+          speaking = true;
+          events.push(`say:${x}`);
+          await new Promise((r) => setTimeout(r, x === RECITATION_WAIT_FALLBACK.ar ? 400 : 5));
+          speaking = false;
+        },
+        fadeOut: async (ms) => {
+          events.push(`fade:${ms}`);
+          speaking = false;
+        },
+        stop: () => {
+          speaking = false;
+        },
+      },
+      waits: { fillerMs: 60_000, timeoutMs: 60_000, recitationLineMs: 20, recitationAgainMs: 60_000 },
+    });
+    void t.lesson.start();
+    await vi.waitFor(() => expect(events.some((e) => e.startsWith('fade'))).toBe(true), { timeout: 5000 });
+    const fade = events.findIndex((e) => e.startsWith('fade'));
+    expect(events[fade]).toBe('fade:150');
+    expect(events[fade - 1]).toBe(`say:${RECITATION_WAIT_FALLBACK.ar}`);
+    // the evaluation (the next turn's say) comes after the fade — not dropped
+    await vi.waitFor(() =>
+      expect(
+        events
+          .slice(fade + 1)
+          .some((e) => e.startsWith('say:') && e !== `say:${RECITATION_WAIT_FALLBACK.ar}`),
+      ).toBe(true),
+    );
+    expect(overlap).toBe(false);
+    t.lesson.dispose();
+  });
+
+  it('a late evaluation is never dropped or sent twice (no 15 s race for a repeat)', async () => {
+    const server = new FakeAgentServer(withStage('recitation', REAL_RECITATION));
+    let slow: 'waiting' | 'inFlight' | 'done' = 'waiting';
+    let sentMeanwhile = 0;
+    let nextIsEvaluation = false;
+    const t = setup({
+      server,
+      recorder: { record: async () => new Blob(['x']) },
+      api: new AgentApi('https://ai.test', async (url, init) => {
+        const path = new URL(url).pathname;
+        const body = init?.body ? (JSON.parse(String(init.body)) as { forScore?: boolean }) : null;
+        if (path === '/agent/message' && slow === 'inFlight') sentMeanwhile++;
+        if (path === '/agent/score-recitation' && body?.forScore === true && slow === 'waiting')
+          nextIsEvaluation = true;
+        // the first recitation's evaluation takes longer than the retry limit (40 ms here)
+        if (path === '/agent/message' && slow === 'waiting' && nextIsEvaluation) {
+          slow = 'inFlight';
+          await new Promise((r) => setTimeout(r, 150));
+          const r = await server.fetch(url, init);
+          slow = 'done';
+          return r;
+        }
+        return server.fetch(url, init);
+      }),
+      waits: { fillerMs: 60_000, timeoutMs: 40, recitationLineMs: 60_000 },
+    });
+    void t.lesson.start();
+    await vi.waitFor(() => expect(slow).toBe('done'), { timeout: 5000 });
+    await vi.waitFor(() =>
+      expect(
+        t.server.calls.filter((c) => c.path === '/agent/score-recitation' && c.body?.forScore === true)
+          .length,
+      ).toBeGreaterThan(1),
+    );
+    // no retry while it was in flight, and the lesson went on with its (late) reply
+    expect(sentMeanwhile).toBe(0);
     t.lesson.dispose();
   });
 

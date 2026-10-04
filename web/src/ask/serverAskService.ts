@@ -1,7 +1,8 @@
 // «اسألني» on the AI server's «اسأل وجاوب» mode (ai/API_web.md §1.1, mode "open"): one stage
 // "qa", expects "text" for every answer, "none" once the child says goodbye. One session per
 // screen visit (started when the screen opens, so a cold start overlaps the greeting).
-// Never /agent/score-recitation here; never the child's name (AgentApi scrubs every message).
+// Never /agent/score-recitation here. The child's first name goes in /agent/start only;
+// AgentApi scrubs it from every message.
 import {
   type AgentApi,
   type AgentLang,
@@ -42,6 +43,8 @@ export class ServerAskService implements AskService {
       deviceId: () => Promise<string>;
       gender: Gender;
       lang: AgentLang;
+      /** The child's first name for /agent/start (omitted when empty). */
+      childName?: string | null;
       /** For the log only (the API scrubs what it sends): the child's name → «بطل». */
       redact?: (text: string) => string;
       sleep?: (ms: number) => Promise<void>;
@@ -58,8 +61,13 @@ export class ServerAskService implements AskService {
     this.session ??= (async () => {
       const { api, gender, lang } = this.o;
       const deviceId = await this.o.deviceId();
-      // no child_name: the server's own «يا بطل»
-      const t = await api.start({ mode: 'open', gender, deviceId, lang });
+      const t = await api.start({
+        mode: 'open',
+        gender,
+        deviceId,
+        lang,
+        childName: this.o.childName ?? null,
+      });
       return t.sessionId;
     })().catch((e: unknown) => {
       this.session = null; // the next question tries again

@@ -65,6 +65,25 @@ export function parseVerify(json: unknown): VerifyResult {
   };
 }
 
+/** POST /agent/warm: at most this often (the lesson screen mounting + each /agent/start). */
+export const WARM_EVERY_MS = 30_000;
+const warmedAt = new Map<string, number>();
+/** Tests: forget when the model was last woken. */
+export function resetWarmDebounce(): void {
+  warmedAt.clear();
+}
+
+/** The child's first name (trimmed, first word) — '' when the profile has none. */
+export function firstName(name: string | null | undefined): string {
+  return (name ?? '').trim().split(/\s+/)[0] ?? '';
+}
+
+/** child_name for a start body, or nothing (no name → the server's own nickname). */
+function nameField(name: string | null | undefined): { child_name?: string } {
+  const first = firstName(name);
+  return first ? { child_name: first } : {};
+}
+
 /** Every path this client may call (anything else is a programming error). */
 const ALLOWED = new Set([
   '/agent/status',
@@ -115,11 +134,26 @@ export class AgentApi {
 
   // ── lesson sessions ──
 
-  start(o: { mode: AgentMode; gender: Gender; deviceId: string; lang?: AgentLang }): Promise<ServerTurn> {
-    // No child_name: the server's default «يا بطل» keeps the name on the device.
+  /**
+   * A new session. `childName`: the child's FIRST name (PO 2026-10-05: the teacher greets the
+   * child by it) — only here, in /agent/start; omitted when empty (the server's nickname then).
+   */
+  start(o: {
+    mode: AgentMode;
+    gender: Gender;
+    deviceId: string;
+    lang?: AgentLang;
+    childName?: string | null;
+  }): Promise<ServerTurn> {
     return this.turn(
       '/agent/start',
-      { mode: o.mode, gender: o.gender, device_id: o.deviceId, lang: o.lang ?? 'ar' },
+      {
+        mode: o.mode,
+        gender: o.gender,
+        device_id: o.deviceId,
+        lang: o.lang ?? 'ar',
+        ...nameField(o.childName),
+      },
       o.mode,
       true,
     );
@@ -134,19 +168,36 @@ export class AgentApi {
     return this.turn('/agent/jump', { session_id: sessionId, stage }, mode);
   }
 
-  taseemStart(o: { deviceId: string; gender: Gender; surahNo: number; chunk: number }): Promise<ServerTurn> {
+  taseemStart(o: {
+    deviceId: string;
+    gender: Gender;
+    surahNo: number;
+    chunk: number;
+    childName?: string | null;
+  }): Promise<ServerTurn> {
     return this.turn(
       '/agent/taseem/start',
-      { device_id: o.deviceId, gender: o.gender, surah_no: o.surahNo, chunk: o.chunk },
+      {
+        device_id: o.deviceId,
+        gender: o.gender,
+        surah_no: o.surahNo,
+        chunk: o.chunk,
+        ...nameField(o.childName),
+      },
       'quran',
       true,
     );
   }
 
-  htaseemStart(o: { deviceId: string; gender: Gender; hadithId: number }): Promise<ServerTurn> {
+  htaseemStart(o: {
+    deviceId: string;
+    gender: Gender;
+    hadithId: number;
+    childName?: string | null;
+  }): Promise<ServerTurn> {
     return this.turn(
       '/agent/htaseem/start',
-      { device_id: o.deviceId, gender: o.gender, hadith_id: o.hadithId },
+      { device_id: o.deviceId, gender: o.gender, hadith_id: o.hadithId, ...nameField(o.childName) },
       'hadith',
       true,
     );
@@ -204,7 +255,11 @@ export class AgentApi {
   }
 
   /** POST /agent/warm (no body): wakes the recitation model before the first recitation. Safe to repeat. */
-  async warmRecitation(): Promise<void> {
+  /** Fire-and-forget, every error ignored, at most once per WARM_EVERY_MS per server. */
+  async warmRecitation(now: () => number = Date.now): Promise<void> {
+    const last = warmedAt.get(this.base) ?? -Infinity;
+    if (now() - last < WARM_EVERY_MS) return;
+    warmedAt.set(this.base, now());
     try {
       await this.request('/agent/warm', { method: 'POST', timeoutMs: READ_TIMEOUT_MS });
     } catch {

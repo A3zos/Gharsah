@@ -11,6 +11,7 @@ function setup(o: { lang?: 'ar' | 'en' | 'id'; childName?: string } = {}) {
     deviceId: async () => 'dev-ask',
     gender: 'girl',
     lang: o.lang ?? 'ar',
+    childName: o.childName ?? null,
     sleep: async (ms) => void sleeps.push(ms),
   });
   return { server, service, sleeps };
@@ -21,7 +22,7 @@ beforeEach(() => {
   (globalThis as { __askLog?: AskLogEntry[] }).__askLog = [];
 });
 
-test('starts mode "open" lazily — gender, device_id, lang, NO child_name — and asks with /agent/message', async () => {
+test('starts mode "open" lazily — gender, device_id, lang, no child_name without a name — and asks with /agent/message', async () => {
   const { server, service } = setup({ lang: 'en' });
   expect(server.calls).toHaveLength(0);
   const r = await service.ask('Why do we fast?');
@@ -88,10 +89,11 @@ test('any other failure rejects (the screen shows its friendly line) and is logg
   await expect(service.ask('سؤال')).resolves.toMatchObject({ kind: 'answer' });
 });
 
-test('the child’s name never leaves the device (scrubbed by AgentApi); the log has text, latency, say — no audio', async () => {
+test('the first name goes in /agent/start only; scrubbed from the question; the log has text, latency, say', async () => {
   const { server, service } = setup({ childName: 'سارة' });
   await service.ask('اسمي سارة، لماذا نصلي؟');
-  expect(JSON.stringify(server.calls)).not.toContain('سارة');
+  expect(server.calls.find((c) => c.path === '/agent/start')!.body).toMatchObject({ child_name: 'سارة' });
+  expect(JSON.stringify(server.calls.filter((c) => c.path !== '/agent/start'))).not.toContain('سارة');
   const e = log().at(-1)!;
   expect(Object.keys(e).sort()).toEqual(['at', 'ms', 'question', 'say', 'status']);
   expect(e.say.length).toBeLessThanOrEqual(120);

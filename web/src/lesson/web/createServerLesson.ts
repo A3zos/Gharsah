@@ -7,7 +7,7 @@ import type { ChildRef } from '../../data/student';
 import { QuranText, quranRef } from '../quran';
 import { LipSync } from './lipSync';
 import { LessonMicrophone } from './microphone';
-import { AgentApi, type AgentLang, type Gender } from '../server/api';
+import { AgentApi, firstName, type AgentLang, type Gender } from '../server/api';
 import { APP_UI_LANGUAGE } from '../../i18n/i18n';
 import {
   BrowserSpeechInput,
@@ -39,7 +39,7 @@ export async function createServerLesson(o: {
   plan: LessonPlan;
   session: ChildRef;
   gender: Gender;
-  /** The child's real name: shown on screen only — scrubbed from anything sent to the AI server. */
+  /** The child's name: its first word goes in /agent/start; scrubbed from everything else sent. */
   childName: string;
   /** The session language (default: the app's UI language — Arabic today). */
   lang?: AgentLang;
@@ -50,6 +50,8 @@ export async function createServerLesson(o: {
   const lang = o.lang ?? APP_UI_LANGUAGE;
   const api = new AgentApi(o.baseUrl, undefined, [o.childName]);
   void loadRecitationWaitSay(api); // once per app load (usually done already by the child home)
+  // the lesson screen mounted: wake the recitation model before /agent/start (debounced)
+  void api.warmRecitation();
   const mic = new LessonMicrophone();
   const lip = new LipSync();
   const voice = new ServerTeacherVoice(
@@ -69,6 +71,8 @@ export async function createServerLesson(o: {
     presence: new MicPresenceListener(mic),
     sink: o.sink ?? new SupabaseServerProgressSink(o.session),
     deviceId: await agentDeviceId(o.session.childId, browserStorage()),
+    // the teacher greets the child by first name — /agent/start only (still scrubbed elsewhere)
+    childFirstName: firstName(o.childName),
     gender: o.gender,
     lang,
     startAt: o.startAt ?? 'quran',

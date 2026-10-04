@@ -3,7 +3,7 @@
 // recognition, or none) and the teacher's voice (/speak in the session language, lip-synced).
 import type { MouthSource } from '../components/child/TeacherSprite';
 import { aiLessonLanguage, type UiLanguage } from '../i18n/i18n';
-import { AgentApi, agentBaseUrl, nameRedactor, type Gender } from '../lesson/server/api';
+import { AgentApi, agentBaseUrl, firstName, nameRedactor, type Gender } from '../lesson/server/api';
 import { agentDeviceId } from '../lesson/server/device';
 import { LipSync } from '../lesson/web/lipSync';
 import { ServerTeacherVoice } from '../lesson/web/serverPorts';
@@ -37,7 +37,7 @@ export function createAskRuntime(o: {
   const base = agentBaseUrl();
   if (!base)
     return { service: new NotConnectedAskService(), voice, teacher: null, dispose: () => voice?.close() };
-  // the child's name: scrubbed from every message (never sent)
+  // the child's name: its first word in /agent/start; scrubbed from every message
   const api = new AgentApi(base, undefined, [o.childName]);
   const lip = new LipSync();
   const tv = new ServerTeacherVoice(createTtsProvider(api, lang), o.gender, undefined, undefined, lip, lang);
@@ -46,6 +46,7 @@ export function createAskRuntime(o: {
     deviceId: () => agentDeviceId(o.childId, browserStorage()),
     gender: o.gender,
     lang,
+    childName: firstName(o.childName),
     redact: nameRedactor([o.childName]),
   });
   return {

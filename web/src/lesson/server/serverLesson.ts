@@ -8,9 +8,10 @@
 //   number) — the server's ayah strings are never displayed. The reciter audio
 //   comes only from the server's everyayah URLs; no ayah is ever sent to TTS by us.
 // * Hadith text stays the approved placeholder until it's vetted (CLAUDE.md §3).
-// * The child's name never leaves the device: no child_name, and the `name`
-//   stage is never asked: it is answered with the neutral «بطل» (the teacher keeps
-//   saying «يا بطل»); the child's own words are scrubbed of their name (api.ts).
+// * The child's FIRST name goes in /agent/start only (child_name — the teacher greets the
+//   child by it; omitted when the profile has none). Everything the child says is still
+//   scrubbed of their name before /agent/message (api.ts), and a `name` stage is answered
+//   with the neutral «بطل», never shown.
 // * The teacher always hears the child (PO, 2026-10-04 — disclosed at sign-up): free
 //   speech → the browser's speech recognition (or, without it, the recorder → the
 //   server's transcription); a recitation → the recorder → /agent/score-recitation.
@@ -135,6 +136,8 @@ export interface ServerLessonDeps {
   sink: ServerProgressSink;
   deviceId: string;
   gender: Gender;
+  /** The child's first name for /agent/start (child_name); empty / absent → omitted. */
+  childFirstName?: string | null;
   /** The session language sent to /agent/start — every start and restart (default "ar"). */
   lang?: AgentLang;
   /**
@@ -173,6 +176,8 @@ export interface ServerLessonDeps {
 
 /** Idle (no audio, not listening, no request) this long = stuck → recover. */
 export const WATCHDOG_IDLE_MS = 20_000;
+/** The wait line fades out this fast when the reply arrives (then the evaluation). */
+export const WAIT_LINE_FADE_MS = 150;
 /** score-recitation not back after this → the teacher says the wait line (ai/API_web.md 2026-10-04)… */
 export const RECITATION_WAIT_LINE_MS = 2000;
 /** …and, still waiting at this point, once more (never more than twice). */
@@ -743,6 +748,7 @@ export class ServerLesson {
     });
     this.freshSegment = true;
     this.skips = 0;
+    const childName = this.d.childFirstName ?? null;
     const { deviceId, gender } = this.d;
     const warm = seg.kind === 'hadith' && !restarted ? this.prewarm : null;
     this.prewarm = null;
@@ -757,12 +763,14 @@ export class ServerLesson {
     const turn = await this.call(
       () =>
         seg.kind === 'taseem'
-          ? this.d.api.taseemStart({ deviceId, gender, surahNo: seg.surahNo, chunk: seg.chunk })
+          ? this.d.api.taseemStart({ deviceId, gender, surahNo: seg.surahNo, chunk: seg.chunk, childName })
           : seg.kind === 'htaseem'
-            ? this.d.api.htaseemStart({ deviceId, gender, hadithId: seg.hadithId })
-            : this.d.api.start({ mode: seg.kind, gender, deviceId, lang: this.d.lang ?? 'ar' }),
+            ? this.d.api.htaseemStart({ deviceId, gender, hadithId: seg.hadithId, childName })
+            : this.d.api.start({ mode: seg.kind, gender, deviceId, lang: this.d.lang ?? 'ar', childName }),
       false,
     );
+    // the session is up: wake the recitation model now (debounced, fire-and-forget)
+    if (turn) void this.d.api.warmRecitation?.();
     if (turn) await this.play(turn);
   }
 
@@ -1500,6 +1508,8 @@ export class ServerLesson {
       clearTimeout(first);
       clearTimeout(again);
       if (speaking) {
+        // the reply is here: the wait line fades out (≤150 ms), then the evaluation is said
+        await this.d.voice.fadeOut?.(WAIT_LINE_FADE_MS).catch(() => {});
         lineAbort.abort();
         this.d.voice.stop();
       }
@@ -1620,7 +1630,13 @@ export class ServerLesson {
     this.set({ busy: true, expects: null, quickReplies: [], repeat: 'idle', hearing: false, notice: null });
     const mode = modeOf(this.segments[this.segIndex]!);
     const next = await this.waiting(
-      this.call(() => this.patient(() => this.d.api.message(t.sessionId, text, mode))),
+      // a recitation's evaluation is never dropped or sent twice: no 15 s race for a repeat —
+      // it waits the full turn timeout (with the fillers); other answers keep the retry
+      this.call(() =>
+        repeated
+          ? this.d.api.message(t.sessionId, text, mode)
+          : this.patient(() => this.d.api.message(t.sessionId, text, mode)),
+      ),
     );
     if (next) await this.play(next);
   }
@@ -1646,7 +1662,16 @@ export class ServerLesson {
    */
   private async prewarmHadith(): Promise<ServerTurn> {
     const { deviceId, gender } = this.d;
-    let t = await this.patient(() => this.d.api.start({ mode: 'hadith', gender, deviceId, lang: this.lang }));
+    let t = await this.patient(() =>
+      this.d.api.start({
+        mode: 'hadith',
+        gender,
+        deviceId,
+        lang: this.lang,
+        childName: this.d.childFirstName ?? null,
+      }),
+    );
+    void this.d.api.warmRecitation?.();
     for (let i = 0; i < 4 && t.expects !== 'none'; i++) {
       const reply =
         t.stage === 'greet'

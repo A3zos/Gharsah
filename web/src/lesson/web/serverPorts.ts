@@ -109,6 +109,23 @@ export class ServerTeacherVoice implements TeacherVoice {
     }
   }
 
+  /** The playing line fades out over `ms` (the server voice), then stops; the volume is restored. */
+  async fadeOut(ms: number): Promise<void> {
+    const a = this.audio;
+    if (!a.paused && ms > 0) {
+      const from = a.volume;
+      const steps = 6;
+      for (let i = 1; i <= steps; i++) {
+        await new Promise((r) => setTimeout(r, ms / steps));
+        a.volume = Math.max(0, from * (1 - i / steps));
+      }
+      this.stop();
+      a.volume = from;
+      return;
+    }
+    this.stop();
+  }
+
   stop(): void {
     this.token = null;
     this.lip?.end();
