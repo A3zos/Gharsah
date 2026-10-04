@@ -55,6 +55,8 @@ export interface ChildDraft {
   gender: Gender;
   schedule: ChildSchedule;
   avatarId: string;
+  /** The parent's voice consent (the last box of the form; unchecked by default). */
+  aiVoiceConsent?: boolean;
 }
 
 export interface PairingInfo {
@@ -188,14 +190,13 @@ export function childFromRow(
 }
 
 /**
- * The «صوت طفلك للمعلّم الذكي» option is off for now (PO, 2026-10-03): no parent
- * control, and every lesson runs in the on-device voice mode — the child's voice
- * never leaves the device, the teacher continues when the child speaks, quiz
- * answers aren't graded. children.ai_voice_consent and the consent-gated lesson
- * paths stay (unused) so it can come back without a migration: set this to true
- * and restore a parent control.
+ * The parent's voice consent (children.ai_voice_consent), the last box of the add / edit
+ * child form (PO, 2026-10-04 — it was off 2026-10-03…04). With it the teacher hears the
+ * child: speech recognition for answers, the recorder → /agent/score-recitation for
+ * recitations. Without it every lesson runs in the on-device voice mode (nothing leaves
+ * the device) and the teacher says it can't hear answers. false here forces that mode.
  */
-export const AI_VOICE_CONSENT = false;
+export const AI_VOICE_CONSENT = true;
 
 export const CHILD_COLUMNS =
   'id, name, age, gender, avatar, schedule_days, schedule_time, schedule_custom, session_duration, reminder, review_days, ai_voice_consent, created_at';
@@ -313,6 +314,7 @@ export async function addChild(draft: ChildDraft): Promise<{ id: string; pairing
       gender: draft.gender,
       avatar: draft.avatarId,
       ...scheduleToRow(draft.schedule),
+      ai_voice_consent: draft.aiVoiceConsent === true,
     })
     .select('id')
     .single();

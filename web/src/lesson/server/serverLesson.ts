@@ -340,6 +340,12 @@ export const WHOLE_SURAH_TURN: Record<Gender, string> = {
 };
 /** The server's own quick reply for moving past an ayah — never a «repeated» signal. */
 export const SKIP_AYAH = 'تخطّي الآية';
+// REVIEW: the teacher's first line when the parent hasn't consented to voice — the lesson
+// still runs (on-device presence), but the teacher can't understand answers.
+export const CANT_HEAR: Record<Gender, string> = {
+  boy: 'أهلًا يا بطل! اليوم ما أقدر أسمع كلامك، بس تكلّم وردّد بصوتك وأنا أكمل معك',
+  girl: 'أهلًا يا بطلة! اليوم ما أقدر أسمع كلامكِ، بس تكلّمي وردّدي بصوتكِ وأنا أكمل معكِ',
+};
 // REVIEW: two fixed teacher lines of the day plan (surah → hadith).
 /** Today's surah is done: said before the hadith part starts. */
 export const TO_HADITH = 'أحسنت يا بطل! الحين نتعلّم حديثًا عن النبي ﷺ';
@@ -355,7 +361,8 @@ export type FixedLine =
   | 'repeatsStartReply'
   | 'wholeSurahTurn'
   | 'toHadith'
-  | 'hadithLater';
+  | 'hadithLater'
+  | 'cantHear';
 type FixedLines = Record<FixedLine, string | Record<Gender, string>>;
 
 /**
@@ -373,6 +380,7 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     wholeSurahTurn: WHOLE_SURAH_TURN,
     toHadith: TO_HADITH,
     hadithLater: HADITH_LATER,
+    cantHear: CANT_HEAR,
   },
   en: {
     nudgeAnswer: "I'm listening, champ — say it out loud",
@@ -383,6 +391,8 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     wholeSurahTurn: "Now it's your turn… recite the whole surah to me",
     toHadith: "Well done, champ! Now let's learn a hadith of the Prophet, peace and blessings be upon him",
     hadithLater: "Well done, champ! We'll continue the hadith next time, in sha Allah",
+    cantHear:
+      "Hi champ! Today I can't hear what you say, but speak and repeat out loud and I'll carry on with you",
   },
   id: {
     nudgeAnswer: 'Aku mendengarkan, jagoan — ucapkan dengan suaramu',
@@ -393,6 +403,8 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     wholeSurahTurn: 'Sekarang giliranmu… setorkan seluruh surahnya padaku',
     toHadith: "Bagus sekali, jagoan! Sekarang kita belajar hadis Nabi Muhammad shallallahu 'alaihi wa sallam",
     hadithLater: 'Bagus sekali, jagoan! Kita lanjutkan hadisnya lain kali, insya Allah',
+    cantHear:
+      'Halo jagoan! Hari ini aku belum bisa mendengar ucapanmu, tapi bicara dan tirukan dengan suaramu, aku akan terus bersamamu',
   },
 };
 
@@ -451,6 +463,8 @@ export class ServerLesson {
   private surahAnswers = 0;
   private listenOnly = false;
   private speechBroken = false;
+  /** CANT_HEAR said (no consent: once, before the call's first line). */
+  private cantHearSaid = false;
   private quizUnscored = false;
   private allowAnswer: ((ok: boolean) => void) | null = null;
   private readonly verifier: RecitationVerifier;
@@ -848,6 +862,11 @@ export class ServerLesson {
       turn.kind === 'quran' && turn.actions.some((a) => a.type === 'play_all' && a.urls.length > 1);
     try {
       for (const a of turn.actions) this.show(a, turn);
+      if (!this.d.consent && !this.cantHearSaid) {
+        this.cantHearSaid = true;
+        await this.say(this.fixed('cantHear'), abort);
+        await this.guard(abort, this.beat(LINE_GAP_MS));
+      }
       const line = judged ? ENCOURAGE_RETRY : turn.say;
       if (line.trim()) await this.say(line, abort);
       const plays = audio.length > 0 || (judged && this.turnAudio.length > 0);
@@ -1016,7 +1035,8 @@ export class ServerLesson {
     if (turn.expects === 'none') return this.segmentEnded();
     const repeat = turn.expects === 'repeat';
     // never the browser's speech recognition for a recitation
-    const canSpeak = !!this.d.speechInput && this.d.consent && !this.speechBroken && !repeat;
+    const canSpeak =
+      this.d.consent && !repeat && ((!!this.d.speechInput && !this.speechBroken) || !!this.d.recorder);
     this.set({ expects: turn.expects, quickReplies: turn.quickReplies, canSpeak });
     for (let misses = 0; ;) {
       const heard = await this.hear(turn, abort);
@@ -1101,6 +1121,7 @@ export class ServerLesson {
             if (e instanceof Cancelled) throw e;
             return { available: false, transcription: null };
           });
+          lessonLog('ai', 'heard (recitation)', { text: score.available ? score.transcription : null });
           return { spoke: true, text: score.available ? score.transcription : null };
         }
         if (abort.signal.aborted) throw new Cancelled();
@@ -1112,8 +1133,36 @@ export class ServerLesson {
           this.speechBroken = true; // unsupported / blocked -> on-device presence from now on
           return undefined;
         });
-        if (text) return { spoke: true, text };
+        if (text) {
+          lessonLog('ai', 'heard (speech recognition)', { text });
+          return { spoke: true, text };
+        }
         if (text === null) return 'silent';
+      }
+      // No speech recognition (Firefox / Safari, or it broke): the recorder → the server's
+      // transcription of free speech in the session language (forScore=false, API_web.md 2026-10-02).
+      if (!repeat && this.d.consent && this.d.recorder && (!this.d.speechInput || this.speechBroken)) {
+        const blob = await this.guard(abort, this.d.recorder.record(abort.signal)).catch((e: unknown) => {
+          if (e instanceof Cancelled) throw e;
+          return null;
+        });
+        if (blob) {
+          const toB64 = this.d.blobToBase64 ?? blobToBase64;
+          const lang = this.d.lang ?? 'ar';
+          const score = await this.guard(
+            abort,
+            toB64(blob).then((b) =>
+              this.d.api.scoreRecitation(this.turn!.sessionId, b, { forScore: false, lang }),
+            ),
+          ).catch((e: unknown) => {
+            if (e instanceof Cancelled) throw e;
+            return { available: false, transcription: null };
+          });
+          const text = score.available ? score.transcription?.trim() || null : null;
+          lessonLog('ai', 'heard (server transcription)', { text });
+          return { spoke: true, text };
+        }
+        if (abort.signal.aborted) throw new Cancelled();
       }
       // On-device voice activity only — measured, never recorded or sent.
       let voicedMs: number | undefined;

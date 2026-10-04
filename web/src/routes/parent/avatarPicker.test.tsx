@@ -88,6 +88,14 @@ test('English: the English set first; picking an Indonesian avatar from More cha
   );
 });
 
+test('the voice consent box ends the form, unchecked by default', () => {
+  page('en');
+  const box = screen.getByRole('checkbox', { name: /I agree that the AI teacher may hear my child's voice/ });
+  expect(box).not.toBeChecked();
+  fireEvent.click(box);
+  expect(box).toBeChecked();
+});
+
 test('Indonesian: the Indonesian set first, its first girl selected', () => {
   page('id');
   const g = grid('Karakter');

@@ -5,6 +5,7 @@ import { AgentApi } from './api';
 import type { ProgressUpdate } from './progressMap';
 import { ENCOURAGE_RETRY } from '../voice/recitationVerifier';
 import {
+  CANT_HEAR,
   HADITH_PLACEHOLDER,
   MOVE_ON_UNREPEATED,
   NUDGE_REPEAT,
@@ -264,21 +265,32 @@ describe('ServerLesson — repeat and consent', () => {
   it('with consent: the recording goes to score-recitation and its transcription is the answer', async () => {
     const recorder: UtteranceRecorder = { record: async () => new Blob(['x']) };
     const t = setup({ consent: true, recorder });
-    await toRecitation(t);
-    await at(t.lesson, 'tajweed', 'continue');
+    void t.lesson.start();
+    await until(t.lesson, (s) => s.phase === 'finished');
     const scores = t.server.calls.filter((c) => c.path === '/agent/score-recitation');
-    expect(scores).toHaveLength(4);
-    expect(scores[0]!.body).toMatchObject({ audio_base64: 'QUJD' });
-    expect(t.server.messages().slice(-4)).toEqual(Array(4).fill('قل هو الله أحد'));
+    const recitations = scores.filter((c) => (c.body as { forScore?: boolean }).forScore === true);
+    expect(recitations).toHaveLength(5); // the 4 ayat + the hadith
+    expect(recitations[0]!.body).toMatchObject({ audio_base64: 'QUJD' });
+    // no speech recognition here (as in Firefox / Safari): free answers go to the server's
+    // transcription in the session language
+    const free = scores.filter((c) => (c.body as { forScore?: boolean }).forScore === false);
+    expect(free.length).toBeGreaterThan(0);
+    expect(free.every((c) => (c.body as { lang?: string }).lang === 'ar')).toBe(true);
+    expect(t.server.messages()).not.toContain(CANT_HEAR.boy);
   });
 
   it('with consent but scoring unavailable: the reference line is sent instead', async () => {
     const server = new FakeAgentServer();
     server.scoreAvailable = false;
     const t = setup({ server, consent: true, recorder: { record: async () => new Blob(['x']) } });
-    await toRecitation(t);
-    await at(t.lesson, 'tajweed', 'continue');
-    expect(t.server.messages().slice(-4)).toEqual(['REF-AYAH-1', 'REF-AYAH-2', 'REF-AYAH-3', 'REF-AYAH-4']);
+    void t.lesson.start();
+    await until(t.lesson, (s) => s.phase === 'finished');
+    expect(t.server.messages().filter((m) => m.startsWith('REF-AYAH'))).toEqual([
+      'REF-AYAH-1',
+      'REF-AYAH-2',
+      'REF-AYAH-3',
+      'REF-AYAH-4',
+    ]);
   });
 
   it('without consent the recorder is never used even if present', async () => {
@@ -765,7 +777,9 @@ describe('ServerLesson — voice first', () => {
     expect(t.lesson.state.value.expects).toBeNull();
     t.lesson.playTapped();
     await at(t.lesson, 'greet', 'text');
-    expect(spoken[0]).toMatch(/^السلام عليكم/);
+    // no consent: the teacher first says it can't hear answers, then the server's greeting
+    expect(spoken[0]).toBe(CANT_HEAR.boy);
+    expect(spoken[1]).toMatch(/^السلام عليكم/);
     expect(t.lesson.state.value.playbackBlocked).toBe(false);
   });
 
@@ -834,7 +848,9 @@ describe('ServerLesson — voice first, no early browser voice', () => {
     expect(spoken).toEqual([]);
     release(true);
     await at(t.lesson, 'greet', 'text');
-    expect(spoken[0]).toMatch(/^السلام عليكم/);
+    // no consent: the teacher first says it can't hear answers, then the server's greeting
+    expect(spoken[0]).toBe(CANT_HEAR.boy);
+    expect(spoken[1]).toMatch(/^السلام عليكم/);
   });
 
   it('the surah check ignores the server default (1) before «which surah?», and logs a real mismatch', async () => {
