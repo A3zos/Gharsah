@@ -3,6 +3,11 @@
 @import './fonts.css';
 @import './animations.css';
 
+/* The mushaf card's Quran font (styles/fonts.css), Amiri Quran while it loads. */
+@theme {
+  --font-mushaf: 'KFGQPC HAFS Uthmanic Script', 'Amiri Quran', serif;
+}
+
 /* Base document styles (CLAUDE.md §4): cream background, Cairo body text, RTL. */
 @layer base {
   html {

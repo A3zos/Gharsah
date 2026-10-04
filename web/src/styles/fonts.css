@@ -9,5 +9,14 @@
 @import '@fontsource/baloo-bhaijaan-2/800.css';
 /* Quran ayat only. */
 @import '@fontsource/amiri-quran/400.css';
-/* Hadith / classical text. */
+/* Hadith / classical text (700: the surah name in the mushaf card's header). */
 @import '@fontsource/amiri/400.css';
+@import '@fontsource/amiri/700.css';
+
+/* The lesson's surah card — the King Fahd Complex's Hafs font (public/fonts/README-KFGQPC.txt:
+   shipped unmodified, never subset or converted). Quran text only. */
+@font-face {
+  font-family: 'KFGQPC HAFS Uthmanic Script';
+  src: url('/fonts/UthmanicHafs_v2-1.ttf') format('truetype');
+  font-display: swap;
+}
