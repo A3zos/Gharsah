@@ -1231,8 +1231,13 @@ export class ServerLesson {
           const toB64 = this.d.blobToBase64 ?? blobToBase64;
           const score = await this.guard(
             abort,
-            // a recitation: always Arabic, whatever the session language
-            toB64(blob).then((b) => this.d.api.scoreRecitation(this.turn!.sessionId, b, { forScore: true })),
+            // a recitation: always Arabic, whatever the session language (the server tries its Quran
+            // model on Modal first, then Groq — up to ~6 s: the wait gets the fillers)
+            this.waiting(
+              toB64(blob).then((b) =>
+                this.d.api.scoreRecitation(this.turn!.sessionId, b, { forScore: true }),
+              ),
+            ),
           ).catch((e: unknown) => {
             if (e instanceof Cancelled) throw e;
             return { available: false, transcription: null, score: null, marked: [] } as ScoreResult;

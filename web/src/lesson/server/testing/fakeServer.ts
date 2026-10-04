@@ -169,7 +169,13 @@ export class FakeAgentServer {
     }
     switch (u.pathname) {
       case '/agent/status':
-        return json({ llm: true, model: 'm', last_error: null });
+        // 2026-10-04: + asr (diagnostics only — the client never reads it)
+        return json({
+          llm: true,
+          model: 'm',
+          last_error: null,
+          asr: { groq_configured: true, modal_configured: true, modal_last: 'never' },
+        });
       case '/agent/start': {
         const id = `s${++this.seq}`;
         const mode = body?.mode === 'hadith' ? 'hadith' : 'quran';

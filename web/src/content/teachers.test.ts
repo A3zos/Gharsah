@@ -58,16 +58,16 @@ test('preload: a teacher whose frames 404 → the Arabic teacher of the same gen
   }
 });
 
-test("/speak gets the teacher's voice_id only when one is configured", async () => {
+test('/speak sends text, gender and lang only — the server picks the voice (SpeakIn, /speak/status)', async () => {
   const bodies: unknown[] = [];
   const api = new AgentApi('https://ai.test', async (_u, init) => {
     bodies.push(JSON.parse(String(init?.body)));
     return new Response(new Blob(['mp3']), { status: 200, headers: { 'Content-Type': 'audio/mpeg' } });
   });
-  await api.speak('Hello, champ!', 'boy', 'en', 'voice-en-m');
+  await api.speak('Hello, champ!', 'boy', 'en');
   await api.speak('Halo, jagoan!', 'girl', 'id');
   expect(bodies).toEqual([
-    { text: 'Hello, champ!', gender: 'boy', lang: 'en', voice_id: 'voice-en-m' },
+    { text: 'Hello, champ!', gender: 'boy', lang: 'en' },
     { text: 'Halo, jagoan!', gender: 'girl', lang: 'id' },
   ]);
 });

@@ -13,15 +13,9 @@ export interface TeacherConfig {
   /** web/public/characters/<folder>/ */
   folder: string;
   nameKey: TeacherNameKey;
-  /**
-   * The /speak voice for this teacher. Arabic: none — the server's current Arabic voices
-   * (picked by gender). en / id: VITE_VOICE_ID_{EN,ID}_{M,F} (empty → the server default).
-   */
-  voiceId?: string;
 }
 
-const env = (import.meta.env ?? {}) as Record<string, string | undefined>;
-const voice = (key: string): string | undefined => env[key]?.trim() || undefined;
+// The voice is the AI server's, by lang + gender (/speak/status) — nothing to configure here.
 
 export const TEACHERS: Record<UiLanguage, Record<TeacherGender, TeacherConfig>> = {
   ar: {
@@ -29,12 +23,12 @@ export const TEACHERS: Record<UiLanguage, Record<TeacherGender, TeacherConfig>> 
     girl: { folder: 'teacher-girl', nameKey: 'sarah' },
   },
   en: {
-    boy: { folder: 'teacher-en-boy', nameKey: 'adam', voiceId: voice('VITE_VOICE_ID_EN_M') },
-    girl: { folder: 'teacher-en-girl', nameKey: 'maryam', voiceId: voice('VITE_VOICE_ID_EN_F') },
+    boy: { folder: 'teacher-en-boy', nameKey: 'adam' },
+    girl: { folder: 'teacher-en-girl', nameKey: 'maryam' },
   },
   id: {
-    boy: { folder: 'teacher-id-boy', nameKey: 'ahmad', voiceId: voice('VITE_VOICE_ID_ID_M') },
-    girl: { folder: 'teacher-id-girl', nameKey: 'aisyah', voiceId: voice('VITE_VOICE_ID_ID_F') },
+    boy: { folder: 'teacher-id-boy', nameKey: 'ahmad' },
+    girl: { folder: 'teacher-id-girl', nameKey: 'aisyah' },
   },
 };
 

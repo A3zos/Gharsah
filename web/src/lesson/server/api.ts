@@ -228,14 +228,16 @@ export class AgentApi {
     return p;
   }
 
-  /** The teacher's line as MP3, or null (any non-audio answer → the browser's voice). */
-  async speak(text: string, gender: Gender, lang: AgentLang = 'ar', voiceId?: string): Promise<Blob | null> {
+  /**
+   * The teacher's line as MP3, or null (any non-audio answer → the browser's voice). The
+   * server picks the voice by `lang` + `gender` (/speak/status: voice / female_voice,
+   * voice_en / female_voice_en, voice_id / female_voice_id) — SpeakIn is text, gender, lang.
+   */
+  async speak(text: string, gender: Gender, lang: AgentLang = 'ar'): Promise<Blob | null> {
     try {
       const r = await this.request('/speak', {
         method: 'POST',
-        // `lang` is in the server's SpeakIn schema (openapi.json), default "ar"
-        // voice_id: the en / id teacher's voice (content/teachers.ts) when configured
-        body: voiceId ? { text, gender, lang, voice_id: voiceId } : { text, gender, lang },
+        body: { text, gender, lang },
         timeoutMs: SPEAK_TIMEOUT_MS,
       });
       if (!r.ok || !(r.headers.get('content-type') ?? '').includes('audio')) return null;
