@@ -23,7 +23,10 @@ export interface Call {
 }
 
 interface Session {
-  mode: 'quran' | 'hadith';
+  mode: 'quran' | 'hadith' | 'open';
+  /** open mode: the session language and whether the child said goodbye. */
+  lang?: string;
+  ended?: boolean;
   idx: number;
   max: number;
   n: number;
@@ -132,6 +135,10 @@ export const HADITH_STAGES: StageSpec[] = [
   { id: 'done', label: 'النهاية', say: 'بارك الله فيك.', expects: 'none' },
 ];
 
+export const OPEN_GREETING = 'أهلًا يا بطل! اسألني أي سؤال.';
+export const OPEN_FAREWELL = 'مع السلامة يا بطل، في أمان الله!';
+const OPEN_GOODBYE = /سلام|باي|وداع|\bbye\b|dadah|sampai jumpa/i;
+
 export class FakeAgentServer {
   readonly calls: Call[] = [];
   private sessions = new Map<string, Session>();
@@ -178,6 +185,10 @@ export class FakeAgentServer {
         });
       case '/agent/start': {
         const id = `s${++this.seq}`;
+        if (body?.mode === 'open') {
+          this.sessions.set(id, { mode: 'open', idx: 0, max: 0, n: 0, lang: String(body?.lang ?? 'ar') });
+          return json(this.openTurn(id, OPEN_GREETING));
+        }
         const mode = body?.mode === 'hadith' ? 'hadith' : 'quran';
         this.sessions.set(id, { mode, idx: 0, max: 0, n: 0 });
         return json(this.turn(id));
@@ -185,6 +196,13 @@ export class FakeAgentServer {
       case '/agent/message': {
         const s = this.sessions.get(String(body?.session_id));
         if (!s) return json({ detail: 'session expired, please start again' }, 404);
+        if (s.mode === 'open') {
+          const text = String(body?.text ?? '');
+          s.ended = OPEN_GOODBYE.test(text);
+          return json(
+            this.openTurn(String(body?.session_id), s.ended ? OPEN_FAREWELL : `ANSWER(${s.lang}): ${text}`),
+          );
+        }
         const spec = this.stages(s)[s.idx]!;
         s.n++;
         if (s.n >= (spec.turns ?? 1)) {
@@ -253,6 +271,27 @@ export class FakeAgentServer {
 
   private stages(s: Session): StageSpec[] {
     return s.mode === 'quran' ? this.quran : this.hadith;
+  }
+
+  /** «اسأل وجاوب» (ai/API_web.md §1.1): kind open, stage qa, no actions, text until goodbye → none. */
+  private openTurn(id: string, say: string): Record<string, unknown> {
+    const s = this.sessions.get(id)!;
+    return {
+      session_id: id,
+      kind: 'open',
+      teacher: 'المعلم عبدالله',
+      female: false,
+      stage: 'qa',
+      stage_index: 0,
+      max_stage_index: 0,
+      stages: [{ id: 'qa', label: 'اسأل وجاوب' }],
+      say,
+      actions: [],
+      expects: s.ended ? 'none' : 'text',
+      quick_replies: [],
+      child_name: 'يا بطل',
+      profile: {},
+    };
   }
 
   private turn(id: string): Record<string, unknown> {

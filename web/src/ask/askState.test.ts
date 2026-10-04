@@ -17,18 +17,23 @@ describe('askState', () => {
     expect(askReducer(done, { type: 'again' })).toEqual(initialAskState);
   });
 
-  it('the mic: listening → heard → thinking with a voice question', () => {
+  it('the mic: listening → heard (speech recognition text) → thinking with that text', () => {
     const listening = run([{ type: 'micTap' }]);
     expect(listening.phase).toBe('listening');
-    expect(run([{ type: 'heard' }], listening)).toMatchObject({
+    expect(run([{ type: 'heard', text: '  لماذا نصلي؟ ' }], listening)).toMatchObject({
       phase: 'thinking',
-      question: { kind: 'voice' },
+      question: { kind: 'text', text: 'لماذا نصلي؟' },
     });
-    // a second tap = «I'm done»
-    expect(run([{ type: 'micTap' }], listening)).toMatchObject({
-      phase: 'thinking',
-      question: { kind: 'voice' },
-    });
+    // a second tap = stop: the mic closes, nothing asked
+    expect(run([{ type: 'micTap' }], listening)).toEqual(initialAskState);
+  });
+
+  it('the goodbye (expects none): its text kept; nothing more to ask, «again» ignored', () => {
+    const thinking = run([{ type: 'ask', text: 'مع السلامة' }]);
+    const bye = askReducer(thinking, { type: 'result', result: { kind: 'goodbye', text: 'في أمان الله' } });
+    expect(bye).toMatchObject({ phase: 'goodbye', answer: { kind: 'goodbye', text: 'في أمان الله' } });
+    for (const e of [{ type: 'again' }, { type: 'micTap' }, { type: 'ask', text: 'x' }] as AskEvent[])
+      expect(askReducer(bye, e)).toBe(bye);
   });
 
   it('the mic heard nothing / is blocked / was cancelled → idle (+ a note)', () => {

@@ -9,7 +9,8 @@
 // whole surah is show_ayat without `current`). The turn's `ayah` is the one ayah the
 // child hears, sees highlighted and is asked to repeat.
 
-export type AgentMode = 'quran' | 'hadith';
+/** quran / hadith lessons; open = «اسأل وجاوب» («اسألني»: one stage "qa", expects text until goodbye → none). */
+export type AgentMode = 'quran' | 'hadith' | 'open';
 /** Which session the turn belongs to. `kind` is only trusted for taseem/htaseem (it is
  *  absent on the main quran path) — otherwise the mode we started with decides. */
 export type TurnKind = AgentMode | 'taseem' | 'htaseem';

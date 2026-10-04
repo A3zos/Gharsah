@@ -1,14 +1,18 @@
-// «اسألني» — the child asks the teacher about their faith. UI ONLY (askState.ts): the
-// NotConnectedAskService answers «soon, from trusted sources» — nothing is sent anywhere, no
-// answer text exists in the app. Same stage as the live lesson call (teacher sprite per
-// locale / gender, name pill), no timer. Voice only animates listening (askVoice.ts).
+// «اسألني» — the child asks the teacher about their faith, on the AI server's «اسأل وجاوب»
+// mode (askRuntime.ts: ServerAskService; «not connected» when no AI server is configured).
+// Same stage as the live lesson call (teacher sprite per locale / gender, name pill), no
+// timer. States in askState.ts. The mic = the browser's speech recognition (askVoice.ts); the
+// teacher speaks every answer (/speak, lip-synced) and the bubble shows it exactly as received.
+// expects "none" (the child said goodbye) → the goodbye, then home.
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 
 import { paths } from '../../app/paths';
-import { askEnabled, createAskService, type AskService } from '../../ask/AskService';
+import { askEnabled, NotConnectedAskService, type AskService } from '../../ask/AskService';
+import { createAskRuntime, type AskTeacherVoice } from '../../ask/askRuntime';
 import { askReducer, initialAskState, MAX_QUESTION_LENGTH, type AskState } from '../../ask/askState';
-import { createAskVoice, type AskVoice } from '../../ask/askVoice';
+import type { AskVoice } from '../../ask/askVoice';
+import type { AskAnswer } from '../../ask/AskService';
 import { AskBubbleIcon } from '../../components/child/childIcons';
 import { useChildData } from '../../components/child/ChildData';
 import { type TeacherGender } from '../../components/child/teacherCharacter';
@@ -36,68 +40,138 @@ export default function AskRoute() {
   useChildTitle(m.child.ask.title);
   const [initial] = useState(() => askPreviewState(search) ?? initialAskState);
   if (!askEnabled()) return <Navigate to={paths.child.home} replace />;
-  return <AskScreen gender={child?.gender ?? 'boy'} initial={initial} />;
+  if (!child) return <div aria-busy="true" className="min-h-dvh bg-background" />;
+  return <AskConnected child={child} initial={initial} />;
 }
+
+/** One visit: the session, the mic and the teacher's voice (askRuntime.ts), released on leave. */
+function AskConnected({
+  child,
+  initial,
+}: {
+  child: { id: string; name: string; gender: TeacherGender };
+  initial: AskState;
+}) {
+  const { lang } = useI18n();
+  const [rt] = useState(() =>
+    createAskRuntime({ childId: child.id, childName: child.name, gender: child.gender, uiLang: lang }),
+  );
+  useEffect(() => () => rt.dispose(), [rt]);
+  return (
+    <AskScreen
+      gender={child.gender}
+      initial={initial}
+      service={rt.service}
+      voice={rt.voice}
+      teacher={rt.teacher}
+    />
+  );
+}
+
+/** Thinking longer than this (a cold start) → «لحظة أجهّز لك الجواب…». */
+export const ASK_SLOW_MS = 4000;
+/** After the goodbye has been said: back to the child home. */
+export const ASK_GOODBYE_HOME_MS = 2000;
 
 export function AskScreen({
   gender,
   initial = initialAskState,
   service: injected,
-  voice: injectedVoice,
+  voice = null,
+  teacher = null,
 }: {
   gender: TeacherGender;
   initial?: AskState;
   service?: AskService;
-  voice?: AskVoice;
+  /** Speech recognition; null = this browser has none (keyboard + chips only). */
+  voice?: AskVoice | null;
+  /** The teacher's voice (/speak); null = no voice (not connected). */
+  teacher?: AskTeacherVoice | null;
 }) {
   const { lang, m } = useI18n();
   const t = m.child.ask;
   const desktop = useMedia(DESKTOP);
   const navigate = useNavigate();
   const [s, dispatch] = useReducer(askReducer, initial);
-  const [service] = useState(() => injected ?? createAskService());
-  const voiceRef = useRef<AskVoice | null>(injectedVoice ?? null);
+  const [service] = useState<AskService>(() => injected ?? new NotConnectedAskService());
+  // the line the teacher finished saying / the question that has waited long (set from callbacks)
+  const [saidDone, setSaidDone] = useState<string | null>(null);
+  const [slowFor, setSlowFor] = useState<AskState['question']>(null);
+  const teacherRef = useRef(teacher);
 
-  // listening: the mic only tells when the child starts and stops talking
+  // the screen opened: start the session now (a cold start overlaps the greeting)
+  useEffect(() => service.warm?.(), [service]);
+
+  // listening: the browser's speech recognition → the child's words
   useEffect(() => {
-    if (s.phase !== 'listening') return;
+    if (s.phase !== 'listening' || !voice) return;
+    teacherRef.current?.stop();
     const ac = new AbortController();
-    const voice = (voiceRef.current ??= createAskVoice());
     void voice.listen(ac.signal).then((r) => {
       if (ac.signal.aborted) return;
-      dispatch({ type: r === 'spoke' ? 'heard' : r === 'denied' ? 'micBlocked' : 'notHeard' });
+      dispatch(
+        typeof r === 'object'
+          ? { type: 'heard', text: r.text }
+          : { type: r === 'denied' ? 'micBlocked' : 'notHeard' },
+      );
     });
-    return () => {
-      ac.abort();
-      voice.close();
-    };
-  }, [s.phase]);
+    return () => ac.abort();
+  }, [s.phase, voice]);
 
-  // thinking: the service (not connected yet → «soon»)
+  // thinking: the service; a long wait (cold start) gets a gentle line
   const question = s.question;
   useEffect(() => {
     if (s.phase !== 'thinking') return;
     let live = true;
-    service
-      .ask(question?.kind === 'text' ? question.text : '', lang)
+    const slowTimer = setTimeout(() => live && setSlowFor(question), ASK_SLOW_MS);
+    const text = question?.kind === 'text' ? question.text : '';
+    (text ? service.ask(text, lang) : Promise.reject(new Error('nothing transcribed')))
       .then((result) => live && dispatch({ type: 'result', result }))
       .catch(() => live && dispatch({ type: 'failed' }));
     return () => {
       live = false;
+      clearTimeout(slowTimer);
     };
   }, [s.phase, question, service, lang]);
 
-  useEffect(() => () => voiceRef.current?.close(), []);
+  // an answer / the goodbye: the teacher says it (lip-synced); after the goodbye → home
+  const said = s.phase === 'answer' || s.phase === 'goodbye' ? (s.answer?.text ?? '') : '';
+  const phase = s.phase;
+  useEffect(() => {
+    if (!said) return;
+    let live = true;
+    let home: ReturnType<typeof setTimeout> | undefined;
+    const voiced = teacherRef.current ? teacherRef.current.speak(said).catch(() => {}) : Promise.resolve();
+    void voiced.then(() => {
+      if (!live) return;
+      setSaidDone(said);
+      if (phase === 'goodbye') home = setTimeout(() => navigate(paths.child.home), ASK_GOODBYE_HOME_MS);
+    });
+    return () => {
+      live = false;
+      clearTimeout(home);
+      teacherRef.current?.stop();
+    };
+  }, [said, phase, navigate]);
+  const talking = !!teacher && !!said && saidDone !== said;
+  const slow = s.phase === 'thinking' && slowFor === question;
 
-  const line =
-    s.phase === 'idle'
+  useEffect(() => () => teacherRef.current?.stop(), []);
+
+  const answered = s.phase === 'answer' || s.phase === 'goodbye';
+  const sources = s.answer && 'sources' in s.answer ? s.answer.sources : [];
+  const line = answered
+    ? (s.answer?.text ?? '')
+    : s.phase === 'idle'
       ? s.note
         ? t[s.note]
         : t.greeting[gender]
       : s.phase === 'listening'
         ? t.listening
         : s.phase === 'thinking'
-          ? t.thinking
+          ? slow
+            ? t.preparing
+            : t.thinking
           : s.phase === 'notReady'
             ? t.notReady
             : s.phase === 'sensitive' || s.phase === 'offTopic'
@@ -111,15 +185,21 @@ export function AskScreen({
         gender={gender}
         desktop={desktop}
         pose={s.phase === 'listening' ? 'listening' : s.phase === 'thinking' ? 'quiet' : 'speaking'}
-        talking={false}
-        happy={s.phase === 'notReady' || s.phase === 'answer'}
-        compact={s.phase === 'answer'}
+        talking={talking}
+        mouth={teacher?.mouth}
+        happy={s.phase === 'notReady' || s.phase === 'answer' || s.phase === 'goodbye'}
+        compact={s.phase === 'answer' && sources.length > 0}
       >
         {line && (
           <p
             role="status"
             aria-live="polite"
-            className="relative m-0 max-w-[440px] rounded-px-22 bg-green-tint px-[18px] py-[12px] text-center text-[17px] leading-[1.75] font-bold text-text-dark"
+            // the server's answer: exactly as received, its own direction; a long one scrolls
+            dir={answered ? 'auto' : undefined}
+            className={cx(
+              'relative m-0 max-w-[440px] rounded-px-22 bg-green-tint px-[18px] py-[12px] text-center text-[17px] leading-[1.75] font-bold text-text-dark',
+              answered && 'max-h-[34dvh] overflow-y-auto',
+            )}
           >
             {line}
             {s.phase === 'thinking' && <ThinkingDots />}
@@ -127,7 +207,9 @@ export function AskScreen({
         )}
       </TeacherStage>
       <div className="flex min-h-0 grow flex-col gap-[12px] overflow-y-auto">
-        {s.phase === 'idle' && <Suggestions onAsk={(text) => dispatch({ type: 'ask', text })} />}
+        {(s.phase === 'idle' || s.phase === 'answer') && (
+          <Suggestions onAsk={(text) => dispatch({ type: 'ask', text })} />
+        )}
         {s.phase === 'listening' && (
           <div className="flex min-h-[92px] items-center justify-center rounded-px-24 border-[2px] border-dashed border-input-border bg-surface px-[16px] text-[15px] font-bold text-text-subtle">
             {t.transcriptPlaceholder}
@@ -139,11 +221,11 @@ export function AskScreen({
           s.phase === 'offTopic') && (
           <QuestionBack state={s} parent={s.phase === 'sensitive' || s.phase === 'offTopic'} />
         )}
-        {s.phase === 'answer' && s.answer && <AnswerCard state={s} />}
+        {s.phase === 'answer' && sources.length > 0 && <AnswerCard state={s} />}
       </div>
-      {s.phase === 'idle' || s.phase === 'listening' ? (
-        <AskInputs listening={s.phase === 'listening'} dispatch={dispatch} />
-      ) : s.phase === 'thinking' ? null : (
+      {s.phase === 'idle' || s.phase === 'listening' || s.phase === 'answer' ? (
+        <AskInputs listening={s.phase === 'listening'} mic={voice !== null} dispatch={dispatch} />
+      ) : s.phase === 'thinking' || s.phase === 'goodbye' ? null : (
         <button
           type="button"
           onClick={() => dispatch({ type: 'again' })}
@@ -261,13 +343,17 @@ function Suggestions({ onAsk }: { onAsk: (text: string) => void }) {
 /** The big round mic (like the lesson's) + «اكتب سؤالك» for older kids. */
 function AskInputs({
   listening,
+  mic,
   dispatch,
 }: {
   listening: boolean;
+  /** Speech recognition available — else the keyboard only (no broken mic). */
+  mic: boolean;
   dispatch: (e: Parameters<typeof askReducer>[1]) => void;
 }) {
   const t = useI18n().m.child.ask;
-  const [typing, setTyping] = useState(false);
+  const [typingOn, setTyping] = useState(false);
+  const typing = typingOn || !mic;
   const [text, setText] = useState('');
   const send = (e: React.FormEvent) => {
     e.preventDefault();
@@ -288,7 +374,7 @@ function AskInputs({
             maxLength={MAX_QUESTION_LENGTH}
             onChange={(e) => setText(e.target.value)}
             placeholder={t.typePlaceholder}
-            autoFocus
+            autoFocus={mic}
             className="h-[54px] min-w-0 grow rounded-px-20 border-[1.5px] border-input-border bg-surface px-[16px] text-[16px] text-text-dark placeholder:text-placeholder"
           />
           <button
@@ -300,39 +386,41 @@ function AskInputs({
           </button>
         </form>
       )}
-      <button
-        type="button"
-        onClick={() => dispatch({ type: 'micTap' })}
-        aria-label={listening ? t.micStop : t.mic}
-        aria-pressed={listening}
-        className="relative flex h-[88px] w-[88px] cursor-pointer items-center justify-center rounded-full border-0 bg-gold p-0 shadow-lesson-mic-live"
-      >
-        {listening && (
-          <>
-            <span className="absolute inset-0 animate-[gh-glow-2_1.5s_ease-out_infinite] rounded-full bg-mic-pulse" />
-            <span className="absolute -inset-[10px] animate-[gh-glow-2_1.5s_ease-out_.5s_infinite] rounded-full bg-mic-pulse" />
-          </>
-        )}
-        <svg className="relative" width="38" height="38" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <rect
-            x="9"
-            y="3"
-            width="6"
-            height="11"
-            rx="3"
-            fill={C.surface}
-            stroke={C.surface}
-            strokeWidth="2"
-          />
-          <path
-            d="M5.5 11.5 C5.5 15.1 8.4 18 12 18 C15.6 18 18.5 15.1 18.5 11.5 M12 18 V21.2"
-            stroke={C.surface}
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button>
-      {!listening && (
+      {mic && (
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'micTap' })}
+          aria-label={listening ? t.micStop : t.mic}
+          aria-pressed={listening}
+          className="relative flex h-[88px] w-[88px] cursor-pointer items-center justify-center rounded-full border-0 bg-gold p-0 shadow-lesson-mic-live"
+        >
+          {listening && (
+            <>
+              <span className="absolute inset-0 animate-[gh-glow-2_1.5s_ease-out_infinite] rounded-full bg-mic-pulse" />
+              <span className="absolute -inset-[10px] animate-[gh-glow-2_1.5s_ease-out_.5s_infinite] rounded-full bg-mic-pulse" />
+            </>
+          )}
+          <svg className="relative" width="38" height="38" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect
+              x="9"
+              y="3"
+              width="6"
+              height="11"
+              rx="3"
+              fill={C.surface}
+              stroke={C.surface}
+              strokeWidth="2"
+            />
+            <path
+              d="M5.5 11.5 C5.5 15.1 8.4 18 12 18 C15.6 18 18.5 15.1 18.5 11.5 M12 18 V21.2"
+              stroke={C.surface}
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      )}
+      {mic && !listening && (
         <button
           type="button"
           onClick={() => setTyping((v) => !v)}
@@ -371,7 +459,7 @@ function QuestionBack({ state: s, parent }: { state: AskState; parent: boolean }
 /** The future answer (dev preview only for now): the text, «المصدر» chips, «اسأل وليّ أمرك أيضًا». */
 function AnswerCard({ state: s }: { state: AskState }) {
   const t = useI18n().m.child.ask;
-  const a = s.answer!;
+  const a = s.answer as AskAnswer;
   return (
     <article className="flex flex-col gap-[14px] rounded-px-28 border-[1.5px] border-border bg-surface px-[20px] py-[18px] shadow-card">
       {s.question?.kind === 'text' && (

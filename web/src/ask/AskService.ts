@@ -1,7 +1,6 @@
-// «اسألني» — the service the ask screen talks to. UI ONLY for now: the NotConnectedAskService
-// "thinks" for a moment and answers «not ready yet». Nothing is sent anywhere, and no answer
-// text lives in this code — answers will only ever come from verified sources, through the
-// real service below.
+// «اسألني» — the service the ask screen talks to: ServerAskService (the AI server's mode
+// "open", askRuntime.ts) when the AI server is configured, else NotConnectedAskService, which
+// "thinks" for a moment and answers «not ready yet». No answer text lives in this code.
 import type { UiLanguage } from '../i18n/i18n';
 
 export interface AskSource {
@@ -15,11 +14,13 @@ export interface AskAnswer {
   kind: 'answer' | 'sensitive' | 'offTopic';
 }
 
-/** What the screen gets back: an answer (later), or «not ready yet» (now). */
-export type AskResult = AskAnswer | { kind: 'notReady' };
+/** What the screen gets back: an answer, the teacher's goodbye (the session ended), or «not ready yet». */
+export type AskResult = AskAnswer | { kind: 'goodbye'; text: string } | { kind: 'notReady' };
 
 export interface AskService {
   ask(question: string, lang: UiLanguage): Promise<AskResult>;
+  /** Start early (the screen opened), so a cold start overlaps the greeting. */
+  warm?(): void;
 }
 
 /** Long enough for the «thinking» moment to be seen. */
@@ -44,13 +45,5 @@ export function askEnabled(env: Record<string, unknown> | undefined = import.met
     .toLowerCase();
   return !(v === '0' || v === 'false' || v === 'off');
 }
-
-export function createAskService(): AskService {
-  // TODO(ask): the real service — the AI server's mode "open" (/agent/start { mode: 'open' },
-  // ai/API_web.md §1.1). Before it plugs in: answers only from verified sources (QuranEnc /
-  // HadeethEnc / approved books) with their `sources`; sensitive topics → kind 'sensitive'
-  // (refer to the parent); off-topic → 'offTopic'; the child's name never sent (scrub the
-  // question like AgentApi's nameRedactor); honour the parent's «السماح بميزة اسألني»
-  // (data/askSetting.ts — needs a DB column first).
-  return new NotConnectedAskService();
-}
+// TODO(ask): honour the parent's «السماح بميزة اسألني» (data/askSetting.ts — this browser only
+// today; needs a DB column the child app can read).

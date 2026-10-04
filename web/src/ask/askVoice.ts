@@ -1,39 +1,29 @@
-// «اسألني» — the mic, only to animate listening and to notice when the child starts and stops
-// talking (the lesson's on-device presence detector). Nothing is recorded, stored or sent.
-import { LessonMicrophone } from '../lesson/web/microphone';
-import { MicPresenceListener } from '../lesson/web/serverPorts';
+// «اسألني» — the mic: the browser's speech recognition in the session language (ar-SA / en-US /
+// id-ID). Never /agent/score-recitation. No speech recognition in this browser → no mic at
+// all (the screen shows the keyboard + the chips).
+import type { AgentLang } from '../lesson/server/api';
+import { BrowserSpeechInput } from '../lesson/web/serverPorts';
 
-export type AskListenResult = 'spoke' | 'silent' | 'denied';
+/** What the child said, nothing heard, or the mic / recognition is blocked. */
+export type AskListenResult = { text: string } | 'silent' | 'denied';
 
 export interface AskVoice {
-  /** Resolves when the child spoke and then paused, said nothing, or the mic is blocked. */
   listen(signal: AbortSignal): Promise<AskListenResult>;
   close(): void;
 }
 
-/** Nothing said this long → «I didn't hear you». */
-export const ASK_FIRST_WORDS_MS = 8000;
-/** A pause this long after speaking = the question is over. */
-export const ASK_END_PAUSE_MS = 1500;
-/** The longest a spoken question may run. */
-export const ASK_MAX_MS = 15_000;
-
-export function createAskVoice(): AskVoice {
-  const mic = new LessonMicrophone();
-  const presence = new MicPresenceListener(mic);
-  const wait = (signal: AbortSignal, minMs: number, timeoutMs: number) =>
-    presence.waitForSpeech(signal, { minMs, timeoutMs }).catch(() => 'silent' as const);
+export function createAskVoice(lang: AgentLang): AskVoice | null {
+  const speech = BrowserSpeechInput.create(lang);
+  if (!speech) return null;
   return {
     async listen(signal) {
-      const first = await wait(signal, 500, ASK_FIRST_WORDS_MS);
-      if (first !== 'spoke') return first;
-      const end = Date.now() + ASK_MAX_MS;
-      // still talking → keep listening until a pause
-      while (!signal.aborted && Date.now() < end) {
-        if ((await wait(signal, 300, ASK_END_PAUSE_MS)) !== 'spoke') break;
+      try {
+        const text = (await speech.listen(signal))?.trim();
+        return text ? { text } : 'silent';
+      } catch {
+        return 'denied'; // blocked / unavailable — the screen offers the keyboard
       }
-      return 'spoke';
     },
-    close: () => mic.close(),
+    close: () => {},
   };
 }
