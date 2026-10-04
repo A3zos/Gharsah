@@ -22,6 +22,8 @@ import { HtmlRecitationPlayer } from './recitationPlayer';
 import { MAX_REPORT_MS, WavProjectRecorder } from './recorder';
 import { aiSpeakPost, ServerVoice, serverVoiceEnabled } from './serverVoice';
 import { SpeechTeacher } from './speechTeacher';
+import { aiServerUrl, createProjectVerifier } from './projectVerifier';
+import type { RawLineVoice } from '../ports';
 
 const CACHE_NAME = 'gharsah-quran-audio-v1';
 const cacheKey = (name: string) => `/__quran-audio-cache/${name}`;
@@ -104,6 +106,10 @@ export function createWebLesson(o: {
   sink?: LessonProgressSink;
   /** The UI language the teacher speaks (default Arabic). Ayat / hadith stay Arabic. */
   lang?: LineLang;
+  /** The child's gender — the AI server's /speak voice for the project check's message. */
+  gender?: 'boy' | 'girl';
+  /** The project check's «busy» line in the UI language (lesson.project.busy). */
+  verifyBusyMessage?: string;
 }): WebLesson {
   const cache = new CacheStorageAudioStore();
   const content: LessonContent = {
@@ -128,6 +134,9 @@ export function createWebLesson(o: {
   const lang = o.lang ?? 'ar';
   const teacher = new SpeechTeacher(mic, undefined, server, lip, lang);
   const recorder = new WavProjectRecorder(mic);
+  // the project check's message (the AI server's own words) through its /speak, lip-synced
+  const aiBase = o.sink ? null : aiServerUrl();
+  const rawVoice = aiBase ? lazyServerVoice(aiBase, lang, o.gender ?? 'boy', lip) : undefined;
   const agent = new LessonAgent({
     script: o.script,
     content,
@@ -135,6 +144,11 @@ export function createWebLesson(o: {
     player,
     recorder,
     sink: o.sink ?? new SupabaseProgressSink(o.session, o.script),
+    // the project report's voice check on the AI server (not in the DEV preview's local sink)
+    projectVerifier: o.sink
+      ? undefined
+      : createProjectVerifier({ childId: o.session.childId, lang, busyMessage: o.verifyBusyMessage ?? '' }),
+    rawVoice,
     // ~600 ms of quiet after a question before the mic listens (a natural pause)
     // A pure voice call: ~6 s of silence → one nudge, again → the step continues by
     // itself; a blocked mic → «سماح», then listen-only.
@@ -168,10 +182,35 @@ export function createWebLesson(o: {
       if (disposed) return;
       disposed = true;
       await agent.dispose().catch(() => {});
+      rawVoice?.stop();
       await Promise.all([teacher.dispose(), recorder.dispose(), player.dispose()]).catch(() => {});
       mic.close();
       cache.dispose();
       lip.dispose();
     },
+  };
+}
+
+/**
+ * The AI server's /speak voice for text outside the line bank (the project check's message),
+ * loaded on first use — its modules stay out of the lesson's initial (and prerendered) bundle.
+ */
+function lazyServerVoice(base: string, lang: LineLang, gender: 'boy' | 'girl', lip: LipSync): RawLineVoice {
+  let voice: Promise<{ speak(t: string): Promise<void>; stop(): void }> | null = null;
+  const get = () =>
+    (voice ??= Promise.all([import('../server/api'), import('../voice/tts'), import('./serverPorts')]).then(
+      ([api, tts, ports]) =>
+        new ports.ServerTeacherVoice(
+          tts.createTtsProvider(new api.AgentApi(base), lang),
+          gender,
+          undefined,
+          undefined,
+          lip,
+          lang,
+        ),
+    ));
+  return {
+    speak: async (text) => (await get()).speak(text),
+    stop: () => void voice?.then((v) => v.stop()),
   };
 }

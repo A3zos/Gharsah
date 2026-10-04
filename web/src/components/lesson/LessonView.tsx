@@ -46,6 +46,8 @@ export interface LessonActions {
   replayAyah(): void;
   play(): void;
   reRecord(): void;
+  /** «أعد المحاولة» after the project check service was busy. */
+  retryVerify(): void;
   /** «ردّدت» — one repeat when the mic can't hear the child (agent `manualRepeat`). */
   repeatTapped(): void;
   /** The ✕ — opens ExitConfirm. */
@@ -757,6 +759,7 @@ function ProjectReport({ state: s, actions }: { state: LessonState; actions: Les
   const { lang, m } = useI18n();
   const recording = s.beat === 'recording';
   const saved = s.beat === 'recorded' || (s.beat === 'advancing' && s.recordedDurationMs !== null);
+  const v = s.verify;
   return (
     <Card
       className={cx(
@@ -778,6 +781,36 @@ function ProjectReport({ state: s, actions }: { state: LessonState; actions: Les
             {fill(lang, m.lesson.project.recording, { time: shortClock(lang, s.recordingElapsedMs) })}
           </span>
         </span>
+      )}
+      {/* the project check: checking… / the server's message exactly / busy + retry */}
+      {v?.state === 'checking' && (
+        <span
+          role="status"
+          className="rounded-pill bg-gold-tint px-[15px] py-[8px] text-[16px] font-extrabold text-warning-text"
+        >
+          {m.lesson.project.checking}
+        </span>
+      )}
+      {v && v.state !== 'checking' && v.message && (
+        <p
+          role="status"
+          dir="auto"
+          className={cx(
+            'm-0 rounded-px-16 px-[15px] py-[9px] text-center text-[17px] leading-[1.7] font-extrabold',
+            v.state === 'verified' ? 'bg-green-tint text-deep-green' : 'bg-gold-tint text-warning-text',
+          )}
+        >
+          {v.message}
+        </p>
+      )}
+      {s.beat === 'verifyRetry' && (
+        <button
+          type="button"
+          onClick={actions.retryVerify}
+          className="h-[48px] cursor-pointer rounded-px-16 border-0 bg-gold px-[20px] font-body text-[16px] font-bold text-on-gold"
+        >
+          {m.lesson.project.retry}
+        </button>
       )}
       {saved && (
         <>

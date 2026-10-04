@@ -61,7 +61,8 @@ export function ServerLessonView({
   const { m } = useI18n();
   const elapsedMs = useElapsed();
   const starting = s.phase === 'starting' || s.phase === 'warming';
-  const listening = s.repeat === 'listening' || s.hearing;
+  // listening — and while a recitation is being scored (repeat «sending»), unless it speaks the wait line
+  const listening = s.repeat === 'listening' || s.hearing || (s.repeat === 'sending' && !s.speaking);
   // Only the teacher talks — nothing of what he says is written; the line appears as
   // text only when no voice could say it. Status lines (getting ready, done) stay.
   const caption = starting

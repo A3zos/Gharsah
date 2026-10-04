@@ -26,7 +26,7 @@ import { preloadTeacher } from '../../components/child/teacherCharacter';
 import { getTeacher } from '../../content/teachers';
 import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
 import { createWebLesson, type WebLesson } from '../../lesson/web/createLesson';
-import { fill, useI18n, type Messages, type UiLanguage } from '../../i18n/i18n';
+import { fill, MESSAGES, useI18n, type Messages, type UiLanguage } from '../../i18n/i18n';
 import { hadithCopyIn, surahNameIn } from '../../lesson/teacherLines';
 import { DESKTOP, useMedia } from '../../lib/useMedia';
 import { ServerLessonCall } from '../../components/lesson/ServerLessonCall';
@@ -221,6 +221,8 @@ function LessonCall({
       // DEV-only preview: progress stays in memory, the report is never uploaded.
       sink: import.meta.env.DEV && session.childId === 'preview' ? new PreviewProgressSink() : undefined,
       lang: langRef.current,
+      gender,
+      verifyBusyMessage: MESSAGES[langRef.current].lesson.project.busy,
     });
     setLesson(l);
     // «المعلم يتجهز…» first: the server voice (≤ ~45 s) and the character's frames —
@@ -294,6 +296,7 @@ function LessonCall({
         agent?.play();
       },
       reRecord: () => agent?.reRecord(),
+      retryVerify: () => agent?.retryVerify(),
       repeatTapped: () => agent?.repeatTapped(),
       exit: () => {
         agent?.pause();

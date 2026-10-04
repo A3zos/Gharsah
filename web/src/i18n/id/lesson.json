@@ -79,7 +79,10 @@
     "recording": "Merekam · {time}",
     "saved": "Suaramu tersimpan · {time}",
     "private": "Rekaman ini sampai ke dasbor orang tuamu — tidak dibagikan ke orang lain.",
-    "reRecord": "Rekam ulang"
+    "reRecord": "Rekam ulang",
+    "checking": "Aku sedang memeriksa proyekmu…",
+    "retry": "Coba lagi",
+    "busy": "Layanannya sedang sibuk — coba lagi sebentar lagi ya, jagoan"
   },
   "end": {
     "title": "Kamu sudah menyelesaikan pelajaran hari ini!",

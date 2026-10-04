@@ -122,8 +122,11 @@ export function isWordJudgment(text: string): boolean {
   return JUDGMENT.some((r) => r.test(t));
 }
 
-/** The approved line said instead of an unverifiable judgment (then the ayah plays once more). */
-export const ENCOURAGE_RETRY = 'أحسنت المحاولة! نعيدها مع القارئ مرة';
+/**
+ * The approved line said instead of an unverifiable judgment. No retry promised: the server
+ * asks for each ayah ONCE and moves on (ai/API_web.md 2026-10-04).
+ */
+export const ENCOURAGE_LINE = 'أحسنت المحاولة!';
 
 /**
  * The verifier a lesson uses when a repeat wasn't scored by /agent/score-recitation:

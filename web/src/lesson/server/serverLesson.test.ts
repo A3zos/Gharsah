@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { PlaybackBlocked } from '../ports';
 import { AgentApi } from './api';
 import type { ProgressUpdate } from './progressMap';
-import { ENCOURAGE_RETRY } from '../voice/recitationVerifier';
+import { ENCOURAGE_LINE } from '../voice/recitationVerifier';
 import { DEFAULT_QURAN_STAGES, PILOT_DAYS } from '../../content/pilot';
+import { RECITATION_WAIT_FALLBACK } from './waitLine';
 import {
   FILLER,
   FILLER_LONG,
@@ -1068,7 +1069,7 @@ describe('ServerLesson — recitation', () => {
     await toRepeats(t);
     await at(t.lesson, 'tajweed', 'continue');
     expect(spoken.some((x) => x.includes('نسيت'))).toBe(false);
-    expect(spoken).toContain(ENCOURAGE_RETRY);
+    expect(spoken).toContain(ENCOURAGE_LINE);
     expect(t.played).toContain(EVERYAYAH(2));
   });
 
@@ -1102,7 +1103,7 @@ describe('ServerLesson — recitation', () => {
     void t.lesson.start();
     await until(t.lesson, (st) => st.phase === 'finished');
     expect(spoken.some((x) => x.includes('نسيت'))).toBe(false);
-    expect(spoken).toContain(ENCOURAGE_RETRY);
+    expect(spoken).toContain(ENCOURAGE_LINE);
   });
 
   it('the child answered «جاهز؟» in words → no fixed «let us start», the server answers them', async () => {
@@ -1126,21 +1127,135 @@ describe('ServerLesson — recitation', () => {
     expect(spoken).not.toContain(REPEATS_START_REPLY);
   });
 
-  it('never the browser speech recognition for a recitation', async () => {
-    const during: string[] = [];
+  it('no MediaRecorder → the recitation through the browser speech recognition (ar-SA), its text sent', async () => {
+    const opts: { recitation?: boolean }[] = [];
     let t: Setup | null = null;
-    const listen = vi.fn(async () => {
-      during.push(String(t!.lesson.state.value.expects));
-      return 'تمام';
+    const listen = vi.fn(async (_s: AbortSignal, o?: { recitation?: boolean }) => {
+      opts.push({ ...o });
+      return t!.lesson.state.value.expects === 'repeat' ? 'قل هو الله احد' : 'تمام';
     });
     t = setup({
       server: new FakeAgentServer(withStage('recitation', REAL_RECITATION)),
       speechInput: { listen },
     });
     void t.lesson.start();
-    await vi.waitFor(() => expect(t!.server.messages()).toContain('REF-AYAH-4'));
-    expect(during.length).toBeGreaterThan(0); // answers do use it…
-    expect(during).not.toContain('repeat'); // …a recitation never does
+    await vi.waitFor(() =>
+      expect(t!.server.calls.filter((c) => c.path === '/agent/message').length).toBeGreaterThan(8),
+    );
+    expect(opts).toContainEqual({ recitation: true });
+    expect(t.server.messages()).toContain('قل هو الله احد');
+    expect(t.server.calls.some((c) => c.path === '/agent/score-recitation')).toBe(false);
+  });
+
+  it('with a recorder: recognition runs alongside — its text only when scoring is {available:false}', async () => {
+    const run = async (available: boolean) => {
+      const server = new FakeAgentServer(withStage('recitation', REAL_RECITATION));
+      server.scoreAvailable = available;
+      let t: Setup | null = null;
+      t = setup({
+        server,
+        recorder: { record: async () => new Blob(['x']) },
+        speechInput: {
+          listen: async () => (t!.lesson.state.value.expects === 'repeat' ? 'نص المتصفح' : 'تمام'),
+        },
+      });
+      void t.lesson.start();
+      await vi.waitFor(() =>
+        expect(server.calls.filter((c) => c.path === '/agent/score-recitation').length).toBeGreaterThan(1),
+      );
+      await vi.waitFor(() => expect(server.messages().length).toBeGreaterThan(5));
+      t.lesson.dispose();
+      return server.messages();
+    };
+    const scored = await run(true);
+    expect(scored).toContain('قل هو الله أحد'); // the server's transcription
+    expect(scored).not.toContain('نص المتصفح');
+    const fallback = await run(false);
+    expect(fallback).toContain('نص المتصفح'); // the browser's, the same recitation
+  });
+});
+
+describe('ServerLesson — the recitation wait line', () => {
+  /** score-recitation answered after `ms` (each RECITATION counted when it starts); everything else at once. */
+  const slowScore =
+    (server: FakeAgentServer, ms: number, started: { n: number }): typeof server.fetch =>
+    async (url, init) => {
+      if (new URL(url).pathname === '/agent/score-recitation') {
+        if ((JSON.parse(String(init?.body)) as { forScore?: boolean }).forScore === true) started.n++;
+        await new Promise((r) => setTimeout(r, ms));
+      }
+      return server.fetch(url, init);
+    };
+  const scoring = (o: { delay: number; lineMs?: number; againMs?: number; lang?: 'ar' | 'en' }) => {
+    const server = new FakeAgentServer(withStage('recitation', REAL_RECITATION));
+    const spoken: string[] = [];
+    const stop = vi.fn();
+    const started = { n: 0 };
+    const t = setup({
+      server,
+      lang: o.lang ?? 'ar',
+      api: new AgentApi('https://ai.test', slowScore(server, o.delay, started)),
+      recorder: { record: async () => new Blob(['x']) },
+      voice: { speak: async (x) => void spoken.push(x), stop },
+      waits: {
+        fillerMs: 60_000,
+        timeoutMs: 60_000,
+        recitationLineMs: o.lineMs ?? 20,
+        recitationAgainMs: o.againMs ?? 60_000,
+      },
+    });
+    /** score-recitation calls for a RECITATION (forScore: true) — free speech also uses the endpoint here. */
+    const recitations = () =>
+      server.calls.filter(
+        (c) => c.path === '/agent/score-recitation' && (c.body as { forScore?: boolean }).forScore === true,
+      );
+    return { ...t, server, spoken, stop, recitations, started };
+  };
+
+  it('a slow score → the teacher says the wait line once (after the delay), then the evaluation', async () => {
+    const t = scoring({ delay: 80 });
+    void t.lesson.start();
+    await vi.waitFor(() => expect(t.recitations()).toHaveLength(2), {
+      timeout: 5000,
+    });
+    const lines = t.spoken.filter((x) => x === RECITATION_WAIT_FALLBACK.ar);
+    // once per slow recitation (the delay < the «again» time)
+    expect(lines.length).toBeGreaterThanOrEqual(1);
+    expect(lines.length).toBeLessThanOrEqual(t.started.n);
+    // the reply came: the line is cut off before anything else is said
+    expect(t.stop).toHaveBeenCalled();
+    t.lesson.dispose();
+  });
+
+  it('a very long wait → said one more time at most', async () => {
+    const t = scoring({ delay: 400, lineMs: 20, againMs: 120 });
+    void t.lesson.start();
+    await vi.waitFor(() => expect(t.recitations().length).toBeGreaterThan(1), {
+      timeout: 5000,
+    });
+    const first = t.server.calls.findIndex((c) => c.path === '/agent/score-recitation');
+    expect(first).toBeGreaterThan(-1);
+    // per recitation: at most twice
+    expect(t.spoken.filter((x) => x === RECITATION_WAIT_FALLBACK.ar).length).toBeLessThanOrEqual(
+      2 * t.started.n,
+    );
+    expect(t.spoken.filter((x) => x === RECITATION_WAIT_FALLBACK.ar).length).toBeGreaterThanOrEqual(2);
+    t.lesson.dispose();
+  });
+
+  it('a quick score → no wait line at all', async () => {
+    const t = scoring({ delay: 0, lineMs: 2000 });
+    void t.lesson.start();
+    await vi.waitFor(() => expect(t.recitations().length).toBeGreaterThan(1));
+    expect(t.spoken).not.toContain(RECITATION_WAIT_FALLBACK.ar);
+    t.lesson.dispose();
+  });
+
+  it("English session: the English wait line (the server's own text when it gave one)", async () => {
+    const t = scoring({ delay: 80, lang: 'en' });
+    void t.lesson.start();
+    await vi.waitFor(() => expect(t.spoken).toContain(RECITATION_WAIT_FALLBACK.en), { timeout: 5000 });
+    t.lesson.dispose();
   });
 });
 

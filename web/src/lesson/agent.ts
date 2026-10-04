@@ -38,6 +38,9 @@ import {
   type ProjectRecorder,
   type RecitationAudio,
   type RecitationPlayer,
+  type ProjectVerdict,
+  type ProjectVerifier,
+  type RawLineVoice,
   type RecordedAudio,
 } from './ports';
 import type { ProjectContent, ProjectRepository } from './projects';
@@ -101,6 +104,9 @@ export interface LessonTimings {
 
 /** Beats that wait for the child (or a tap / a retry) — never treated as a dead end. */
 const WAITING_BEATS: ReadonlySet<string> = new Set([
+  // the project check waits on the server (up to 35 s) / for the «أعد المحاولة» tap
+  'checking',
+  'verifyRetry',
   'listening',
   'hearingAnswer',
   'awaitMic',
@@ -142,6 +148,10 @@ export interface LessonAgentOptions {
   player: RecitationPlayer;
   recorder: ProjectRecorder;
   sink: LessonProgressSink;
+  /** The project report's voice check (optional: without it the report is saved as before). */
+  projectVerifier?: ProjectVerifier;
+  /** Says the check's message (not a bank line) — the AI server's /speak; none → shown only. */
+  rawVoice?: RawLineVoice;
   childFirstName: string;
   timings?: Partial<LessonTimings>;
   lineBank?: TeacherLineBank;
@@ -175,6 +185,8 @@ export class LessonAgent {
   readonly player: RecitationPlayer;
   readonly recorder: ProjectRecorder;
   readonly sink: LessonProgressSink;
+  private readonly projectVerifier: ProjectVerifier | undefined;
+  private readonly rawVoice: RawLineVoice | undefined;
   readonly childFirstName: string;
   readonly timings: LessonTimings;
   readonly lineBank: TeacherLineBank;
@@ -232,6 +244,8 @@ export class LessonAgent {
     this.teacher = o.teacher;
     this.player = o.player;
     this.recorder = o.recorder;
+    this.projectVerifier = o.projectVerifier;
+    this.rawVoice = o.rawVoice;
     this.sink = o.sink;
     this.childFirstName = o.childFirstName;
     this.timings = { ...defaultLessonTimings, ...o.timings };
@@ -520,6 +534,12 @@ export class LessonAgent {
       default:
         break;
     }
+  }
+
+  /** «أعد المحاولة» after the check service was busy — the same recording, checked again. */
+  retryVerify(): void {
+    if (this.paused || this.s.beat !== 'verifyRetry' || !this.recorded) return;
+    void this.verifyReport();
   }
 
   /** Frame 22 «أعِد التسجيل». */
@@ -1300,11 +1320,77 @@ export class LessonAgent {
     }
     this.recorded = rec;
     this.set(copy(this.s, { recordedDurationMs: rec.durationMs }));
+    if (this.projectVerifier && this.step.type === 'project_report') {
+      void this.verifyReport();
+      return;
+    }
     this.say(this.line('report.thanks'), {
       beat: 'recorded',
       happy: true,
       then: () => this.armAutoAdvance(),
     });
+  }
+
+  /**
+   * The project report's voice check (/agent/actions/verify), automatic after recording:
+   *   verified → the server's message (e.g. «تم») said + shown exactly; the server already
+   *     marked it done (never /agent/actions/done) → the report is saved and the lesson goes on;
+   *   not verified → its message said + shown, then the child records again right away;
+   *   unavailable (or a failure / timeout, logged) → our friendly line + «أعد المحاولة»,
+   *     the recording kept.
+   */
+  private async verifyReport(): Promise<void> {
+    const rec = this.recorded;
+    const step = this.step;
+    if (!rec || !this.projectVerifier || step.type !== 'project_report') return;
+    this.enter(copy(this.s, { beat: 'checking', verify: { state: 'checking', message: null } }), {
+      resume: () => {},
+    });
+    let v: ProjectVerdict;
+    try {
+      v = await this.projectVerifier.verify({ projectId: step.projectId, audio: rec });
+    } catch (e) {
+      this.log('Project check failed', e);
+      v = { kind: 'unavailable' };
+    }
+    if (this.disposed || this.recorded !== rec || this.s.beat !== 'checking') return;
+    switch (v.kind) {
+      case 'skip':
+        this.set(copy(this.s, { verify: null }));
+        this.say(this.line('report.thanks'), {
+          beat: 'recorded',
+          happy: true,
+          then: () => this.armAutoAdvance(),
+        });
+        return;
+      case 'verified':
+        this.set(copy(this.s, { verify: { state: 'verified', message: v.message } }));
+        this.sayRaw(v.message, {
+          beat: 'recorded',
+          happy: true,
+          then: () => this.armAutoAdvance(),
+        });
+        return;
+      case 'notVerified':
+        this.set(copy(this.s, { verify: { state: 'notVerified', message: v.message } }));
+        this.sayRaw(v.message, {
+          beat: 'speaking',
+          then: () => {
+            // record again right away (the server's message stays on screen meanwhile)
+            const old = this.recorded;
+            this.recorded = undefined;
+            if (old) this.fire(this.recorder.discard(old));
+            void this.startRecording();
+          },
+        });
+        return;
+      case 'unavailable': {
+        const busy = this.projectVerifier.busyMessage;
+        this.set(copy(this.s, { verify: { state: 'unavailable', message: busy } }));
+        this.sayRaw(busy, { beat: 'verifyRetry' });
+        return;
+      }
+    }
   }
 
   private armAutoAdvance(): void {
@@ -1396,6 +1482,49 @@ export class LessonAgent {
    * Teacher says `l`; the mic is deaf meanwhile. `then` runs after the line (or
    * immediately when the child taps the teacher to skip it).
    */
+  /**
+   * The teacher says text that isn't a bank line (the AI server's verify message, exactly as
+   * received) through the AI server's /speak; without that voice it is only shown.
+   */
+  private sayRaw(text: string, o: { beat: LessonBeat; happy?: boolean; then?: () => void }): void {
+    let g = 0;
+    const done = () => {
+      if (g !== this.gen) return;
+      this.set(copy(this.s, { teacherSpeaking: false }));
+      o.then?.();
+    };
+    g = this.enter(
+      copy(this.s, {
+        beat: o.beat,
+        captionId: null,
+        caption: text,
+        teacherSpeaking: !!this.rawVoice,
+        happy: o.happy ?? false,
+      }),
+      {
+        resume: () => this.sayRaw(text, o),
+        skip: () => {
+          if (g !== this.gen) return;
+          this.rawVoice?.stop();
+          done();
+        },
+      },
+    );
+    if (this.paused) return;
+    void (async () => {
+      if (this.rawVoice) {
+        try {
+          await this.rawVoice.speak(text);
+        } catch (e) {
+          this.log('Server line not spoken', e); // shown on the card all the same
+        }
+      } else await delay(1500); // a moment to read it
+      if (g !== this.gen || this.paused) return;
+      await delay(this.timings.echoGuardMs);
+      done();
+    })();
+  }
+
   private say(
     l: TeacherLine,
     o: { beat: LessonBeat; happy?: boolean; lineIndex?: number; then?: () => void },

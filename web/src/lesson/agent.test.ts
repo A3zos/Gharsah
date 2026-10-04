@@ -9,6 +9,7 @@ import { parseLessonScript, validateLessonScript } from './script';
 import { AYAH_REPEATS, buildReviewScript, expandLesson, FULL_SURAH_PASSES, STAGE1_PASSES } from './stages';
 import type { LessonProgress } from './state';
 import { loadScript, realContent, Rig } from './testing/fakes';
+import type { ProjectVerdict, ProjectVerifier, RawLineVoice } from './ports';
 import { stageOf } from './web/progressSink';
 import aiLines from '../../../supabase/functions/ai-speak/lines.json';
 import aiSlots from '../../../supabase/functions/ai-speak/slots.json';
@@ -553,6 +554,103 @@ test('day 2: the report records and stops by itself → auto-save → hadith →
   expect(r.sink.reports).toHaveLength(1);
   expect(r.sink.reports[0]![0]).toBe('birr-3-acts');
   expect(r.agent.progress.reportedProject).toBe('birr-3-acts');
+  await r.agent.dispose();
+});
+
+// ── the project report's voice check (/agent/actions/verify) ──
+
+/** A verifier answering from a queue (each call takes one verdict, or throws). */
+function verifierOf(...verdicts: (ProjectVerdict | Error)[]) {
+  const calls: string[] = [];
+  const verifier: ProjectVerifier = {
+    busyMessage: 'الخدمة مشغولة الحين، جرّب بعد شوي يا بطل',
+    verify: async ({ projectId }) => {
+      calls.push(projectId);
+      const v = verdicts.shift() ?? { kind: 'verified', message: 'تم' };
+      if (v instanceof Error) throw v;
+      return v;
+    },
+  };
+  return { verifier, calls };
+}
+function rawVoiceOf() {
+  const said: string[] = [];
+  const voice: RawLineVoice = { speak: async (t) => void said.push(t), stop: () => {} };
+  return { voice, said };
+}
+async function recordReport(r: Rig) {
+  await elapse(LINE * 2);
+  expect(r.s.beat).toBe('recording');
+  r.recorder.talk(0.6);
+  await elapse(5000); // quiet → stops by itself → the check
+}
+
+test('project check: verified → the server message said + shown exactly, saved, on to the hadith (no thanks line)', async () => {
+  const v = verifierOf({ kind: 'verified', message: 'تم' });
+  const voice = rawVoiceOf();
+  const r = new Rig({ lessonId: 'm01-w03-day2', projectVerifier: v.verifier, rawVoice: voice.voice });
+  await start(r);
+  await recordReport(r);
+  await elapse(LINE);
+  expect(v.calls).toEqual(['birr-3-acts']);
+  expect(voice.said).toEqual(['تم']);
+  expect(r.s.verify).toEqual({ state: 'verified', message: 'تم' });
+  await autopilot(r, () => r.s.screen === 'hadith');
+  expect(r.sink.reports).toHaveLength(1);
+  expect(r.agent.progress.reportedProject).toBe('birr-3-acts');
+  expect(r.teacher.spoken).not.toContain('report.thanks');
+  await r.agent.dispose();
+});
+
+test('project check: not verified → the message, then the child records again right away', async () => {
+  const v = verifierOf(
+    { kind: 'notVerified', message: 'المشروع لا يناسب فكرة الحديث' },
+    { kind: 'verified', message: 'تم' },
+  );
+  const voice = rawVoiceOf();
+  const r = new Rig({ lessonId: 'm01-w03-day2', projectVerifier: v.verifier, rawVoice: voice.voice });
+  await start(r);
+  await recordReport(r);
+  await elapse(LINE);
+  expect(voice.said).toEqual(['المشروع لا يناسب فكرة الحديث']);
+  expect(r.s.verify).toEqual({ state: 'notVerified', message: 'المشروع لا يناسب فكرة الحديث' });
+  expect(r.s.beat).toBe('recording'); // no tap
+  expect(r.recorder.discarded).toHaveLength(1); // the non-matching recording is dropped
+  expect(r.sink.reports).toHaveLength(0);
+  r.recorder.talk(0.6);
+  await elapse(5000);
+  await autopilot(r, () => r.s.screen === 'hadith');
+  expect(v.calls).toHaveLength(2);
+  expect(r.sink.reports).toHaveLength(1);
+  await r.agent.dispose();
+});
+
+test('project check: unavailable → the friendly line + «أعد المحاولة»; the recording kept and checked again', async () => {
+  const v = verifierOf({ kind: 'unavailable' }, { kind: 'verified', message: 'تم' });
+  const voice = rawVoiceOf();
+  const r = new Rig({ lessonId: 'm01-w03-day2', projectVerifier: v.verifier, rawVoice: voice.voice });
+  await start(r);
+  await recordReport(r);
+  await elapse(LINE + 60_000); // the watchdog never fires while waiting for the tap
+  expect(r.s.beat).toBe('verifyRetry');
+  expect(r.s.verify).toEqual({ state: 'unavailable', message: 'الخدمة مشغولة الحين، جرّب بعد شوي يا بطل' });
+  expect(r.recorder.discarded).toHaveLength(0);
+  r.agent.retryVerify();
+  await elapse(LINE);
+  expect(r.s.verify?.state).toBe('verified');
+  await autopilot(r, () => r.s.screen === 'hadith');
+  expect(r.sink.reports).toHaveLength(1);
+  await r.agent.dispose();
+});
+
+test('project check: a failure / timeout is treated as unavailable (no technical text)', async () => {
+  const v = verifierOf(new Error('/agent/actions/verify: HTTP 500'));
+  const r = new Rig({ lessonId: 'm01-w03-day2', projectVerifier: v.verifier });
+  await start(r);
+  await recordReport(r);
+  await elapse(LINE + 2000);
+  expect(r.s.beat).toBe('verifyRetry');
+  expect(r.s.verify?.message).not.toMatch(/HTTP|500|Error/);
   await r.agent.dispose();
 });
 

@@ -15,6 +15,7 @@ import {
   type ScoreResult,
   type ServerTurn,
 } from './parse';
+import { loadRecitationWaitSay } from './waitLine';
 
 export type Gender = 'boy' | 'girl';
 
@@ -47,6 +48,23 @@ export class AgentUnavailable extends Error {
   }
 }
 
+/** /agent/actions/verify: unavailable (the model is off / failed), or verified + the server's message. */
+export type VerifyResult =
+  { available: false } | { available: true; verified: boolean; message: string; transcript: string | null };
+
+export function parseVerify(json: unknown): VerifyResult {
+  if (!json || typeof json !== 'object') return { available: false };
+  const j = json as Record<string, unknown>;
+  if (j.available !== true) return { available: false };
+  const message = typeof j.message === 'string' ? j.message : '';
+  return {
+    available: true,
+    verified: j.verified === true,
+    message,
+    transcript: typeof j.transcript === 'string' ? j.transcript : null,
+  };
+}
+
 /** Every path this client may call (anything else is a programming error). */
 const ALLOWED = new Set([
   '/agent/status',
@@ -57,6 +75,8 @@ const ALLOWED = new Set([
   '/agent/progress',
   '/agent/actions',
   '/agent/actions/done',
+  '/agent/actions/verify',
+  '/agent/warm',
   '/agent/surahs',
   '/agent/content',
   '/agent/taseem/start',
@@ -70,7 +90,8 @@ const ALLOWED = new Set([
 /** Render's free tier sleeps: the first request can take ~50 s. */
 export const COLD_START_TIMEOUT_MS = 75_000;
 const TURN_TIMEOUT_MS = 45_000;
-const SCORE_TIMEOUT_MS = 30_000;
+/** score-recitation: the Quran model may cold-start (~16 s); the server's own limit is 30 s. */
+export const SCORE_TIMEOUT_MS = 35_000;
 const SPEAK_TIMEOUT_MS = 20_000;
 const READ_TIMEOUT_MS = 20_000;
 /** How long the lesson waits for the server voice before using the browser's. */
@@ -140,13 +161,12 @@ export class AgentApi {
   async scoreRecitation(
     sessionId: string,
     audioBase64: string,
-    o: { forScore: true } | { forScore: false; lang: AgentLang } = { forScore: true },
+    o: { forScore: boolean; lang: AgentLang } = { forScore: true, lang: 'ar' },
   ): Promise<ScoreResult> {
     const r = await this.request('/agent/score-recitation', {
       method: 'POST',
-      body: o.forScore
-        ? { session_id: sessionId, audio_base64: audioBase64, forScore: true }
-        : { session_id: sessionId, audio_base64: audioBase64, forScore: false, lang: o.lang },
+      // lang always goes with it (the server reads it when forScore is false)
+      body: { session_id: sessionId, audio_base64: audioBase64, forScore: o.forScore, lang: o.lang },
       timeoutMs: SCORE_TIMEOUT_MS,
     });
     return parseScore(await this.json(r));
@@ -162,6 +182,53 @@ export class AgentApi {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * GET /agent/status → recitation_wait_say: the teacher's official «one moment, I'm
+   * evaluating your recitation» per language (ai/API_web.md 2026-10-04). Null if absent.
+   */
+  async recitationWaitSay(
+    timeoutMs = COLD_START_TIMEOUT_MS,
+  ): Promise<Partial<Record<AgentLang, string>> | null> {
+    const r = await this.request('/agent/status', { timeoutMs });
+    const j = await this.json(r);
+    const w = j && typeof j === 'object' ? (j as Record<string, unknown>).recitation_wait_say : null;
+    if (!w || typeof w !== 'object') return null;
+    const out: Partial<Record<AgentLang, string>> = {};
+    for (const k of ['ar', 'en', 'id'] as const) {
+      const v = (w as Record<string, unknown>)[k];
+      if (typeof v === 'string' && v.trim()) out[k] = v.trim();
+    }
+    return Object.keys(out).length ? out : null;
+  }
+
+  /** POST /agent/warm (no body): wakes the recitation model before the first recitation. Safe to repeat. */
+  async warmRecitation(): Promise<void> {
+    try {
+      await this.request('/agent/warm', { method: 'POST', timeoutMs: READ_TIMEOUT_MS });
+    } catch {
+      // optional — the server also wakes it on /agent/start
+    }
+  }
+
+  /**
+   * POST /agent/actions/verify — the child's voice note about doing the hadith's project.
+   * The server marks it done itself when verified (never /agent/actions/done after it).
+   * `message` is shown / spoken exactly as received. No X-Device-Token: we never claimed one.
+   */
+  async verifyAction(o: {
+    deviceId: string;
+    hadithId: number;
+    audioBase64: string;
+    lang: AgentLang;
+  }): Promise<VerifyResult> {
+    const r = await this.request('/agent/actions/verify', {
+      method: 'POST',
+      body: { device_id: o.deviceId, hadith_id: o.hadithId, audio_base64: o.audioBase64, lang: o.lang },
+      timeoutMs: SCORE_TIMEOUT_MS,
+    });
+    return parseVerify(await this.json(r));
   }
 
   async taseemReady(deviceId: string): Promise<ReadyReview[]> {
@@ -332,6 +399,8 @@ export function warmAgent(): void {
   const api = new AgentApi(url);
   void api.status();
   void api.speakReady(); // so the first line is the teacher's real voice, not the browser's
+  void api.warmRecitation(); // POST /agent/warm: the Quran model awake before the first recitation
+  void loadRecitationWaitSay(api); // GET /agent/status → recitation_wait_say (cached)
 }
 
 /** Replaces the child's name in their own words with «بطل». */

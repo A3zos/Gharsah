@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canGiveWordFeedback,
   createRecitationVerifier,
-  ENCOURAGE_RETRY,
+  ENCOURAGE_LINE,
   isWordJudgment,
   PresenceOnlyVerifier,
   REPEAT_MIN_SPEECH_MS,
@@ -88,7 +88,7 @@ describe('isWordJudgment', () => {
     'ما شاء الله! أتممت الآية بخمس محاولات.',
     'لا بأس، ننتقل للآية التالية. استمع جيدًا للآية 3',
     'نسمعها مرة ثانية من القارئ ونكمل',
-    ENCOURAGE_RETRY,
+    ENCOURAGE_LINE,
   ])('lets «%s» through', (line) => expect(isWordJudgment(line)).toBe(false));
 });
 

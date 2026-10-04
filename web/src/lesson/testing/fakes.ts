@@ -25,6 +25,8 @@ import {
   PlaybackBlocked,
   type LessonProgressSink,
   type ProjectRecorder,
+  type ProjectVerifier,
+  type RawLineVoice,
   type RecitationAudio,
   type RecitationPlayer,
   type RecordedAudio,
@@ -254,6 +256,8 @@ export class Rig {
       debugTap?: boolean;
       script?: LessonScript;
       timings?: Partial<LessonTimings>;
+      projectVerifier?: ProjectVerifier;
+      rawVoice?: RawLineVoice;
     } = {},
   ) {
     this.agent = new LessonAgent({
@@ -267,6 +271,8 @@ export class Rig {
       now: () => o.now ?? new Date(2026, 8, 24, 18),
       debugTapCountsRepeat: o.debugTap ?? false,
       ...(o.timings ? { timings: o.timings } : {}),
+      ...(o.projectVerifier ? { projectVerifier: o.projectVerifier } : {}),
+      ...(o.rawVoice ? { rawVoice: o.rawVoice } : {}),
       log: () => {},
     });
   }

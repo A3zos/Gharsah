@@ -17,6 +17,7 @@ import {
   ServerTeacherVoice,
 } from './serverPorts';
 import { agentDeviceId } from '../server/device';
+import { loadRecitationWaitSay } from '../server/waitLine';
 import type { ServerProgressSink } from '../server/progressMap';
 import { ServerLesson, type LessonPlan } from '../server/serverLesson';
 import { SupabaseServerProgressSink } from './serverProgressSink';
@@ -48,6 +49,7 @@ export async function createServerLesson(o: {
 }): Promise<WebServerLesson> {
   const lang = o.lang ?? APP_UI_LANGUAGE;
   const api = new AgentApi(o.baseUrl, undefined, [o.childName]);
+  void loadRecitationWaitSay(api); // once per app load (usually done already by the child home)
   const mic = new LessonMicrophone();
   const lip = new LipSync();
   const voice = new ServerTeacherVoice(

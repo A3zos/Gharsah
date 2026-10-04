@@ -150,6 +150,14 @@ export class FakeAgentServer {
   scoreAvailable = true;
   /** /agent/score-recitation's score (0..1). */
   scoreValue = 0.8;
+  /** /agent/actions/verify's next answers (ai/API_web.md 2026-10-04); default verified «تم». */
+  readonly verifyAnswers: Record<string, unknown>[] = [];
+  /** GET /agent/status → recitation_wait_say (null = the field absent). */
+  waitSay: Record<string, string> | null = {
+    ar: 'لحظات أقيّم لك ترديدك',
+    en: "One moment, I'm evaluating your recitation",
+    id: 'Sebentar, aku menilai bacaanmu',
+  };
   readyTaseem: unknown[] = [];
 
   constructor(
@@ -176,13 +184,25 @@ export class FakeAgentServer {
     }
     switch (u.pathname) {
       case '/agent/status':
-        // 2026-10-04: + asr (diagnostics only — the client never reads it)
+        // 2026-10-04: + asr (diagnostics only) + recitation_wait_say (the wait line per language)
         return json({
           llm: true,
           model: 'm',
           last_error: null,
-          asr: { groq_configured: true, modal_configured: true, modal_last: 'never' },
+          asr: { groq_configured: true, modal_configured: true, modal_last: 'never', modal_warm: 'ok' },
+          ...(this.waitSay ? { recitation_wait_say: this.waitSay } : {}),
         });
+      case '/agent/warm':
+        return json({ configured: true, warming: true });
+      case '/agent/actions/verify':
+        return json(
+          this.verifyAnswers.shift() ?? {
+            available: true,
+            transcript: 'ساعدت أمي',
+            verified: true,
+            message: 'تم',
+          },
+        );
       case '/agent/start': {
         const id = `s${++this.seq}`;
         if (body?.mode === 'open') {

@@ -26,6 +26,7 @@
 // * Any server failure that a restart can't fix → `fallback` (the route then
 //   runs the built-in lesson) so the child is never stuck.
 import { changed, lessonLog } from '../lessonLog';
+import { recitationWaitLine } from './waitLine';
 import { Observable } from '../observable';
 import { PlaybackBlocked } from '../ports';
 import {
@@ -51,7 +52,7 @@ import type { ProgressStage } from '../web/progressSink';
 import type { TeacherVoice } from '../voice/tts';
 import {
   canGiveWordFeedback,
-  ENCOURAGE_RETRY,
+  ENCOURAGE_LINE,
   isWordJudgment,
   PresenceOnlyVerifier,
   RECITATION_PASS_SCORE,
@@ -101,7 +102,8 @@ export interface UtteranceRecorder {
 
 /** The browser's speech recognition (Chrome sends the audio to Google). */
 export interface SpeechInput {
-  listen(signal: AbortSignal): Promise<string | null>;
+  /** `recitation`: an Arabic recitation (ar-SA), else the session language. */
+  listen(signal: AbortSignal, o?: { recitation?: boolean }): Promise<string | null>;
 }
 
 /** Today's lesson in the pilot plan — the server must teach exactly this (no choosing). */
@@ -158,11 +160,25 @@ export interface ServerLessonDeps {
   /** Dead-end guard: idle this long (nothing playing, listening or pending) → recover. false = off. */
   watchdog?: { idleMs: number; tickMs: number } | false;
   /** Waiting on the server (tests pass short ones): filler after `fillerMs`, a retry after `timeoutMs`. */
-  waits?: { fillerMs: number; timeoutMs: number; longEveryMs?: number };
+  waits?: {
+    fillerMs: number;
+    timeoutMs: number;
+    longEveryMs?: number;
+    recitationLineMs?: number;
+    recitationAgainMs?: number;
+  };
+  /** The «one moment, I'm evaluating your recitation» line (default: waitLine.ts — the server's text, cached). */
+  recitationWaitLine?: (lang: AgentLang) => string;
 }
 
 /** Idle (no audio, not listening, no request) this long = stuck → recover. */
 export const WATCHDOG_IDLE_MS = 20_000;
+/** score-recitation not back after this → the teacher says the wait line (ai/API_web.md 2026-10-04)… */
+export const RECITATION_WAIT_LINE_MS = 2000;
+/** …and, still waiting at this point, once more (never more than twice). */
+export const RECITATION_WAIT_AGAIN_MS = 12_000;
+/** Scoring unavailable: how long the parallel speech recognition may still take to finish. */
+const RECOGNITION_GRACE_MS = 4000;
 /** Waiting on the server longer than this → the teacher's short filler (never a silent call). */
 export const FILLER_AFTER_MS = 1200;
 /** At most one filler in this window (a repeat's reply often takes ~1.5 s — no filler every ayah). */
@@ -965,7 +981,7 @@ export class ServerLesson {
       turn.kind === 'quran' && turn.actions.some((a) => a.type === 'play_all' && a.urls.length > 1);
     try {
       for (const a of turn.actions) this.show(a, turn);
-      const line = judged ? ENCOURAGE_RETRY : turn.say;
+      const line = judged ? ENCOURAGE_LINE : turn.say;
       if (line.trim()) await this.say(line, abort);
       const plays = audio.length > 0 || (judged && this.turnAudio.length > 0);
       if (line.trim() && plays) await this.guard(abort, this.beat(LINE_GAP_MS));
@@ -1147,11 +1163,9 @@ export class ServerLesson {
         const v = await this.verifyRepeat(turn, heard);
         if (v.ok) return this.respond(turn, heard);
         if (++misses >= SILENCES_BEFORE_CONTINUE) return this.moveOnUnrepeated(turn, abort);
-        if (v.by === 'server') {
-          // the verification model heard it but didn't accept it: encourage, the ayah again
-          await this.say(ENCOURAGE_RETRY, abort);
-          await this.replayTurnAudio(abort);
-        } else await this.nudge(turn, abort); // not enough real speech = as if silent (no praise)
+        // a verification model that heard it: the server evaluates and moves on (one repeat per ayah)
+        if (v.by === 'server') return this.respond(turn, heard);
+        await this.nudge(turn, abort); // not enough real speech = as if silent (no praise)
         continue;
       }
       // Can't hear at all (mic blocked / listen-only): a repeat is never counted.
@@ -1220,8 +1234,17 @@ export class ServerLesson {
     if (repeat) this.set({ repeat: 'listening' });
     else this.set({ hearing: true });
     try {
-      // A recitation goes to the server for its transcription and score...
+      // A recitation goes to the server for its transcription and score. Quran (and a hadith in
+      // an Arabic session): forScore=true, Arabic. A TRANSLATED hadith (en / id) → forScore=false
+      // + the session language (ai/API_web.md 2026-10-04).
+      const forScore = !this.translatedRepeat(turn);
       if (repeat && this.hears && this.d.recorder) {
+        // the browser's speech recognition alongside: the fallback if scoring is unavailable,
+        // without asking the child to recite a second time
+        const recognition =
+          this.d.speechInput && !this.speechBroken
+            ? this.d.speechInput.listen(abort.signal, { recitation: forScore }).catch(() => null)
+            : null;
         const blob = await this.guard(abort, this.d.recorder.record(abort.signal)).catch((e: unknown) => {
           if (e instanceof Cancelled) throw e;
           return null;
@@ -1231,21 +1254,30 @@ export class ServerLesson {
           const toB64 = this.d.blobToBase64 ?? blobToBase64;
           const score = await this.guard(
             abort,
-            // a recitation: always Arabic, whatever the session language (the server tries its Quran
-            // model on Modal first, then Groq — up to ~6 s: the wait gets the fillers)
-            this.waiting(
+            this.scoringWait(
               toB64(blob).then((b) =>
-                this.d.api.scoreRecitation(this.turn!.sessionId, b, { forScore: true }),
+                this.d.api.scoreRecitation(this.turn!.sessionId, b, { forScore, lang: this.lang }),
               ),
             ),
           ).catch((e: unknown) => {
             if (e instanceof Cancelled) throw e;
+            lessonLog('ai', 'score-recitation failed', { error: String((e as Error)?.message ?? e) });
             return { available: false, transcription: null, score: null, marked: [] } as ScoreResult;
           });
           lessonLog('ai', 'heard (recitation)', {
             text: score.available ? score.transcription : null,
             score: score.score,
+            forScore,
           });
+          if (!score.available) {
+            // {"available": false}: the browser's recognition of the same recitation → /agent/message
+            const grace = new Promise<null>((r) => setTimeout(() => r(null), RECOGNITION_GRACE_MS));
+            const text = recognition
+              ? (await this.guard(abort, Promise.race([recognition, grace])))?.trim()
+              : null;
+            lessonLog('ai', 'score-recitation unavailable → speech recognition', { text: text || null });
+            return { spoke: true, text: text || null };
+          }
           return {
             spoke: true,
             text: score.available ? score.transcription : null,
@@ -1254,6 +1286,22 @@ export class ServerLesson {
           };
         }
         if (abort.signal.aborted) throw new Cancelled();
+      }
+      // No MediaRecorder: the recitation through the browser's speech recognition → /agent/message.
+      if (repeat && this.hears && !this.d.recorder && this.d.speechInput && !this.speechBroken) {
+        const text = await this.guard(
+          abort,
+          this.d.speechInput.listen(abort.signal, { recitation: forScore }),
+        ).catch((e: unknown) => {
+          if (e instanceof Cancelled) throw e;
+          this.speechBroken = true;
+          return undefined;
+        });
+        if (text) {
+          lessonLog('ai', 'heard (recitation, speech recognition)', { text });
+          return { spoke: true, text };
+        }
+        if (text === null) return 'silent';
       }
       // ...and the child's words go to speech recognition.
       if (!repeat && this.hears && this.d.speechInput && !this.speechBroken) {
@@ -1323,10 +1371,11 @@ export class ServerLesson {
       if (turn.kind === 'quran' && turn.ayah !== null && this.interjected.has(turn.ayah))
         return this.send(SKIP_AYAH, true);
       const said = h.text?.trim() || this.repeatText();
-      // What the child recites is Arabic. In an en / id session the server's hadith text is
-      // its own translation — never sent back as a «repeat» (it reads it as a question and
-      // loops, live 2026-10-04): its own skip instead (the child did repeat — presence).
-      if (this.lang !== 'ar' && !ARABIC_LETTER.test(said)) {
+      // In an en / id session the child repeats the server's TRANSLATED hadith: their own words
+      // (transcribed) go as said — the server accepts them (live 2026-10-05). Only when nothing
+      // was transcribed, never the server's translated text back (it looped on it, 2026-10-04):
+      // its own skip instead (the child did repeat — presence).
+      if (this.lang !== 'ar' && !h.text?.trim() && !ARABIC_LETTER.test(said)) {
         lessonLog('ai', 'repeat reference is not Arabic → the server’s skip', { stage: turn.stage });
         return this.send(skipReply(turn.quickReplies), true);
       }
@@ -1405,6 +1454,56 @@ export class ServerLesson {
 
   private repeatText(): string {
     return this.reference?.trim() || REPEATED_TEXT;
+  }
+
+  /**
+   * An en / id hadith repeat whose line is the server's TRANSLATION (hadiths 6, 9, 10 have one;
+   * any other hadith stays Arabic): scored with forScore=false + the session language.
+   */
+  private translatedRepeat(turn: ServerTurn): boolean {
+    return (
+      this.lang !== 'ar' &&
+      (turn.kind === 'hadith' || turn.kind === 'htaseem') &&
+      turn.expects === 'repeat' &&
+      !!this.reference?.trim() &&
+      !ARABIC_LETTER.test(this.reference)
+    );
+  }
+
+  /**
+   * Waits for /agent/score-recitation: not back in RECITATION_WAIT_LINE_MS → the teacher SAYS
+   * the wait line (/speak in the session language, lip-synced; no caption is added — the call
+   * is voice-only); still waiting at RECITATION_WAIT_AGAIN_MS → once more, never more. The line
+   * stops the moment the reply arrives, so it never overlaps the teacher's next line. The
+   * watchdog stays quiet meanwhile (repeat = 'sending').
+   */
+  private async scoringWait<T>(p: Promise<T>): Promise<T> {
+    const line = (this.d.recitationWaitLine ?? recitationWaitLine)(this.lang);
+    const lineAbort = new AbortController();
+    let speaking = false;
+    let done = false;
+    const sayLine = () => {
+      if (done || this.disposed || this.halted || this.state.value.paused || this.state.value.speaking)
+        return;
+      lessonLog('ai', 'score-recitation slow → the wait line', { line });
+      speaking = true;
+      void this.say(line, lineAbort)
+        .catch(() => {})
+        .finally(() => (speaking = false));
+    };
+    const first = setTimeout(sayLine, this.d.waits?.recitationLineMs ?? RECITATION_WAIT_LINE_MS);
+    const again = setTimeout(sayLine, this.d.waits?.recitationAgainMs ?? RECITATION_WAIT_AGAIN_MS);
+    try {
+      return await p;
+    } finally {
+      done = true;
+      clearTimeout(first);
+      clearTimeout(again);
+      if (speaking) {
+        lineAbort.abort();
+        this.d.voice.stop();
+      }
+    }
   }
 
   /** The child can be heard (the mic wasn't refused at the start). */

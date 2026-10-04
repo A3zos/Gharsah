@@ -45,11 +45,12 @@ test('score-recitation: a recitation is always Arabic (forScore); free speech ca
     });
   });
   await api.scoreRecitation('s1', 'QUJD'); // default: a recitation
-  await api.scoreRecitation('s1', 'QUJD', { forScore: true });
-  await api.scoreRecitation('s1', 'QUJD', { forScore: false, lang: 'en' });
+  await api.scoreRecitation('s1', 'QUJD', { forScore: true, lang: 'en' }); // a Quran recitation in an en session
+  await api.scoreRecitation('s1', 'QUJD', { forScore: false, lang: 'en' }); // a translated hadith / free speech
+  // lang on every body (the server reads it when forScore is false)
   expect(bodies).toEqual([
-    { session_id: 's1', audio_base64: 'QUJD', forScore: true },
-    { session_id: 's1', audio_base64: 'QUJD', forScore: true },
+    { session_id: 's1', audio_base64: 'QUJD', forScore: true, lang: 'ar' },
+    { session_id: 's1', audio_base64: 'QUJD', forScore: true, lang: 'en' },
     { session_id: 's1', audio_base64: 'QUJD', forScore: false, lang: 'en' },
   ]);
 });

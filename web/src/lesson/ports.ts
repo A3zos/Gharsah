@@ -51,6 +51,32 @@ export interface RecordedAudio {
   readonly path?: string;
 }
 
+/**
+ * The project report's voice check (the AI server's /agent/actions/verify). `skip`: no check
+ * for this project (unknown to the server / no AI server) → the report is saved as before.
+ */
+export type ProjectVerdict =
+  | { kind: 'verified'; message: string }
+  | { kind: 'notVerified'; message: string }
+  | { kind: 'unavailable' }
+  | { kind: 'skip' };
+
+export interface ProjectVerifier {
+  /** A failure / timeout is reported as `unavailable` (the web verifier logs it). */
+  verify(o: { projectId: string; audio: RecordedAudio }): Promise<ProjectVerdict>;
+  /** The friendly line when the check is unavailable, in the session language. */
+  readonly busyMessage: string;
+}
+
+/**
+ * Says text that isn't in the approved line bank — the AI server's own words (its
+ * /agent/actions/verify message) — through the AI server's /speak (session lang + gender).
+ */
+export interface RawLineVoice {
+  speak(text: string): Promise<void>;
+  stop(): void;
+}
+
 export interface ProjectRecorder {
   /** Rejects with MicPermissionDenied if the mic can't be used. */
   start(): Promise<void>;

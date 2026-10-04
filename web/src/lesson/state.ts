@@ -46,6 +46,10 @@ export type LessonBeat =
   | 'recording'
   /** Frame 22 — recorded («حُفظ صوتك» + «أعِد التسجيل»). */
   | 'recorded'
+  /** The project report's voice is being checked (/agent/actions/verify). */
+  | 'checking'
+  /** The check service is busy: the friendly line + «أعد المحاولة» (the recording is kept). */
+  | 'verifyRetry'
   /** Frame 23 — lesson finished; only «عودة للرئيسية» remains. */
   | 'done';
 
@@ -99,6 +103,14 @@ export interface LessonState {
   readonly elapsedMs: number;
   readonly recordingElapsedMs: number;
   readonly recordedDurationMs: number | null;
+  /**
+   * The project report's voice check: checking / verified / not verified (the server's
+   * `message`, shown exactly as received) / unavailable (our friendly line). Null otherwise.
+   */
+  readonly verify: {
+    readonly state: 'checking' | 'verified' | 'notVerified' | 'unavailable';
+    readonly message: string | null;
+  } | null;
   readonly endedByUser: boolean;
 }
 
@@ -135,6 +147,7 @@ export const initialLessonState: LessonState = {
   elapsedMs: 0,
   recordingElapsedMs: 0,
   recordedDurationMs: null,
+  verify: null,
   endedByUser: false,
 };
 

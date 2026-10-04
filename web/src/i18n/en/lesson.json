@@ -79,7 +79,10 @@
     "recording": "Recording · {time}",
     "saved": "Your voice is saved · {time}",
     "private": "It goes to your parent's dashboard — no one else sees it.",
-    "reRecord": "Record again"
+    "reRecord": "Record again",
+    "checking": "Checking your project…",
+    "retry": "Try again",
+    "busy": "The service is busy right now — try again in a little while, champ"
   },
   "end": {
     "title": "You finished today's lesson!",
