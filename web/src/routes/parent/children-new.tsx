@@ -3,7 +3,14 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { ChildAvatar } from '../../components/child/ChildAvatar';
-import { avatarLabel, AVATARS, defaultAvatar } from '../../content/avatars';
+import {
+  avatarLabel,
+  AVATARS,
+  AVATAR_SETS,
+  avatarSet,
+  defaultAvatar,
+  type AvatarStyle,
+} from '../../content/avatars';
 import { useParentData } from '../../components/parent/ParentData';
 import { DesktopHeader, ParentPage } from '../../components/parent/ParentShell';
 import { BackButton } from '../../components/ui/BackButton';
@@ -124,7 +131,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     age: editing?.age ?? 10,
     gender: editing?.gender ?? 'girl',
     schedule: editing?.schedule ?? DEFAULT_SCHEDULE,
-    avatarId: editing?.avatarId ?? defaultAvatar(editing?.gender ?? 'girl'),
+    avatarId: editing?.avatarId ?? defaultAvatar(editing?.gender ?? 'girl', lang),
   }));
   const steps = STEPS;
   const lastStep = steps.length - 1;
@@ -151,7 +158,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     setSchedule({ days, reviewDays: draft.schedule.reviewDays.filter((x) => days.includes(x)) });
   };
   // «الجنس» preselects avatar 1 of that gender; an avatar sets the gender (boy-N → ولد, girl-N → بنت).
-  const pickGender = (g: Gender) => set({ gender: g, avatarId: defaultAvatar(g) });
+  const pickGender = (g: Gender) => set({ gender: g, avatarId: defaultAvatar(g, lang) });
   const pickAvatar = (avatarId: string) =>
     set({ avatarId, gender: AVATARS.find((a) => a.key === avatarId)?.gender ?? draft.gender });
 
@@ -622,7 +629,8 @@ function AgeField({
 }
 
 function GenderField({ value, onChange }: { value: Gender; onChange: (g: Gender) => void }) {
-  const t = useI18n().m.parent.addChild;
+  const { lang, m } = useI18n();
+  const t = m.parent.addChild;
   return (
     <div className="flex flex-col gap-[10px]">
       <span className="text-[14px] font-bold">{t.genderLabel}</span>
@@ -643,7 +651,7 @@ function GenderField({ value, onChange }: { value: Gender; onChange: (g: Gender)
                   : 'border-[1.5px] border-border bg-surface',
               )}
             >
-              <ChildAvatar id={defaultAvatar(g)} size={58} />
+              <ChildAvatar id={defaultAvatar(g, lang)} size={58} />
               <span className="text-[15px] font-bold text-text-dark">{g === 'girl' ? t.girl : t.boy}</span>
             </button>
           );
@@ -653,7 +661,9 @@ function GenderField({ value, onChange }: { value: Gender; onChange: (g: Gender)
   );
 }
 
-/** «شخصية الابن»: all eight — a row of 4 boys, then a row of 4 girls. */
+/** «شخصية الابن»: the UI language's set — a row of 4 boys, then a row of 4 girls — and
+ *  «شخصيات أخرى» opens the other languages' sets below in the same grid (already open when
+ *  the chosen avatar is from another set). */
 function AvatarGrid({
   value,
   onChange,
@@ -664,53 +674,68 @@ function AvatarGrid({
   compact?: boolean;
 }) {
   const { lang, m } = useI18n();
+  const t = m.parent.addChild;
+  const own = avatarSet(lang);
+  const others = AVATAR_SETS.filter((s) => s !== lang).flatMap(avatarSet);
+  const [more, setMore] = useState(() => others.some((a) => a.key === value));
+  const shown: readonly AvatarStyle[] = more ? [...own, ...others] : own;
   return (
-    <div role="radiogroup" aria-label={m.parent.addChild.avatarGroup} className="grid grid-cols-4 gap-[12px]">
-      {AVATARS.map((a) => {
-        const on = a.key === value;
-        return (
-          <button
-            key={a.key}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            aria-label={avatarLabel(a, lang)}
-            onClick={() => onChange(a.key)}
-            className={cx(
-              'relative flex items-center justify-center p-0',
-              compact ? 'h-[110px] rounded-px-26' : 'h-[90px] rounded-px-24',
-              on
-                ? 'border-[2.5px] border-deep-green bg-green-tint'
-                : 'border-[1.5px] border-border bg-surface',
-            )}
-          >
-            {/* ~85% of the card's height, never wider than the card — head and shoulders whole */}
-            <ChildAvatar
-              id={a.key}
-              size={compact ? 94 : 76}
-              circle={false}
-              fluid
-              className="aspect-square h-[88%] max-w-[calc(100%-6px)]"
-            />
-            {on && (
-              <span
-                className="absolute end-[8px] top-[8px] flex h-[26px] w-[26px] items-center justify-center rounded-full bg-deep-green"
-                aria-hidden="true"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M5 12.5 L10 17.5 L19 7"
-                    stroke={C.surface}
-                    strokeWidth="3.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-            )}
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-[12px]">
+      <div role="radiogroup" aria-label={t.avatarGroup} className="grid grid-cols-4 gap-[12px]">
+        {shown.map((a) => {
+          const on = a.key === value;
+          return (
+            <button
+              key={a.key}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              aria-label={avatarLabel(a, lang)}
+              onClick={() => onChange(a.key)}
+              className={cx(
+                'relative flex items-center justify-center p-0',
+                compact ? 'h-[110px] rounded-px-26' : 'h-[90px] rounded-px-24',
+                on
+                  ? 'border-[2.5px] border-deep-green bg-green-tint'
+                  : 'border-[1.5px] border-border bg-surface',
+              )}
+            >
+              {/* ~85% of the card's height, never wider than the card — head and shoulders whole */}
+              <ChildAvatar
+                id={a.key}
+                size={compact ? 94 : 76}
+                circle={false}
+                fluid
+                className="aspect-square h-[88%] max-w-[calc(100%-6px)]"
+              />
+              {on && (
+                <span
+                  className="absolute end-[8px] top-[8px] flex h-[26px] w-[26px] items-center justify-center rounded-full bg-deep-green"
+                  aria-hidden="true"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M5 12.5 L10 17.5 L19 7"
+                      stroke={C.surface}
+                      strokeWidth="3.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        aria-expanded={more}
+        onClick={() => setMore((v) => !v)}
+        className="min-h-[48px] self-center px-[14px] font-body text-[14px] font-bold text-deep-green underline-offset-4 hover:underline"
+      >
+        {more ? t.fewerAvatars : t.moreAvatars}
+      </button>
     </div>
   );
 }

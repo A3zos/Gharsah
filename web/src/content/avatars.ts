@@ -1,39 +1,49 @@
-// The child avatars (public/avatars/child-{boy,girl}-{1..4}.webp, transparent, head and
-// shoulders; a -256 copy for anything ≤ 64 px). Four per gender; the choice is stored as
-// its key in children.avatar ('boy-3', 'girl-1' …). Same keys as app/lib/widgets/child_avatar.dart
-// and the database trigger (20261003120000_child_avatars.sql).
+// The child avatars (public/avatars/child-<key>.webp, transparent, head and shoulders;
+// a -256 copy for anything ≤ 64 px), in three sets of 4 boys + 4 girls:
+//   ar 'boy-1'…'girl-4' · en 'en-boy-1'…'en-girl-4' · id 'id-boy-1'…'id-girl-4'.
+// The choice is stored as its key in children.avatar, always of the child's gender (the
+// database trigger: 20261003120000_child_avatars + 20261004100000_child_avatars_per_language).
+// Any of the 24 shows in every UI language — a child keeps theirs when the language changes.
+// (app/lib/widgets/child_avatar.dart knows the Arabic set only.)
 import type { Gender } from '../data/children';
 import { MESSAGES, type UiLanguage } from '../i18n/i18n';
+
+export type AvatarSet = UiLanguage;
 
 export interface AvatarStyle {
   /** children.avatar */
   key: string;
   gender: Gender;
+  /** The language set it belongs to (the picker shows the UI language's set first). */
+  set: AvatarSet;
   /** The Arabic description (aria-label); avatarLabel() for a UI language. */
   label: string;
 }
 
 const LABELS = MESSAGES.ar.parent.avatars as Record<string, string>;
 
-export const AVATARS: readonly AvatarStyle[] = [
-  { key: 'boy-1', gender: 'boy', label: LABELS['boy-1']! },
-  { key: 'boy-2', gender: 'boy', label: LABELS['boy-2']! },
-  { key: 'boy-3', gender: 'boy', label: LABELS['boy-3']! },
-  { key: 'boy-4', gender: 'boy', label: LABELS['boy-4']! },
-  { key: 'girl-1', gender: 'girl', label: LABELS['girl-1']! },
-  { key: 'girl-2', gender: 'girl', label: LABELS['girl-2']! },
-  { key: 'girl-3', gender: 'girl', label: LABELS['girl-3']! },
-  { key: 'girl-4', gender: 'girl', label: LABELS['girl-4']! },
-];
+const setOf = (set: AvatarSet): AvatarStyle[] =>
+  (['boy', 'girl'] as const).flatMap((gender) =>
+    [1, 2, 3, 4].map((n) => {
+      const key = `${set === 'ar' ? '' : `${set}-`}${gender}-${n}`;
+      return { key, gender, set, label: LABELS[key]! };
+    }),
+  );
+
+export const AVATAR_SETS: readonly AvatarSet[] = ['ar', 'en', 'id'];
+
+/** All 24: the Arabic set first (its order is the old AVATARS order), then en, then id. */
+export const AVATARS: readonly AvatarStyle[] = AVATAR_SETS.flatMap(setOf);
+
+/** One language's 4 boys + 4 girls. */
+export const avatarSet = (set: AvatarSet): readonly AvatarStyle[] => AVATARS.filter((a) => a.set === set);
 
 /** The avatar's description in a UI language («فتاة بحجاب وردي» / "Girl in a pink hijab"). */
 export const avatarLabel = (a: AvatarStyle, lang: UiLanguage = 'ar'): string =>
   (MESSAGES[lang].parent.avatars as Record<string, string>)[a.key] ?? a.label;
 
-/** The four choices of one gender («شخصية الابن»). */
-export const avatarsFor = (g: Gender) => AVATARS.filter((a) => a.gender === g);
-
-export const defaultAvatar = (g: Gender) => `${g}-1`;
+/** The first avatar of a gender in the UI language's set (a new child, a gender change). */
+export const defaultAvatar = (g: Gender, set: AvatarSet = 'ar') => `${set === 'ar' ? '' : `${set}-`}${g}-1`;
 
 // The old drawn avatars (before 20261003120000_child_avatars) → the closest new one.
 const LEGACY: Record<string, string> = {
