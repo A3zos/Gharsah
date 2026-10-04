@@ -427,7 +427,12 @@ async function markActionDone(deviceId: string, hadithId: number) {
 
 **Body:**
 ```json
-{"text": "النص المراد نطقه (يُقصّ تلقائيًا لأول 1200 حرف)", "gender": "boy"}
+{"text": "النص المراد نطقه (يُقصّ تلقائيًا لأول 1200 حرف)", "gender": "boy", "lang": "ar"}
+```
+- `gender`: `"girl"` يختار صوت المعلمة؛ أي قيمة أخرى صوت المعلم.
+- `lang` (**مهم**): `"ar"` (افتراضي) أو `"en"` أو `"id"` — مرّري **نفس `lang` الذي بدأتِ به الجلسة** في `/agent/start`، وإلا يُنطق كلام المعلم الإنجليزي/الإندونيسي بصوت عربي. أي قيمة أخرى تُعامل كـ `"ar"`.
+```json
+{"text": "Hello Ahmad!", "gender": "boy", "lang": "en"}
 ```
 
 **⚠️ الرد له شكلان مختلفان تمامًا حسب النجاح — ميّزي بينهما عبر الـ `Content-Type` وليس بافتراض شكل واحد:**
@@ -438,7 +443,7 @@ async function markActionDone(deviceId: string, hadithId: number) {
 **التوصية لفريق الويب:** عند أي رد ليس `audio/mpeg`، ارجعي فورًا لصوت المتصفح المحلي (`speechSynthesis`) كخطة بديلة، حتى لا يتوقف الدرس بصمت. هذا نفس منطق الواجهة المرجعية الحالية بالضبط.
 
 ```js
-const r = await fetch('/speak', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, gender})});
+const r = await fetch('/speak', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, gender, lang})});
 if (!(r.headers.get('content-type')||'').includes('audio')) throw new Error('no-audio'); // → ارجعي لـ speechSynthesis
 const url = URL.createObjectURL(await r.blob());
 new Audio(url).play();

@@ -292,8 +292,9 @@
 
 **Body:**
 ```json
-{"text": "النص المراد نطقه (يُقصّ تلقائيًا لأول 1200 حرف إن كان أطول)", "gender": "boy"}
+{"text": "النص المراد نطقه (يُقصّ تلقائيًا لأول 1200 حرف إن كان أطول)", "gender": "boy", "lang": "ar"}
 ```
+- `lang` (**مهم**): `"ar"` (افتراضي) أو `"en"` أو `"id"` — مرّري **نفس `lang` الذي بدأتِ به الجلسة** في `/agent/start`، وإلا يُنطق كلام المعلم الإنجليزي/الإندونيسي بصوت عربي. أي قيمة أخرى تُعامل كـ `"ar"`.
 `gender`: أي قيمة تحتوي `"girl"` أو `"female"` (case-insensitive) تُستخدم فيها صوت المعلمة سارة، وإلا صوت المعلم عبدالله.
 
 **⚠️ الرد له شكلان مختلفان تمامًا حسب النجاح — يجب على الفلاتر التمييز بينهما عبر الـ Content-Type وليس افتراض شكل واحد:**
@@ -482,11 +483,11 @@ Future<Map<String, dynamic>> scoreRecitation(
 هذه أهم نقطة تقنية دقيقة: الرد قد يكون **صوت MP3 خام** أو **JSON** حسب النجاح، فلازم تفرّقي بينهما بالـ `Content-Type` قبل محاولة تشغيله:
 
 ```dart
-Future<void> speak(String text, {String gender = 'boy'}) async {
+Future<void> speak(String text, {String gender = 'boy', String lang = 'ar'}) async {
   final res = await http.post(
     Uri.parse('${GharsahAgent.base}/speak'),
     headers: {'Content-Type': 'application/json'},
-    body: jsonEncode({'text': text, 'gender': gender}),
+    body: jsonEncode({'text': text, 'gender': gender, 'lang': lang}),
   );
 
   final contentType = res.headers['content-type'] ?? '';
