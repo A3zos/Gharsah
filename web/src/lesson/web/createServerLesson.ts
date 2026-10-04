@@ -74,7 +74,7 @@ export async function createServerLesson(o: {
     startAt: o.startAt ?? 'quran',
     consent: o.consent,
     recorder: o.consent && MediaUtteranceRecorder.supported() ? new MediaUtteranceRecorder(mic) : null,
-    speechInput: o.consent ? BrowserSpeechInput.create() : null,
+    speechInput: o.consent ? BrowserSpeechInput.create(lang) : null,
     verifier: createRecitationVerifier({ consent: o.consent }),
     verifiedAyah: (s, a) => (verified.has(quranRef(s, a)) ? verified.text(quranRef(s, a)) : null),
     ayahCount: (s) => quranMeta.ayahCount(s),

@@ -5,7 +5,10 @@
 // buttons, no text field. The only button during the call: the «سماح» prompt when
 // the mic (or the sound) needs a tap; «عودة للرئيسية» once the lesson is over.
 // Rendered from the ServerLesson's state only.
-import { ayahTranslation } from '../../content/translations';
+import { ayahTranslation, hadithTranslation } from '../../content/translations';
+import { hadithRepo } from '../../content/library';
+import { hadithMatchesTopic } from '../../lesson/server/progressMap';
+import { normalizeArabic } from '../../lesson/server/serverLesson';
 import { TranslationNote } from './Translation';
 import { useEffect, useState } from 'react';
 
@@ -160,7 +163,26 @@ function Middle({ state: s, onAyat }: { state: ServerLessonState; onAyat: boolea
     );
   }
   if (s.hadith) {
-    // The server's hadith text is never shown until vetted — the built-in «قيد المراجعة» card.
+    // Display rule: OUR content only. The server's hadith text / translation (show_ayat,
+    // show_words, hadith_title, source) is never shown — today's hadith from content/:
+    // approved → its matn (Arabic, rtl) + takhrij + the HadeethEnc translation (en / id);
+    // not approved yet → the built-in «قيد المراجعة» card.
+    const ours = s.hadith.title ? ourHadith(s.hadith.title) : null;
+    if (ours?.isApproved)
+      return (
+        <Card className="items-center gap-[10px] text-center">
+          <span className="rounded-pill bg-berry-tint px-[14px] py-[6px] text-[16px] font-extrabold text-berry-deep">
+            {fill(lang, m.lesson.hadith.about, { topic: hadithLabelIn(lang, ours.title) })}
+          </span>
+          <span dir="rtl" lang="ar" className="font-classical text-[22px] leading-[1.9]">
+            «{ours.displayText}»
+          </span>
+          <span dir="rtl" lang="ar" className="text-[15px] font-bold text-text-subtle">
+            {ours.displayTakhrij}
+          </span>
+          <TranslationNote t={hadithTranslation(lang, ours.id, ours.isApproved)} />
+        </Card>
+      );
     return (
       <>
         <HadithPendingCard
@@ -171,6 +193,11 @@ function Middle({ state: s, onAyat }: { state: ServerLessonState; onAyat: boolea
     );
   }
   return null;
+}
+
+/** Today's hadith in OUR content (content/hadith/hadith.json), matched by its title / topic. */
+function ourHadith(title: string) {
+  return hadithRepo.all().find((h) => hadithMatchesTopic(title, h.topic, normalizeArabic)) ?? null;
 }
 
 /** show_words — the hadith's new words and their meanings (filled only once the hadith is approved). */

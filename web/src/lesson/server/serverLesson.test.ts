@@ -15,6 +15,7 @@ import {
   normalizeArabic,
   RATE_LIMIT_BACKOFF_MS,
   ServerLesson,
+  CONTINUE_WORD,
   shownHadith,
   todayHadithAnswer,
   HADITH_LATER,
@@ -464,6 +465,27 @@ describe('ServerLesson — errors and fallback', () => {
     const starts = t.server.calls.filter((c) => c.path === '/agent/start');
     expect(starts).toHaveLength(2);
     expect(starts.map((c) => c.body?.lang)).toEqual(['en', 'en']);
+  });
+
+  it('en session: a «continue» turn sends a plain continue word (the server ignores its own translated button)', async () => {
+    const en = setup({ lang: 'en' });
+    void en.lesson.start();
+    await at(en.lesson, 'greet', 'text');
+    en.lesson.answer('ok');
+    await at(en.lesson, 'lesson_intro', 'continue');
+    en.lesson.continueTapped();
+    await until(en.lesson, () => en.server.messages().length >= 3);
+    expect(en.server.messages()).toContain(CONTINUE_WORD.en);
+
+    // Arabic: exactly as before — the server's own first quick reply
+    const ar = setup();
+    void ar.lesson.start();
+    await at(ar.lesson, 'greet', 'text');
+    ar.lesson.answer('تمام');
+    await at(ar.lesson, 'lesson_intro', 'continue');
+    ar.lesson.continueTapped();
+    await until(ar.lesson, () => ar.server.messages().length >= 3);
+    expect(ar.server.messages()).not.toContain(CONTINUE_WORD.en);
   });
 
   it("en/id session: the server's own hadith title/source are never shown — today's topic instead", () => {

@@ -281,6 +281,24 @@ export const NAME_STAND_IN = 'بطل';
 const MAX_NAME_ANSWERS = 2;
 /** Stages before the surah is chosen — their surah_no is the server's default (1). */
 const BEFORE_SURAH = new Set(['greet', 'name', 'surah']);
+const ARABIC_LETTER = /[\u0621-\u064A]/;
+
+const HELP = /\bhelp\b|bantuan|tolong|مساعد/i;
+export const isHelpReply = (r: string) => HELP.test(r);
+
+/** The first quick reply that doesn't ask for help («I'm okay», «No»…), else the default. */
+export function safeReply(replies: readonly string[]): string {
+  return replies.find((r) => !isHelpReply(r)) ?? DEFAULT_ANSWER;
+}
+
+/** The server's own «skip» quick reply (any language), else the Arabic «تخطّي الآية». */
+export function skipReply(replies: readonly string[]): string {
+  return replies.find((r) => /skip|lewati|lompat|تخط/i.test(r)) ?? SKIP_AYAH;
+}
+
+/** What moves an en / id session on at a «continue» turn (its own translated button doesn't). */
+export const CONTINUE_WORD: Record<'en' | 'id', string> = { en: 'continue', id: 'Lanjutkan' };
+
 /** The hadith path's «which hadith?» stage (ai/API_web.md §1). */
 const HADITH_CHOOSE_STAGE = 'intro';
 /** Silence (no speech) that counts as «the child said nothing». */
@@ -440,6 +458,10 @@ export class ServerLesson {
   private lastVerify: RecitationResult | null = null;
   /** This segment's ayat the child stayed silent on — «لم يُردَّد», never memorized. */
   private notRepeated = new Set<number>();
+  /** The session language (default "ar"). */
+  private get lang(): AgentLang {
+    return this.d.lang ?? 'ar';
+  }
   /**
    * Ayat whose repeat the server answered with a comfort interjection instead of the next
    * repeat — its distress filter reads the ayah's own words («مِن شَرِّ…») as the child's.
@@ -1073,7 +1095,8 @@ export class ServerLesson {
           const toB64 = this.d.blobToBase64 ?? blobToBase64;
           const score = await this.guard(
             abort,
-            toB64(blob).then((b) => this.d.api.scoreRecitation(this.turn!.sessionId, b)),
+            // a recitation: always Arabic, whatever the session language
+            toB64(blob).then((b) => this.d.api.scoreRecitation(this.turn!.sessionId, b, { forScore: true })),
           ).catch((e: unknown) => {
             if (e instanceof Cancelled) throw e;
             return { available: false, transcription: null };
@@ -1121,7 +1144,15 @@ export class ServerLesson {
       // the server can't take this ayah's text (see `interjected`): its own skip
       if (turn.kind === 'quran' && turn.ayah !== null && this.interjected.has(turn.ayah))
         return this.send(SKIP_AYAH, true);
-      return this.send(h.text?.trim() || this.repeatText(), true);
+      const said = h.text?.trim() || this.repeatText();
+      // What the child recites is Arabic. In an en / id session the server's hadith text is
+      // its own translation — never sent back as a «repeat» (it reads it as a question and
+      // loops, live 2026-10-04): its own skip instead (the child did repeat — presence).
+      if (this.lang !== 'ar' && !ARABIC_LETTER.test(said)) {
+        lessonLog('ai', 'repeat reference is not Arabic → the server’s skip', { stage: turn.stage });
+        return this.send(skipReply(turn.quickReplies), true);
+      }
+      return this.send(said, true);
     }
     const first = turn.quickReplies[0];
     if (turn.expects === 'choice') {
@@ -1256,6 +1287,22 @@ export class ServerLesson {
     // «أي حديث؟» — whatever answered it (voice, a tap, the watchdog): today's hadith
     if (t.kind === 'hadith' && t.stage === HADITH_CHOOSE_STAGE)
       text = todayHadithAnswer(t.quickReplies, this.d.plan.hadithTopic);
+    // en / id «continue» turns: the server doesn't take its own translated button back
+    // («Complete the lesson» → it chats instead of moving on — live 2026-10-04); a plain
+    // continue word does. Arabic answers exactly as before.
+    else if (
+      t.expects === 'continue' &&
+      this.lang !== 'ar' &&
+      (text === t.quickReplies[0] || text === DEFAULT_ANSWER || text === CONTINUE_TEXT)
+    )
+      text = CONTINUE_WORD[this.lang];
+    // en / id choices: the option's NUMBER — the server misreads its own translated option
+    // text (its quiz answer trips the distress filter, live 2026-10-04) but takes «1», «2»…
+    else if (t.expects === 'choice' && this.lang !== 'ar' && t.quickReplies.includes(text))
+      text = String(t.quickReplies.indexOf(text) + 1);
+    // An answer picked FOR the child (not their words) is never «I need help»: the server
+    // would open an emotional-support talk on the child's behalf.
+    if (text === t.quickReplies[0] && isHelpReply(text)) text = safeReply(t.quickReplies);
     lessonLog('ai', 'send', { stage: t.stage, expects: t.expects, repeated });
     // the reply to a repeat (or a skip) may judge it — see judges()
     this.answeredRepeat = repeated || (t.expects === 'repeat' && text === SKIP_AYAH);

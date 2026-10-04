@@ -375,23 +375,38 @@ interface RecognitionLike {
   abort(): void;
 }
 
-/** webkitSpeechRecognition when the browser has it (Chrome sends the audio to Google — consent only). */
+/** SpeechRecognition.lang for the child's free speech in each session language. */
+export const SPEECH_RECOGNITION_LANG: Record<AgentLang, string> = { ar: 'ar-SA', en: 'en-US', id: 'id-ID' };
+
+/**
+ * webkitSpeechRecognition when the browser has it (Chrome sends the audio to Google —
+ * consent only). Free speech in the session language; a recitation (Quran / hadith) is
+ * always Arabic — the lesson never uses this for a repeat, but `recitation` forces ar-SA.
+ */
 export class BrowserSpeechInput implements SpeechInput {
-  static create(): BrowserSpeechInput | null {
+  static create(lang: AgentLang = 'ar'): BrowserSpeechInput | null {
     const w = globalThis as unknown as {
       webkitSpeechRecognition?: new () => RecognitionLike;
       SpeechRecognition?: new () => RecognitionLike;
     };
     const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-    return Ctor ? new BrowserSpeechInput(Ctor) : null;
+    return Ctor ? new BrowserSpeechInput(Ctor, lang) : null;
   }
 
-  private constructor(private readonly Ctor: new () => RecognitionLike) {}
+  private constructor(
+    private readonly Ctor: new () => RecognitionLike,
+    private readonly lang: AgentLang = 'ar',
+  ) {}
 
-  listen(signal: AbortSignal): Promise<string | null> {
+  /** The recognition language: Arabic for a recitation, else the session language. */
+  recognitionLang(recitation = false): string {
+    return recitation ? SPEECH_RECOGNITION_LANG.ar : SPEECH_RECOGNITION_LANG[this.lang];
+  }
+
+  listen(signal: AbortSignal, o: { recitation?: boolean } = {}): Promise<string | null> {
     return new Promise((resolve, reject) => {
       const r = new this.Ctor();
-      r.lang = 'ar-SA';
+      r.lang = this.recognitionLang(o.recitation);
       r.interimResults = false;
       r.maxAlternatives = 1;
       let text: string | null = null;

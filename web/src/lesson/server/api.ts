@@ -131,11 +131,22 @@ export class AgentApi {
     );
   }
 
-  /** Only while `expects === "repeat"` and with the parent's consent (the server stores the audio). */
-  async scoreRecitation(sessionId: string, audioBase64: string): Promise<ScoreResult> {
+  /**
+   * Only with the parent's consent (the server stores the audio). A recitation (the child
+   * repeating an ayah / the hadith) → `forScore: true`: always transcribed as Arabic,
+   * whatever the session language. Free speech → `forScore: false` + the session `lang`
+   * (ai/API_web.md 2026-10-02).
+   */
+  async scoreRecitation(
+    sessionId: string,
+    audioBase64: string,
+    o: { forScore: true } | { forScore: false; lang: AgentLang } = { forScore: true },
+  ): Promise<ScoreResult> {
     const r = await this.request('/agent/score-recitation', {
       method: 'POST',
-      body: { session_id: sessionId, audio_base64: audioBase64 },
+      body: o.forScore
+        ? { session_id: sessionId, audio_base64: audioBase64, forScore: true }
+        : { session_id: sessionId, audio_base64: audioBase64, forScore: false, lang: o.lang },
       timeoutMs: SCORE_TIMEOUT_MS,
     });
     return parseScore(await this.json(r));

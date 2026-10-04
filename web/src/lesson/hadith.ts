@@ -68,6 +68,10 @@ export class HadithRepository {
     return new HadithRepository(j.hadith.map((h) => Hadith.fromJson(h)));
   }
 
+  all(): readonly Hadith[] {
+    return [...this.byIdMap.values()];
+  }
+
   byId(id: string): Hadith {
     const h = this.byIdMap.get(id);
     if (!h) throw new Error(`Unknown hadith id ${id}`);

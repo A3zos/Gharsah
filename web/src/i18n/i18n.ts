@@ -104,12 +104,13 @@ export function countPhrase(lang: UiLanguage, n: number, f: CountForms): string 
 }
 
 /**
- * Does the AI lesson (/agent/start, /speak) follow the UI language? OFF — product-owner
- * decision pending: in an en / id session the AI server's teacher SPEAKS its own hadith
- * translation (not HadeethEnc; its docs say it still needs Sharia review). Until then the
- * AI lesson runs in Arabic (the screens around it are translated). Flip to true to enable.
+ * Does the AI lesson (/agent/start, /speak, the teacher's fixed lines, the browser voices)
+ * follow the UI language? ON — product owner approved (2026-10-04). The cards still show
+ * only our verified content (Tanzil + QuranEnc, our HadeethEnc files) — never the server's
+ * translated show_ayat / show_words / hadith_title / source; only its `say` is spoken. What
+ * the child recites (ayat / hadith) stays Arabic.
  */
-export const AI_LESSON_FOLLOWS_UI = false;
+export const AI_LESSON_FOLLOWS_UI = true;
 
 /** The AI lesson's session language for a UI language (see AI_LESSON_FOLLOWS_UI). */
 export const aiLessonLanguage = (ui: UiLanguage): UiLanguage => (AI_LESSON_FOLLOWS_UI ? ui : 'ar');
