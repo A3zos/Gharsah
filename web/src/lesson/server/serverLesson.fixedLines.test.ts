@@ -2,12 +2,12 @@
 // Indonesian for every line (both genders), never Arabic or Quranic text.
 import { QURANIC } from '../../../../supabase/functions/ai-speak/resolve';
 import {
-  CANT_HEAR,
   FILLER,
   FILLER_LONG,
   FIXED_LINES,
   fixedLine,
   HADITH_LATER,
+  MIC_ASK,
   MOVE_ON_UNREPEATED,
   NUDGE_ANSWER,
   NUDGE_REPEAT,
@@ -30,7 +30,7 @@ test('Arabic: exactly the constants', () => {
     expect(fixedLine('ar', 'repeatsStartReply', g)).toBe(REPEATS_START_REPLY);
     expect(fixedLine('ar', 'toHadith', g)).toBe(TO_HADITH[g]);
     expect(fixedLine('ar', 'hadithLater', g)).toBe(HADITH_LATER);
-    expect(fixedLine('ar', 'cantHear', g)).toBe(CANT_HEAR[g]);
+    expect(fixedLine('ar', 'micAsk', g)).toBe(MIC_ASK[g]);
     expect(fixedLine('ar', 'filler', g)).toBe(FILLER[g]);
     expect(fixedLine('ar', 'fillerLong', g)).toBe(FILLER_LONG[g]);
   }

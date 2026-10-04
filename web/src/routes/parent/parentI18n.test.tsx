@@ -85,26 +85,9 @@ test('Indonesian: Anak-anak saya with the glossary words', () => {
   expect(document.documentElement).toHaveAttribute('dir', 'ltr');
 });
 
-test('voice consent off: one small note for the parent on the child card → the edit form', () => {
+test('no per-child voice note on the child card (the teacher always hears the child)', () => {
   page(<ChildrenRoute />);
-  const note = screen.getByRole('link', { name: 'فعّل سماع الصوت ليتفاعل المعلم مع طفلك' });
-  expect(note).toHaveAttribute('href', '/parent/children/new?child=c1&from=children');
-  expect(screen.getAllByText('فعّل سماع الصوت ليتفاعل المعلم مع طفلك')).toHaveLength(1);
-});
-
-test('voice consent on: no note', () => {
-  const on = { ...child, aiVoiceConsent: true };
-  localStorage.setItem(STORAGE_KEY, 'en');
-  render(
-    <MemoryRouter>
-      <I18nProvider>
-        <ParentDataContext.Provider value={{ ...data, children: [on] }}>
-          <ChildrenRoute />
-        </ParentDataContext.Provider>
-      </I18nProvider>
-    </MemoryRouter>,
-  );
-  expect(screen.queryByText('Turn on voice so the teacher can respond to your child')).toBeNull();
+  expect(screen.queryByText('فعّل سماع الصوت ليتفاعل المعلم مع طفلك')).toBeNull();
 });
 
 test('settings: the language cards really switch the page', () => {

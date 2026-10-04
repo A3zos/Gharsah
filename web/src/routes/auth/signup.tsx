@@ -187,6 +187,8 @@ function Signup() {
           <Button type="submit" disabled={busy} aria-busy={busy}>
             {t.submit}
           </Button>
+          {/* the teacher always hears the child (PO, 2026-10-04): disclosed here and on /legal */}
+          <p className="m-0 text-center text-[12.5px] leading-[1.8] text-text-muted">{m.auth.voiceNotice}</p>
           <p className="m-0 text-center text-[14px] text-text-muted">
             {t.haveAccount}{' '}
             <Link to={paths.login} className="font-bold">

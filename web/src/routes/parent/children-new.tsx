@@ -36,7 +36,6 @@ import {
   DEFAULT_SCHEDULE,
   dayNames,
   formatTime,
-  setAiVoiceConsent,
   updateSchedule,
   WEEK_DAYS,
   type ChildProfile,
@@ -74,7 +73,6 @@ interface Draft {
   gender: Gender;
   schedule: ChildSchedule;
   avatarId: string;
-  aiVoiceConsent: boolean;
 }
 
 /**
@@ -134,7 +132,6 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     gender: editing?.gender ?? 'girl',
     schedule: editing?.schedule ?? DEFAULT_SCHEDULE,
     avatarId: editing?.avatarId ?? defaultAvatar(editing?.gender ?? 'girl', lang),
-    aiVoiceConsent: editing?.aiVoiceConsent ?? false,
   }));
   const steps = STEPS;
   const lastStep = steps.length - 1;
@@ -203,8 +200,6 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     try {
       if (editing) {
         await updateSchedule(editing.id, schedule);
-        if (draft.aiVoiceConsent !== editing.aiVoiceConsent)
-          await setAiVoiceConsent(editing.id, draft.aiVoiceConsent);
         navigate(paths.parent.children, { replace: true });
       } else {
         const { id } = await addChild({ ...draft, schedule });
@@ -227,11 +222,6 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
           ? t.nextAvatarWide
           : t.nextAvatar
         : t.create;
-
-  // The form's last field: on the avatar step of a new child, under the schedule when editing.
-  const consentField = (
-    <VoiceConsentField value={draft.aiVoiceConsent} onChange={(aiVoiceConsent) => set({ aiVoiceConsent })} />
-  );
 
   // A deep link to a later step of a new child starts at the first step.
   if (!editing && step > 0 && !draft.name.trim()) {
@@ -338,10 +328,8 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                   >
                     <h2 className="m-0 font-heading text-[23px] font-bold">{t.avatar}</h2>
                     <AvatarGrid value={draft.avatarId} onChange={pickAvatar} compact />
-                    {consentField}
                   </section>
                 )}
-                {editing && consentField}
               </div>
             </div>
             {errorLine}
@@ -484,7 +472,6 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
               <Note tone="green" icon={<InfoGreen />}>
                 {t.scheduleLater}
               </Note>
-              {editing && consentField}
             </>
           )}
 
@@ -500,7 +487,6 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                 </svg>
                 <p className="m-0 text-[12.5px] leading-[1.8] text-text-muted">{t.avatarTree}</p>
               </div>
-              {consentField}
             </>
           )}
 
@@ -511,22 +497,6 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
         </div>
       }
     />
-  );
-}
-
-/** The parent's voice consent (children.ai_voice_consent) — unchecked by default. */
-function VoiceConsentField({ value, onChange }: { value: boolean; onChange: (on: boolean) => void }) {
-  const t = useI18n().m.parent.addChild;
-  return (
-    <label className="flex cursor-pointer items-start gap-[12px] rounded-px-20 border-[1.5px] border-border bg-surface px-[16px] py-[14px]">
-      <input
-        type="checkbox"
-        checked={value}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-[3px] h-[22px] w-[22px] shrink-0 cursor-pointer accent-deep-green"
-      />
-      <span className="text-[13px] leading-[1.9] text-text-dark">{t.voiceConsent}</span>
-    </label>
   );
 }
 

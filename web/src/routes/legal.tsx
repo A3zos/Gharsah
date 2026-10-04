@@ -57,6 +57,10 @@ function Legal() {
         ))}
       </nav>
       <div className="flex flex-col gap-[20px] rounded-px-26 bg-surface px-[20px] py-[22px] shadow-dark-12-26-4">
+        {/* already in force (the rest of the text is still a placeholder) */}
+        <p className="m-0 rounded-px-18 bg-green-tint px-[16px] py-[14px] text-[14.5px] leading-[2] font-bold text-text-dark">
+          {m.auth.voiceNotice}
+        </p>
         {doc.sections.map((section, i) => (
           <Fragment key={section}>
             <section id={`s${i + 1}`} className="flex scroll-mt-[16px] flex-col gap-[10px]">

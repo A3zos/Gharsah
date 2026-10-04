@@ -1,15 +1,19 @@
-import { AI_VOICE_CONSENT, childFromRow } from './children';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-const row = (ai_voice_consent?: boolean | null) =>
-  childFromRow({ id: 'c1', name: 'راكان', gender: 'boy', avatar: 'boy-1', ai_voice_consent });
+import { childFromRow } from './children';
 
-test('the parent’s voice consent (the add / edit child box) reaches the lesson', () => {
-  expect(AI_VOICE_CONSENT).toBe(true);
-  expect(row(true).aiVoiceConsent).toBe(true);
-});
-
-test('off unless the parent checked the box', () => {
-  expect(row(false).aiVoiceConsent).toBe(false);
-  expect(row(null).aiVoiceConsent).toBe(false);
-  expect(row().aiVoiceConsent).toBe(false);
+test('children.ai_voice_consent is still read, but gates nothing: the lesson always hears the child', () => {
+  const row = childFromRow({
+    id: 'c1',
+    name: 'راكان',
+    gender: 'boy',
+    avatar: 'boy-1',
+    ai_voice_consent: false,
+  });
+  expect(row.aiVoiceConsent).toBe(false);
+  // the lesson wiring never looks at it (PO, 2026-10-04 — disclosed at sign-up instead)
+  for (const f of ['../components/lesson/ServerLessonCall.tsx', '../lesson/web/createServerLesson.ts']) {
+    expect(readFileSync(resolve(__dirname, f), 'utf-8')).not.toMatch(/aiVoiceConsent|consent:/);
+  }
 });

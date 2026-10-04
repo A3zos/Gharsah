@@ -183,16 +183,30 @@ describe('parseAction', () => {
 
 describe('other responses', () => {
   it('parseScore', () => {
-    expect(parseScore({ available: false })).toEqual({ available: false, transcription: null });
+    const none = { available: false, transcription: null, score: null, marked: [] };
+    expect(parseScore({ available: false })).toEqual(none);
     expect(parseScore({ available: true, transcription: ' قل هو الله ', score: 0.8 })).toEqual({
       available: true,
       transcription: 'قل هو الله',
+      score: 0.8,
+      marked: [],
     });
     expect(parseScore({ available: true, transcription: '' })).toEqual({
       available: true,
       transcription: null,
+      score: null,
+      marked: [],
     });
-    expect(parseScore('nope')).toEqual({ available: false, transcription: null });
+    // live, 2026-10-04: 0..100 and the marked words in tajweed_errors
+    expect(
+      parseScore({
+        available: true,
+        transcription: 'قل هو الله احد',
+        score: 25,
+        tajweed_errors: [{ rule: 'مطابقة النص', position: ' بِسْمِ ', note: '…' }, { rule: 'x' }],
+      }),
+    ).toEqual({ available: true, transcription: 'قل هو الله احد', score: 0.25, marked: ['بِسْمِ'] });
+    expect(parseScore('nope')).toEqual(none);
   });
 
   it('parseReady keeps ready items only', () => {

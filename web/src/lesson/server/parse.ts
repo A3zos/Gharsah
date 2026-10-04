@@ -208,12 +208,24 @@ export function parseTurn(json: unknown, mode: AgentMode): ServerTurn {
 export interface ScoreResult {
   readonly available: boolean;
   readonly transcription: string | null;
+  /** The server's recitation score, 0..1 (it answers 0..1 or 0..100) — null when absent. */
+  readonly score: number | null;
+  /** The words it marked (tajweed_errors[].position). */
+  readonly marked: readonly string[];
 }
 
 export function parseScore(json: unknown): ScoreResult {
-  if (!isObj(json) || json.available !== true) return { available: false, transcription: null };
+  if (!isObj(json) || json.available !== true)
+    return { available: false, transcription: null, score: null, marked: [] };
   const t = str(json.transcription)?.trim();
-  return { available: true, transcription: t || null };
+  const raw = typeof json.score === 'number' && Number.isFinite(json.score) ? json.score : null;
+  const score = raw === null ? null : Math.max(0, Math.min(1, raw > 1 ? raw / 100 : raw));
+  const marked = Array.isArray(json.tajweed_errors)
+    ? json.tajweed_errors.flatMap((e) =>
+        isObj(e) && str(e.position)?.trim() ? [str(e.position)!.trim()] : [],
+      )
+    : [];
+  return { available: true, transcription: t || null, score, marked };
 }
 
 export interface ReadyReview {

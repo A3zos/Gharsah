@@ -11,17 +11,18 @@
 // * The child's name never leaves the device: no child_name, and the `name`
 //   stage is never asked: it is answered with the neutral «بطل» (the teacher keeps
 //   saying «يا بطل»); the child's own words are scrubbed of their name (api.ts).
-// * Child audio goes to the server (which stores it) only with the parent's
-//   consent: the recitation upload, and the browser's speech recognition (never for
-//   a recitation). Without consent, a repeat is checked on the device by the
-//   RecitationVerifier (presence only: ≥0.6 s of real speech), and the reference text
-//   the server gave is sent as the answer.
+// * The teacher always hears the child (PO, 2026-10-04 — disclosed at sign-up): free
+//   speech → the browser's speech recognition (or, without it, the recorder → the
+//   server's transcription); a recitation → the recorder → /agent/score-recitation.
+//   The mic is asked for once at the start of the call; refused → on-device presence
+//   only (the reference text the server gave is sent as the answer). Only transcripts
+//   are logged, never audio.
 // * Silence is never praised: a silent repeat → a nudge + the ayah again; silent
 //   again → a neutral line, the ayah once more, and «تخطّي الآية» (no «repeated»
 //   signal); that ayah is «لم يُردَّد» for the parent and is not memorized.
 // * No word-level judgment we can't verify: a server line like «نسيت كلمة» is
-//   replaced by an approved encouragement (only a confident server verifier may
-//   allow word feedback — voice/recitationVerifier.ts).
+//   replaced by an approved encouragement unless the server's recitation score of that
+//   attempt was low too (voice/recitationVerifier.ts).
 // * Any server failure that a restart can't fix → `fallback` (the route then
 //   runs the built-in lesson) so the child is never stuck.
 import { changed, lessonLog } from '../lessonLog';
@@ -35,7 +36,16 @@ import {
   type AgentLang,
   type Gender,
 } from './api';
-import type { ActionItem, AgentAction, AgentMode, AgentStage, Expects, ServerTurn, TurnKind } from './parse';
+import type {
+  ActionItem,
+  AgentAction,
+  AgentMode,
+  AgentStage,
+  Expects,
+  ScoreResult,
+  ServerTurn,
+  TurnKind,
+} from './parse';
 import { doneRefsOf, hadithMatchesTopic, mappedStage, type ServerProgressSink } from './progressMap';
 import type { ProgressStage } from '../web/progressSink';
 import type { TeacherVoice } from '../voice/tts';
@@ -44,7 +54,9 @@ import {
   ENCOURAGE_RETRY,
   isWordJudgment,
   PresenceOnlyVerifier,
+  RECITATION_PASS_SCORE,
   REPEAT_MIN_SPEECH_MS,
+  WORD_FEEDBACK_MIN_CONFIDENCE,
   type RecitationResult,
   type RecitationVerifier,
 } from '../voice/recitationVerifier';
@@ -76,16 +88,18 @@ export interface PresenceListener {
       onVoiced?: (ms: number) => void;
     },
   ): Promise<'spoke' | 'silent' | 'denied'>;
-  /** Ask for the mic again — called inside the «سماح» tap. */
+  /** Ask for the mic — at the start of the call, and inside the «سماح» tap. */
   requestAccess?(): Promise<boolean>;
+  /** The mic permission as the browser knows it now (no prompt). */
+  permission?(): Promise<'granted' | 'denied' | 'prompt'>;
 }
 
-/** Records one utterance (consent only). Null when nothing usable was heard. */
+/** Records one utterance. Null when nothing usable was heard. */
 export interface UtteranceRecorder {
   record(signal: AbortSignal): Promise<Blob | null>;
 }
 
-/** The browser's speech recognition (consent only — Chrome sends the audio to Google). */
+/** The browser's speech recognition (Chrome sends the audio to Google). */
 export interface SpeechInput {
   listen(signal: AbortSignal): Promise<string | null>;
 }
@@ -126,9 +140,7 @@ export interface ServerLessonDeps {
    * was already finished earlier TODAY (the route decides — data/student.ts surahDoneToday).
    */
   startAt?: 'quran' | 'hadith';
-  /** The parent allowed sending the child's voice to the AI server. */
-  consent: boolean;
-  /** Present only with consent and a browser that supports it. */
+  /** Present when the browser can record (MediaRecorder). */
   recorder?: UtteranceRecorder | null;
   /** Did the child really recite? Presence only by default (voice/recitationVerifier.ts). */
   verifier?: RecitationVerifier;
@@ -370,11 +382,10 @@ export const WHOLE_SURAH_TURN: Record<Gender, string> = {
 };
 /** The server's own quick reply for moving past an ayah — never a «repeated» signal. */
 export const SKIP_AYAH = 'تخطّي الآية';
-// REVIEW: the teacher's first line when the parent hasn't consented to voice — the lesson
-// still runs (on-device presence), but the teacher can't understand answers.
-export const CANT_HEAR: Record<Gender, string> = {
-  boy: 'أهلًا يا بطل! اليوم ما أقدر أسمع كلامك، بس تكلّم وردّد بصوتك وأنا أكمل معك',
-  girl: 'أهلًا يا بطلة! اليوم ما أقدر أسمع كلامكِ، بس تكلّمي وردّدي بصوتكِ وأنا أكمل معكِ',
+// REVIEW: said once at the start of the call, right before the browser asks for the mic.
+export const MIC_ASK: Record<Gender, string> = {
+  boy: 'أهلًا يا بطل! عشان أسمعك وأنت تتكلّم وتقرأ، اسمح لي أستخدم المايك',
+  girl: 'أهلًا يا بطلة! عشان أسمعكِ وأنتِ تتكلّمين وتقرئين، اسمحي لي أستخدم المايك',
 };
 // REVIEW: two fixed teacher lines of the day plan (surah → hadith).
 /** Today's surah is done: said at once, while the hadith part is prepared. */
@@ -405,7 +416,7 @@ export type FixedLine =
   | 'wholeSurahTurn'
   | 'toHadith'
   | 'hadithLater'
-  | 'cantHear'
+  | 'micAsk'
   | 'filler'
   | 'fillerLong';
 type FixedLines = Record<FixedLine, string | Record<Gender, string>>;
@@ -425,7 +436,7 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     wholeSurahTurn: WHOLE_SURAH_TURN,
     toHadith: TO_HADITH,
     hadithLater: HADITH_LATER,
-    cantHear: CANT_HEAR,
+    micAsk: MIC_ASK,
     filler: FILLER,
     fillerLong: FILLER_LONG,
   },
@@ -439,8 +450,7 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     toHadith:
       "Masha Allah, champ! You finished the surah. Now let's learn a hadith of the Prophet, peace and blessings be upon him",
     hadithLater: "Well done, champ! We'll continue the hadith next time, in sha Allah",
-    cantHear:
-      "Hi champ! Today I can't hear what you say, but speak and repeat out loud and I'll carry on with you",
+    micAsk: 'Hi champ! So I can hear you talk and recite, please let me use the microphone',
     filler: 'Great… one moment, champ',
     fillerLong: "Just a few seconds, champ, I'm getting it ready…",
   },
@@ -454,8 +464,7 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     toHadith:
       "Masya Allah, jagoan! Kamu sudah menyelesaikan surahnya. Sekarang kita belajar hadis Nabi Muhammad shallallahu 'alaihi wa sallam",
     hadithLater: 'Bagus sekali, jagoan! Kita lanjutkan hadisnya lain kali, insya Allah',
-    cantHear:
-      'Halo jagoan! Hari ini aku belum bisa mendengar ucapanmu, tapi bicara dan tirukan dengan suaramu, aku akan terus bersamamu',
+    micAsk: 'Halo jagoan! Supaya aku bisa mendengarmu berbicara dan membaca, izinkan aku memakai mikrofon ya',
     filler: 'Bagus… sebentar ya, jagoan',
     fillerLong: 'Sebentar lagi, jagoan, aku sedang menyiapkannya…',
   },
@@ -482,6 +491,10 @@ interface Heard {
   readonly text: string | null;
   /** How long the child spoke (on-device presence). */
   readonly voicedMs?: number;
+  /** A recitation's server score (0..1) — null when the server didn't score it. */
+  readonly score?: number | null;
+  /** The words the server marked (score-recitation tajweed_errors positions). */
+  readonly marked?: readonly string[];
 }
 const REPEATED_TEXT = 'ردّدت';
 
@@ -510,14 +523,14 @@ export class ServerLesson {
   private disposed = false;
   private restarts = 0;
   private nameAnswers = 0;
-  /** What the child is asked to repeat (play_ayah text / the hadith), sent without consent. */
+  /** What the child is asked to repeat (play_ayah text / the hadith), sent when nothing was transcribed. */
   private reference: string | null = null;
   private segSurah: number | null = null;
   private surahAnswers = 0;
   private listenOnly = false;
   private speechBroken = false;
-  /** CANT_HEAR said (no consent: once, before the call's first line). */
-  private cantHearSaid = false;
+  /** The mic was refused at the start: on-device presence only (no recorder, no recognition). */
+  private voiceOff = false;
   /** The hadith session started (and its greeting / «which hadith?» answered) in the background. */
   private prewarm: Promise<ServerTurn> | null = null;
   /** A new segment's first turn replaces the last card (kept, dimmed, until then). */
@@ -660,6 +673,8 @@ export class ServerLesson {
       // «المعلم يتجهز…» until it is ready (≤ ~45 s) — the browser's only if it fails.
       await this.d.voice.ready?.();
       if (this.disposed) return;
+      await this.askMic();
+      if (this.disposed) return;
       this.segments = await this.plan();
       this.segIndex = 0;
       await this.startSegment(false);
@@ -668,10 +683,10 @@ export class ServerLesson {
     }
   }
 
-  /** Taseem first (consent only — it needs the child's voice), then quran, then hadith. */
+  /** Taseem first (it needs the child's voice — not when the mic was refused), then quran, then hadith. */
   private async plan(): Promise<Segment[]> {
     const out: Segment[] = [];
-    if (this.d.consent) {
+    if (this.hears) {
       const [q, h] = await Promise.all([
         this.d.api.taseemReady(this.d.deviceId).catch(() => []),
         this.d.api.htaseemReady(this.d.deviceId).catch(() => []),
@@ -950,11 +965,6 @@ export class ServerLesson {
       turn.kind === 'quran' && turn.actions.some((a) => a.type === 'play_all' && a.urls.length > 1);
     try {
       for (const a of turn.actions) this.show(a, turn);
-      if (!this.d.consent && !this.cantHearSaid) {
-        this.cantHearSaid = true;
-        await this.say(this.fixed('cantHear'), abort);
-        await this.guard(abort, this.beat(LINE_GAP_MS));
-      }
       const line = judged ? ENCOURAGE_RETRY : turn.say;
       if (line.trim()) await this.say(line, abort);
       const plays = audio.length > 0 || (judged && this.turnAudio.length > 0);
@@ -1106,7 +1116,7 @@ export class ServerLesson {
 
   /**
    * A pure voice call: after every line the mic opens by itself (no buttons, no text).
-   *   consent + recognition -> the child's real words (a choice -> the closest option)
+   *   recognition / the server's transcription -> the child's real words (a choice -> the closest option)
    *   otherwise -> on-device voice activity only (nothing recorded or sent): speech of
    *     >=0.6 s = an answer -> the first quick reply (or «تمام»); a choice -> the first
    *     option, marked «لم يُقيَّم» for the parent; a repeat counts by presence
@@ -1124,13 +1134,14 @@ export class ServerLesson {
     const repeat = turn.expects === 'repeat';
     // never the browser's speech recognition for a recitation
     const canSpeak =
-      this.d.consent && !repeat && ((!!this.d.speechInput && !this.speechBroken) || !!this.d.recorder);
+      this.hears && !repeat && ((!!this.d.speechInput && !this.speechBroken) || !!this.d.recorder);
     this.set({ expects: turn.expects, quickReplies: turn.quickReplies, canSpeak });
     for (let misses = 0; ;) {
       const heard = await this.hear(turn, abort);
       if (heard !== 'silent' && heard.spoke) {
         if (!repeat) {
-          if (startsRepeats) await this.say(this.fixed('repeatsStartReply'), abort);
+          // our «let's start» only when we don't know the child's words (they may have asked something)
+          if (startsRepeats && !heard.text) await this.say(this.fixed('repeatsStartReply'), abort);
           return this.respond(turn, heard);
         }
         const v = await this.verifyRepeat(turn, heard);
@@ -1151,8 +1162,25 @@ export class ServerLesson {
     }
   }
 
-  /** The child spoke on a repeat: does it count? (presence only: ≥ REPEAT_MIN_SPEECH_MS of speech) */
+  /**
+   * The child spoke on a repeat: does it count? Scored by the server → it counts (its
+   * transcription goes to /agent/message), and word feedback is allowed only when that
+   * score is low (`canGiveWordFeedback`). Otherwise presence: ≥ REPEAT_MIN_SPEECH_MS.
+   */
   private async verifyRepeat(turn: ServerTurn, h: Heard): Promise<RecitationResult> {
+    if (typeof h.score === 'number') {
+      // the server marked a word, or scored it low (live: a wrong word → 60 + the word marked)
+      const low = (h.marked?.length ?? 0) > 0 || h.score < RECITATION_PASS_SCORE;
+      const r: RecitationResult = {
+        ok: true,
+        by: 'server',
+        confidence: low ? WORD_FEEDBACK_MIN_CONFIDENCE : 0,
+        ...(low && h.marked?.length ? { missedWords: h.marked } : {}),
+      };
+      lessonLog('ai', 'recitation scored', { score: h.score, low });
+      this.lastVerify = r;
+      return r;
+    }
     const surah = this.segSurah ?? this.d.plan.surahNo;
     const r = await this.verifier
       .verify({ voicedMs: h.voicedMs ?? REPEAT_MIN_SPEECH_MS }, surah, turn.ayah)
@@ -1192,8 +1220,8 @@ export class ServerLesson {
     if (repeat) this.set({ repeat: 'listening' });
     else this.set({ hearing: true });
     try {
-      // With consent: the recitation goes to the server for its transcription...
-      if (repeat && this.d.consent && this.d.recorder) {
+      // A recitation goes to the server for its transcription and score...
+      if (repeat && this.hears && this.d.recorder) {
         const blob = await this.guard(abort, this.d.recorder.record(abort.signal)).catch((e: unknown) => {
           if (e instanceof Cancelled) throw e;
           return null;
@@ -1207,15 +1235,23 @@ export class ServerLesson {
             toB64(blob).then((b) => this.d.api.scoreRecitation(this.turn!.sessionId, b, { forScore: true })),
           ).catch((e: unknown) => {
             if (e instanceof Cancelled) throw e;
-            return { available: false, transcription: null };
+            return { available: false, transcription: null, score: null, marked: [] } as ScoreResult;
           });
-          lessonLog('ai', 'heard (recitation)', { text: score.available ? score.transcription : null });
-          return { spoke: true, text: score.available ? score.transcription : null };
+          lessonLog('ai', 'heard (recitation)', {
+            text: score.available ? score.transcription : null,
+            score: score.score,
+          });
+          return {
+            spoke: true,
+            text: score.available ? score.transcription : null,
+            score: score.available ? score.score : null,
+            marked: score.marked,
+          };
         }
         if (abort.signal.aborted) throw new Cancelled();
       }
       // ...and the child's words go to speech recognition.
-      if (!repeat && this.d.consent && this.d.speechInput && !this.speechBroken) {
+      if (!repeat && this.hears && this.d.speechInput && !this.speechBroken) {
         const text = await this.guard(abort, this.d.speechInput.listen(abort.signal)).catch((e: unknown) => {
           if (e instanceof Cancelled) throw e;
           this.speechBroken = true; // unsupported / blocked -> on-device presence from now on
@@ -1229,7 +1265,7 @@ export class ServerLesson {
       }
       // No speech recognition (Firefox / Safari, or it broke): the recorder → the server's
       // transcription of free speech in the session language (forScore=false, API_web.md 2026-10-02).
-      if (!repeat && this.d.consent && this.d.recorder && (!this.d.speechInput || this.speechBroken)) {
+      if (!repeat && this.hears && this.d.recorder && (!this.d.speechInput || this.speechBroken)) {
         const blob = await this.guard(abort, this.d.recorder.record(abort.signal)).catch((e: unknown) => {
           if (e instanceof Cancelled) throw e;
           return null;
@@ -1244,7 +1280,7 @@ export class ServerLesson {
             ),
           ).catch((e: unknown) => {
             if (e instanceof Cancelled) throw e;
-            return { available: false, transcription: null };
+            return { available: false, transcription: null, score: null, marked: [] } as ScoreResult;
           });
           const text = score.available ? score.transcription?.trim() || null : null;
           lessonLog('ai', 'heard (server transcription)', { text });
@@ -1364,6 +1400,34 @@ export class ServerLesson {
 
   private repeatText(): string {
     return this.reference?.trim() || REPEATED_TEXT;
+  }
+
+  /** The child can be heard (the mic wasn't refused at the start). */
+  private get hears(): boolean {
+    return !this.voiceOff;
+  }
+
+  /**
+   * The mic, asked for once at the start of the call with a friendly line (skipped when
+   * the browser already allows it). Refused → on-device presence only, logged.
+   */
+  private async askMic(): Promise<void> {
+    const p = this.d.presence;
+    if (!p.requestAccess) return;
+    const now = await (p.permission?.() ?? Promise.resolve('prompt' as const)).catch(() => 'prompt' as const);
+    if (now === 'granted') return;
+    let ok = false;
+    if (now === 'prompt') {
+      const abort = new AbortController();
+      this.turnAbort = abort;
+      await this.say(this.fixed('micAsk'), abort).catch(() => {});
+      ok = await p.requestAccess().catch(() => false);
+    }
+    if (ok) return;
+    this.voiceOff = true;
+    this.listenOnly = true;
+    this.set({ micDenied: true, listenOnly: true });
+    lessonLog('ai', 'mic refused at the start → presence only (the lesson goes on by itself)', { now });
   }
 
   private async segmentEnded(): Promise<void> {

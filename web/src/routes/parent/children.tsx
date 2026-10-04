@@ -32,19 +32,6 @@ function childLine(lang: UiLanguage, c: ChildProfile, desktopWaiting: boolean): 
   return c.pairing ? fmt(lang, t.codeLine, { age, code: formatNumber(lang, c.pairing.code) }) : age;
 }
 
-/** The child's voice consent is off: one small note for the parent → the edit form's box. */
-function VoiceOffNote({ childId }: { childId: string }) {
-  const t = useI18n().m.parent.children;
-  return (
-    <Link
-      to={paths.parent.editSchedule(childId)}
-      className="self-start text-[12.5px] font-bold text-warning-text underline-offset-4 hover:underline"
-    >
-      {t.voiceOff}
-    </Link>
-  );
-}
-
 function StatusPill({ linked, small }: { linked: boolean; small?: boolean }) {
   const t = useI18n().m.parent.children;
   return linked ? (
@@ -134,7 +121,6 @@ function Desktop({ kids }: { kids: ChildProfile[] | null }) {
                 </span>
                 <StatusPill linked={c.linked} />
               </div>
-              {!c.aiVoiceConsent && <VoiceOffNote childId={c.id} />}
               <div className="flex flex-col gap-[8px]">
                 <div className="flex items-baseline justify-between">
                   <span className="text-[13px] font-bold text-text-muted">
@@ -276,7 +262,6 @@ function Mobile({
               <ForwardIcon size={17} color="deepGreen" strokeWidth={2.4} className="ltr:-scale-x-100" />
             </Link>
           </div>
-          {!c.aiVoiceConsent && <VoiceOffNote childId={c.id} />}
           {menu === c.id && (
             <ChildMenu child={c} onClose={() => setMenu(null)} onRemove={() => onRemove(c)} />
           )}

@@ -6,9 +6,9 @@ import type { ProgressUpdate } from './progressMap';
 import { ENCOURAGE_RETRY } from '../voice/recitationVerifier';
 import { DEFAULT_QURAN_STAGES, PILOT_DAYS } from '../../content/pilot';
 import {
-  CANT_HEAR,
   FILLER,
   FILLER_LONG,
+  MIC_ASK,
   TO_HADITH,
   HADITH_PLACEHOLDER,
   MOVE_ON_UNREPEATED,
@@ -71,7 +71,6 @@ function setup(o: Partial<ServerLessonDeps> & { server?: FakeAgentServer; childN
     plan: PLAN,
     deviceId: 'dev-1',
     gender: 'boy',
-    consent: false,
     verifiedAyah: (s, a) => (s === 112 && a >= 1 && a <= 4 ? `VERIFIED-${s}:${a}` : null),
     ayahCount: () => 4,
     surahName: () => 'الإخلاص',
@@ -100,7 +99,7 @@ const last = (updates: ProgressUpdate[], lessonId: string) =>
   updates.filter((u) => u.lessonId === lessonId).at(-1);
 
 describe('ServerLesson — mocked end-to-end', () => {
-  it('a full quran lesson, then the hadith lesson (no consent)', async () => {
+  it('a full quran lesson, then the hadith lesson', async () => {
     const t = setup();
     const { lesson, server } = t;
     void lesson.start();
@@ -192,8 +191,9 @@ describe('ServerLesson — mocked end-to-end', () => {
       { mode: 'quran', gender: 'boy', device_id: 'dev-1', lang: 'ar' },
       { mode: 'hadith', gender: 'boy', device_id: 'dev-1', lang: 'ar' },
     ]);
-    // no consent → the review status endpoints were never asked
-    expect(server.calls.some((c) => c.path.includes('taseem'))).toBe(false);
+    // the review status was asked (the child can be heard); nothing ready → no review session
+    expect(server.calls.some((c) => c.path === '/agent/taseem/status')).toBe(true);
+    expect(server.calls.some((c) => c.path === '/agent/taseem/start')).toBe(false);
   });
 
   it('the server teaching another surah → the built-in lesson (which follows the plan)', async () => {
@@ -251,23 +251,10 @@ describe('ServerLesson — mocked end-to-end', () => {
 
 const order = (s: string) => ['listen_full', 'ayah_repeat', 'full_twice', 'hadith', 'done'].indexOf(s);
 
-describe('ServerLesson — repeat and consent', () => {
-  const toRecitation = async (t: Setup) => {
-    void t.lesson.start();
-    await at(t.lesson, 'greet', 'text');
-    t.lesson.answer('تمام');
-    await at(t.lesson, 'lesson_intro', 'continue');
-    await at(t.lesson, 'lesson_intro', 'continue');
-    t.lesson.continueTapped();
-    await at(t.lesson, 'tafsir', 'continue');
-    t.lesson.continueTapped();
-    await at(t.lesson, 'fadl', 'continue');
-    t.lesson.continueTapped();
-  };
-
-  it('with consent: the recording goes to score-recitation and its transcription is the answer', async () => {
+describe('ServerLesson — hearing the child', () => {
+  it('a recitation goes to score-recitation and its transcription is the answer', async () => {
     const recorder: UtteranceRecorder = { record: async () => new Blob(['x']) };
-    const t = setup({ consent: true, recorder });
+    const t = setup({ recorder });
     void t.lesson.start();
     await until(t.lesson, (s) => s.phase === 'finished');
     const scores = t.server.calls.filter((c) => c.path === '/agent/score-recitation');
@@ -279,13 +266,12 @@ describe('ServerLesson — repeat and consent', () => {
     const free = scores.filter((c) => (c.body as { forScore?: boolean }).forScore === false);
     expect(free.length).toBeGreaterThan(0);
     expect(free.every((c) => (c.body as { lang?: string }).lang === 'ar')).toBe(true);
-    expect(t.server.messages()).not.toContain(CANT_HEAR.boy);
   });
 
-  it('with consent but scoring unavailable: the reference line is sent instead', async () => {
+  it('scoring unavailable: the reference line is sent instead', async () => {
     const server = new FakeAgentServer();
     server.scoreAvailable = false;
-    const t = setup({ server, consent: true, recorder: { record: async () => new Blob(['x']) } });
+    const t = setup({ server, recorder: { record: async () => new Blob(['x']) } });
     void t.lesson.start();
     await until(t.lesson, (s) => s.phase === 'finished');
     expect(t.server.messages().filter((m) => m.startsWith('REF-AYAH'))).toEqual([
@@ -296,12 +282,53 @@ describe('ServerLesson — repeat and consent', () => {
     ]);
   });
 
-  it('without consent the recorder is never used even if present', async () => {
+  it('the mic is asked for once at the start, with a friendly line first', async () => {
+    const spoken: string[] = [];
+    const requestAccess = vi.fn(async () => true);
+    const t = setup({
+      presence: { waitForSpeech: async () => 'spoke', requestAccess, permission: async () => 'prompt' },
+      voice: { speak: async (x) => void spoken.push(x), stop: () => {} },
+    });
+    void t.lesson.start();
+    await until(t.lesson, (st) => st.phase === 'finished');
+    expect(spoken[0]).toBe(MIC_ASK.boy);
+    expect(spoken[1]).toMatch(/^السلام عليكم/);
+    expect(requestAccess).toHaveBeenCalledTimes(1);
+  });
+
+  it('the mic already allowed → no ask, no line', async () => {
+    const spoken: string[] = [];
+    const requestAccess = vi.fn(async () => true);
+    const t = setup({
+      presence: { waitForSpeech: async () => 'spoke', requestAccess, permission: async () => 'granted' },
+      voice: { speak: async (x) => void spoken.push(x), stop: () => {} },
+    });
+    void t.lesson.start();
+    await until(t.lesson, (st) => st.phase === 'finished');
+    expect(spoken).not.toContain(MIC_ASK.boy);
+    expect(requestAccess).not.toHaveBeenCalled();
+  });
+
+  it('the mic refused at the start → presence only: no recorder, no recognition, no review; the lesson goes on', async () => {
     const record = vi.fn(async () => new Blob(['x']));
-    const t = setup({ consent: false, recorder: { record } });
-    await toRecitation(t);
-    await at(t.lesson, 'tajweed', 'continue');
+    const listen = vi.fn(async () => 'تمام');
+    const server = new FakeAgentServer();
+    const t = setup({
+      server,
+      recorder: { record },
+      speechInput: { listen },
+      presence: {
+        waitForSpeech: async () => 'denied',
+        requestAccess: async () => false,
+        permission: async () => 'prompt',
+      },
+    });
+    void t.lesson.start();
+    await until(t.lesson, (s) => s.phase === 'finished');
+    expect(t.lesson.state.value).toMatchObject({ listenOnly: true, micDenied: true });
     expect(record).not.toHaveBeenCalled();
+    expect(listen).not.toHaveBeenCalled();
+    expect(server.calls.some((c) => c.path.includes('taseem'))).toBe(false);
   });
 
   it('mic refused → the «سماح» prompt; allowed → the child is heard again', async () => {
@@ -312,6 +339,7 @@ describe('ServerLesson — repeat and consent', () => {
         denied = false;
         return true;
       },
+      permission: async () => 'granted', // allowed at the start, blocked later
     };
     const t = setup({ presence });
     void t.lesson.start();
@@ -326,6 +354,7 @@ describe('ServerLesson — repeat and consent', () => {
     const presence: PresenceListener = {
       waitForSpeech: async () => 'denied',
       requestAccess: async () => false,
+      permission: async () => 'granted', // allowed at the start, blocked later
     };
     const t = setup({ presence });
     void t.lesson.start();
@@ -355,7 +384,7 @@ describe('ServerLesson — repeat and consent', () => {
     expect(t.server.messages().filter((m) => m.startsWith('REF-AYAH'))).toEqual([]);
   });
 
-  it('no consent: speech of ≥0.6 s on the device → the first quick reply; nothing recorded or sent', async () => {
+  it('a browser that can neither record nor recognise: speech of ≥0.6 s → the first quick reply; nothing sent', async () => {
     const seen: (number | undefined)[] = [];
     const presence: PresenceListener = {
       waitForSpeech: async (_s, o) => {
@@ -372,7 +401,7 @@ describe('ServerLesson — repeat and consent', () => {
     expect(t.server.calls.some((c) => c.path === '/agent/score-recitation')).toBe(false);
   });
 
-  it('no consent: a quiz gets the first option, marked «لم يُقيَّم» for the parent', async () => {
+  it('nothing recognised: a quiz gets the first option, marked «لم يُقيَّم» for the parent', async () => {
     const t = setup({ presence: { waitForSpeech: async () => 'spoke' } });
     void t.lesson.start();
     await until(t.lesson, (s) => s.phase === 'finished');
@@ -380,26 +409,26 @@ describe('ServerLesson — repeat and consent', () => {
     expect(t.updates.some((u) => u.quizUnscored === true)).toBe(true);
   });
 
-  it('speech recognition only with consent', async () => {
+  it('speech recognition for every child (no per-child switch)', async () => {
     const listen = vi.fn(async () => 'بخير والحمد لله');
-    const off = setup({ speechInput: { listen }, consent: false });
-    void off.lesson.start();
-    await at(off.lesson, 'greet', 'text');
-    expect(off.lesson.state.value.canSpeak).toBe(false);
-    expect(listen).not.toHaveBeenCalled();
+    const t = setup({ speechInput: { listen } });
+    void t.lesson.start();
+    await until(t.lesson, (st) => st.phase === 'finished');
+    expect(listen).toHaveBeenCalled();
+    expect(t.server.messages()[0]).toBe('بخير والحمد لله');
   });
 
   it('like a call: after the line, the mic listens by itself and the words are sent', async () => {
     const said = ['بخير والحمد لله'];
     const listen = vi.fn(async () => said.shift() ?? null);
-    const t = setup({ speechInput: { listen }, consent: true });
+    const t = setup({ speechInput: { listen } });
     void t.lesson.start();
     await until(t.lesson, (s) => s.phase === 'finished');
     // greet (the child's words) → name (auto) → surah (auto)
     expect(t.server.messages().slice(0, 3)).toEqual(['بخير والحمد لله', 'بطل', 'الإخلاص']);
   });
 
-  it('with consent: a spoken choice goes as the closest option', async () => {
+  it('a spoken choice goes as the closest option', async () => {
     const { QURAN_STAGES } = await import('./testing/fakeServer');
     // a multiple-choice greeting (the surah question is answered automatically now)
     const server = new FakeAgentServer(
@@ -410,29 +439,29 @@ describe('ServerLesson — repeat and consent', () => {
     // «أنا بخير الحمد لله» → the «بخير» option
     const said = ['أنا بخير الحمد لله'];
     const listen = vi.fn(async () => said.shift() ?? new Promise<never>(() => {}));
-    const t = setup({ server, speechInput: { listen }, consent: true });
+    const t = setup({ server, speechInput: { listen } });
     void t.lesson.start();
     await at(t.lesson, 'lesson_intro', 'continue');
     expect(t.server.messages()).toEqual(['بخير', 'بطل', 'الإخلاص']);
     expect(t.updates.some((u) => u.quizUnscored)).toBe(false);
   });
 
-  it('with consent: recognition unavailable → on-device presence for the rest of the lesson', async () => {
+  it('recognition unavailable → on-device presence for the rest of the lesson', async () => {
     const listen = vi.fn(async () => {
       throw new Error('speech recognition unavailable');
     });
     const presence: PresenceListener = { waitForSpeech: async () => 'spoke' };
-    const t = setup({ speechInput: { listen }, consent: true, presence });
+    const t = setup({ speechInput: { listen }, presence });
     void t.lesson.start();
     await until(t.lesson, (s) => s.stageIndex >= 3);
     expect(t.server.messages()[0]).toBe('الحمد لله بخير');
     expect(listen).toHaveBeenCalledTimes(1);
   });
 
-  it('with consent, a ready taseem runs first; the server sends no text and none is shown', async () => {
+  it('a ready taseem runs first; the server sends no text and none is shown', async () => {
     const server = new FakeAgentServer();
     server.readyTaseem = [{ item_key: '112:0', ready: true, surah_no: 112, chunk: 0 }];
-    const t = setup({ server, consent: true });
+    const t = setup({ server });
     void t.lesson.start();
     await until(t.lesson, (s) => s.segment === 'quran');
     expect(server.calls.find((c) => c.path === '/agent/taseem/start')!.body).toEqual({
@@ -675,7 +704,7 @@ describe('ServerLesson — stages bar, autoplay, pause', () => {
     t.lesson.answer('تمام');
     await at(t.lesson, 'lesson_intro', 'continue');
     expect(t.server.messages()[1]).toBe('بطل');
-    expect(t.server.calls[0]!.body).toMatchObject({ gender: 'girl' });
+    expect(t.server.calls.find((c) => c.path === '/agent/start')!.body).toMatchObject({ gender: 'girl' });
   });
 });
 
@@ -691,7 +720,7 @@ describe("ServerLesson — the child's name never leaves the device", () => {
     // Consent + speech: the child SAYS their name in answers, in many spellings.
     const said = ['أنا أَحمد', 'اسمي أحمد علي ويناديني بابا علي', 'وأحمد يحب السورة'];
     const listen = vi.fn(async () => said.shift() ?? null);
-    const t = setup({ consent: true, speechInput: { listen }, childName: NAME });
+    const t = setup({ speechInput: { listen }, childName: NAME });
     void t.lesson.start();
     await until(t.lesson, (s) => s.phase === 'finished');
 
@@ -780,9 +809,7 @@ describe('ServerLesson — voice first', () => {
     expect(t.lesson.state.value.expects).toBeNull();
     t.lesson.playTapped();
     await at(t.lesson, 'greet', 'text');
-    // no consent: the teacher first says it can't hear answers, then the server's greeting
-    expect(spoken[0]).toBe(CANT_HEAR.boy);
-    expect(spoken[1]).toMatch(/^السلام عليكم/);
+    expect(spoken[0]).toMatch(/^السلام عليكم/);
     expect(t.lesson.state.value.playbackBlocked).toBe(false);
   });
 
@@ -851,9 +878,7 @@ describe('ServerLesson — voice first, no early browser voice', () => {
     expect(spoken).toEqual([]);
     release(true);
     await at(t.lesson, 'greet', 'text');
-    // no consent: the teacher first says it can't hear answers, then the server's greeting
-    expect(spoken[0]).toBe(CANT_HEAR.boy);
-    expect(spoken[1]).toMatch(/^السلام عليكم/);
+    expect(spoken[0]).toMatch(/^السلام عليكم/);
   });
 
   it('the surah check ignores the server default (1) before «which surah?», and logs a real mismatch', async () => {
@@ -1047,7 +1072,61 @@ describe('ServerLesson — recitation', () => {
     expect(t.played).toContain(EVERYAYAH(2));
   });
 
-  it('never the browser speech recognition for a recitation (even with consent)', async () => {
+  it('the server scored the attempt low → its word feedback is spoken', async () => {
+    const spoken: string[] = [];
+    const judging: StageSpec = { ...REAL_RECITATION, turns: 2, say: 'نسيت كلمة يا بطل! استمع مرة ثانية.' };
+    const server = new FakeAgentServer(withStage('recitation', judging));
+    server.scoreValue = 0.6; // live: one wrong word → 60, that word marked
+    const t = setup({
+      server,
+      recorder: { record: async () => new Blob(['x']) },
+      voice: { speak: async (x) => void spoken.push(x), stop: () => {} },
+    });
+    void t.lesson.start();
+    await until(t.lesson, (st) => st.phase === 'finished');
+    expect(spoken).toContain('نسيت كلمة يا بطل! استمع مرة ثانية.');
+    // the child's real words went to the server (not the reference line)
+    expect(t.server.messages()).toContain('قل هو الله أحد');
+  });
+
+  it('the server scored it well → a judging line is still replaced by the encouragement', async () => {
+    const spoken: string[] = [];
+    const judging: StageSpec = { ...REAL_RECITATION, turns: 2, say: 'نسيت كلمة يا بطل! استمع مرة ثانية.' };
+    const server = new FakeAgentServer(withStage('recitation', judging));
+    server.scoreValue = 0.9;
+    const t = setup({
+      server,
+      recorder: { record: async () => new Blob(['x']) },
+      voice: { speak: async (x) => void spoken.push(x), stop: () => {} },
+    });
+    void t.lesson.start();
+    await until(t.lesson, (st) => st.phase === 'finished');
+    expect(spoken.some((x) => x.includes('نسيت'))).toBe(false);
+    expect(spoken).toContain(ENCOURAGE_RETRY);
+  });
+
+  it('the child answered «جاهز؟» in words → no fixed «let us start», the server answers them', async () => {
+    const spoken: string[] = [];
+    const said = ['تمام', 'ما فهمت'];
+    const whole: StageSpec = {
+      id: 'lesson_intro',
+      label: 'المقدمة',
+      say: 'سورة الإخلاص أربع آيات.',
+      expects: 'continue',
+      actions: () => [{ type: 'play_all', urls: [1, 2, 3, 4].map(EVERYAYAH) }],
+    };
+    const t = setup({
+      server: new FakeAgentServer(withStage('lesson_intro', whole)),
+      speechInput: { listen: async () => said.shift() ?? new Promise<never>(() => {}) },
+      voice: { speak: async (x) => void spoken.push(x), stop: () => {} },
+    });
+    void t.lesson.start();
+    await vi.waitFor(() => expect(t.server.messages()).toContain('ما فهمت'));
+    expect(spoken).toContain(REPEATS_START.boy);
+    expect(spoken).not.toContain(REPEATS_START_REPLY);
+  });
+
+  it('never the browser speech recognition for a recitation', async () => {
     const during: string[] = [];
     let t: Setup | null = null;
     const listen = vi.fn(async () => {
@@ -1056,12 +1135,11 @@ describe('ServerLesson — recitation', () => {
     });
     t = setup({
       server: new FakeAgentServer(withStage('recitation', REAL_RECITATION)),
-      consent: true,
       speechInput: { listen },
     });
     void t.lesson.start();
     await vi.waitFor(() => expect(t!.server.messages()).toContain('REF-AYAH-4'));
-    expect(during.length).toBeGreaterThan(0); // answers do use it (consent)…
+    expect(during.length).toBeGreaterThan(0); // answers do use it…
     expect(during).not.toContain('repeat'); // …a recitation never does
   });
 });

@@ -5,8 +5,7 @@
 //   is never set and `confidence` is 0, so no word-level feedback may be spoken.
 // * ServerVerifier (stub): the new recitation-verification model (VITE_VERIFY_URL —
 //   empty = disabled). Not deployed yet; when it is, only a HIGH-confidence result may
-//   produce word-level feedback (`canGiveWordFeedback`). It needs the child's audio, so
-//   it is used only with the parent's voice consent (the lesson enforces that).
+//   produce word-level feedback (`canGiveWordFeedback`). It needs the child's audio.
 //
 // Until then the lesson must never claim a word-level mistake (see `isWordJudgment`).
 
@@ -14,11 +13,13 @@
 export const REPEAT_MIN_SPEECH_MS = 600;
 /** A server result at or above this confidence may name missed words. */
 export const WORD_FEEDBACK_MIN_CONFIDENCE = 0.85;
+/** /agent/score-recitation: a score below this (0..1), or any marked word = mistakes → word feedback allowed. */
+export const RECITATION_PASS_SCORE = 0.6;
 
 export interface RecitationAttempt {
   /** How long the child actually spoke (on-device presence). */
   readonly voicedMs: number;
-  /** The recording — only with consent, only for a server verifier. */
+  /** The recording — only for a server verifier. */
   readonly audio?: Blob | null;
 }
 
@@ -125,13 +126,9 @@ export function isWordJudgment(text: string): boolean {
 export const ENCOURAGE_RETRY = 'أحسنت المحاولة! نعيدها مع القارئ مرة';
 
 /**
- * The verifier a lesson uses: the server model only when VITE_VERIFY_URL is set AND the
- * parent consented to the child's voice leaving the device; presence only otherwise.
+ * The verifier a lesson uses when a repeat wasn't scored by /agent/score-recitation:
+ * the verification model when VITE_VERIFY_URL is set; presence only otherwise.
  */
-export function createRecitationVerifier(o: {
-  consent: boolean;
-  env?: Record<string, unknown>;
-}): RecitationVerifier {
-  const server = o.consent ? ServerVerifier.fromEnv(o.env) : null;
-  return server ?? new PresenceOnlyVerifier();
+export function createRecitationVerifier(o: { env?: Record<string, unknown> } = {}): RecitationVerifier {
+  return ServerVerifier.fromEnv(o.env) ?? new PresenceOnlyVerifier();
 }

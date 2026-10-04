@@ -37,7 +37,6 @@ function make(o: Partial<ServerLessonDeps> & { server?: FakeAgentServer } = {}) 
     plan: PLAN,
     deviceId: 'dev-1',
     gender: 'girl',
-    consent: false,
     verifiedAyah: (s, a) => (s === 112 && a >= 1 && a <= 4 ? `V-${a}` : null),
     ayahCount: () => 4,
     surahName: () => 'الإخلاص',

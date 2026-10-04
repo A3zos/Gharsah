@@ -93,12 +93,9 @@ describe('isWordJudgment', () => {
 });
 
 describe('createRecitationVerifier', () => {
-  it('the server model only with a URL AND consent; presence otherwise', () => {
+  it('the verification model only with a URL; presence otherwise', () => {
     const url = { VITE_VERIFY_URL: 'https://verify.test/v1' };
-    expect(createRecitationVerifier({ consent: true, env: url })).toBeInstanceOf(ServerVerifier);
-    expect(createRecitationVerifier({ consent: false, env: url })).toBeInstanceOf(PresenceOnlyVerifier);
-    expect(createRecitationVerifier({ consent: true, env: { VITE_VERIFY_URL: '' } })).toBeInstanceOf(
-      PresenceOnlyVerifier,
-    );
+    expect(createRecitationVerifier({ env: url })).toBeInstanceOf(ServerVerifier);
+    expect(createRecitationVerifier({ env: { VITE_VERIFY_URL: '' } })).toBeInstanceOf(PresenceOnlyVerifier);
   });
 });

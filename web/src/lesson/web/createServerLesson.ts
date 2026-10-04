@@ -40,8 +40,6 @@ export async function createServerLesson(o: {
   gender: Gender;
   /** The child's real name: shown on screen only — scrubbed from anything sent to the AI server. */
   childName: string;
-  /** The parent's switch (children.ai_voice_consent). */
-  consent: boolean;
   /** The session language (default: the app's UI language — Arabic today). */
   lang?: AgentLang;
   /** Where today's lesson starts (the surah unless it was finished earlier today). */
@@ -72,10 +70,10 @@ export async function createServerLesson(o: {
     gender: o.gender,
     lang,
     startAt: o.startAt ?? 'quran',
-    consent: o.consent,
-    recorder: o.consent && MediaUtteranceRecorder.supported() ? new MediaUtteranceRecorder(mic) : null,
-    speechInput: o.consent ? BrowserSpeechInput.create(lang) : null,
-    verifier: createRecitationVerifier({ consent: o.consent }),
+    // the teacher always hears the child (PO, 2026-10-04; disclosed at sign-up)
+    recorder: MediaUtteranceRecorder.supported() ? new MediaUtteranceRecorder(mic) : null,
+    speechInput: BrowserSpeechInput.create(lang),
+    verifier: createRecitationVerifier(),
     verifiedAyah: (s, a) => (verified.has(quranRef(s, a)) ? verified.text(quranRef(s, a)) : null),
     ayahCount: (s) => quranMeta.ayahCount(s),
     surahName: (s) => quranMeta.surahName(s),

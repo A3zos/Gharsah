@@ -132,7 +132,7 @@ export class AgentApi {
   }
 
   /**
-   * Only with the parent's consent (the server stores the audio). A recitation (the child
+   * The server may store the audio (disclosed at sign-up). A recitation (the child
    * repeating an ayah / the hadith) → `forScore: true`: always transcribed as Arabic,
    * whatever the session language. Free speech → `forScore: false` + the session `lang`
    * (ai/API_web.md 2026-10-02).

@@ -1,7 +1,7 @@
 // Browser implementations of the server lesson's ports: the teacher's voice
 // (server /speak → the browser's voice), the reciter (the server's everyayah
-// URLs), on-device presence (nothing stored or sent), and — only with the
-// parent's consent — the recitation recorder and the browser's speech recognition.
+// URLs), on-device presence (nothing stored or sent), the recitation recorder and
+// the browser's speech recognition (the teacher always hears the child — disclosed at sign-up).
 import { PresenceDetector } from '../presenceDetector';
 import { PlaybackBlocked } from '../ports';
 import { lessonAudio } from './audioUnlock';
@@ -258,13 +258,23 @@ export class HtmlUrlPlayer implements UrlPlayer {
 export class MicPresenceListener implements PresenceListener {
   constructor(private readonly mic: LessonMicrophone) {}
 
-  /** Ask for the mic again (inside the «سماح» tap). */
+  /** Ask for the mic (at the start of the call, and inside the «سماح» tap). */
   async requestAccess(): Promise<boolean> {
     try {
       await this.mic.open();
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /** The mic permission now, without a prompt (Firefox can't tell → «prompt»). */
+  async permission(): Promise<'granted' | 'denied' | 'prompt'> {
+    try {
+      const s = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+      return s.state;
+    } catch {
+      return 'prompt';
     }
   }
 
@@ -312,7 +322,7 @@ export class MicPresenceListener implements PresenceListener {
 }
 
 /**
- * One recited utterance via MediaRecorder (consent only): starts with the mic,
+ * One utterance via MediaRecorder: starts with the mic,
  * stops after the child speaks and falls silent (presence), or at the cap.
  */
 export class MediaUtteranceRecorder implements UtteranceRecorder {
@@ -379,8 +389,8 @@ interface RecognitionLike {
 export const SPEECH_RECOGNITION_LANG: Record<AgentLang, string> = { ar: 'ar-SA', en: 'en-US', id: 'id-ID' };
 
 /**
- * webkitSpeechRecognition when the browser has it (Chrome sends the audio to Google —
- * consent only). Free speech in the session language; a recitation (Quran / hadith) is
+ * webkitSpeechRecognition when the browser has it (Chrome sends the audio to Google).
+ * Free speech in the session language; a recitation (Quran / hadith) is
  * always Arabic — the lesson never uses this for a repeat, but `recitation` forces ar-SA.
  */
 export class BrowserSpeechInput implements SpeechInput {

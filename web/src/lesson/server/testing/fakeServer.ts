@@ -141,6 +141,8 @@ export class FakeAgentServer {
   /** Hadith ids reported by /agent/progress (grows when a hadith session ends). */
   completedHadith: number[] = [];
   scoreAvailable = true;
+  /** /agent/score-recitation's score (0..1). */
+  scoreValue = 0.8;
   readyTaseem: unknown[] = [];
 
   constructor(
@@ -216,7 +218,12 @@ export class FakeAgentServer {
       case '/agent/score-recitation':
         return json(
           this.scoreAvailable
-            ? { available: true, transcription: 'قل هو الله أحد', score: 0.8, tajweed_errors: [] }
+            ? {
+                available: true,
+                transcription: 'قل هو الله أحد',
+                score: this.scoreValue,
+                tajweed_errors: this.scoreValue < 0.9 ? [{ rule: 'مطابقة النص', position: 'أحد' }] : [],
+              }
             : { available: false },
         );
       case '/agent/taseem/status':

@@ -40,8 +40,6 @@ export function ServerLessonCall({
   const [web, setWeb] = useState<WebServerLesson | null>(null);
   const [exitOpen, setExitOpen] = useState(false);
   const leaving = useRef(false);
-  // Read once on entry: a consent change applies from the next lesson.
-  const consent = useRef(child.aiVoiceConsent);
   const planRef = useRef(plan);
   const { lang: uiLang } = useI18n();
   const aiLang = useRef(aiLessonLanguage(uiLang));
@@ -57,7 +55,7 @@ export function ServerLessonCall({
     };
   }, [lockedTeacher]);
   const startAtRef = useRef(startAt);
-  // Only for scrubbing the child's own words — never sent (read once, like consent).
+  // Only for scrubbing the child's own words — never sent (read once).
   const childName = useRef(child.name);
   const fallbackRef = useRef(onFallback);
   useEffect(() => {
@@ -75,8 +73,7 @@ export function ServerLessonCall({
       session: { parentUid: session.parentUid, childId: session.childId },
       gender: child.gender,
       childName: childName.current,
-      consent: consent.current,
-      // Arabic unless AI_LESSON_FOLLOWS_UI (i18n.ts) — read once, like consent
+      // Arabic unless AI_LESSON_FOLLOWS_UI (i18n.ts) — read once
       lang: aiLang.current,
     }).then(
       (w) => {

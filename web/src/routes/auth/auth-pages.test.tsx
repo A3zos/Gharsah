@@ -1,6 +1,6 @@
 // The welcome choice, signup, forgot-password and legal pages in Arabic (unchanged),
 // English and Indonesian.
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { createRoutesStub } from 'react-router';
 
 import { ClaimFailure, claimCode } from '../../data/childSession';
@@ -80,6 +80,18 @@ describe('welcome (/login, no tab)', () => {
 });
 
 describe('signup', () => {
+  test('the voice disclosure under the sign-up button (ar / en)', async () => {
+    renderAt('/signup');
+    expect(
+      await screen.findByText(/باستخدامك غَرْسة توافق على أن يستمع المعلم الذكي لصوت طفلك أثناء الحصة/),
+    ).toBeInTheDocument();
+    cleanup();
+    renderAt('/signup', 'en');
+    expect(
+      await screen.findByText(/By using Gharsah you agree that the AI teacher listens/),
+    ).toBeInTheDocument();
+  });
+
   test('Arabic unchanged: copy and validation', async () => {
     renderAt('/signup');
     expect(await screen.findByRole('heading', { name: 'إنشاء حساب وليّ الأمر' })).toBeInTheDocument();
@@ -152,6 +164,13 @@ describe('legal', () => {
     renderAt('/legal?doc=privacy');
     expect(await screen.findByRole('heading', { level: 1, name: 'سياسة الخصوصية' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: /^٢\s*التسجيلات الصوتية$/ })).toBeInTheDocument();
+    // the voice disclosure, in force on both legal pages
+    expect(screen.getByText(/يستمع المعلم الذكي لصوت طفلك/)).toBeInTheDocument();
+  });
+
+  test('the voice disclosure on the terms too', async () => {
+    renderAt('/legal?doc=terms', 'id');
+    expect(await screen.findByText(/guru AI mendengarkan suara anak Anda/)).toBeInTheDocument();
   });
 
   test('English and Indonesian (Latin numbers)', async () => {

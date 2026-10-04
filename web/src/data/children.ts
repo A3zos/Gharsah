@@ -55,8 +55,6 @@ export interface ChildDraft {
   gender: Gender;
   schedule: ChildSchedule;
   avatarId: string;
-  /** The parent's voice consent (the last box of the form; unchecked by default). */
-  aiVoiceConsent?: boolean;
 }
 
 export interface PairingInfo {
@@ -181,22 +179,15 @@ export function childFromRow(
     stats: extra.stats ?? null,
     leader: null,
     schedule: scheduleFromRow(r),
-    aiVoiceConsent: AI_VOICE_CONSENT && r.ai_voice_consent === true,
+    // children.ai_voice_consent is kept but no longer gates anything: the teacher always
+    // hears the child (PO, 2026-10-04 — disclosed at sign-up, auth.voiceNotice)
+    aiVoiceConsent: r.ai_voice_consent === true,
     pilotDaysDone: extra.pilotDaysDone ?? 0,
     pilotDoneAt: extra.pilotDoneAt ?? {},
     pilotUnscored: extra.pilotUnscored ?? [],
     notRepeatedRefs: extra.notRepeatedRefs ?? [],
   };
 }
-
-/**
- * The parent's voice consent (children.ai_voice_consent), the last box of the add / edit
- * child form (PO, 2026-10-04 — it was off 2026-10-03…04). With it the teacher hears the
- * child: speech recognition for answers, the recorder → /agent/score-recitation for
- * recitations. Without it every lesson runs in the on-device voice mode (nothing leaves
- * the device) and the teacher says it can't hear answers. false here forces that mode.
- */
-export const AI_VOICE_CONSENT = true;
 
 export const CHILD_COLUMNS =
   'id, name, age, gender, avatar, schedule_days, schedule_time, schedule_custom, session_duration, reminder, review_days, ai_voice_consent, created_at';
@@ -314,7 +305,6 @@ export async function addChild(draft: ChildDraft): Promise<{ id: string; pairing
       gender: draft.gender,
       avatar: draft.avatarId,
       ...scheduleToRow(draft.schedule),
-      ai_voice_consent: draft.aiVoiceConsent === true,
     })
     .select('id')
     .single();
@@ -331,16 +321,6 @@ export async function addChild(draft: ChildDraft): Promise<{ id: string; pairing
 export async function updateSchedule(childId: string, schedule: ChildSchedule): Promise<void> {
   await uidOrThrow();
   const { error } = await supabase().from('children').update(scheduleToRow(schedule)).eq('id', childId);
-  if (error) throw toAuthFailure(error);
-}
-
-/**
- * The parent's consent for the AI teacher to receive the child's voice (the AI
- * server stores recitation audio). Off by default; the database stamps the time.
- */
-export async function setAiVoiceConsent(childId: string, on: boolean): Promise<void> {
-  await uidOrThrow();
-  const { error } = await supabase().from('children').update({ ai_voice_consent: on }).eq('id', childId);
   if (error) throw toAuthFailure(error);
 }
 
