@@ -85,7 +85,9 @@
     "countProjects": "Proyek selesai",
     "recordings": "Rekaman proyek",
     "recordingsPill": "Suara {name} · hanya untuk Anda",
-    "tapHint": "Ketuk kartu mana saja untuk melihat rinciannya."
+    "tapHint": "Ketuk kartu mana saja untuk melihat rinciannya.",
+    "questionsTitle": "Pertanyaan anak Anda",
+    "questionsEmpty": "Pertanyaan yang diajukan anak Anda akan muncul di sini"
   },
   "cards": {
     "surahs": "Surah selesai",
@@ -290,6 +292,8 @@
     "girl": "Perempuan",
     "boy": "Laki-laki",
     "avatarGroup": "Karakter",
+    "askAllowed": "Izinkan fitur «Tanya aku»",
+    "askNote": "Guru hanya menjawab dari sumber yang disetujui, dan meneruskan pertanyaan sensitif kepada Anda",
     "moreAvatars": "Karakter lainnya",
     "fewerAvatars": "Sembunyikan karakter lainnya",
     "customTitle": "Atur waktu untuk tiap hari",

@@ -8,6 +8,7 @@
   "nav": {
     "label": "Child app",
     "home": "Home",
+    "ask": "Ask me",
     "review": "Review",
     "profile": "My profile"
   },
@@ -208,5 +209,61 @@
     "signInAgain": "Sign in again",
     "retry": "Try again",
     "home": "Back to the start"
+  },
+  "ask": {
+    "title": "Ask me",
+    "homeSubtitle": "Ask the teacher about your faith and the stories of the prophets",
+    "open": "Open «Ask me»",
+    "close": "Back to home",
+    "greeting": {
+      "boy": "Ask me anything about your faith, champ!",
+      "girl": "Ask me anything about your faith, champ!"
+    },
+    "suggestions": "Suggested questions",
+    "categories": {
+      "why": "Why?",
+      "prophets": "Stories of the prophets",
+      "universe": "Allah and the universe",
+      "manners": "My manners"
+    },
+    "questions": {
+      "why": {
+        "pray": "Why do we pray?",
+        "fast": "Why do we fast?",
+        "bismillah": "Why do we say Bismillah?"
+      },
+      "prophets": {
+        "yunus": "Who was Prophet Yunus?",
+        "nuhArk": "What is the story of Prophet Nuh's ark?",
+        "kaaba": "Who built the Kaaba?"
+      },
+      "universe": {
+        "stars": "Who created the stars?",
+        "rain": "Why does it rain?"
+      },
+      "manners": {
+        "lying": "Why shouldn't we lie?",
+        "parents": "How can I be kind to my parents?"
+      }
+    },
+    "mic": "Tap and talk",
+    "micStop": "I'm done asking",
+    "typeToggle": "Type your question",
+    "typeLabel": "Your question",
+    "typePlaceholder": "Type your question here…",
+    "send": "Send",
+    "listening": "I'm listening…",
+    "transcriptPlaceholder": "Your question shows here",
+    "thinking": "Let me think…",
+    "notReady": "What a lovely question! Soon I'll answer it from trusted sources 🌱",
+    "yourQuestion": "Your question",
+    "voiceQuestion": "You asked me out loud",
+    "askAnother": "Ask another question",
+    "askParent": "This is an important question — ask your parent about it",
+    "source": "Source",
+    "askParentToo": "Ask your parent too",
+    "notHeard": "I didn't hear you… try again or type your question",
+    "micBlocked": "The microphone is off — type your question",
+    "preview": "Preview"
   }
 }

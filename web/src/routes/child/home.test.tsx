@@ -53,7 +53,10 @@ vi.mock('../../components/child/ChildData', () => ({
 }));
 vi.mock('../../lesson/server/api', () => ({ agentEnabled: () => false, warmAgent: () => {} }));
 vi.mock('../../lesson/web/serverVoice', () => ({ serverVoiceEnabled: () => false, warmAiSpeak: vi.fn() }));
-vi.mock('../../components/child/teacherCharacter', () => ({ preloadTeacher: vi.fn() }));
+vi.mock('../../components/child/teacherCharacter', () => ({
+  preloadTeacher: vi.fn(),
+  teacherFrameSrc: (t: { folder: string }, f: string) => `/characters/${t.folder}/${f}.webp`,
+}));
 vi.mock('../../lesson/web/audioUnlock', () => ({ unlockLessonAudio: vi.fn() }));
 
 function renderPage(Page: () => React.ReactNode = ChildHome) {
@@ -126,6 +129,24 @@ test('Indonesian: home copy, ltr, Latin digits', async () => {
   expect(screen.getByText('Tinggal 3 bintang lagi untuk menyalip peringkat 11')).toBeInTheDocument();
   expect(document.documentElement).toHaveAttribute('dir', 'ltr');
   expect(document.body.textContent).not.toMatch(/[٠-٩]/);
+});
+
+test("«اسألني»: a card under today's lesson and a tab in the bottom bar (ar / en / id)", async () => {
+  const card = renderHome();
+  const link = await screen.findByRole('link', { name: 'افتح «اسألني»' });
+  expect(link).toHaveAttribute('href', '/child/ask');
+  expect(link).toHaveTextContent('اسأل المعلم عن دينك وقصص الأنبياء');
+  expect(screen.getByRole('navigation', { name: 'تطبيق الطفل' })).toHaveTextContent('اسألني');
+  card.unmount();
+  localStorage.setItem(STORAGE_KEY, 'en');
+  const en = renderHome();
+  expect(await screen.findByRole('link', { name: 'Open «Ask me»' })).toHaveTextContent(
+    'Ask the teacher about your faith and the stories of the prophets',
+  );
+  en.unmount();
+  localStorage.setItem(STORAGE_KEY, 'id');
+  renderHome();
+  expect(await screen.findByRole('link', { name: 'Buka «Tanya aku»' })).toBeInTheDocument();
 });
 
 test('profile and weekly review in English; Arabic unchanged', async () => {

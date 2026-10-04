@@ -340,6 +340,7 @@ function Desktop({
           </div>
         ))}
       </div>
+      <AskQuestionsCard />
       <section aria-labelledby="recordings" className="flex min-h-0 grow flex-col gap-[14px]">
         <div className="flex items-center gap-[12px]">
           <h2 id="recordings" className="m-0 font-heading text-[22px] font-bold">
@@ -461,6 +462,7 @@ function Mobile({
               {m.parent.common.soon}
             </span>
           </div>
+          <AskQuestionsCard />
           <p className="m-0 text-center text-[12.5px] text-text-muted">{t.tapHint}</p>
         </>
       )}
@@ -470,6 +472,42 @@ function Mobile({
 }
 
 /** Phones: the growth hero (stages + bar) by the CURRENT plan's %. */
+/** «أسئلة طفلك» — empty for now («اسألني» isn't connected yet): two placeholder rows. */
+function AskQuestionsCard() {
+  const { m } = useI18n();
+  const t = m.parent.dashboard;
+  return (
+    <section
+      aria-labelledby="ask-questions"
+      className="flex flex-col gap-[12px] rounded-px-26 border-[1.5px] border-border bg-surface px-[20px] py-[18px]"
+    >
+      <div className="flex items-center justify-between gap-[10px]">
+        <h2 id="ask-questions" className="m-0 font-heading text-[19px] font-bold">
+          {t.questionsTitle}
+        </h2>
+        <span className="rounded-pill bg-gold-tint px-[11px] py-[6px] text-[11.5px] font-extrabold whitespace-nowrap text-warning-text">
+          {m.parent.common.soon}
+        </span>
+      </div>
+      <ul className="m-0 flex list-none flex-col gap-[8px] p-0" aria-hidden="true">
+        {['w-[72%]', 'w-[54%]'].map((w) => (
+          <li
+            key={w}
+            className="flex items-center gap-[12px] rounded-px-18 bg-background px-[14px] py-[12px]"
+          >
+            <span className="h-[34px] w-[34px] shrink-0 rounded-full bg-border-soft" />
+            <span className="flex grow flex-col gap-[7px]">
+              <span className={cx('h-[10px] rounded-pill bg-border-soft', w)} />
+              <span className="h-[8px] w-[30%] rounded-pill bg-border-soft" />
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="m-0 text-[13px] leading-[1.8] text-text-muted">{t.questionsEmpty}</p>
+    </section>
+  );
+}
+
 function MobileGrowth({ child }: { child: ChildProfile }) {
   const { lang } = useI18n();
   const plan = planProgress(child, undefined, lang);

@@ -31,6 +31,8 @@ export default [
     route('weekly-review', 'routes/child/weekly-review.tsx'),
     route('review/:kind', 'routes/child/review.tsx'),
     route('lesson/:lessonId', 'routes/child/lesson.tsx'),
+    // «اسألني» — UI only, not connected yet (src/ask/)
+    route('ask', 'routes/child/ask.tsx'),
   ]),
 
   // Admin statistics (aggregates only; admins are added in the SQL Editor). Not linked anywhere.

@@ -85,7 +85,9 @@
     "countProjects": "Projects done",
     "recordings": "Project recordings",
     "recordingsPill": "In {name}'s voice · for you only",
-    "tapHint": "Tap any card to see its details."
+    "tapHint": "Tap any card to see its details.",
+    "questionsTitle": "Your child's questions",
+    "questionsEmpty": "The questions your child asks will appear here"
   },
   "cards": {
     "surahs": "Surahs completed",
@@ -290,6 +292,8 @@
     "girl": "Girl",
     "boy": "Boy",
     "avatarGroup": "Avatar",
+    "askAllowed": "Allow «Ask me»",
+    "askNote": "The teacher answers from approved sources only, and refers sensitive questions to you",
     "moreAvatars": "More characters",
     "fewerAvatars": "Fewer characters",
     "customTitle": "Set a time for each day",

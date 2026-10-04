@@ -40,5 +40,6 @@ export const paths = {
     weeklyReview: '/child/weekly-review',
     review: (kind: 'quran' | 'hadith' | 'projects') => `/child/review/${kind}`,
     lesson: (lessonId: string) => `/child/lesson/${encodeURIComponent(lessonId)}`,
+    ask: '/child/ask',
   },
 } as const;

@@ -45,6 +45,7 @@ import {
   MAX_REVIEW_DAYS,
 } from '../../data/children';
 import { maxChildren } from '../../content/plans';
+import { askAllowed, setAskAllowed } from '../../data/askSetting';
 import { isSubscribed } from '../../data/parent';
 import { ageLabel } from '../../data/stats';
 import { formatNumber, MESSAGES, useI18n } from '../../i18n/i18n';
@@ -73,6 +74,8 @@ interface Draft {
   gender: Gender;
   schedule: ChildSchedule;
   avatarId: string;
+  /** «السماح بميزة اسألني» — this browser only for now (data/askSetting.ts). */
+  askAllowed: boolean;
 }
 
 /**
@@ -132,6 +135,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     gender: editing?.gender ?? 'girl',
     schedule: editing?.schedule ?? DEFAULT_SCHEDULE,
     avatarId: editing?.avatarId ?? defaultAvatar(editing?.gender ?? 'girl', lang),
+    askAllowed: askAllowed(editing?.id),
   }));
   const steps = STEPS;
   const lastStep = steps.length - 1;
@@ -200,9 +204,12 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     try {
       if (editing) {
         await updateSchedule(editing.id, schedule);
+        setAskAllowed(editing.id, draft.askAllowed);
         navigate(paths.parent.children, { replace: true });
       } else {
-        const { id } = await addChild({ ...draft, schedule });
+        const { askAllowed: allowAsk, ...rest } = draft;
+        const { id } = await addChild({ ...rest, schedule });
+        setAskAllowed(id, allowAsk);
         navigate(paths.parent.childCode(id), { replace: true, state: { fresh: true } });
       }
     } catch (e) {
@@ -222,6 +229,9 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
           ? t.nextAvatarWide
           : t.nextAvatar
         : t.create;
+
+  // «اسألني»: the last field — on the avatar step of a new child, under the schedule when editing.
+  const askField = <AskToggle value={draft.askAllowed} onChange={(on) => set({ askAllowed: on })} />;
 
   // A deep link to a later step of a new child starts at the first step.
   if (!editing && step > 0 && !draft.name.trim()) {
@@ -328,8 +338,10 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                   >
                     <h2 className="m-0 font-heading text-[23px] font-bold">{t.avatar}</h2>
                     <AvatarGrid value={draft.avatarId} onChange={pickAvatar} compact />
+                    {askField}
                   </section>
                 )}
+                {editing && askField}
               </div>
             </div>
             {errorLine}
@@ -472,6 +484,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
               <Note tone="green" icon={<InfoGreen />}>
                 {t.scheduleLater}
               </Note>
+              {editing && askField}
             </>
           )}
 
@@ -487,6 +500,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
                 </svg>
                 <p className="m-0 text-[12.5px] leading-[1.8] text-text-muted">{t.avatarTree}</p>
               </div>
+              {askField}
             </>
           )}
 
@@ -497,6 +511,34 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
         </div>
       }
     />
+  );
+}
+
+/** «السماح بميزة اسألني» (default on) + what the teacher will and won't answer. */
+function AskToggle({ value, onChange }: { value: boolean; onChange: (on: boolean) => void }) {
+  const t = useI18n().m.parent.addChild;
+  return (
+    <div className="flex items-start gap-[12px] rounded-px-20 border-[1.5px] border-border bg-surface px-[16px] py-[14px]">
+      <span className="flex grow flex-col gap-[4px]">
+        <span id="ask-allowed" className="text-[14.5px] font-extrabold text-text-dark">
+          {t.askAllowed}
+        </span>
+        <span className="text-[12.5px] leading-[1.8] text-text-muted">{t.askNote}</span>
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        aria-labelledby="ask-allowed"
+        onClick={() => onChange(!value)}
+        className={cx(
+          'mt-[2px] flex h-[30px] w-[52px] shrink-0 cursor-pointer items-center rounded-px-15 border-0 px-[3px]',
+          value ? 'justify-end bg-primary' : 'justify-start bg-border-strong',
+        )}
+      >
+        <span className="h-[24px] w-[24px] rounded-full bg-surface" />
+      </button>
+    </div>
   );
 }
 

@@ -93,6 +93,15 @@ test('no per-child voice consent box (disclosed at sign-up instead)', () => {
   expect(screen.queryByRole('checkbox')).toBeNull();
 });
 
+test('«السماح بميزة اسألني»: on by default, with the note; it switches', () => {
+  page('ar');
+  const sw = screen.getByRole('switch', { name: 'السماح بميزة اسألني' });
+  expect(sw).toHaveAttribute('aria-checked', 'true');
+  expect(screen.getByText('يجيب المعلم من مصادر معتمدة فقط، ويحيل الأسئلة الحساسة إليك')).toBeInTheDocument();
+  fireEvent.click(sw);
+  expect(sw).toHaveAttribute('aria-checked', 'false');
+});
+
 test('Indonesian: the Indonesian set first, its first girl selected', () => {
   page('id');
   const g = grid('Karakter');

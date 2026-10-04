@@ -1,4 +1,4 @@
-// Icons of the child app's three sections (StudentHome shortcuts, ReviewList).
+// Icons of the child app's sections (StudentHome shortcuts, ReviewList, «اسألني»).
 import { C } from '../ui/color';
 
 export function QuranIcon({ size = 28 }: { size?: number }) {
@@ -50,6 +50,27 @@ export function ProjectIcon({ size = 28 }: { size?: number }) {
         d="M3.5 15 C6 13.6 8.5 14.6 9.6 16.2 H14.4 C15.5 14.6 18 13.6 20.5 15 C19.4 18.6 16.2 20.5 12 20.5 C7.8 20.5 4.6 18.6 3.5 15 Z"
         fill={C.gold}
       />
+    </svg>
+  );
+}
+
+/** A speech bubble with a «?» — the feature's icon (home card, nav, chips). */
+export function AskBubbleIcon({ size = 24, color = C.deepGreen }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 5.5 C4 4.7 4.7 4 5.5 4 H18.5 C19.3 4 20 4.7 20 5.5 V15 C20 15.8 19.3 16.5 18.5 16.5 H10 L6 20 V16.5 H5.5 C4.7 16.5 4 15.8 4 15 Z"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 8.6 C10 7.5 10.9 6.8 12 6.8 C13.1 6.8 14 7.5 14 8.5 C14 9.8 12 10 12 11.4"
+        stroke={color}
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="13.6" r="1.1" fill={color} />
     </svg>
   );
 }

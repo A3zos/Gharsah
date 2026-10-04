@@ -1,11 +1,13 @@
 // The child app frame (StudentHome / ChildProfile / ReviewList): one centered
-// column (≤560px on every screen size) + the «الرئيسية / ملفّي» bottom bar.
+// column (≤560px on every screen size) + the bottom bar (الرئيسية / اسألني / المراجعة / ملفّي).
 import { paths } from '../../app/paths';
+import { askEnabled } from '../../ask/AskService';
 import { useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { BottomNav } from '../ui/BottomNav';
 import { C, type ColorName } from '../ui/color';
 import { Blob } from '../ui/Page';
+import { AskBubbleIcon } from './childIcons';
 
 export function HomeGlyph({ color, strokeWidth = 2.3 }: { color: ColorName; strokeWidth?: number }) {
   return (
@@ -77,7 +79,7 @@ export function ChildPage({
   blob = 'home',
   className,
 }: {
-  tab: 'home' | 'review' | 'profile';
+  tab: 'home' | 'ask' | 'review' | 'profile';
   children: React.ReactNode;
   blob?: 'home' | 'page';
   className?: string;
@@ -110,6 +112,16 @@ export function ChildPage({
             active: tab === 'home',
             icon: (c) => <HomeGlyph color={c} strokeWidth={2.2} />,
           },
+          ...(askEnabled()
+            ? [
+                {
+                  to: paths.child.ask,
+                  label: t.ask,
+                  active: tab === 'ask',
+                  icon: (c: ColorName) => <AskBubbleIcon size={26} color={C[c]} />,
+                },
+              ]
+            : []),
           {
             to: paths.child.weeklyReview,
             label: t.review,

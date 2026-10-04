@@ -8,6 +8,7 @@
   "nav": {
     "label": "Aplikasi anak",
     "home": "Beranda",
+    "ask": "Tanya aku",
     "review": "Murajaah",
     "profile": "Profil saya"
   },
@@ -213,5 +214,61 @@
     "signInAgain": "Masuk lagi",
     "retry": "Coba lagi",
     "home": "Kembali ke awal"
+  },
+  "ask": {
+    "title": "Tanya aku",
+    "homeSubtitle": "Tanyakan kepada guru tentang agamamu dan kisah para nabi",
+    "open": "Buka «Tanya aku»",
+    "close": "Kembali ke beranda",
+    "greeting": {
+      "boy": "Tanyakan apa saja tentang agamamu, jagoan!",
+      "girl": "Tanyakan apa saja tentang agamamu, jagoan!"
+    },
+    "suggestions": "Pertanyaan yang disarankan",
+    "categories": {
+      "why": "Mengapa?",
+      "prophets": "Kisah para nabi",
+      "universe": "Allah dan alam semesta",
+      "manners": "Akhlakku"
+    },
+    "questions": {
+      "why": {
+        "pray": "Mengapa kita salat?",
+        "fast": "Mengapa kita berpuasa?",
+        "bismillah": "Mengapa kita membaca Bismillah?"
+      },
+      "prophets": {
+        "yunus": "Siapa Nabi Yunus?",
+        "nuhArk": "Bagaimana kisah kapal Nabi Nuh?",
+        "kaaba": "Siapa yang membangun Ka’bah?"
+      },
+      "universe": {
+        "stars": "Siapa yang menciptakan bintang?",
+        "rain": "Mengapa hujan turun?"
+      },
+      "manners": {
+        "lying": "Mengapa kita tidak boleh berbohong?",
+        "parents": "Bagaimana cara berbakti kepada orang tua?"
+      }
+    },
+    "mic": "Ketuk dan bicara",
+    "micStop": "Aku sudah selesai bertanya",
+    "typeToggle": "Ketik pertanyaanmu",
+    "typeLabel": "Pertanyaanmu",
+    "typePlaceholder": "Ketik pertanyaanmu di sini…",
+    "send": "Kirim",
+    "listening": "Aku mendengarkan…",
+    "transcriptPlaceholder": "Pertanyaanmu muncul di sini",
+    "thinking": "Sebentar, aku berpikir…",
+    "notReady": "Pertanyaanmu bagus sekali! Sebentar lagi aku menjawabnya dari sumber tepercaya 🌱",
+    "yourQuestion": "Pertanyaanmu",
+    "voiceQuestion": "Kamu bertanya dengan suaramu",
+    "askAnother": "Tanya pertanyaan lain",
+    "askParent": "Ini pertanyaan penting, tanyakan kepada orang tuamu",
+    "source": "Sumber",
+    "askParentToo": "Tanyakan juga kepada orang tuamu",
+    "notHeard": "Aku tidak mendengarmu… coba lagi atau ketik pertanyaanmu",
+    "micBlocked": "Mikrofon mati — ketik pertanyaanmu",
+    "preview": "Pratinjau"
   }
 }

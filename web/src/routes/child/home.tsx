@@ -10,7 +10,9 @@ import { Leaderboard } from '../../components/child/Leaderboard';
 import { C } from '../../components/ui/color';
 import { ForwardIcon } from '../../components/ui/icons';
 import { LanguageSheetButton } from '../../components/ui/LanguageSwitcher';
-import { HadithIcon, ProjectIcon, QuranIcon } from '../../components/child/childIcons';
+import { AskBubbleIcon, HadithIcon, ProjectIcon, QuranIcon } from '../../components/child/childIcons';
+import { askEnabled } from '../../ask/AskService';
+import { teacherFrameSrc } from '../../components/child/teacherCharacter';
 import { lessonChips, lessonScripts, lessonValue } from '../../content/library';
 import { PILOT_DAYS, pilotCopy } from '../../content/pilot';
 import { hadithTitle, reviewItems, surahLabel } from '../../content/review';
@@ -259,6 +261,37 @@ export default function ChildHome() {
           </Link>
         )}
       </section>
+
+      {askEnabled() && (
+        <Link
+          to={paths.child.ask}
+          aria-label={m.child.ask.open}
+          className="flex shrink-0 animate-[gh-rise_.5s_ease-out_.38s_both] items-center gap-[13px] rounded-px-26 border-[1.5px] border-border bg-surface px-[16px] py-[14px] text-text-dark no-underline shadow-soft hover:text-text-dark"
+        >
+          <span
+            className="relative h-[56px] w-[56px] shrink-0 overflow-hidden rounded-full bg-green-tint"
+            aria-hidden="true"
+          >
+            <img
+              src={teacherFrameSrc(getTeacher(lang, child.gender), 'idle')}
+              alt=""
+              className="absolute inset-x-0 top-[2px] mx-auto h-[86px] w-auto max-w-none object-cover object-top"
+            />
+          </span>
+          <span className="flex min-w-0 grow flex-col gap-[3px]">
+            <span className="font-heading text-[19px] leading-[1.4] font-bold text-deep-green">
+              {m.child.ask.title}
+            </span>
+            <span className="text-[13px] leading-[1.6] text-text-muted">{m.child.ask.homeSubtitle}</span>
+          </span>
+          <span
+            className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-px-16 bg-gold-tint"
+            aria-hidden="true"
+          >
+            <AskBubbleIcon size={26} color={C.ayahBracket} />
+          </span>
+        </Link>
+      )}
 
       <Link
         to={paths.child.weeklyReview}
