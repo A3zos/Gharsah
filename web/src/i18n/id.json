@@ -34,7 +34,6 @@
     "live": "Langsung",
     "quranLesson": "Al-Qur'an",
     "hadithLesson": "Hadis",
-    "teacher": "Ustaz Abdullah",
     "surah": "Surah Al-Ikhlas",
     "listening": "Aku mendengarkanmu…",
     "hadithOfDay": "Hadis hari ini:",
@@ -281,5 +280,13 @@
       "codeOffline": "Periksa koneksi internetmu.",
       "codeUnavailable": "Layanan sedang tidak tersedia, coba lagi sebentar lagi."
     }
+  },
+  "teachers": {
+    "abdullah": "Ustaz Abdullah",
+    "sarah": "Ustazah Sarah",
+    "adam": "Ustaz Adam",
+    "maryam": "Ustazah Maryam",
+    "ahmad": "Ustaz Ahmad",
+    "aisyah": "Ustazah Aisyah"
   }
 }

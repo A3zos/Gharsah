@@ -12,6 +12,7 @@ import { verifiedAyah } from '../../content/verified';
 import { formatNumber, useI18n, type Messages } from '../../i18n/i18n';
 import { Hadith } from '../../lesson/hadith';
 import { cx } from '../../lib/cx';
+import { getTeacher, teacherName } from '../../content/teachers';
 import { teacherFrameSrc, type TeacherFrame } from '../child/teacherCharacter';
 import { AyahNumber, Basmala, SurahBanner } from '../lesson/Mushaf';
 import { C } from '../ui/color';
@@ -67,6 +68,8 @@ function useReducedMotion(): boolean {
 
 function TalkingTeacher() {
   const reduce = useReducedMotion();
+  // the boy teacher of the UI language (Abdullah / Adam / Ahmad)
+  const teacher = getTeacher(useI18n().lang, 'boy');
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (reduce) return;
@@ -75,18 +78,21 @@ function TalkingTeacher() {
   }, [reduce]);
   const frame: TeacherFrame = reduce ? 'idle' : LOOP[tick % LOOP.length]!;
   return (
-    <div className="relative h-[258px] w-full shrink-0">
+    <div className="relative h-[258px] w-full shrink-0 overflow-hidden">
       <span className="absolute top-[20px] left-1/2 h-[234px] w-[234px] -translate-x-1/2 rounded-full bg-green-tint" />
       {/* all frames stacked, only one visible — no flicker while switching */}
+      {/* The sets differ in aspect ratio: each frame is drawn object-contain + bottom-aligned
+          at the same height (332 px = teacher-boy at 198 px wide), top-anchored and clipped
+          at 258 px — the same face size for every teacher (and Arabic as before). */}
       {SHOWN.map((f) => (
         <img
-          key={f}
-          src={teacherFrameSrc('boy', f)}
+          key={`${teacher.folder}/${f}`}
+          src={teacherFrameSrc(teacher, f)}
           alt=""
           loading="eager"
           draggable={false}
           className={cx(
-            'absolute bottom-0 left-1/2 h-[258px] w-[198px] -translate-x-1/2 object-cover object-top',
+            'absolute top-0 left-1/2 h-[332px] w-[198px] -translate-x-1/2 object-contain object-bottom',
             f === frame ? 'opacity-100' : 'opacity-0',
           )}
         />
@@ -294,7 +300,7 @@ function CallScreen() {
         </div>
         <TalkingTeacher />
         <span className="-mt-[4px] rounded-pill bg-green-tint px-[12px] py-[3px] text-[13px] font-extrabold text-deep-green">
-          {m.phone.teacher}
+          {teacherName(m, getTeacher(lang, 'boy'))}
         </span>
         {/* the lesson card: the Quran ayah (ONE line, never wrapped) or the hadith card */}
         <div className="grid w-full">

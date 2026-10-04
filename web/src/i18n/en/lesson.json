@@ -7,7 +7,6 @@
   "teacherButton": "The teacher",
   "teacher": {
     "boy": {
-      "name": "Teacher Abdullah",
       "talking": "The teacher is talking…",
       "readying": "The teacher is getting ready… we'll start in a moment",
       "voiceMissing": "The teacher's voice isn't available right now — read his words below.",
@@ -16,7 +15,6 @@
       "allowSoundBody": "Tap “Allow” to turn the sound on."
     },
     "girl": {
-      "name": "Teacher Sarah",
       "talking": "The teacher is talking…",
       "readying": "The teacher is getting ready… we'll start in a moment",
       "voiceMissing": "The teacher's voice isn't available right now — read her words below.",

@@ -34,7 +34,6 @@
     "live": "Live",
     "quranLesson": "Quran lesson",
     "hadithLesson": "Hadith lesson",
-    "teacher": "Teacher Abdullah",
     "surah": "Surah Al-Ikhlas",
     "listening": "I'm listening…",
     "hadithOfDay": "Today's hadith:",
@@ -281,5 +280,13 @@
       "codeOffline": "Check your internet connection.",
       "codeUnavailable": "The service isn't available right now — try again shortly."
     }
+  },
+  "teachers": {
+    "abdullah": "Teacher Abdullah",
+    "sarah": "Teacher Sarah",
+    "adam": "Teacher Adam",
+    "maryam": "Teacher Maryam",
+    "ahmad": "Ustaz Ahmad",
+    "aisyah": "Ustazah Aisyah"
   }
 }

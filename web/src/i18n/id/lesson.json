@@ -7,7 +7,6 @@
   "teacherButton": "Ustaz",
   "teacher": {
     "boy": {
-      "name": "Ustaz Abdullah",
       "talking": "Ustaz sedang berbicara…",
       "readying": "Ustaz sedang bersiap… sebentar lagi kita mulai",
       "voiceMissing": "Suara ustaz belum tersedia sekarang — baca tulisan di bawahnya.",
@@ -16,7 +15,6 @@
       "allowSoundBody": "Ketuk “Izinkan” untuk menyalakan suara."
     },
     "girl": {
-      "name": "Ustazah Sarah",
       "talking": "Ustazah sedang berbicara…",
       "readying": "Ustazah sedang bersiap… sebentar lagi kita mulai",
       "voiceMissing": "Suara ustazah belum tersedia sekarang — baca tulisan di bawahnya.",

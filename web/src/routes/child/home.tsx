@@ -21,6 +21,7 @@ import { agentEnabled, warmAgent } from '../../lesson/server/api';
 import type { LessonScript } from '../../lesson/script';
 import { serverVoiceEnabled, warmAiSpeak } from '../../lesson/web/serverVoice';
 import { preloadTeacher } from '../../components/child/teacherCharacter';
+import { getTeacher } from '../../content/teachers';
 import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
 import { lessonStepGroups, pickTodayLesson } from '../../data/student';
 import { cx } from '../../lib/cx';
@@ -64,8 +65,8 @@ export default function ChildHome() {
   }, []);
   const gender = child?.gender;
   useEffect(() => {
-    if (gender) void preloadTeacher(gender);
-  }, [gender]);
+    if (gender) void preloadTeacher(getTeacher(lang, gender));
+  }, [gender, lang]);
   if (child === undefined || progress === undefined || !child) {
     return (
       <ChildPage tab="home">

@@ -176,7 +176,7 @@ describe('ServerLessonView — the live call', () => {
         }),
       );
       expect(screen.getByText('Live')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Teacher Abdullah' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Teacher Adam' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Surah Al-Ikhlas' })).toBeInTheDocument();
       expect(screen.getByText('The reciter is reciting… listen')).toBeInTheDocument();
       expect(screen.getByText('AYAH-ONE').closest('[dir]')).toHaveAttribute('dir', 'rtl');

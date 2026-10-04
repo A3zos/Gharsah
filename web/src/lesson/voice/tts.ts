@@ -5,6 +5,7 @@
 //                  changing `createTtsProvider` below — one file.
 // Whatever the provider, a piece it can't voice returns null and the browser's own
 // Arabic voice says it, so the lesson never stops in silence.
+import { getTeacher } from '../../content/teachers';
 import type { AgentApi, AgentLang, Gender } from '../server/api';
 
 export interface TeacherVoice {
@@ -35,11 +36,13 @@ export interface TtsProvider {
 export function agentServerTts(
   api: Pick<AgentApi, 'speakReady' | 'speak'>,
   lang: AgentLang = 'ar',
+  /** The teacher's voice for this language / gender, when configured (content/teachers.ts). */
+  voiceId?: (gender: Gender) => string | undefined,
 ): TtsProvider {
   return {
     name: 'agent-speak',
     ready: () => api.speakReady(),
-    synthesize: (text, gender) => api.speak(text, gender, lang),
+    synthesize: (text, gender) => api.speak(text, gender, lang, voiceId?.(gender)),
   };
 }
 
@@ -48,5 +51,5 @@ export function createTtsProvider(
   api: Pick<AgentApi, 'speakReady' | 'speak'>,
   lang: AgentLang = 'ar',
 ): TtsProvider {
-  return agentServerTts(api, lang);
+  return agentServerTts(api, lang, (gender) => getTeacher(lang, gender).voiceId);
 }

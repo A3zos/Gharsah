@@ -23,6 +23,7 @@ import { initialLessonState, type LessonProgress, type LessonState } from '../..
 import { PreviewProgressSink } from '../../dev/childPreview';
 import { agentBaseUrl, SPEAK_WARM_TIMEOUT_MS } from '../../lesson/server/api';
 import { preloadTeacher } from '../../components/child/teacherCharacter';
+import { getTeacher } from '../../content/teachers';
 import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
 import { createWebLesson, type WebLesson } from '../../lesson/web/createLesson';
 import { fill, useI18n, type Messages, type UiLanguage } from '../../i18n/i18n';
@@ -203,6 +204,11 @@ function LessonCall({
   // The resume point is read once per call (later checkpoints must not restart it).
   const resumeRef = useRef(resume);
   const gender = child.gender;
+  // The teacher (UI language + gender) is locked for the call: a language change applies
+  // from the next lesson. Its frames are preloaded before the call starts; a 404 → the
+  // Arabic teacher of the same gender.
+  const [lockedTeacher] = useState(() => getTeacher(lang, gender));
+  const [teacher, setTeacher] = useState(lockedTeacher);
   const [readyFor, setReadyFor] = useState<number | null>(null);
 
   useEffect(() => {
@@ -220,7 +226,10 @@ function LessonCall({
     // never the browser voice or the old SVG while they are still coming.
     let disposed = false;
     const timeout = new Promise((r) => setTimeout(r, SPEAK_WARM_TIMEOUT_MS));
-    void Promise.race([Promise.all([l.voiceReady(), preloadTeacher(gender)]), timeout]).then(() => {
+    const frames = preloadTeacher(lockedTeacher).then((t) => {
+      if (!disposed) setTeacher(t);
+    });
+    void Promise.race([Promise.all([l.voiceReady(), frames]), timeout]).then(() => {
       if (disposed) return;
       setReadyFor(attempt);
       void l.agent.start(l.progressFrom);
@@ -232,7 +241,7 @@ function LessonCall({
       document.removeEventListener('visibilitychange', onVis);
       void l.dispose();
     };
-  }, [script, session.parentUid, session.childId, firstName, attempt, gender]);
+  }, [script, session.parentUid, session.childId, firstName, attempt, gender, lockedTeacher]);
   const readying = readyFor !== attempt;
 
   const agent = lesson?.agent;
@@ -297,7 +306,8 @@ function LessonCall({
   const plan = useMemo(() => planOf(script), [script]);
   const glance = glanceOf(child, { today: m.lesson.end.today, weekdays: m.lesson.weekdays });
 
-  if (agent && readying) return <ReadyingCall gender={gender} desktop={desktop} onExit={goHome} />;
+  if (agent && readying)
+    return <ReadyingCall gender={gender} teacher={teacher} desktop={desktop} onExit={goHome} />;
   if (!agent || state.screen === 'loading' || state.screen === 'ended') return <Busy />;
   if (state.screen === 'failed') {
     return (
@@ -321,6 +331,7 @@ function LessonCall({
         desktop={desktop}
         voiceMissing={voiceMissing}
         gender={child.gender}
+        teacher={teacher}
         mouth={lesson?.mouth}
       />
       <ConfirmSheet

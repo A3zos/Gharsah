@@ -14,6 +14,7 @@ import { hadithCopyIn, projectCopyIn, surahNameIn } from '../../lesson/teacherLi
 import { cx } from '../../lib/cx';
 import { TeacherArt } from '../child/TeacherArt';
 import { type TeacherGender } from '../child/teacherCharacter';
+import { getTeacher, teacherName, type Teacher as TeacherInfo } from '../../content/teachers';
 import { TeacherSprite, type MouthSource } from '../child/TeacherSprite';
 import { C } from '../ui/color';
 import { SproutMark } from '../ui/icons';
@@ -78,6 +79,7 @@ export function LessonView({
   desktop,
   voiceMissing = false,
   gender = 'boy',
+  teacher,
   mouth,
 }: {
   state: LessonState;
@@ -88,15 +90,24 @@ export function LessonView({
   desktop: boolean;
   /** Neither the server voice nor a browser Arabic voice — the teacher is captions only. */
   voiceMissing?: boolean;
-  /** The child's stored gender → المعلم عبدالله (boys) / المعلمة سارة (girls). */
+  /** The child's stored gender (the teacher's grammatical gender). */
   gender?: TeacherGender;
+  /** The call's teacher, locked at its start (content/teachers.ts); default: the UI language's. */
+  teacher?: TeacherInfo;
   /** The teacher's lip-sync. */
   mouth?: MouthSource;
 }) {
   const body = (
     <>
       <LiveHeader elapsedMs={s.elapsedMs} onEnd={actions.exit} />
-      <Teacher state={s} gender={gender} mouth={mouth} desktop={desktop} onTap={actions.tapTeacher}>
+      <Teacher
+        state={s}
+        gender={gender}
+        teacher={teacher}
+        mouth={mouth}
+        desktop={desktop}
+        onTap={actions.tapTeacher}
+      >
         {/* Only the teacher talks — the line is written ONLY when no voice can say it. */}
         {voiceMissing && s.caption && (
           <p
@@ -117,9 +128,11 @@ export function LessonView({
       <Bottom state={s} actions={actions} level={level} gender={gender} />
       {/* The one button of the call: allow the mic, or the sound the browser blocked. */}
       {s.beat === 'awaitMic' ? (
-        <AllowPrompt reason="mic" gender={gender} onAllow={actions.micTap} />
+        <AllowPrompt reason="mic" gender={gender} teacher={teacher} onAllow={actions.micTap} />
       ) : (
-        s.playbackBlocked && <AllowPrompt reason="sound" gender={gender} onAllow={actions.play} />
+        s.playbackBlocked && (
+          <AllowPrompt reason="sound" gender={gender} teacher={teacher} onAllow={actions.play} />
+        )
       )}
     </>
   );
@@ -133,10 +146,12 @@ export function LessonView({
  */
 export function ReadyingCall({
   gender,
+  teacher,
   desktop,
   onExit,
 }: {
   gender: TeacherGender;
+  teacher?: TeacherInfo;
   desktop: boolean;
   onExit: () => void;
 }) {
@@ -144,7 +159,14 @@ export function ReadyingCall({
   return (
     <CallFrame desktop={desktop}>
       <LiveHeader elapsedMs={0} onEnd={onExit} />
-      <TeacherStage gender={gender} desktop={desktop} pose="quiet" talking={false} happy={false}>
+      <TeacherStage
+        gender={gender}
+        teacher={teacher}
+        desktop={desktop}
+        pose="quiet"
+        talking={false}
+        happy={false}
+      >
         <p role="status" className="m-0 text-center text-[17px] font-bold text-text-muted">
           {m.lesson.teacher[gender].readying}
         </p>
@@ -227,6 +249,7 @@ export function LiveHeader({ elapsedMs, onEnd }: { elapsedMs: number; onEnd: () 
 function Teacher({
   state,
   gender,
+  teacher,
   mouth,
   desktop,
   onTap,
@@ -234,6 +257,7 @@ function Teacher({
 }: {
   state: LessonState;
   gender: TeacherGender;
+  teacher?: TeacherInfo;
   mouth?: MouthSource;
   desktop: boolean;
   onTap: () => void;
@@ -245,6 +269,7 @@ function Teacher({
   return (
     <TeacherStage
       gender={gender}
+      teacher={teacher}
       desktop={desktop}
       pose={quiet ? 'quiet' : listening ? 'listening' : 'speaking'}
       talking={speaking && state.teacherSpeaking}
@@ -275,8 +300,11 @@ export function TeacherStage({
   onTap,
   children,
   compact = false,
+  teacher: locked,
 }: {
   gender: TeacherGender;
+  /** The call's teacher (locked at the call's start); default: the UI language's. */
+  teacher?: TeacherInfo;
   desktop: boolean;
   pose: 'speaking' | 'listening' | 'quiet';
   talking: boolean;
@@ -288,7 +316,8 @@ export function TeacherStage({
   onTap?: () => void;
   children?: React.ReactNode;
 }) {
-  const { m } = useI18n();
+  const { lang, m } = useI18n();
+  const teacher = locked ?? getTeacher(lang, gender);
   return (
     <div className="flex shrink-0 flex-col items-center gap-[8px]">
       <div
@@ -298,7 +327,7 @@ export function TeacherStage({
         )}
       >
         <TeacherSprite
-          gender={gender}
+          teacher={teacher}
           pose={pose}
           talking={talking}
           happy={happy}
@@ -320,7 +349,7 @@ export function TeacherStage({
       </div>
       {!compact && (
         <span className="rounded-pill bg-green-tint px-[14px] py-[4px] text-[16px] font-extrabold text-deep-green">
-          {m.lesson.teacher[gender].name}
+          {teacherName(m, teacher)}
         </span>
       )}
       {children}

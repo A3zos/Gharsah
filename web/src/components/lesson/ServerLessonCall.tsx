@@ -7,6 +7,8 @@ import { useBlocker, useNavigate } from 'react-router';
 
 import { paths } from '../../app/paths';
 import { aiLessonLanguage, useI18n } from '../../i18n/i18n';
+import { getTeacher } from '../../content/teachers';
+import { preloadTeacher } from '../child/teacherCharacter';
 import type { ChildProfile } from '../../data/children';
 import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
 import { createServerLesson, type WebServerLesson } from '../../lesson/web/createServerLesson';
@@ -41,7 +43,19 @@ export function ServerLessonCall({
   // Read once on entry: a consent change applies from the next lesson.
   const consent = useRef(child.aiVoiceConsent);
   const planRef = useRef(plan);
-  const aiLang = useRef(aiLessonLanguage(useI18n().lang));
+  const { lang: uiLang } = useI18n();
+  const aiLang = useRef(aiLessonLanguage(uiLang));
+  // The teacher (UI language + gender) is locked for the call — a language change applies
+  // from the next lesson; frames preloaded now, a 404 → the Arabic teacher of the same gender.
+  const [lockedTeacher] = useState(() => getTeacher(uiLang, child.gender));
+  const [teacher, setTeacher] = useState(lockedTeacher);
+  useEffect(() => {
+    let alive = true;
+    void preloadTeacher(lockedTeacher).then((t) => alive && setTeacher(t));
+    return () => {
+      alive = false;
+    };
+  }, [lockedTeacher]);
   const startAtRef = useRef(startAt);
   // Only for scrubbing the child's own words — never sent (read once, like consent).
   const childName = useRef(child.name);
@@ -157,6 +171,7 @@ export function ServerLessonCall({
         actions={actions}
         desktop={desktop}
         gender={child.gender}
+        teacher={teacher}
         mouth={web?.mouth}
       />
       <ConfirmSheet

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { verifiedAyah } from '../../content/verified';
+import { getTeacher, teacherName } from '../../content/teachers';
 import { useI18n, type Messages } from '../../i18n/i18n';
 import { C } from '../ui/color';
 import { PlayGlyph } from '../ui/icons';
@@ -61,7 +62,7 @@ function WithAyah({ text }: { text: string }) {
  * teacher's name. No religious answer beyond these lines.
  */
 function MiniChat({ questions, reply, tone }: { questions: readonly string[]; reply: string; tone: string }) {
-  const { m } = useI18n();
+  const { lang, m } = useI18n();
   return (
     <div className="flex flex-col gap-[8px] rounded-px-18 bg-background p-[12px]">
       {questions.map((q) => (
@@ -76,7 +77,9 @@ function MiniChat({ questions, reply, tone }: { questions: readonly string[]; re
         </span>
       ))}
       <span className="flex max-w-[90%] flex-col gap-[2px] self-start rounded-px-16 rounded-es-[4px] bg-surface px-[12px] py-[7px] shadow-soft">
-        <span className="text-[11.5px] leading-[1.4] font-extrabold text-deep-green">{m.phone.teacher}</span>
+        <span className="text-[11.5px] leading-[1.4] font-extrabold text-deep-green">
+          {teacherName(m, getTeacher(lang, 'boy'))}
+        </span>
         <span className="text-[14px] leading-[1.6] text-text-dark">{reply}</span>
       </span>
     </div>

@@ -68,7 +68,7 @@ describe('LessonView (built-in) — only the teacher talks', () => {
       </I18nContext.Provider>,
     );
     expect(screen.getByText('Live')).toBeInTheDocument();
-    expect(screen.getByText('Teacher Sarah')).toBeInTheDocument();
+    expect(screen.getByText('Teacher Maryam')).toBeInTheDocument();
     expect(screen.getByText("Today's plan")).toBeInTheDocument();
     expect(screen.getByText('Surah Al-Ikhlas')).toBeInTheDocument();
     expect(screen.getByText('4 ayat')).toBeInTheDocument();

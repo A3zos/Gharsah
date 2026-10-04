@@ -35,6 +35,13 @@ const BANKS: Banks = {
   id: { lines: linesId as Record<string, string>, slots: slotsId as Record<string, string[]> },
 };
 const AI_BASE_URL = (Deno.env.get('AI_BASE_URL') ?? '').replace(/\/+$/, '');
+// The en / id teachers' voices (Teacher Adam / Maryam, Ustaz Ahmad / Ustazah Aisyah —
+// web/src/content/teachers.ts): optional secrets VOICE_ID_{EN,ID}_{M,F}; unset → the
+// server's default voice for that gender. Arabic keeps the server's current voices.
+const VOICE_IDS: Record<string, Record<'boy' | 'girl', string | undefined>> = {
+  en: { boy: Deno.env.get('VOICE_ID_EN_M') || undefined, girl: Deno.env.get('VOICE_ID_EN_F') || undefined },
+  id: { boy: Deno.env.get('VOICE_ID_ID_M') || undefined, girl: Deno.env.get('VOICE_ID_ID_F') || undefined },
+};
 const SPEAK_TIMEOUT_MS = 20_000;
 const WARM_TIMEOUT_MS = 45_000;
 // /speak's voice follows the paired child's STORED gender (never a client value):
@@ -98,7 +105,7 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       // `lang` is in /speak's SpeakIn schema (default "ar")
-      body: JSON.stringify({ text, gender: voice, lang }),
+      body: JSON.stringify({ text, gender: voice, lang, ...voiceIdFor(lang, voice) }),
       signal: AbortSignal.timeout(SPEAK_TIMEOUT_MS),
     });
   } catch (e) {
@@ -118,3 +125,9 @@ Deno.serve(async (req) => {
     }),
   );
 });
+
+/** `voice_id` for an en / id teacher when its secret is set (nothing for Arabic). */
+function voiceIdFor(lang: string, gender: 'boy' | 'girl'): { voice_id?: string } {
+  const id = VOICE_IDS[lang]?.[gender];
+  return id ? { voice_id: id } : {};
+}

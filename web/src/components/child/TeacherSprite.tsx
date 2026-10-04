@@ -1,7 +1,10 @@
-// The teacher character from the sprite frames in public/characters/ — المعلم عبدالله
-// for boys, المعلمة سارة for girls (the child's stored gender). The SAME character on
-// every lesson screen (CLAUDE.md §5). All frames are loaded up front and stacked;
-// only opacity changes, so there is no flicker or layout shift.
+// The teacher character from the sprite frames in public/characters/<folder>/ — the
+// teacher of the UI language for the child's gender (content/teachers.ts: المعلم عبدالله
+// / المعلمة سارة, Teacher Adam / Maryam, Ustaz Ahmad / Ustazah Aisyah). The SAME character
+// on every lesson screen of a call (CLAUDE.md §5). All frames are loaded up front and
+// stacked; only opacity changes, so there is no flicker or layout shift. The sets have
+// different aspect ratios: one box ratio for all, frames object-contain + bottom-aligned
+// at the full height, so every teacher's face is the same size.
 //   speaking → the mouth follows the voice (lip-sync, ~8 fps)
 //   quiet    → blinks every 2–6 s; «happy» for ~1.5 s on a cue
 //   listening → no image change: a ~3° tilt with a soft scale (not under reduced motion)
@@ -13,13 +16,20 @@ import type { MouthFrame } from '../../lesson/mouth';
 import type { Subscribe } from '../../lesson/observable';
 import { cx } from '../../lib/cx';
 
-import { FRAMES, teacherFrameSrc, type TeacherFrame, type TeacherGender } from './teacherCharacter';
+import { arabicTeacher, teacherName } from '../../content/teachers';
+import {
+  FRAMES,
+  teacherFrameSrc,
+  type Teacher,
+  type TeacherFrame,
+  type TeacherGender,
+} from './teacherCharacter';
 
-export type { TeacherGender };
+export type { Teacher, TeacherGender };
 type Frame = TeacherFrame;
 
-/** Natural sizes — every frame of a set has the same size and alignment. */
-const ASPECT: Record<TeacherGender, string> = { boy: '591 / 990', girl: '564 / 980' };
+/** One box for every teacher: the widest set's ratio (teacher-boy 591×990); slimmer sets sit centered. */
+const BOX_ASPECT = '591 / 990';
 
 const HAPPY_MS = 1500;
 const BLINK_MS = 120;
@@ -34,7 +44,7 @@ export interface MouthSource {
 const QUIET_MOUTH: MouthSource = { value: 'idle', subscribe: () => () => {} };
 
 export function TeacherSprite({
-  gender,
+  teacher,
   pose,
   talking,
   happy = false,
@@ -43,7 +53,8 @@ export function TeacherSprite({
   onTap,
   fallback,
 }: {
-  gender: TeacherGender;
+  /** Locked for the call (a language change applies from the next lesson). */
+  teacher: Teacher;
   /** speaking (talks, bobs) · listening (leans in) · quiet (the reciter plays). */
   pose: 'speaking' | 'listening' | 'quiet';
   /** A line is being voiced now — the mouth follows `mouth`. */
@@ -59,6 +70,14 @@ export function TeacherSprite({
 }) {
   const { m } = useI18n();
   const [failed, setFailed] = useState(false);
+  // A frame that 404s twice → the whole set switches to the Arabic teacher of the same
+  // gender (never a mix of two teachers); that one failing too → the SVG teacher.
+  const [shownTeacher, setShownTeacher] = useState(teacher);
+  const [forTeacher, setForTeacher] = useState(teacher);
+  if (forTeacher.folder !== teacher.folder) {
+    setForTeacher(teacher);
+    setShownTeacher(teacher);
+  }
   // Frames that have loaded, and frames already retried once (a second failure → SVG).
   const [loaded, setLoaded] = useState<ReadonlySet<Frame>>(() => new Set());
   const [retried, setRetried] = useState<ReadonlySet<Frame>>(() => new Set());
@@ -123,7 +142,7 @@ export function TeacherSprite({
     <button
       type="button"
       onClick={onTap}
-      aria-label={m.lesson.teacher[gender].name}
+      aria-label={teacherName(m, shownTeacher)}
       className="relative flex h-full w-full cursor-pointer items-end justify-center border-0 bg-transparent p-0"
     >
       {/* soft glow behind the character while it talks or listens */}
@@ -142,7 +161,7 @@ export function TeacherSprite({
           listening && 'scale-[1.03] rotate-[-3deg] motion-reduce:scale-100 motion-reduce:rotate-0',
           pose === 'quiet' && 'opacity-90',
         )}
-        style={{ aspectRatio: ASPECT[gender] }}
+        style={{ aspectRatio: BOX_ASPECT }}
       >
         <span className="absolute inset-0 origin-bottom animate-[gh-teacher-breathe_4.2s_ease-in-out_infinite]">
           {/* Until the idle frame is in: a soft placeholder (never the old SVG while loading). */}
@@ -161,15 +180,26 @@ export function TeacherSprite({
           >
             {FRAMES.map((f) => (
               <img
-                key={f}
-                src={retried.has(f) ? `${teacherFrameSrc(gender, f)}?retry=1` : teacherFrameSrc(gender, f)}
+                key={`${shownTeacher.folder}/${f}`}
+                src={
+                  retried.has(f)
+                    ? `${teacherFrameSrc(shownTeacher, f)}?retry=1`
+                    : teacherFrameSrc(shownTeacher, f)
+                }
                 alt=""
                 aria-hidden="true"
                 draggable={false}
                 loading="eager"
                 decoding="async"
                 onLoad={() => setLoaded((s) => (s.has(f) ? s : new Set(s).add(f)))}
-                onError={() => (retried.has(f) ? setFailed(true) : setRetried((s) => new Set(s).add(f)))}
+                onError={() => {
+                  if (!retried.has(f)) return setRetried((s) => new Set(s).add(f));
+                  const ar = arabicTeacher(shownTeacher.gender);
+                  if (ar.folder === shownTeacher.folder) return setFailed(true);
+                  setShownTeacher(ar);
+                  setLoaded(new Set());
+                  setRetried(new Set());
+                }}
                 className={cx(
                   'pointer-events-none absolute inset-0 h-full w-full object-contain object-bottom select-none',
                   f === shown && loaded.has(f) ? 'opacity-100' : 'opacity-0',

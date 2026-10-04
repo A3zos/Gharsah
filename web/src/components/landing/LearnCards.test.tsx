@@ -37,7 +37,7 @@ test('English: the given copy, no ayah text in the example', () => {
   expect(screen.getByText('What does "Allah, the Eternal Refuge" mean?')).toBeInTheDocument();
   expect(screen.getByText('Why do we die?')).toBeInTheDocument();
   expect(screen.getByText("Great questions! Let's discover the answer together…")).toBeInTheDocument();
-  expect(screen.getAllByText('Teacher Abdullah')).toHaveLength(3);
+  expect(screen.getAllByText('Teacher Adam')).toHaveLength(3);
   expect(screen.getAllByText('Sources')).toHaveLength(3);
   expect(screen.getByText('Quran & Sunnah')).toBeInTheDocument();
 });

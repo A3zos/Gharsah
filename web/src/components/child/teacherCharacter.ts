@@ -1,12 +1,8 @@
-// The teacher character's data (shared by TeacherSprite and the lesson screens).
-export type TeacherGender = 'boy' | 'girl';
+// The teacher character's frames (shared by TeacherSprite and the lesson screens). WHICH
+// teacher (folder, name, voice) comes from content/teachers.ts — the UI language + gender.
+import { arabicTeacher, type Teacher, type TeacherGender } from '../../content/teachers';
 
-/**
- * The teacher's name follows the child's gender. Arabic reference copy — the screens
- * read the name and the status lines in the UI language from i18n lesson.json
- * (`m.lesson.teacher[gender]`: المعلم عبدالله / Teacher Abdullah / Ustaz Abdullah).
- */
-export const TEACHER_NAME: Record<TeacherGender, string> = { boy: 'المعلم عبدالله', girl: 'المعلمة سارة' };
+export type { Teacher, TeacherGender };
 
 export const FRAMES = [
   'idle',
@@ -19,7 +15,8 @@ export const FRAMES = [
 ] as const;
 export type TeacherFrame = (typeof FRAMES)[number];
 
-export const teacherFrameSrc = (g: TeacherGender, f: TeacherFrame) => `/characters/teacher-${g}/${f}.webp`;
+export const teacherFrameSrc = (t: Pick<Teacher, 'folder'>, f: TeacherFrame) =>
+  `/characters/${t.folder}/${f}.webp`;
 
 /** Status lines about the teacher, in the teacher's grammatical gender. */
 export const TEACHER_TEXT: Record<
@@ -51,14 +48,14 @@ export const TEACHER_TEXT: Record<
   },
 };
 
-const preloads = new Map<TeacherGender, Promise<boolean>>();
+const preloads = new Map<string, Promise<boolean>>();
 
 /**
- * Loads (and decodes) every frame of the teacher before the call screen opens —
- * the child home calls it. One retry per frame; true when all frames are ready.
+ * Loads (and decodes) all 7 frames of a teacher — the child home and the lesson call it
+ * before the call opens. One retry per frame; true when every frame is ready.
  */
-export function preloadTeacher(g: TeacherGender): Promise<boolean> {
-  const known = preloads.get(g);
+function preloadFrames(t: Pick<Teacher, 'folder'>): Promise<boolean> {
+  const known = preloads.get(t.folder);
   if (known) return known;
   const one = (src: string, retry: boolean): Promise<boolean> =>
     new Promise((resolve) => {
@@ -69,7 +66,19 @@ export function preloadTeacher(g: TeacherGender): Promise<boolean> {
       img.onerror = () => (retry ? resolve(one(`${src}?retry=1`, false)) : resolve(false));
       img.src = src;
     });
-  const p = Promise.all(FRAMES.map((f) => one(teacherFrameSrc(g, f), true))).then((ok) => ok.every(Boolean));
-  preloads.set(g, p);
+  const p = Promise.all(FRAMES.map((f) => one(teacherFrameSrc(t, f), true))).then((ok) => ok.every(Boolean));
+  preloads.set(t.folder, p);
   return p;
+}
+
+/**
+ * Preloads the teacher; resolves to the teacher to show — the same one, or, when one of
+ * its frames 404s, the Arabic teacher of the same gender (also preloaded).
+ */
+export async function preloadTeacher(t: Teacher): Promise<Teacher> {
+  if (await preloadFrames(t)) return t;
+  const fallback = arabicTeacher(t.gender);
+  if (fallback.folder === t.folder) return t;
+  await preloadFrames(fallback);
+  return fallback;
 }

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { fill, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { type TeacherGender } from '../child/teacherCharacter';
+import { getTeacher, teacherName, type Teacher } from '../../content/teachers';
 import { C } from '../ui/color';
 import { MicIndicator, type LevelSource } from './LessonView';
 
@@ -62,14 +63,17 @@ export function AllowPrompt({
   reason,
   gender,
   onAllow,
+  teacher: locked,
 }: {
   reason: 'mic' | 'sound';
   gender: TeacherGender;
   onAllow: () => void;
+  /** The call's teacher (locked at the call's start); default: the UI language's. */
+  teacher?: Teacher;
 }) {
   const { lang, m } = useI18n();
   const t = m.lesson.teacher[gender];
-  const teacher = t.name;
+  const teacher = teacherName(m, locked ?? getTeacher(lang, gender));
   return (
     <div
       role="dialog"

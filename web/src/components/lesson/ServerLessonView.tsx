@@ -14,6 +14,7 @@ import type { ServerLessonState } from '../../lesson/server/serverLesson';
 import { hadithLabelIn, surahNameIn } from '../../lesson/teacherLines';
 import { cx } from '../../lib/cx';
 import { type TeacherGender } from '../child/teacherCharacter';
+import type { Teacher } from '../../content/teachers';
 import type { MouthSource } from '../child/TeacherSprite';
 import {
   CallFrame,
@@ -41,13 +42,16 @@ export function ServerLessonView({
   actions,
   desktop,
   gender = 'boy',
+  teacher,
   mouth,
 }: {
   state: ServerLessonState;
   actions: ServerLessonActions;
   desktop: boolean;
-  /** The child's stored gender → المعلم عبدالله / المعلمة سارة (also the server voice). */
+  /** The child's stored gender (the teacher's grammatical gender; also the server voice). */
   gender?: TeacherGender;
+  /** The call's teacher, locked at its start (content/teachers.ts); default: the UI language's. */
+  teacher?: Teacher;
   /** The teacher's lip-sync. */
   mouth?: MouthSource;
 }) {
@@ -72,6 +76,7 @@ export function ServerLessonView({
       <LiveHeader elapsedMs={elapsedMs} onEnd={actions.exit} />
       <TeacherStage
         gender={gender}
+        teacher={teacher}
         desktop={desktop}
         pose={s.reciting || starting ? 'quiet' : listening ? 'listening' : 'speaking'}
         talking={s.speaking}
@@ -104,7 +109,9 @@ export function ServerLessonView({
         <Middle state={s} onAyat={onAyat} />
       </div>
       {!starting && <Bottom state={s} actions={actions} gender={gender} />}
-      {prompt && <AllowPrompt reason={prompt} gender={gender} onAllow={actions.allowTapped} />}
+      {prompt && (
+        <AllowPrompt reason={prompt} gender={gender} teacher={teacher} onAllow={actions.allowTapped} />
+      )}
     </CallFrame>
   );
 }
