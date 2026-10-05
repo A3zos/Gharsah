@@ -17,6 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:i18n": "playwright test -c playwright.i18n.config.ts",
+    "test:e2e": "playwright test && playwright test -c playwright.i18n.config.ts",
     "tokens": "node ../tokens/build.mjs",
     "tokens:check": "node ../tokens/build.mjs --check",
     "ci": "npm run tokens:check && npm run typecheck && npm run lint && npm run test && npm run build",

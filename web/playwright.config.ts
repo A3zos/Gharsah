@@ -7,7 +7,8 @@ const PORT = 4173;
 export default defineConfig({
   testDir: './e2e',
   // Emulator flows run with `npm run e2e:emu` (playwright.emu.config.ts).
-  testIgnore: ['parent.spec.ts', 'child.spec.ts', 'lesson.spec.ts'],
+  // i18n.spec.ts: the language matrix (playwright.i18n.config.ts).
+  testIgnore: ['parent.spec.ts', 'child.spec.ts', 'lesson.spec.ts', 'i18n.spec.ts'],
   fullyParallel: true,
   // More parallel browsers time out on a 16 GB dev machine (see the review-notes report).
   workers: 2,
