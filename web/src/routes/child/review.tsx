@@ -12,6 +12,8 @@ import { dayMonth, hadithTopic, surahLabel } from '../../content/review';
 import { headline } from '../../data/stats';
 import type { StoredProgress } from '../../data/student';
 import { countPhrase, fill, MESSAGES, useI18n } from '../../i18n/i18n';
+import { SERVER_HADITH_BY_PROJECT } from '../../lesson/web/projectVerifier';
+import { useVerifiedProjects } from '../../lesson/web/verifiedProjects';
 import { cx } from '../../lib/cx';
 import { toDateOrNull } from '../../lib/dates';
 import type { Route } from './+types/review';
@@ -33,11 +35,13 @@ const list = (v: unknown): Record<string, unknown>[] =>
 export default function ReviewRoute() {
   const { kind: raw } = useParams();
   const kind: Kind = raw === 'hadith' || raw === 'projects' ? raw : 'quran';
-  const { child, progress } = useChildData();
+  const { child, progress, session } = useChildData();
   const { lang, m } = useI18n();
   const t = m.child.review;
   const n = m.child.count;
   useChildTitle(m.child.meta.review);
+  // Projects the teacher verified at the start of a later hadith lesson (the AI server's follow-up).
+  const verified = useVerifiedProjects(kind === 'projects' ? session.childId : undefined);
   if (!child) {
     return (
       <ChildPage tab="home" blob="page">
@@ -101,7 +105,6 @@ export default function ReviewRoute() {
       });
   } else {
     title = t.projectsTitle;
-    count = countPhrase(lang, h.projects, n.projects);
     countLabel = t.projectsCount;
     icon = <ProjectIcon size={28} />;
     tint = 'bg-gold-tint';
@@ -114,9 +117,11 @@ export default function ReviewRoute() {
         // unknown id — skip
       }
     }
+    const reported = new Set<string>();
     for (const p of [...(progress?.values() ?? [])] as StoredProgress[]) {
       const id = p.progress.reportedProject;
       if (!id) continue;
+      reported.add(id);
       try {
         items.push({
           name: projectRepo.byId(id).title,
@@ -127,6 +132,18 @@ export default function ReviewRoute() {
         // unknown id — skip
       }
     }
+    // Verified by the next hadith lesson: the project the child told the teacher about. A project the
+    // Supabase list already shows (same hadith) is not listed twice.
+    for (const v of verified) {
+      if ([...reported].some((id) => SERVER_HADITH_BY_PROJECT[id] === v.hadithId)) continue;
+      items.push({ name: v.action || v.title, meta: t.told, state: 'done' });
+    }
+    // The count includes them (the database count only knows recorded voice reports).
+    count = countPhrase(
+      lang,
+      Math.max(h.projects, items.filter((i) => i.state === 'done').length),
+      n.projects,
+    );
   }
 
   return (

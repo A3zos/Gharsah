@@ -22,6 +22,7 @@ import { countPhrase, fill, MESSAGES, useI18n, type UiLanguage } from '../../i18
 import { agentEnabled, warmAgent } from '../../lesson/server/api';
 import type { LessonScript } from '../../lesson/script';
 import { serverVoiceEnabled, warmAiSpeak } from '../../lesson/web/serverVoice';
+import { useVerifiedProjects } from '../../lesson/web/verifiedProjects';
 import { preloadTeacher } from '../../components/child/teacherCharacter';
 import { getTeacher } from '../../content/teachers';
 import { unlockLessonAudio } from '../../lesson/web/audioUnlock';
@@ -55,10 +56,12 @@ function valueOf(lessonId: string, lang: UiLanguage): string {
 
 /** design/v3 StudentHome (+ StudentHomeDay2 when today's lesson starts with the project report). */
 export default function ChildHome() {
-  const { child, progress, board } = useChildData();
+  const { child, progress, board, session } = useChildData();
   const { lang, m } = useI18n();
   const t = m.child.home;
   useChildTitle(m.child.meta.home);
+  // Projects the teacher verified at the start of a later hadith lesson (counted with the saved reports).
+  const verifiedProjects = useVerifiedProjects(session.childId);
   // Before «ابدأ الحصة»: wake the AI server and its voice (Render cold start ~50 s),
   // and load the teacher's frames — so the call opens with the real teacher.
   useEffect(warmAgent, []);
@@ -342,7 +345,7 @@ export default function ChildHome() {
             icon={<ProjectIcon />}
             title={t.projects}
           >
-            {fill(lang, t.projectsDone, { n: h.projects })}
+            {fill(lang, t.projectsDone, { n: Math.max(h.projects, verifiedProjects.length) })}
           </Shortcut>
           <div className="col-span-3 flex items-center gap-[12px] rounded-px-22 border-[1.5px] border-dashed border-border-strong px-[16px] py-[14px]">
             <span
