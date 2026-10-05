@@ -162,6 +162,26 @@ describe('ServerLessonView — the live call', () => {
     expect(screen.queryByText('قيد المراجعة الشرعية')).toBeNull();
   });
 
+  it('the hadith text is hidden in the memorization stage and back in the others (2026-10-05)', () => {
+    const base = {
+      segment: 'hadith' as const,
+      hadith: { title: 'برّ الوالدين', source: 'متفق عليه' },
+      hadithText: 'HADITH-TEXT',
+      stages: [
+        { id: 'text', label: 'النص' },
+        { id: 'memorize', label: 'الحفظ' },
+      ],
+    };
+    const { unmount } = render(
+      <ServerLessonView state={live({ ...base, stageIndex: 1 })} actions={actions()} desktop={false} />,
+    );
+    expect(screen.queryByText('«HADITH-TEXT»')).toBeNull();
+    expect(screen.queryByText('قيد المراجعة الشرعية')).toBeNull();
+    unmount();
+    view(live({ ...base, stageIndex: 0 }));
+    expect(screen.getByText('«HADITH-TEXT»')).toBeInTheDocument();
+  });
+
   it('warming: the teacher getting ready, no input yet', () => {
     view({ ...initialServerState, phase: 'warming' });
     expect(screen.getByText('المعلّم يتجهّز… لحظات ونبدأ')).toBeInTheDocument();

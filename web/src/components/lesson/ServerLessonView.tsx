@@ -169,6 +169,9 @@ function Middle({ state: s, onAyat, dim }: { state: ServerLessonState; onAyat: b
     );
   }
   if (s.hadith) {
+    // Memorization («استمع ثم ردّد»): the child says the hadith from what they heard — its text is
+    // not on screen then (product owner 2026-10-05); it is shown again in the other stages.
+    if (s.stages[s.stageIndex]?.id === 'memorize') return null;
     // Display rule: OUR content only. The server's hadith text / translation (show_ayat,
     // show_words, hadith_title, source) is never shown — today's hadith from content/:
     // approved → its matn (Arabic, rtl) + takhrij + the HadeethEnc translation (en / id);
