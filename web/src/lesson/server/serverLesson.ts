@@ -257,6 +257,8 @@ export interface ServerLessonState {
   /** The surah shown (for its translation in English / Indonesian). */
   readonly surahNo: number | null;
   readonly hadith: { title: string | null; source: string | null } | null;
+  /** The hadith text the server sent (show_ayat) — shown only while SERVER_HADITH_TEXT_APPROVED. */
+  readonly hadithText: string;
   readonly words: readonly { word: string; meaning: string }[];
   /** What the child can do now (null while the teacher talks or the server thinks). */
   readonly expects: Expects | null;
@@ -303,6 +305,7 @@ export const initialServerState: ServerLessonState = {
   surahName: null,
   surahNo: null,
   hadith: null,
+  hadithText: '',
   words: [],
   expects: null,
   quickReplies: [],
@@ -326,8 +329,13 @@ export const initialServerState: ServerLessonState = {
 
 /** The hadith text placeholder until a vetted source is approved (CLAUDE.md §3). */
 export const HADITH_PLACEHOLDER = '[نص الحديث — يُعتمد لاحقًا من مصدر موثّق مع التخريج]';
-/** Flip only after the product owner approves the server's hadith content. */
-export const SERVER_HADITH_TEXT_APPROVED = false;
+/**
+ * Whether the server's hadith text and word table are SHOWN (the teacher says them either way).
+ * Turned on 2026-10-05 at the product owner's request (relayed by razan): the hadith is displayed
+ * like the ayat, with its «معاني الكلمات» table. ⚠️ The text is the AI server's own (hadith_content.py) and
+ * its sharia review is still pending — set false to go back to the «قيد المراجعة الشرعية» card.
+ */
+export const SERVER_HADITH_TEXT_APPROVED = true;
 
 export const RATE_LIMIT_BACKOFF_MS = [4000, 8000, 16000, 30000];
 // a timeout / 5xx: the last server call is retried ONCE, then the part ends (hadith: a
@@ -964,7 +972,9 @@ export class ServerLesson {
       return;
     }
 
-    const fresh = this.freshSegment ? { ayat: [], words: [], hadith: null, currentAyah: null } : {};
+    const fresh = this.freshSegment
+      ? { ayat: [], words: [], hadith: null, hadithText: '', currentAyah: null }
+      : {};
     this.freshSegment = false;
     this.set({
       ...fresh,
@@ -1102,7 +1112,9 @@ export class ServerLesson {
     }
     if (turn.kind === 'hadith') {
       if (a.ayat[0]?.trim()) this.reference = a.ayat[0];
+      const matn = a.ayat[0]?.trim();
       this.set({
+        ...(SERVER_HADITH_TEXT_APPROVED && matn ? { hadithText: matn } : {}),
         hadith: shownHadith(
           this.d.lang ?? 'ar',
           a.hadithTitle ?? turn.hadithTitle,

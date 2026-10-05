@@ -163,11 +163,12 @@ describe('ServerLesson — mocked end-to-end', () => {
     expect(t.spoken).not.toContain('أهلًا من جديد!');
     expect(t.spoken).not.toContain('حديث اليوم عن برّ الوالدين.');
     expect(lesson.state.value.hadith).toEqual({ title: 'برّ الوالدين', source: 'متفق عليه' });
-    expect(JSON.stringify(lesson.state.value)).not.toContain('SERVER-HADITH-TEXT');
+    // 2026-10-05: the server's hadith text is shown like the ayat (SERVER_HADITH_TEXT_APPROVED)
+    expect(lesson.state.value.hadithText).toBe('SERVER-HADITH-TEXT');
     expect(HADITH_PLACEHOLDER).toMatch(/يُعتمد لاحقًا/);
     lesson.continueTapped();
     await at(lesson, 'words', 'continue');
-    expect(lesson.state.value.words).toEqual([]); // hidden until the hadith is approved
+    expect(lesson.state.value.words).toEqual([{ word: 'البر', meaning: 'الإحسان' }]); // the word table is shown
     lesson.continueTapped();
     await at(lesson, 'meaning', 'continue');
     lesson.continueTapped();
