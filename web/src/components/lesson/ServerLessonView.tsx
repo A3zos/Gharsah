@@ -197,7 +197,9 @@ function Middle({ state: s, onAyat, dim }: { state: ServerLessonState; onAyat: b
     if (SERVER_HADITH_TEXT_APPROVED && s.hadithText)
       return (
         <>
-          <Card className="items-center gap-[10px] text-center">
+          {/* overflow-y-auto: when the word table below takes the room, the hadith scrolls inside its
+              card instead of being cut off (same behaviour as the surah card) — no look change */}
+          <Card className="items-center gap-[10px] overflow-y-auto text-center">
             <span className="rounded-pill bg-berry-tint px-[14px] py-[6px] text-[16px] font-extrabold text-berry-deep">
               {fill(lang, m.lesson.hadith.about, {
                 topic: s.hadith.title ? hadithLabelIn(lang, s.hadith.title) : m.lesson.hadith.today,
