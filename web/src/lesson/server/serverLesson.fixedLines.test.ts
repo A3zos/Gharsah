@@ -1,6 +1,7 @@
 // The AI lesson's fixed client lines: Arabic byte-identical to the constants; English /
 // Indonesian for every line (both genders), never Arabic or Quranic text.
 import { QURANIC } from '../../../../supabase/functions/ai-speak/resolve';
+import { ENCOURAGE_LINE } from '../voice/recitationVerifier';
 import {
   FILLER,
   FILLER_LONG,
@@ -33,6 +34,7 @@ test('Arabic: exactly the constants', () => {
     expect(fixedLine('ar', 'micAsk', g)).toBe(MIC_ASK[g]);
     expect(fixedLine('ar', 'filler', g)).toBe(FILLER[g]);
     expect(fixedLine('ar', 'fillerLong', g)).toBe(FILLER_LONG[g]);
+    expect(fixedLine('ar', 'encourage', g)).toBe(ENCOURAGE_LINE);
   }
 });
 

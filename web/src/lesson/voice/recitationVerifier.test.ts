@@ -81,6 +81,10 @@ describe('isWordJudgment', () => {
     'لا بأس، سنحاول مرة أخرى ببطء. (المحاولة 1 من 5)',
     'لا بأس، خذ وقتك ونحاول السورة كاملة مرة أخرى.',
     'ما قلت الكلمة الأخيرة',
+    'You missed a word, champ! Listen again.',
+    'Oops, wrong word at the end.',
+    'Ada kata yang terlewat, jagoan!',
+    'Kamu lupa satu kata.',
   ])('flags «%s»', (line) => expect(isWordJudgment(line)).toBe(true));
 
   it.each([
@@ -89,6 +93,10 @@ describe('isWordJudgment', () => {
     'لا بأس، ننتقل للآية التالية. استمع جيدًا للآية 3',
     'نسمعها مرة ثانية من القارئ ونكمل',
     ENCOURAGE_LINE,
+    'Great job, champ! Now listen to ayah 2 and repeat it.',
+    'Masya Allah, bagus sekali! Dengarkan ayat berikutnya.',
+    'Nice try!',
+    'Usaha yang bagus!',
   ])('lets «%s» through', (line) => expect(isWordJudgment(line)).toBe(false));
 });
 

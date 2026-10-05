@@ -1095,6 +1095,21 @@ describe('ServerLesson — recitation', () => {
     expect(t.played).toContain(EVERYAYAH(2));
   });
 
+  it('English session: an unverifiable English judgment → the English encouragement (no Arabic)', async () => {
+    const spoken: string[] = [];
+    const judging: StageSpec = { ...REAL_RECITATION, turns: 2, say: 'You missed a word, champ! Listen again.' };
+    const t = setup({
+      lang: 'en',
+      server: new FakeAgentServer(withStage('recitation', judging)),
+      voice: { speak: async (x) => void spoken.push(x), stop: () => {} },
+    });
+    await toRepeats(t);
+    await at(t.lesson, 'tajweed', 'continue');
+    expect(spoken.some((x) => x.includes('missed'))).toBe(false);
+    expect(spoken).toContain('Nice try!');
+    expect(spoken).not.toContain(ENCOURAGE_LINE);
+  });
+
   it('the server scored the attempt low → its word feedback is spoken', async () => {
     const spoken: string[] = [];
     const judging: StageSpec = { ...REAL_RECITATION, turns: 2, say: 'نسيت كلمة يا بطل! استمع مرة ثانية.' };

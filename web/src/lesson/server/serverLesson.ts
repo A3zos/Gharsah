@@ -451,7 +451,8 @@ export type FixedLine =
   | 'hadithLater'
   | 'micAsk'
   | 'filler'
-  | 'fillerLong';
+  | 'fillerLong'
+  | 'encourage';
 type FixedLines = Record<FixedLine, string | Record<Gender, string>>;
 
 /**
@@ -472,6 +473,7 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     micAsk: MIC_ASK,
     filler: FILLER,
     fillerLong: FILLER_LONG,
+    encourage: ENCOURAGE_LINE,
   },
   en: {
     nudgeAnswer: "I'm listening, champ — say it out loud",
@@ -486,6 +488,7 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     micAsk: 'Hi champ! So I can hear you talk and recite, please let me use the microphone',
     filler: 'Great… one moment, champ',
     fillerLong: "Just a few seconds, champ, I'm getting it ready…",
+    encourage: 'Nice try!',
   },
   id: {
     nudgeAnswer: 'Aku mendengarkan, jagoan — ucapkan dengan suaramu',
@@ -500,6 +503,7 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     micAsk: 'Halo jagoan! Supaya aku bisa mendengarmu berbicara dan membaca, izinkan aku memakai mikrofon ya',
     filler: 'Bagus… sebentar ya, jagoan',
     fillerLong: 'Sebentar lagi, jagoan, aku sedang menyiapkannya…',
+    encourage: 'Usaha yang bagus!',
   },
 };
 
@@ -1003,7 +1007,7 @@ export class ServerLesson {
       turn.kind === 'quran' && turn.actions.some((a) => a.type === 'play_all' && a.urls.length > 1);
     try {
       for (const a of turn.actions) this.show(a, turn);
-      const line = judged ? ENCOURAGE_LINE : turn.say;
+      const line = judged ? this.fixed('encourage') : turn.say;
       if (line.trim()) await this.say(line, abort);
       const plays = audio.length > 0 || (judged && this.turnAudio.length > 0);
       if (line.trim() && plays) await this.guard(abort, this.beat(LINE_GAP_MS));

@@ -115,6 +115,12 @@ const JUDGMENT = [
   /كلمة\s+(ناقصة|خاطئة|ضائعة)/,
   /تلعثم/,
   /(سنحاول|نحاول|نجرّب|نجرب|حاول)\s+[^.!؟]*مرة\s+(أخرى|ثانية)/,
+  // English / Indonesian sessions (the server speaks the UI language)
+  /\b(missed|forgot|skipped|left out|dropped)\s+(a|the|one|that)\s+word/i,
+  /\b(wrong|missing)\s+word/i,
+  /\bkata\s+yang\s+(terlewat|salah|hilang|kurang)/i,
+  /\b(lupa|melewatkan|terlewat)\s+(satu\s+)?kata/i,
+  /\bsalah\s+(ucap|baca|kata)/i,
 ];
 
 export function isWordJudgment(text: string): boolean {
@@ -124,7 +130,7 @@ export function isWordJudgment(text: string): boolean {
 
 /**
  * The approved line said instead of an unverifiable judgment. No retry promised: the server
- * asks for each ayah ONCE and moves on (ai/API_web.md 2026-10-04).
+ * asks for each ayah ONCE and moves on (ai/API_web.md 2026-10-04). en / id: FIXED_LINES.encourage.
  */
 export const ENCOURAGE_LINE = 'أحسنت المحاولة!';
 
