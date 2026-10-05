@@ -1,4 +1,4 @@
--- غَرْسة — the weekly board: top 5 + own row, dense ranks, privacy (pgTAP).
+-- غَرْسة — the weekly board: top 5 + own row, dense ranks, what leaves the database (pgTAP).
 begin;
 create extension if not exists pgtap with schema extensions;
 select plan(14);
@@ -62,7 +62,9 @@ select is((select j from b) #>> '{me,firstName}', 'بدر', 'only the own first 
 select is((select string_agg(e ->> 'rank', ',') from jsonb_array_elements((select j from b) -> 'top') e),
   '1,1,1,2,3', 'ties share a rank: 30,30,30 → 1; then 29 → 2, 28 → 3');
 select is((select j from b) ->> 'total', '22', '22 children with stars this week');
-select ok((select j from b)::text !~ 'ظل' , 'no other child''s name leaves the database');
+-- product rule 2026-10-05: every child shows its first name (+ the father's — here only a placeholder)
+select is((select string_agg(e ->> 'displayName', ',') from jsonb_array_elements((select j from b) -> 'top') e),
+  'ظلA,ظلT,ظلU,ظل29,ظل28', 'every row: the child''s first name (a placeholder parent name is never shown)');
 select ok((select j from b)::text !~ '31000000-', 'no child id leaves the database');
 select ok((select bool_and(e ->> 'avatar' = 'boy-4') from jsonb_array_elements((select j from b) -> 'top') e),
   'other rows show their chosen avatar key only (b2 → boy-4)');

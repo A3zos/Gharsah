@@ -7,6 +7,7 @@ import { HomeBar } from '../../components/ui/HomeBar';
 import { LeaveGuard } from '../../components/ui/LeaveGuard';
 import { useBack } from '../../lib/nav';
 import { Button } from '../../components/ui/Button';
+import { COUNTRIES, FlagIcon, type CountryCode } from '../../components/ui/FlagIcon';
 import { AlertIcon } from '../../components/ui/icons';
 import { Blob, MobilePage, useDocumentMeta } from '../../components/ui/Page';
 import { TextField } from '../../components/ui/TextField';
@@ -19,7 +20,7 @@ import type { Route } from './+types/signup';
 
 export const meta: Route.MetaFunction = () => [{ title: MESSAGES.ar.auth.titles.signup }];
 
-type Field = 'name' | 'email' | 'password' | 'confirm' | 'general';
+type Field = 'name' | 'country' | 'email' | 'password' | 'confirm' | 'general';
 
 /** design/v3 Signup — the parent account (in the chosen language). */
 export default function SignupRoute() {
@@ -37,6 +38,7 @@ function Signup() {
   const navigate = useNavigate();
   const back = useBack(paths.welcome);
   const [name, setName] = useState('');
+  const [country, setCountry] = useState<CountryCode | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -46,6 +48,7 @@ function Signup() {
 
   const errors: Partial<Record<Field, string>> = {};
   if (!name.trim()) errors.name = t.errors.name;
+  if (!country) errors.country = t.errors.country;
   if (!isValidEmail(email)) errors.email = t.errors.email;
   if (password.length < MIN_PASSWORD_LENGTH) errors.password = t.errors.password;
   if (confirm !== password || !confirm) errors.confirm = t.errors.confirm;
@@ -56,14 +59,14 @@ function Signup() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setTouched({ name: true, email: true, password: true, confirm: true });
+    setTouched({ name: true, country: true, email: true, password: true, confirm: true });
     setServerError(null);
     const local = { ...errors };
     delete local.general;
     if (Object.keys(local).length || busy) return;
     setBusy(true);
     try {
-      await signUp(name, email, password);
+      await signUp(name, email, password, country ?? 'SA');
       navigate(paths.parent.root, { replace: true });
     } catch (err) {
       const f = err as { field?: string };
@@ -107,7 +110,15 @@ function Signup() {
             onChange={(e) => setName(e.target.value)}
             onBlur={blur('name')}
             status={show('name') ? 'error' : undefined}
-            message={show('name') ? errors.name : undefined}
+            message={show('name') ? errors.name : t.nameHint}
+          />
+          <CountryPills
+            value={country}
+            onChange={(c) => {
+              setCountry(c);
+              setTouched((x) => ({ ...x, country: true }));
+            }}
+            error={show('country') ? errors.country : undefined}
           />
           <TextField
             compact
@@ -198,5 +209,51 @@ function Signup() {
         </div>
       </form>
     </MobilePage>
+  );
+}
+
+/** «الدولة»: السعودية / الولايات المتحدة / إندونيسيا — required; its flag shows on the leaderboard. */
+function CountryPills({
+  value,
+  onChange,
+  error,
+}: {
+  value: CountryCode | null;
+  onChange: (c: CountryCode) => void;
+  error?: string;
+}) {
+  const { m } = useI18n();
+  return (
+    <fieldset className="m-0 flex flex-col gap-[8px] border-0 p-0">
+      <legend className="mb-[8px] p-0 text-[14px] font-bold text-text-dark">{m.auth.signup.country}</legend>
+      <div role="radiogroup" aria-label={m.auth.signup.country} className="flex flex-wrap gap-[8px]">
+        {COUNTRIES.map((c) => {
+          const on = value === c;
+          return (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => onChange(c)}
+              className={cx(
+                'flex min-h-[44px] cursor-pointer items-center gap-[8px] rounded-pill px-[14px] text-[14px] font-bold',
+                on
+                  ? 'border-[2px] border-deep-green bg-green-tint text-deep-green'
+                  : 'border-[1.5px] border-input-border bg-surface text-text-dark',
+              )}
+            >
+              <FlagIcon country={c} size={20} decorative />
+              {m.countries[c]}
+            </button>
+          );
+        })}
+      </div>
+      {error && (
+        <span role="alert" className="text-[12.5px] font-bold text-error-text">
+          {error}
+        </span>
+      )}
+    </fieldset>
   );
 }

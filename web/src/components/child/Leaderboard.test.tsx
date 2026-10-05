@@ -115,3 +115,73 @@ describe('in English / Indonesian (inside the child area provider)', () => {
     expect(screen.getByText("You're in first place this week — keep going!")).toBeInTheDocument();
   });
 });
+
+describe('every child: first name + father + flag (product rule 2026-10-05)', () => {
+  const named: LeaderBoard = {
+    weekKey: '2026-10-03',
+    total: 5,
+    top: [
+      { rank: 1, points: 14, me: false, firstName: 'فهد', fatherName: 'سلمان', country: 'SA' },
+      { rank: 2, points: 12, me: false, firstName: 'Rizky', fatherName: 'Ahmad', country: 'ID' },
+      { rank: 3, points: 9, me: false, hero: 'girl', country: 'US' },
+      { rank: 4, points: 7, me: true, firstName: 'عمر', fatherName: 'عبدالعزيز', country: 'SA' },
+      { rank: 5, points: 6, me: false, firstName: 'Adam', country: 'US' },
+    ],
+    me: {
+      rank: 4,
+      points: 7,
+      gapToAbove: 2,
+      inTop5: true,
+      firstName: 'عمر',
+      fatherName: 'عبدالعزيز',
+      country: 'SA',
+    },
+  };
+  afterEach(() => {
+    localStorage.clear();
+    document.documentElement.lang = 'ar';
+    document.documentElement.dir = 'rtl';
+  });
+
+  test('Arabic: «فهد سلمان» + an SVG flag, «عمر عبدالعزيز — أنت», «بطلة», no emoji flags', () => {
+    render(<Leaderboard board={named} myFirstName="عمر" avatarId="boy-1" />);
+    const items = within(screen.getByRole('list')).getAllByRole('listitem');
+    expect(items[0]).toHaveTextContent('فهد سلمان');
+    expect(within(items[0]!).getByRole('img', { name: 'السعودية' }).tagName.toLowerCase()).toBe('svg');
+    expect(items[1]).toHaveTextContent('Rizky Ahmad');
+    expect(within(items[1]!).getByRole('img', { name: 'إندونيسيا' })).toBeInTheDocument();
+    expect(items[2]).toHaveTextContent('بطلة');
+    expect(within(items[2]!).getByRole('img', { name: 'الولايات المتحدة' })).toBeInTheDocument();
+    expect(items[3]).toHaveTextContent('عمر عبدالعزيز — أنت');
+    expect(items[3]).toHaveAttribute('aria-current', 'true');
+    expect(items[4]).toHaveTextContent('Adam');
+    // the father's name is the muted part
+    expect(within(items[0]!).getByText('سلمان')).toHaveClass('text-text-muted');
+    expect(document.body.textContent).not.toMatch(/\p{Regional_Indicator}/u);
+  });
+
+  test('English: names as typed, «Champ» for a hidden child, English country names', () => {
+    localStorage.setItem(STORAGE_KEY, 'en');
+    render(
+      <I18nProvider>
+        <Leaderboard board={named} myFirstName="عمر" avatarId="boy-1" />
+      </I18nProvider>,
+    );
+    const items = within(screen.getByRole('list')).getAllByRole('listitem');
+    expect(items[0]).toHaveTextContent('فهد سلمان');
+    expect(within(items[0]!).getByRole('img', { name: 'Saudi Arabia' })).toBeInTheDocument();
+    expect(items[2]).toHaveTextContent('Champ');
+    expect(items[3]).toHaveTextContent('عمر عبدالعزيز — you');
+  });
+
+  test('names off for the child themselves: they still see their own first name', () => {
+    const b: LeaderBoard = {
+      ...named,
+      top: named.top.map((r) =>
+        r.me ? { rank: r.rank, points: r.points, me: true, hero: 'boy' as const, country: r.country } : r,
+      ),
+    };
+    render(<Leaderboard board={b} myFirstName="عمر" avatarId="boy-1" />);
+    expect(within(screen.getByRole('list')).getAllByRole('listitem')[3]).toHaveTextContent('عمر — أنت');
+  });
+});

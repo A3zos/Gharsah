@@ -1,11 +1,13 @@
 // «المتصدّرون هذا الأسبوع» on the child home: ranks 1–5 (dense; ties share a rank),
 // then — when the child isn't among them — «⋯» and the child's own row with the real
-// rank. Other children are never identified: rank + their chosen avatar + points only.
-// The data is get_leaderboard() (aggregate only, server-side).
+// rank. Every row (product rule 2026-10-05): [rank] [avatar] «عمر» + « عبدالعزيز» [flag]
+// … [stars]; «بطل» / «بطلة» when the parent turned names off. First names only — the
+// data is get_leaderboard() (server-side; never a last name, email, age or id).
 import { buildBoard, daysUntilReset, type BoardRow, type LeaderBoard } from '../../data/student';
 import { countPhrase, formatNumber, useI18n } from '../../i18n/i18n';
 import { cx } from '../../lib/cx';
 import { C } from '../ui/color';
+import { FlagIcon } from '../ui/FlagIcon';
 import { ChildAvatar } from './ChildAvatar';
 
 export function Leaderboard({
@@ -74,6 +76,43 @@ export function Leaderboard({
   );
 }
 
+/** «عمر» bold + « عبدالعزيز» muted (+ « — أنت»); «بطل» / «بطلة»; ellipsis when long. */
+function RowName({ row }: { row: BoardRow }) {
+  const t = useI18n().m.child.board;
+  const [before = '', after = ''] = t.me.split('{name}');
+  if ((!row.firstName && !row.hero) || (row.me && !row.firstName && row.label)) {
+    // an older database (only the own row has a name), or the child's own row with names
+    // turned off for others: the child still sees their own first name
+    return (
+      <span className="min-w-0 grow truncate text-[14.5px] font-extrabold text-deep-green">{row.label}</span>
+    );
+  }
+  const name = row.firstName ? (
+    <>
+      <span className="font-extrabold">{row.firstName}</span>
+      {row.fatherName && <span className="font-semibold text-text-muted"> {row.fatherName}</span>}
+    </>
+  ) : (
+    <span className="font-extrabold">{t.hero[row.hero!]}</span>
+  );
+  return (
+    <span
+      dir="auto"
+      className={cx('min-w-0 grow truncate text-[14.5px]', row.me ? 'text-deep-green' : 'text-text-dark')}
+    >
+      {row.me ? (
+        <>
+          {before}
+          {name}
+          <span className="font-extrabold">{after}</span>
+        </>
+      ) : (
+        name
+      )}
+    </span>
+  );
+}
+
 function LeaderRow({ row, avatarId }: { row: BoardRow; avatarId: string }) {
   const { lang, m } = useI18n();
   const medal = row.me
@@ -102,11 +141,10 @@ function LeaderRow({ row, avatarId }: { row: BoardRow; avatarId: string }) {
         {formatNumber(lang, row.rank)}
       </span>
       <span className="shrink-0">
-        {/* other children: their chosen avatar key only — never who they are */}
         <ChildAvatar id={row.me ? avatarId : (row.avatar ?? 'neutral')} size={38} />
       </span>
-      {/* Other children: rank + avatar + points only — never a name. */}
-      <span className="grow text-[14.5px] font-extrabold text-deep-green">{row.label}</span>
+      <RowName row={row} />
+      {row.country && <FlagIcon country={row.country} size={18} />}
       <span
         className={cx(
           'font-heading text-[16px] font-extrabold',

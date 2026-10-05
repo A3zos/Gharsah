@@ -1,6 +1,6 @@
 // The welcome choice, signup, forgot-password and legal pages in Arabic (unchanged),
 // English and Indonesian.
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { createRoutesStub } from 'react-router';
 
 import { ClaimFailure, claimCode } from '../../data/childSession';
@@ -126,6 +126,44 @@ describe('signup', () => {
     expect(screen.getByText('Tulis nama Anda.')).toBeInTheDocument();
     expect(screen.getByText('Kata sandi minimal 8 karakter.')).toBeInTheDocument();
     expect(document.documentElement).toHaveAttribute('dir', 'ltr');
+  });
+});
+
+describe('signup: the country (required — its flag shows on the leaderboard)', () => {
+  test('Arabic: «اختر دولتك.» until a pill is picked; one pill at a time', async () => {
+    renderAt('/signup');
+    const group = await screen.findByRole('radiogroup', { name: 'الدولة' });
+    const pills = within(group).getAllByRole('radio');
+    expect(pills.map((p) => p.textContent)).toEqual(['السعودية', 'الولايات المتحدة', 'إندونيسيا']);
+    expect(pills.every((p) => p.getAttribute('aria-checked') === 'false')).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'إنشاء الحساب' }));
+    expect(screen.getByText('اختر دولتك.')).toBeInTheDocument();
+    fireEvent.click(pills[2]!);
+    expect(pills[2]).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByText('اختر دولتك.')).toBeNull();
+    fireEvent.click(pills[0]!);
+    expect(pills[0]).toHaveAttribute('aria-checked', 'true');
+    expect(pills[2]).toHaveAttribute('aria-checked', 'false');
+  });
+
+  test('English / Indonesian labels', async () => {
+    renderAt('/signup', 'en');
+    const en = await screen.findByRole('radiogroup', { name: 'Country' });
+    expect(
+      within(en)
+        .getAllByRole('radio')
+        .map((p) => p.textContent),
+    ).toEqual(['Saudi Arabia', 'United States', 'Indonesia']);
+    cleanup();
+    renderAt('/signup', 'id');
+    const id = await screen.findByRole('radiogroup', { name: 'Negara' });
+    expect(
+      within(id)
+        .getAllByRole('radio')
+        .map((p) => p.textContent),
+    ).toEqual(['Arab Saudi', 'Amerika Serikat', 'Indonesia']);
+    fireEvent.click(screen.getByRole('button', { name: 'Buat akun' }));
+    expect(screen.getByText('Pilih negara Anda.')).toBeInTheDocument();
   });
 });
 

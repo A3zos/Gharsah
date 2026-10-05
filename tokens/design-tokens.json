@@ -438,6 +438,31 @@
           "note": "ExitConfirm scrim over the live lesson"
         }
       }
+    },
+    {
+      "group": "Country flags (leaderboard FlagIcon — the flags' own colours, not brand)",
+      "tokens": {
+        "flagSaGreen": {
+          "hex": "#006C35",
+          "note": "Saudi Arabia"
+        },
+        "flagUsBlue": {
+          "hex": "#3C3B6E",
+          "note": "United States canton"
+        },
+        "flagUsRed": {
+          "hex": "#B22234",
+          "note": "United States stripes"
+        },
+        "flagIdRed": {
+          "hex": "#E70011",
+          "note": "Indonesia"
+        },
+        "flagEdge": {
+          "hex": "#D9D2C2",
+          "note": "hairline around white flag parts"
+        }
+      }
     }
   ],
   "radii": {

@@ -83,8 +83,8 @@ test('parseBoard reads the new payload and the previous one', () => {
     top: [{ rank: 1, points: 30, avatar: 'girl-3', me: false }],
     me: { rank: 20, points: 4, gapToAbove: 8, inTop5: false, firstName: 'بدر', avatar: 'boy-1' },
   });
-  expect(now.me).toEqual({ rank: 20, points: 4, gapToAbove: 8, inTop5: false });
-  // other children: their chosen avatar key only
+  expect(now.me).toEqual({ rank: 20, points: 4, gapToAbove: 8, inTop5: false, firstName: 'بدر' });
+  // a board from before 20261005100000: the avatar key only
   expect(now.top).toEqual([{ rank: 1, points: 30, me: false, avatar: 'girl-3' }]);
   const old = parseBoard({
     weekKey: '2026-09-26',
@@ -92,8 +92,57 @@ test('parseBoard reads the new payload and the previous one', () => {
     rows: [{ rank: 1, stars: 7, me: true, firstName: 'بدر' }],
     own: { rank: 1, stars: 7, total: 3, topPercent: 10, gapToAbove: null },
   });
-  expect(old.top).toEqual([{ rank: 1, points: 7, me: true }]);
+  expect(old.top).toEqual([{ rank: 1, points: 7, me: true, firstName: 'بدر' }]);
   expect(old.me).toEqual({ rank: 1, points: 7, gapToAbove: null, inTop5: true });
+});
+
+test("parseBoard: every row's first name + father + country; «بطل» rows carry no name", () => {
+  const b = parseBoard({
+    weekKey: '2026-10-03',
+    total: 3,
+    top: [
+      {
+        rank: 1,
+        points: 14,
+        me: false,
+        avatar: 'boy-2',
+        firstName: 'فهد',
+        fatherName: 'سلمان',
+        displayName: 'فهد سلمان',
+        hero: null,
+        country: 'SA',
+      },
+      {
+        rank: 2,
+        points: 12,
+        me: false,
+        avatar: 'id-boy-1',
+        firstName: 'Rizky',
+        fatherName: 'Ahmad',
+        country: 'ID',
+      },
+      {
+        rank: 3,
+        points: 9,
+        me: false,
+        avatar: 'girl-1',
+        firstName: null,
+        fatherName: 'x',
+        displayName: 'بطلة',
+        hero: 'girl',
+        country: 'US',
+      },
+      { rank: 4, points: 2, me: true, avatar: 'boy-1', firstName: 'عمر', fatherName: null, country: 'XX' },
+    ],
+    me: { rank: 4, points: 2, gapToAbove: 7, inTop5: true, firstName: 'عمر', ownFirstName: 'عمر' },
+  });
+  expect(b.top[0]).toMatchObject({ firstName: 'فهد', fatherName: 'سلمان', country: 'SA' });
+  expect(b.top[0]).not.toHaveProperty('hero');
+  expect(b.top[1]).toMatchObject({ firstName: 'Rizky', fatherName: 'Ahmad', country: 'ID' });
+  // a hidden child: «بطلة» only — a stray father name is dropped
+  expect(b.top[2]).toEqual({ rank: 3, points: 9, me: false, avatar: 'girl-1', hero: 'girl', country: 'US' });
+  // an unknown country → no flag; no father → the first name alone
+  expect(b.top[3]).toEqual({ rank: 4, points: 2, me: true, avatar: 'boy-1', firstName: 'عمر' });
 });
 
 describe("surahDoneToday — where today's lesson starts", () => {

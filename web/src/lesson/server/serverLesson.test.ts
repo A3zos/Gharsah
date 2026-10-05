@@ -1097,7 +1097,11 @@ describe('ServerLesson — recitation', () => {
 
   it('English session: an unverifiable English judgment → the English encouragement (no Arabic)', async () => {
     const spoken: string[] = [];
-    const judging: StageSpec = { ...REAL_RECITATION, turns: 2, say: 'You missed a word, champ! Listen again.' };
+    const judging: StageSpec = {
+      ...REAL_RECITATION,
+      turns: 2,
+      say: 'You missed a word, champ! Listen again.',
+    };
     const t = setup({
       lang: 'en',
       server: new FakeAgentServer(withStage('recitation', judging)),

@@ -22,7 +22,7 @@ export interface ChildRef {
 
 type Row = Record<string, unknown>;
 
-/** The weekly board from get_leaderboard(): top 5 (anonymous) + this child's own standing. */
+/** The weekly board from get_leaderboard(): top 5 + this child's own standing. */
 async function loadBoard(): Promise<LeaderBoard | null> {
   const { data, error } = await supabase().rpc('get_leaderboard');
   if (error || !data) return null;
@@ -45,6 +45,7 @@ export function parseBoard(d: Row): LeaderBoard {
       points: pts(r)!,
       me: r.me === true,
       ...(typeof r.avatar === 'string' ? { avatar: r.avatar } : {}),
+      ...parseFace(r),
     }));
   const m =
     d.me && typeof d.me === 'object'
@@ -63,8 +64,25 @@ export function parseBoard(d: Row): LeaderBoard {
             points: pts(m) ?? 0,
             gapToAbove: typeof m.gapToAbove === 'number' ? m.gapToAbove : null,
             inTop5: typeof m.inTop5 === 'boolean' ? m.inTop5 : top.some((r) => r.me),
+            ...parseFace(m),
           }
         : null,
+  };
+}
+
+const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+
+/** A row's public face (20261005100000_leaderboard_names): first names + country, or the «بطل» stand-in. */
+export function parseFace(r: Row): BoardFace {
+  const firstName = text(r.firstName);
+  const fatherName = firstName ? text(r.fatherName) : undefined;
+  const country = r.country === 'SA' || r.country === 'US' || r.country === 'ID' ? r.country : undefined;
+  const hero = !firstName && (r.hero === 'boy' || r.hero === 'girl') ? r.hero : undefined;
+  return {
+    ...(firstName ? { firstName } : {}),
+    ...(fatherName ? { fatherName } : {}),
+    ...(hero ? { hero } : {}),
+    ...(country ? { country } : {}),
   };
 }
 
@@ -244,21 +262,33 @@ export function lessonStepGroups(s: LessonScript): number[] {
 
 const TOP_ROWS = 5;
 
-export interface BoardEntry {
+/**
+ * Who a row is, as the board shows it (product rule 2026-10-05): the child's first name +
+ * the father's first name + the family's country; «بطل» / «بطلة» (`hero`) when the parent
+ * turned names off or there is no name. Never a last name, email, age or id.
+ */
+export interface BoardFace {
+  firstName?: string;
+  fatherName?: string;
+  hero?: 'boy' | 'girl';
+  country?: 'SA' | 'US' | 'ID';
+}
+
+export interface BoardEntry extends BoardFace {
   rank: number;
   points: number;
   me: boolean;
-  /** The row's chosen avatar key (no name or id, ever); 'neutral' from an older board. */
+  /** The row's chosen avatar key; 'neutral' from an older board. */
   avatar?: string;
 }
 
 export interface LeaderBoard {
   weekKey: string;
   total: number;
-  /** Ranks 1–5 (dense; ties share a rank) — other children are never identified. */
+  /** Ranks 1–5 (dense; ties share a rank). */
   top: BoardEntry[];
   /** This child's own standing (always present for a paired device). */
-  me: { rank: number; points: number; gapToAbove: number | null; inTop5: boolean } | null;
+  me: ({ rank: number; points: number; gapToAbove: number | null; inTop5: boolean } & BoardFace) | null;
 }
 
 /** get_leaderboard() is live — re-read every 5 minutes and when the child's own stars change. */
@@ -286,12 +316,12 @@ export function watchLeaderboard(next: (b: LeaderBoard | null) => void, childId?
   };
 }
 
-export interface BoardRow {
+export interface BoardRow extends BoardFace {
   rank: number;
   points: number;
   me: boolean;
   avatar?: string;
-  /** Only the child's own row has a label («بدر — أنت»); others show rank + avatar + points only. */
+  /** The child's own row («بدر — أنت») when the board has no names (an older database). */
   label: string | null;
 }
 
@@ -318,7 +348,9 @@ export function buildBoard(
   const me = board?.me ?? null;
   const rows: BoardRow[] = top.map((r) => ({ ...r, label: r.me ? myLabel : null }));
   const own: BoardRow | null =
-    me && !rows.some((r) => r.me) ? { rank: me.rank, points: me.points, me: true, label: myLabel } : null;
+    me && !rows.some((r) => r.me)
+      ? { ...parseFace(me as unknown as Row), rank: me.rank, points: me.points, me: true, label: myLabel }
+      : null;
   let note: string | null = null;
   if (me && (me.points > 0 || (board?.total ?? 0) > 0)) {
     // To pass the rank above, one star more than the gap (a tie would share the rank).

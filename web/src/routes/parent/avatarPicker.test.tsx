@@ -102,6 +102,15 @@ test('«السماح بميزة اسألني»: on by default, with the note; it
   expect(sw).toHaveAttribute('aria-checked', 'false');
 });
 
+test('«إظهار اسمه في لوحة المتصدرين»: on by default (opt-out), with the note; it switches', () => {
+  page('ar');
+  const sw = screen.getByRole('switch', { name: 'إظهار اسمه في لوحة المتصدرين' });
+  expect(sw).toHaveAttribute('aria-checked', 'true');
+  expect(screen.getByText(/عند الإيقاف يظهر «بطل» أو «بطلة»/)).toBeInTheDocument();
+  fireEvent.click(sw);
+  expect(sw).toHaveAttribute('aria-checked', 'false');
+});
+
 test('Indonesian: the Indonesian set first, its first girl selected', () => {
   page('id');
   const g = grid('Karakter');

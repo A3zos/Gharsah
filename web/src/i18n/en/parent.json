@@ -60,6 +60,8 @@
     "sentence": "{done} of {total} days done ({pct}%) of the {plan}"
   },
   "dashboard": {
+    "nameBanner": "Add your name so it shows with your child's name on the leaderboard",
+    "nameBannerLink": "Settings",
     "title": "Parent dashboard",
     "subtitle": "Follow your children's progress — everything your child memorizes and every project they finish.",
     "firstChild": "Add your first child",
@@ -294,6 +296,8 @@
     "avatarGroup": "Avatar",
     "askAllowed": "Allow «Ask me»",
     "askNote": "The teacher answers from approved sources only, and refers sensitive questions to you",
+    "boardShowName": "Show the name on the leaderboard",
+    "boardNote": "Your child's first name shows with your first name and your country's flag. Off → «Champ».",
     "moreAvatars": "More characters",
     "fewerAvatars": "Fewer characters",
     "customTitle": "Set a time for each day",

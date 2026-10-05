@@ -36,6 +36,7 @@ import {
   DEFAULT_SCHEDULE,
   dayNames,
   formatTime,
+  setBoardShowName,
   updateSchedule,
   WEEK_DAYS,
   type ChildProfile,
@@ -76,6 +77,8 @@ interface Draft {
   avatarId: string;
   /** «السماح بميزة اسألني» — this browser only for now (data/askSetting.ts). */
   askAllowed: boolean;
+  /** «إظهار اسمه في لوحة المتصدرين» — children.board_show_name (opt-out, default on). */
+  boardShowName: boolean;
 }
 
 /**
@@ -136,6 +139,7 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     schedule: editing?.schedule ?? DEFAULT_SCHEDULE,
     avatarId: editing?.avatarId ?? defaultAvatar(editing?.gender ?? 'girl', lang),
     askAllowed: askAllowed(editing?.id),
+    boardShowName: editing?.boardShowName ?? true,
   }));
   const steps = STEPS;
   const lastStep = steps.length - 1;
@@ -204,6 +208,8 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
     try {
       if (editing) {
         await updateSchedule(editing.id, schedule);
+        if (draft.boardShowName !== (editing.boardShowName ?? true))
+          await setBoardShowName(editing.id, draft.boardShowName);
         setAskAllowed(editing.id, draft.askAllowed);
         navigate(paths.parent.children, { replace: true });
       } else {
@@ -230,8 +236,26 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
           : t.nextAvatar
         : t.create;
 
-  // «اسألني»: the last field — on the avatar step of a new child, under the schedule when editing.
-  const askField = <AskToggle value={draft.askAllowed} onChange={(on) => set({ askAllowed: on })} />;
+  // «اسألني» + the board name: the last fields — on the avatar step of a new child, under the
+  // schedule when editing.
+  const askField = (
+    <>
+      <SwitchField
+        id="ask-allowed"
+        label={t.askAllowed}
+        note={t.askNote}
+        value={draft.askAllowed}
+        onChange={(on) => set({ askAllowed: on })}
+      />
+      <SwitchField
+        id="board-show-name"
+        label={t.boardShowName}
+        note={t.boardNote}
+        value={draft.boardShowName}
+        onChange={(on) => set({ boardShowName: on })}
+      />
+    </>
+  );
 
   // A deep link to a later step of a new child starts at the first step.
   if (!editing && step > 0 && !draft.name.trim()) {
@@ -514,22 +538,33 @@ function Flow({ editing }: { editing: ChildProfile | null }) {
   );
 }
 
-/** «السماح بميزة اسألني» (default on) + what the teacher will and won't answer. */
-function AskToggle({ value, onChange }: { value: boolean; onChange: (on: boolean) => void }) {
-  const t = useI18n().m.parent.addChild;
+/** A labelled switch + its note: «السماح بميزة اسألني», «إظهار اسمه في لوحة المتصدرين» (both default on). */
+function SwitchField({
+  id,
+  label,
+  note,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  note: string;
+  value: boolean;
+  onChange: (on: boolean) => void;
+}) {
   return (
     <div className="flex items-start gap-[12px] rounded-px-20 border-[1.5px] border-border bg-surface px-[16px] py-[14px]">
       <span className="flex grow flex-col gap-[4px]">
-        <span id="ask-allowed" className="text-[14.5px] font-extrabold text-text-dark">
-          {t.askAllowed}
+        <span id={id} className="text-[14.5px] font-extrabold text-text-dark">
+          {label}
         </span>
-        <span className="text-[12.5px] leading-[1.8] text-text-muted">{t.askNote}</span>
+        <span className="text-[12.5px] leading-[1.8] text-text-muted">{note}</span>
       </span>
       <button
         type="button"
         role="switch"
         aria-checked={value}
-        aria-labelledby="ask-allowed"
+        aria-labelledby={id}
         onClick={() => onChange(!value)}
         className={cx(
           'mt-[2px] flex h-[30px] w-[52px] shrink-0 cursor-pointer items-center rounded-px-15 border-0 px-[3px]',

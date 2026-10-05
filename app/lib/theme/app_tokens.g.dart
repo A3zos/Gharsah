@@ -136,6 +136,13 @@ abstract final class AppColors {
   static const Color berryCellBg = Color(0xFFFFF7FA); // SCodeExpired wrong-code cell
   static const Color divider = Color(0xFFF2EBDC); // list-row divider (MyChildren, Settings)
   static const Color lessonScrim = Color(0x9E0C2C25); // ExitConfirm scrim over the live lesson
+
+  // Country flags (leaderboard FlagIcon — the flags' own colours, not brand)
+  static const Color flagSaGreen = Color(0xFF006C35); // Saudi Arabia
+  static const Color flagUsBlue = Color(0xFF3C3B6E); // United States canton
+  static const Color flagUsRed = Color(0xFFB22234); // United States stripes
+  static const Color flagIdRed = Color(0xFFE70011); // Indonesia
+  static const Color flagEdge = Color(0xFFD9D2C2); // hairline around white flag parts
 }
 
 abstract final class AppRadii {

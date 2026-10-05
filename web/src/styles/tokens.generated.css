@@ -115,6 +115,12 @@
   --color-berry-cell-bg: #FFF7FA;
   --color-divider: #F2EBDC;
   --color-lesson-scrim: rgb(12 44 37 / 0.62);
+  /* Country flags (leaderboard FlagIcon — the flags' own colours, not brand) */
+  --color-flag-sa-green: #006C35;
+  --color-flag-us-blue: #3C3B6E;
+  --color-flag-us-red: #B22234;
+  --color-flag-id-red: #E70011;
+  --color-flag-edge: #D9D2C2;
 
   --radius-*: initial;
   --radius-chip: 14px;

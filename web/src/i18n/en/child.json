@@ -99,6 +99,7 @@
     "lockedBody": "3 surahs and 3 hadiths available now — the rest open in the next update"
   },
   "board": {
+    "hero": { "boy": "Champ", "girl": "Champ" },
     "title": "This week's leaderboard",
     "left": {
       "one": "{n} day left",

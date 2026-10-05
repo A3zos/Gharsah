@@ -55,6 +55,8 @@ export interface ChildDraft {
   gender: Gender;
   schedule: ChildSchedule;
   avatarId: string;
+  /** «اسمه في لوحة المتصدرين» — the opt-out (default true: the name shows). */
+  boardShowName?: boolean;
 }
 
 export interface PairingInfo {
@@ -90,6 +92,8 @@ export interface ChildProfile {
   pilotUnscored: readonly string[];
   /** «surah:ayah» refs the child stayed silent on in the pilot days — «لم يُردَّد» (parent views). */
   notRepeatedRefs: readonly string[];
+  /** The weekly board shows the child's first name + the father's (opt-out; absent = true). */
+  boardShowName?: boolean;
 }
 
 // Days are stored as integers 0 = السبت … 6 = الجمعة (WEEK_DAYS order).
@@ -186,11 +190,20 @@ export function childFromRow(
     pilotDoneAt: extra.pilotDoneAt ?? {},
     pilotUnscored: extra.pilotUnscored ?? [],
     notRepeatedRefs: extra.notRepeatedRefs ?? [],
+    boardShowName: r.board_show_name !== false,
   };
 }
 
 export const CHILD_COLUMNS =
   'id, name, age, gender, avatar, schedule_days, schedule_time, schedule_custom, session_duration, reminder, review_days, ai_voice_consent, created_at';
+
+/** The parent's child rows with board_show_name (also before that migration is pushed). */
+async function childRows(
+  query: (cols: string) => PromiseLike<{ data: unknown; error: { code?: string } | null }>,
+): Promise<{ data: unknown; error: { code?: string } | null }> {
+  const r = await query(`${CHILD_COLUMNS}, board_show_name`);
+  return r.error?.code === '42703' ? query(CHILD_COLUMNS) : r;
+}
 
 /** The child's pilot-day rows (works before the quiz_unscored / not_repeated_refs migrations too). */
 async function pilotRows(childId: string): Promise<Row[]> {
@@ -258,13 +271,11 @@ export function watchChildren(uid: string, next: (c: ChildProfile[]) => void, er
   return watch(
     liveTables(uid),
     async () => {
-      const { data, error: e } = await supabase()
-        .from('children')
-        .select(CHILD_COLUMNS)
-        .eq('parent_id', uid)
-        .order('created_at');
+      const { data, error: e } = await childRows((cols) =>
+        supabase().from('children').select(cols).eq('parent_id', uid).order('created_at'),
+      );
       if (e) throw e;
-      return withServerFields(data ?? []);
+      return withServerFields((data ?? []) as Row[]);
     },
     next,
     error,
@@ -280,13 +291,11 @@ export function watchChild(
   return watch(
     liveTables(uid),
     async () => {
-      const { data, error: e } = await supabase()
-        .from('children')
-        .select(CHILD_COLUMNS)
-        .eq('id', childId)
-        .maybeSingle();
+      const { data, error: e } = await childRows((cols) =>
+        supabase().from('children').select(cols).eq('id', childId).maybeSingle(),
+      );
       if (e) throw e;
-      return data ? (await withServerFields([data]))[0]! : null;
+      return data ? (await withServerFields([data as Row]))[0]! : null;
     },
     next,
     error,
@@ -305,6 +314,8 @@ export async function addChild(draft: ChildDraft): Promise<{ id: string; pairing
       gender: draft.gender,
       avatar: draft.avatarId,
       ...scheduleToRow(draft.schedule),
+      // the column defaults to true: sent only when the parent turned it off
+      ...(draft.boardShowName === false ? { board_show_name: false } : {}),
     })
     .select('id')
     .single();
@@ -321,6 +332,13 @@ export async function addChild(draft: ChildDraft): Promise<{ id: string; pairing
 export async function updateSchedule(childId: string, schedule: ChildSchedule): Promise<void> {
   await uidOrThrow();
   const { error } = await supabase().from('children').update(scheduleToRow(schedule)).eq('id', childId);
+  if (error) throw toAuthFailure(error);
+}
+
+/** «اسمه في لوحة المتصدرين» on / off (the parent's opt-out). */
+export async function setBoardShowName(childId: string, on: boolean): Promise<void> {
+  await uidOrThrow();
+  const { error } = await supabase().from('children').update({ board_show_name: on }).eq('id', childId);
   if (error) throw toAuthFailure(error);
 }
 

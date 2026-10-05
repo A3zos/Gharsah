@@ -6,6 +6,7 @@ import { ChildAvatar } from '../../components/child/ChildAvatar';
 import { GrowthPath } from '../../components/child/GrowthPath';
 import { GrowthHero } from '../../components/parent/GrowthHero';
 import { useParentData } from '../../components/parent/ParentData';
+import { NameBanner } from '../../components/parent/NameBanner';
 import { DesktopHeader, ParentPage, SettingsButton } from '../../components/parent/ParentShell';
 import { projectTitle, Recordings } from '../../components/parent/Recordings';
 import { C } from '../../components/ui/color';
@@ -203,6 +204,7 @@ function Desktop({
     typeof child.stats?.pendingProject === 'string' ? (child.stats.pendingProject as string) : null;
   return (
     <div className="flex grow flex-col gap-[24px]">
+      <NameBanner />
       <DesktopHeader
         title={t.title}
         subtitle={t.subtitle}
@@ -387,6 +389,7 @@ function Mobile({
         <h1 className="m-0 font-heading text-[26px] leading-[1.5] font-bold">{t.title}</h1>
         <SettingsButton />
       </div>
+      <NameBanner />
       {kids.length > 1 && (
         <nav aria-label={t.childrenNav} className="flex flex-wrap items-center gap-[10px]">
           {kids.map((k) => {

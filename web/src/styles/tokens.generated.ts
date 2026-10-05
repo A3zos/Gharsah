@@ -96,7 +96,12 @@ export const tokens = {
     "berryCellBorder": "#E8A6BC",
     "berryCellBg": "#FFF7FA",
     "divider": "#F2EBDC",
-    "lessonScrim": "rgb(12 44 37 / 0.62)"
+    "lessonScrim": "rgb(12 44 37 / 0.62)",
+    "flagSaGreen": "#006C35",
+    "flagUsBlue": "#3C3B6E",
+    "flagUsRed": "#B22234",
+    "flagIdRed": "#E70011",
+    "flagEdge": "#D9D2C2"
   },
   "radii": {
     "chip": 14,

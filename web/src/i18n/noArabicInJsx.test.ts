@@ -18,6 +18,8 @@ const ALLOWED: Record<string, readonly string[]> = {
   // the Arabic branch / default of a surah heading (en / id pass their own label)
   '../components/lesson/LessonView.tsx': ["سورة ${s.surahName ?? ''}"],
   '../components/lesson/Mushaf.tsx': ['سورة ${name}'],
+  // the sign-up fallback names that are not a person's name (mirrors parent_first_name() in SQL)
+  '../components/parent/NameBanner.tsx': ['ولي الأمر', 'ولي أمر', 'حساب تجريبي'],
   // the avatar square when a parent has no name (a punctuation mark)
   '../components/parent/ParentData.tsx': ['؟'],
   // the route meta (prerender / first paint, Arabic); the tab title follows the language

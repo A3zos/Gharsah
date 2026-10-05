@@ -99,6 +99,7 @@
     "lockedBody": "3 surah dan 3 hadis tersedia sekarang — sisanya dibuka di pembaruan berikutnya"
   },
   "board": {
+    "hero": { "boy": "Jagoan", "girl": "Jagoan" },
     "title": "Papan peringkat pekan ini",
     "left": {
       "one": "{n} hari lagi",

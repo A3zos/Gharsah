@@ -15,11 +15,20 @@ const origin = () => (typeof window === 'undefined' ? undefined : window.locatio
  * Creates the parent (the trigger adds `parents`). When the project requires
  * email confirmation there is no session yet → AuthFailure('confirm-email').
  */
-export async function signUp(name: string, email: string, password: string): Promise<void> {
+/** The parent account: the name and the country (SA / US / ID) go in the metadata → parents. */
+export async function signUp(
+  name: string,
+  email: string,
+  password: string,
+  country: 'SA' | 'US' | 'ID' = 'SA',
+): Promise<void> {
   const { data, error } = await supabase().auth.signUp({
     email: email.trim().toLowerCase(),
     password,
-    options: { data: { name: name.trim() }, emailRedirectTo: origin() && `${origin()}/login?tab=parent` },
+    options: {
+      data: { name: name.trim(), country },
+      emailRedirectTo: origin() && `${origin()}/login?tab=parent`,
+    },
   });
   if (error) throw toAuthFailure(error);
   // An existing confirmed email comes back with no identities (no enumeration error).

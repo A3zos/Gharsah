@@ -60,6 +60,8 @@
     "sentence": "{done} dari {total} hari selesai ({pct}%) dari {plan}"
   },
   "dashboard": {
+    "nameBanner": "Lengkapi nama Anda agar tampil bersama nama anak di papan peringkat",
+    "nameBannerLink": "Pengaturan",
     "title": "Dasbor orang tua",
     "subtitle": "Pantau kemajuan anak-anak Anda — semua hafalan dan proyek yang sudah diselesaikan.",
     "firstChild": "Tambahkan anak pertama Anda",
@@ -294,6 +296,8 @@
     "avatarGroup": "Karakter",
     "askAllowed": "Izinkan fitur «Tanya aku»",
     "askNote": "Guru hanya menjawab dari sumber yang disetujui, dan meneruskan pertanyaan sensitif kepada Anda",
+    "boardShowName": "Tampilkan nama di papan peringkat",
+    "boardNote": "Nama depan anak tampil bersama nama depan Anda dan bendera negara Anda. Jika dimatikan → «Jagoan».",
     "moreAvatars": "Karakter lainnya",
     "fewerAvatars": "Sembunyikan karakter lainnya",
     "customTitle": "Atur waktu untuk tiap hari",
