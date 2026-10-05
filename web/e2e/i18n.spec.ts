@@ -51,7 +51,10 @@ function scan([lang, userData]: [Lang, string[]]): Offender[] {
       if (e.id) p += `#${e.id}`;
       const tid = e.getAttribute('data-testid');
       if (tid) p += `[data-testid=${tid}]`;
-      const cls = (e.getAttribute('class') ?? '').split(/\s+/).filter((c) => c && !c.includes('[')).slice(0, 2);
+      const cls = (e.getAttribute('class') ?? '')
+        .split(/\s+/)
+        .filter((c) => c && !c.includes('['))
+        .slice(0, 2);
       if (cls.length) p += `.${cls.join('.')}`;
       parts.unshift(p);
     }
@@ -68,9 +71,7 @@ function scan([lang, userData]: [Lang, string[]]): Offender[] {
     let rest = t;
     for (const u of userData) rest = rest.split(u).join('');
     return (
-      !AR.test(rest) ||
-      t.replace(/\s+/g, '') === BRAND ||
-      el.closest('[lang="ar"], [lang^="ar-"]') !== null
+      !AR.test(rest) || t.replace(/\s+/g, '') === BRAND || el.closest('[lang="ar"], [lang^="ar-"]') !== null
     );
   };
 
@@ -78,7 +79,8 @@ function scan([lang, userData]: [Lang, string[]]): Offender[] {
     if (!t.trim()) return;
     if (RAW.test(t)) out.push({ kind: `raw ${kind}`, where: path(el), text: t.trim().slice(0, 90) });
     if (lang === 'ar') return;
-    if (AR.test(t) && !allowed(el, t)) out.push({ kind: `arabic ${kind}`, where: path(el), text: t.trim().slice(0, 90) });
+    if (AR.test(t) && !allowed(el, t))
+      out.push({ kind: `arabic ${kind}`, where: path(el), text: t.trim().slice(0, 90) });
     else if (AR_DIGIT.test(t) && !el.closest('[lang="ar"]'))
       out.push({ kind: `arabic digits ${kind}`, where: path(el), text: t.trim().slice(0, 90) });
   };
@@ -134,7 +136,8 @@ function watchConsole(page: Page): string[] {
   page.on('console', (m) => {
     const t = m.text();
     // network stubs: the placeholder Supabase host can't resolve — not an app error
-    if (m.type() === 'error' && !/e2e-placeholder|Failed to load resource|ERR_NAME_NOT_RESOLVED/.test(t)) errors.push(t);
+    if (m.type() === 'error' && !/e2e-placeholder|Failed to load resource|ERR_NAME_NOT_RESOLVED/.test(t))
+      errors.push(t);
     if (m.type() === 'warning' && /^Warning:|React/.test(t)) errors.push(t);
   });
   page.on('pageerror', (e) => errors.push(String(e)));
@@ -182,7 +185,10 @@ test('switching the language in the UI persists across a reload and a new page',
     ['id', 'Bahasa Indonesia'],
     ['ar', 'العربية'],
   ] as const) {
-    const button = page.getByRole('button', { name: /^(اللغة|Language|Bahasa):/ }).filter({ visible: true }).first();
+    const button = page
+      .getByRole('button', { name: /^(اللغة|Language|Bahasa):/ })
+      .filter({ visible: true })
+      .first();
     await button.click();
     const pick = desktop
       ? page.getByRole('option', { name: new RegExp(name) })
@@ -213,7 +219,8 @@ test('digits and prices per locale on the landing', async ({ page }) => {
       for (let n = w.nextNode(); n; n = w.nextNode()) {
         const el = n.parentElement;
         // in Arabic every visible text counts; in en / id not the lang="ar" islands
-        if (el && (l === 'ar' || !el.closest('[lang="ar"]')) && el.getClientRects().length > 0) s += ` ${n.textContent}`;
+        if (el && (l === 'ar' || !el.closest('[lang="ar"]')) && el.getClientRects().length > 0)
+          s += ` ${n.textContent}`;
       }
       return s;
     }, lang);
@@ -222,7 +229,9 @@ test('digits and prices per locale on the landing', async ({ page }) => {
   }
 });
 
-test('the landing mockup shows the locale\'s teacher: its sprite folder, its name, all frames load', async ({ page }) => {
+test("the landing mockup shows the locale's teacher: its sprite folder, its name, all frames load", async ({
+  page,
+}) => {
   const expected = {
     ar: { folder: 'teacher-boy', name: 'المعلم عبدالله' },
     en: { folder: 'teacher-en-boy', name: 'Teacher Adam' },
@@ -235,7 +244,9 @@ test('the landing mockup shows the locale\'s teacher: its sprite folder, its nam
     });
     await page.goto(`/?lang=${lang}`);
     await expect(page.locator('html')).toHaveAttribute('lang', lang, { timeout: 20_000 });
-    const srcs = await page.locator('img[src*="/characters/"]').evaluateAll((els) => els.map((e) => e.getAttribute('src') ?? ''));
+    const srcs = await page
+      .locator('img[src*="/characters/"]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute('src') ?? ''));
     expect(srcs.length, `${lang}: a teacher sprite`).toBeGreaterThan(0);
     for (const s of srcs) expect(s, lang).toContain(`/characters/${expected[lang].folder}/`);
     await expect(page.getByText(expected[lang].name).filter({ visible: true }).first()).toBeVisible();

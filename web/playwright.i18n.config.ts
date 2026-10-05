@@ -22,7 +22,10 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'phone-375', use: { ...devices['Desktop Chrome'], viewport: { width: 375, height: 812 }, hasTouch: true } },
+    {
+      name: 'phone-375',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 375, height: 812 }, hasTouch: true },
+    },
     { name: 'desktop-1280', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
   ],
   webServer: remote
