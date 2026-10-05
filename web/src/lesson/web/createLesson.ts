@@ -22,7 +22,7 @@ import { HtmlRecitationPlayer } from './recitationPlayer';
 import { MAX_REPORT_MS, WavProjectRecorder } from './recorder';
 import { aiSpeakPost, ServerVoice, serverVoiceEnabled } from './serverVoice';
 import { SpeechTeacher } from './speechTeacher';
-import { aiServerUrl, createProjectVerifier } from './projectVerifier';
+import { aiServerUrl } from './projectVerifier';
 import type { RawLineVoice } from '../ports';
 
 const CACHE_NAME = 'gharsah-quran-audio-v1';
@@ -144,10 +144,11 @@ export function createWebLesson(o: {
     player,
     recorder,
     sink: o.sink ?? new SupabaseProgressSink(o.session, o.script),
-    // the project report's voice check on the AI server (not in the DEV preview's local sink)
-    projectVerifier: o.sink
-      ? undefined
-      : createProjectVerifier({ childId: o.session.childId, lang, busyMessage: o.verifyBusyMessage ?? '' }),
+    // 2026-10-04 (product owner): whether the child really did the project is no longer checked
+    // from this voice report — the teacher asks about it at the start of the NEXT hadith lesson
+    // (the AI server's follow-up; see lesson/server/completedProjects.ts). So no /agent/actions/verify
+    // call here: the report is only recorded and saved, as before the check existed.
+    projectVerifier: undefined,
     rawVoice,
     // ~600 ms of quiet after a question before the mic listens (a natural pause)
     // A pure voice call: ~6 s of silence → one nudge, again → the step continues by
