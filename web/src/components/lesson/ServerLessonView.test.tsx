@@ -146,6 +146,22 @@ describe('ServerLessonView — the live call', () => {
     expect(screen.getByText('قيد المراجعة الشرعية')).toBeInTheDocument();
   });
 
+  it('the server hadith text is shown like the ayat, with its word table (2026-10-05)', () => {
+    view(
+      live({
+        segment: 'hadith',
+        hadith: { title: 'برّ الوالدين', source: 'متفق عليه' },
+        hadithText: 'HADITH-TEXT',
+        words: [{ word: 'صحابتي', meaning: 'مصاحبتي' }],
+      }),
+    );
+    expect(screen.getByText('حديث اليوم عن برّ الوالدين')).toBeInTheDocument();
+    expect(screen.getByText('«HADITH-TEXT»')).toBeInTheDocument();
+    expect(screen.getByText('صحابتي')).toBeInTheDocument();
+    expect(screen.getByText('مصاحبتي')).toBeInTheDocument();
+    expect(screen.queryByText('قيد المراجعة الشرعية')).toBeNull();
+  });
+
   it('warming: the teacher getting ready, no input yet', () => {
     view({ ...initialServerState, phase: 'warming' });
     expect(screen.getByText('المعلّم يتجهّز… لحظات ونبدأ')).toBeInTheDocument();

@@ -8,7 +8,7 @@
 import { ayahTranslation, hadithTranslation } from '../../content/translations';
 import { hadithRepo } from '../../content/library';
 import { hadithMatchesTopic } from '../../lesson/server/progressMap';
-import { normalizeArabic } from '../../lesson/server/serverLesson';
+import { normalizeArabic, SERVER_HADITH_TEXT_APPROVED } from '../../lesson/server/serverLesson';
 import { TranslationNote } from './Translation';
 import { useEffect, useState } from 'react';
 
@@ -188,6 +188,28 @@ function Middle({ state: s, onAyat, dim }: { state: ServerLessonState; onAyat: b
           </span>
           <TranslationNote t={hadithTranslation(lang, ours.id, ours.isApproved)} />
         </Card>
+      );
+    // The server's own hadith text, shown like the ayat (SERVER_HADITH_TEXT_APPROVED): the topic
+    // chip + the text, then the word table once the meaning stage sends it. Same card as above.
+    if (SERVER_HADITH_TEXT_APPROVED && s.hadithText)
+      return (
+        <>
+          <Card className="items-center gap-[10px] text-center">
+            <span className="rounded-pill bg-berry-tint px-[14px] py-[6px] text-[16px] font-extrabold text-berry-deep">
+              {fill(lang, m.lesson.hadith.about, {
+                topic: s.hadith.title ? hadithLabelIn(lang, s.hadith.title) : m.lesson.hadith.today,
+              })}
+            </span>
+            <span
+              dir={lang === 'ar' ? 'rtl' : 'ltr'}
+              lang={lang}
+              className={cx('text-[22px] leading-[1.9]', lang === 'ar' && 'font-classical')}
+            >
+              «{s.hadithText}»
+            </span>
+          </Card>
+          {s.words.length > 0 && <WordsTable words={s.words} />}
+        </>
       );
     return (
       <>
