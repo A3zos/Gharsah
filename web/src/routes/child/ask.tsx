@@ -134,30 +134,8 @@ export function AskScreen({
     };
   }, [s.phase, question, service, lang]);
 
-  // an answer / the goodbye: the teacher says it (lip-synced); after the goodbye → home
-  const said = s.phase === 'answer' || s.phase === 'goodbye' ? (s.answer?.text ?? '') : '';
-  const phase = s.phase;
-  useEffect(() => {
-    if (!said) return;
-    let live = true;
-    let home: ReturnType<typeof setTimeout> | undefined;
-    const voiced = teacherRef.current ? teacherRef.current.speak(said).catch(() => {}) : Promise.resolve();
-    void voiced.then(() => {
-      if (!live) return;
-      setSaidDone(said);
-      if (phase === 'goodbye') home = setTimeout(() => navigate(paths.child.home), ASK_GOODBYE_HOME_MS);
-    });
-    return () => {
-      live = false;
-      clearTimeout(home);
-      teacherRef.current?.stop();
-    };
-  }, [said, phase, navigate]);
-  const talking = !!teacher && !!said && saidDone !== said;
+  // the question that has waited long (a cold start) gets its gentle line
   const slow = s.phase === 'thinking' && slowFor === question;
-
-  useEffect(() => () => teacherRef.current?.stop(), []);
-
   const answered = s.phase === 'answer' || s.phase === 'goodbye';
   const sources = s.answer && 'sources' in s.answer ? s.answer.sources : [];
   const line = answered
@@ -178,6 +156,48 @@ export function AskScreen({
               ? t.askParent
               : null;
 
+  // the teacher SPEAKS (lip-synced) — product owner 2026-10-05: nothing she says is written under her
+  // picture while a voice exists. Her lines: the greeting (once), a notice, an answer, the goodbye; after
+  // the goodbye → home. (No voice at all → the text bubble below stays, so a line is never lost.)
+  const [greeted, setGreeted] = useState(false);
+  const greeting = t.greeting[gender];
+  const said = answered
+    ? (s.answer?.text ?? '')
+    : !teacher
+      ? ''
+      : s.phase === 'idle'
+        ? s.note
+          ? t[s.note]
+          : greeted
+            ? ''
+            : greeting
+        : s.phase === 'notReady'
+          ? t.notReady
+          : s.phase === 'sensitive' || s.phase === 'offTopic'
+            ? t.askParent
+            : '';
+  const phase = s.phase;
+  useEffect(() => {
+    if (!said) return;
+    let live = true;
+    let home: ReturnType<typeof setTimeout> | undefined;
+    const voiced = teacherRef.current ? teacherRef.current.speak(said).catch(() => {}) : Promise.resolve();
+    void voiced.then(() => {
+      if (!live) return;
+      setSaidDone(said);
+      if (said === greeting) setGreeted(true);
+      if (phase === 'goodbye') home = setTimeout(() => navigate(paths.child.home), ASK_GOODBYE_HOME_MS);
+    });
+    return () => {
+      live = false;
+      clearTimeout(home);
+      teacherRef.current?.stop();
+    };
+  }, [said, phase, navigate, greeting]);
+  const talking = !!teacher && !!said && saidDone !== said;
+
+  useEffect(() => () => teacherRef.current?.stop(), []);
+
   return (
     <CallFrame desktop={desktop}>
       <AskHeader title={t.title} closeLabel={t.close} onClose={() => navigate(paths.child.home)} />
@@ -190,7 +210,7 @@ export function AskScreen({
         happy={s.phase === 'notReady' || s.phase === 'answer' || s.phase === 'goodbye'}
         compact={s.phase === 'answer' && sources.length > 0}
       >
-        {line && (
+        {line && !teacher && (
           <p
             role="status"
             aria-live="polite"
@@ -352,8 +372,8 @@ function AskInputs({
   dispatch: (e: Parameters<typeof askReducer>[1]) => void;
 }) {
   const t = useI18n().m.child.ask;
-  const [typingOn, setTyping] = useState(false);
-  const typing = typingOn || !mic;
+  // the keyboard only when this browser has no mic (the «اكتب سؤالك» toggle was removed 2026-10-05)
+  const typing = !mic;
   const [text, setText] = useState('');
   const send = (e: React.FormEvent) => {
     e.preventDefault();
@@ -418,16 +438,6 @@ function AskInputs({
               strokeLinecap="round"
             />
           </svg>
-        </button>
-      )}
-      {mic && !listening && (
-        <button
-          type="button"
-          onClick={() => setTyping((v) => !v)}
-          aria-expanded={typing}
-          className="min-h-[44px] cursor-pointer border-0 bg-transparent px-[12px] text-[14.5px] font-bold text-deep-green underline-offset-4 hover:underline"
-        >
-          {t.typeToggle}
         </button>
       )}
     </div>

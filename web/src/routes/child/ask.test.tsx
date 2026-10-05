@@ -93,18 +93,22 @@ afterEach(() => {
 
 const ANSWER = 'نصلي لأن الله أمرنا بالصلاة، وهي صلة بيننا وبين ربنا يا بطل.';
 
-test('Arabic: a chip → thinking → the teacher SAYS the answer, shown exactly as received; the chips come back', async () => {
+test('Arabic: a chip → thinking → the teacher SAYS the answer — nothing she says is written; the chips come back', async () => {
   const s = manualService();
   const v = fakeTeacher();
   renderAsk({ service: s.service, teacher: v.teacher, voice: manualVoice().voice });
-  expect(await screen.findByText('اسألني أي سؤال عن دينك يا بطل!')).toBeInTheDocument();
+  // 2026-10-05: with a voice the teacher only speaks — her greeting and answer are never written
+  await screen.findByRole('button', { name: 'لماذا نصلّي؟' });
+  expect(v.said).toEqual(['اسألني أي سؤال عن دينك يا بطل!']);
+  expect(screen.queryByText('اسألني أي سؤال عن دينك يا بطل!')).toBeNull();
   expect(s.warm).toHaveBeenCalledTimes(1); // the session starts when the screen opens
   fireEvent.click(screen.getByRole('button', { name: 'لماذا نصلّي؟' }));
-  expect(screen.getByRole('status')).toHaveTextContent('لحظة أفكّر…');
+  expect(screen.queryByRole('status')).toBeNull();
   expect(s.asked).toEqual(['لماذا نصلّي؟']);
   await s.answer({ kind: 'answer', text: ANSWER, sources: [] });
-  expect(screen.getByRole('status').textContent).toBe(ANSWER);
-  expect(v.said).toEqual([ANSWER]);
+  expect(screen.queryByRole('status')).toBeNull();
+  expect(screen.queryByText(ANSWER)).toBeNull();
+  expect(v.said).toEqual(['اسألني أي سؤال عن دينك يا بطل!', ANSWER]);
   // ready for the next question: the chips, the mic and the keyboard are back
   expect(screen.getAllByRole('tab')).toHaveLength(4);
   expect(screen.getByRole('button', { name: 'اضغط وتكلّم' })).toBeInTheDocument();
@@ -144,7 +148,7 @@ test('expects none: the teacher says goodbye, then the child home after 2 s', as
   fireEvent.change(await screen.findByLabelText('سؤالك'), { target: { value: 'مع السلامة' } });
   fireEvent.click(screen.getByRole('button', { name: 'أرسل' }));
   await s.answer({ kind: 'goodbye', text: 'مع السلامة يا بطل، في أمان الله!' });
-  expect(screen.getByRole('status')).toHaveTextContent('مع السلامة يا بطل، في أمان الله!');
+  expect(v.said).toContain('مع السلامة يا بطل، في أمان الله!'); // said, not written
   expect(screen.queryByLabelText('سؤالك')).toBeNull(); // nothing more to ask
   vi.useFakeTimers();
   await v.done();
