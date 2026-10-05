@@ -265,6 +265,12 @@ export interface ActionItem {
   readonly title: string;
   readonly action: string;
   readonly done: boolean;
+  /**
+   * The next-hadith-lesson check (ai/API_web.md 2026-10-04): «done» = the teacher verified the
+   * project when the child opened the next hadith lesson; «pending_next_lesson» = a project was
+   * told, the teacher will ask about it next lesson; «no_project». Absent on an older server.
+   */
+  readonly status?: 'done' | 'pending_next_lesson' | 'no_project';
 }
 
 export function parseActionItems(json: unknown): ActionItem[] {
@@ -273,6 +279,16 @@ export function parseActionItems(json: unknown): ActionItem[] {
     const hadithId = int(i.hadith_id);
     return hadithId === null
       ? []
-      : [{ hadithId, title: str(i.title) ?? '', action: str(i.action) ?? '', done: i.done === true }];
+      : [
+          {
+            hadithId,
+            title: str(i.title) ?? '',
+            action: str(i.action) ?? '',
+            done: i.done === true,
+            ...(i.status === 'done' || i.status === 'pending_next_lesson' || i.status === 'no_project'
+              ? { status: i.status }
+              : {}),
+          },
+        ];
   });
 }

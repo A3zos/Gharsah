@@ -391,11 +391,15 @@ export const NUDGE_REPEAT: Record<Gender, string> = {
 export const MOVE_ON_UNREPEATED = 'نسمعها مرة ثانية من القارئ ونكمل';
 /** After the reciter played the whole surah, before the repeats: the mic never opens silently. */
 export const REPEATS_START: Record<Gender, string> = {
-  boy: 'الحين نبدأ نردّد الآيات مع بعض… جاهز؟',
-  girl: 'الحين نبدأ نردّد الآيات مع بعض… جاهزة؟',
+  boy: 'جاهز؟',
+  girl: 'جاهزة؟',
 };
-/** The child answered REPEATS_START. */
-export const REPEATS_START_REPLY = 'ممتاز! يلا نبدأ بالآية الأولى';
+/**
+ * The child answered REPEATS_START. Empty on purpose (2026-10-04): the server's own next line
+ * («والآن وقت التلاوة… سأسمّعك كل آية») already says «now we start», so a second «let's start»
+ * here made the teacher announce the recitation twice. An empty line is never spoken.
+ */
+export const REPEATS_START_REPLY = '';
 /** The whole surah was played and the child is asked to recite it. */
 export const WHOLE_SURAH_TURN: Record<Gender, string> = {
   boy: 'الحين دورك… سمّعني السورة كاملة بصوتك',
@@ -465,8 +469,8 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     nudgeAnswer: "I'm listening, champ — say it out loud",
     nudgeRepeat: "I'm listening… repeat it out loud",
     moveOnUnrepeated: "Let's hear it once more from the reciter, then carry on",
-    repeatsStart: "Now let's repeat the ayat together… ready?",
-    repeatsStartReply: "Excellent! Let's start with the first ayah",
+    repeatsStart: 'Ready, champ?',
+    repeatsStartReply: '',
     wholeSurahTurn: "Now it's your turn… recite the whole surah to me",
     toHadith:
       "Masha Allah, champ! You finished the surah. Now let's learn a hadith of the Prophet, peace and blessings be upon him",
@@ -479,8 +483,8 @@ export const FIXED_LINES: Record<AgentLang, FixedLines> = {
     nudgeAnswer: 'Aku mendengarkan, jagoan — ucapkan dengan suaramu',
     nudgeRepeat: 'Aku mendengarkan… tirukan dengan suaramu',
     moveOnUnrepeated: 'Kita dengarkan sekali lagi dari qari, lalu kita lanjutkan',
-    repeatsStart: 'Sekarang kita tirukan ayat-ayatnya bersama… siap?',
-    repeatsStartReply: 'Hebat! Ayo kita mulai dari ayat pertama',
+    repeatsStart: 'Siap, jagoan?',
+    repeatsStartReply: '',
     wholeSurahTurn: 'Sekarang giliranmu… setorkan seluruh surahnya padaku',
     toHadith:
       "Masya Allah, jagoan! Kamu sudah menyelesaikan surahnya. Sekarang kita belajar hadis Nabi Muhammad shallallahu 'alaihi wa sallam",
@@ -1165,7 +1169,10 @@ export class ServerLesson {
       if (heard !== 'silent' && heard.spoke) {
         if (!repeat) {
           // our «let's start» only when we don't know the child's words (they may have asked something)
-          if (startsRepeats && !heard.text) await this.say(this.fixed('repeatsStartReply'), abort);
+          if (startsRepeats && !heard.text) {
+            const reply = this.fixed('repeatsStartReply');
+            if (reply.trim()) await this.say(reply, abort);
+          }
           return this.respond(turn, heard);
         }
         const v = await this.verifyRepeat(turn, heard);

@@ -41,7 +41,8 @@ test.each(['en', 'id'] as const)('%s: every fixed line, for both genders, in tha
   for (const k of KEYS) {
     for (const g of ['boy', 'girl'] as const) {
       const t = fixedLine(lang, k, g);
-      expect(t.length, `${lang} ${k}`).toBeGreaterThan(0);
+      // «repeatsStartReply» is empty on purpose (2026-10-04): a second «let's start» doubled the server's own
+      if (k !== 'repeatsStartReply') expect(t.length, `${lang} ${k}`).toBeGreaterThan(0);
       expect(/[؀-ۿ]/.test(t), `${lang} ${k}: no Arabic`).toBe(false);
       expect(QURANIC.test(t)).toBe(false);
     }

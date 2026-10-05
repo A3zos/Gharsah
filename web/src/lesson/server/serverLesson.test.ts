@@ -1051,11 +1051,9 @@ describe('ServerLesson — recitation', () => {
     void t.lesson.start();
     await vi.waitFor(() => expect(t.server.messages()).toContain('أكمل الدرس'));
     const lastPlay = events.indexOf(`play:${EVERYAYAH(4)}`); // the end of the first (whole-surah) recitation
-    expect(events.slice(lastPlay + 1, lastPlay + 4)).toEqual([
-      `say:${REPEATS_START.boy}`,
-      'listen:answer',
-      `say:${REPEATS_START_REPLY}`,
-    ]);
+    // one short «ready?» — no second «let's start» (the server's own line announces the recitation)
+    expect(events.slice(lastPlay + 1, lastPlay + 3)).toEqual([`say:${REPEATS_START.boy}`, 'listen:answer']);
+    expect(events).not.toContain(`say:${REPEATS_START_REPLY}`);
     expect(t.server.messages()).toContain('أكمل الدرس');
   });
 

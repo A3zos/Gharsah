@@ -235,6 +235,17 @@ describe('other responses', () => {
       }),
     ).toEqual([{ hadithId: 6, title: 'الغضب', action: 'اهدأ', done: true }]);
   });
+
+  it('parseActionItems keeps the next-lesson status (2026-10-04) and drops an unknown one', () => {
+    const r = parseActionItems({
+      items: [
+        { hadith_id: 9, title: 'a', action: 'x', done: true, status: 'done', project: 'ساعدت أمي' },
+        { hadith_id: 10, title: 'b', action: 'y', done: false, status: 'pending_next_lesson' },
+        { hadith_id: 6, title: 'c', action: 'z', done: false, status: 'weird' },
+      ],
+    });
+    expect(r.map((i) => i.status)).toEqual(['done', 'pending_next_lesson', undefined]);
+  });
 });
 
 describe('ayah numbering — Al-Ikhlas as the live server sends it (2026-10-03)', () => {
