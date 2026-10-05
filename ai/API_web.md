@@ -377,11 +377,11 @@ async function markActionDone(deviceId: string, hadithId: number) {
 جلسة منفصلة تمامًا عن الدرس العادي، تظهر فقط بعد مرور 24 ساعة على إتمام سورة/حديث بالكامل، لاختبار ثبات الحفظ.
 
 **القرآن:**
-- `POST /agent/taseem/start` — Body: `{"device_id": "...", "gender": "boy", "surah_no": 112, "chunk": 0}`. الرد وكل الردود التالية عبر نفس `POST /agent/message` بنفس `session_id` — يحمل `"kind": "taseem"`، و`stages` هنا آية بآية (`{"id":"0","label":"الآية 1"}`) بدل مراحل الدرس المعتادة.
+- `POST /agent/taseem/start` — Body: `{"device_id": "...", "gender": "boy", "surah_no": 112, "chunk": 0, "child_name": "أحمد"}` (`child_name` اختياري — الاسم الحقيقي من قاعدة البيانات؛ بدونه يستخدم المعلم لقبًا لطيفًا. أُضيف 2026-10-04 وكان يُتجاهل قبل ذلك). الرد وكل الردود التالية عبر نفس `POST /agent/message` بنفس `session_id` — يحمل `"kind": "taseem"`، و`stages` هنا آية بآية (`{"id":"0","label":"الآية 1"}`) بدل مراحل الدرس المعتادة.
 - `GET /agent/taseem/status?device_id=...` — `{"items": [{"item_key": "112:0", "ready": true, "hours_since": 30.2, "last_score": 0.82, "surah_no": 112, "chunk": 0, "title": "سورة الإخلاص", "meta": "..."}]}`. فقط المقاطع المُتمّة فعلاً تظهر هنا. `ready=true` يعني مرّ عليها 24 ساعة فأكثر.
 
 **الحديث:**
-- `POST /agent/htaseem/start` — Body: `{"device_id": "...", "gender": "boy", "hadith_id": 6}`. محاولة واحدة فقط (مع إعادة واحدة مسموح بها) — لا سلسلة مراحل حقيقية، `stage_index` دائمًا `0`. شكل الرد أبسط من بقية الردود: `{session_id, kind:"htaseem", teacher, female, stage_index:0, stages, say, actions, expects, quick_replies, hadith_title, score}` — **لا يوجد `child_name`/`profile`/`recitation_scores` هنا**.
+- `POST /agent/htaseem/start` — Body: `{"device_id": "...", "gender": "boy", "hadith_id": 6, "child_name": "أحمد"}` (`child_name` اختياري، نفس القاعدة). محاولة واحدة فقط (مع إعادة واحدة مسموح بها) — لا سلسلة مراحل حقيقية، `stage_index` دائمًا `0`. شكل الرد أبسط من بقية الردود: `{session_id, kind:"htaseem", teacher, female, stage_index:0, stages, say, actions, expects, quick_replies, hadith_title, score}` — **لا يوجد `child_name`/`profile`/`recitation_scores` هنا**.
 - `GET /agent/htaseem/status?device_id=...` — نفس شكل حالة القرآن لكن بحقل `hadith_id` بدل `surah_no`/`chunk`.
 
 > **مهم لفريق الويب**: لا تفترضوا نوع الجلسة يدويًا — بعد أي `/agent/.../start`، أرسلي كل رد لاحق من الطفل إلى `POST /agent/message` بنفس `session_id`، واقرئي حقل `kind` في كل رد لتعرفي أي واجهة/منطق تعرضين (السيرفر هو الذي يحدد ذلك تلقائيًا حسب مكان وجود `session_id`).

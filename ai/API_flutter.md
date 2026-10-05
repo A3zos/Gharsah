@@ -228,8 +228,8 @@
 
 - **`GET /agent/taseem/status?device_id=...`** → `{"items": [{"item_key": "2:0", "ready": true, "hours_since": 30.5, "last_score": 0.9, "surah_no": 2, "chunk": 0, "title": "...", "meta": "..."}]}` — كل سورة/جزء أنهاه الطفل فعلاً، مع `ready` (هل مضى يوم كامل عليه) و`hours_since` و`last_score` (آخر درجة تسميع سابقة، أو `null` إن لم يُختبر من قبل). اعرضوا زر "تسميع" فقط للعناصر التي `ready: true`.
 - **`GET /agent/htaseem/status?device_id=...`** → نفس الشكل لكن بحقول `hadith_id`/`title` بدل `surah_no`/`chunk`/`meta`.
-- **`POST /agent/taseem/start`** `{"device_id", "gender", "surah_no", "chunk"}` → يبدأ جلسة تسميع، يرجع نفس شكل رد المحادثة العادي (`say`/`expects`/`actions`/`quick_replies`) لكن **`kind: "taseem"`**، و`stages` هنا تمثّل آيات هذا الجزء فقط (مو مراحل الدرس الكاملة) — ⚠️ لا يوجد فيه `stage`/`profile`/`child_name`/`llm` كما في رد المحادثة العادي.
-- **`POST /agent/htaseem/start`** `{"device_id", "gender", "hadith_id"}` → مثله لمسار الحديث، **`kind: "htaseem"`**.
+- **`POST /agent/taseem/start`** `{"device_id", "gender", "surah_no", "chunk", "child_name"?}` (`child_name` اختياري: الاسم الحقيقي من قاعدة البيانات، أُضيف 2026-10-04؛ بدونه لقب لطيف) → يبدأ جلسة تسميع، يرجع نفس شكل رد المحادثة العادي (`say`/`expects`/`actions`/`quick_replies`) لكن **`kind: "taseem"`**، و`stages` هنا تمثّل آيات هذا الجزء فقط (مو مراحل الدرس الكاملة) — ⚠️ لا يوجد فيه `stage`/`profile`/`child_name`/`llm` كما في رد المحادثة العادي.
+- **`POST /agent/htaseem/start`** `{"device_id", "gender", "hadith_id", "child_name"?}` → مثله لمسار الحديث، **`kind: "htaseem"`**.
 - المتابعة بعد `start` تكون عبر **نفس** `POST /agent/message` المعتاد بـ `session_id` الجلسة الجديدة (السيرفر يتعرّف تلقائيًا أنها جلسة تسميع لا جلسة تعلّم عادية) — لا حاجة لمسار `/message` منفصل. وكذلك `POST /agent/score-recitation` يعمل معها بنفس الطريقة (`expects=="repeat"`).
 - عند الانتهاء: رد بـ `expects: "none"` يحتوي الدرجة النهائية ضمن `say` نصيًا (مثال: "درجتك في هذا التسميع: 82 من 100")، ويُسجَّل تلقائيًا في تقدّم الطفل.
 
