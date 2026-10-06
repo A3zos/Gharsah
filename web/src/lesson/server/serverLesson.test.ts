@@ -194,9 +194,8 @@ describe('ServerLesson — mocked end-to-end', () => {
       { mode: 'quran', gender: 'boy', device_id: 'dev-1', lang: 'ar' },
       { mode: 'hadith', gender: 'boy', device_id: 'dev-1', lang: 'ar' },
     ]);
-    // the review status was asked (the child can be heard); nothing ready → no review session
-    expect(server.calls.some((c) => c.path === '/agent/taseem/status')).toBe(true);
-    expect(server.calls.some((c) => c.path === '/agent/taseem/start')).toBe(false);
+    // the daily lesson never asks for the recall (taseem / htaseem) — that is the review session only
+    expect(server.calls.some((c) => c.path.includes('taseem'))).toBe(false);
   });
 
   it('the server teaching another surah → the built-in lesson (which follows the plan)', async () => {
@@ -461,20 +460,16 @@ describe('ServerLesson — hearing the child', () => {
     expect(listen).toHaveBeenCalledTimes(1);
   });
 
-  it('a ready taseem runs first; the server sends no text and none is shown', async () => {
+  it('a ready taseem does NOT run in the daily lesson — recall is for the review session only (2026-10-06)', async () => {
     const server = new FakeAgentServer();
     server.readyTaseem = [{ item_key: '112:0', ready: true, surah_no: 112, chunk: 0 }];
     const t = setup({ server });
     void t.lesson.start();
     await until(t.lesson, (s) => s.segment === 'quran');
-    expect(server.calls.find((c) => c.path === '/agent/taseem/start')!.body).toEqual({
-      device_id: 'dev-1',
-      gender: 'boy',
-      surah_no: 112,
-      chunk: 0,
-    });
-    await at(t.lesson, 'greet', 'text');
-    expect(t.updates.filter((u) => u.stage !== 'listen_full')).toEqual([]); // the review wrote nothing
+    expect(server.calls.some((c) => c.path.includes('taseem'))).toBe(false);
+    expect(
+      server.calls.some((c) => c.path === '/agent/start' && (c.body as { mode?: string }).mode === 'quran'),
+    ).toBe(true);
   });
 });
 

@@ -708,7 +708,7 @@ export class ServerLesson {
       if (this.disposed) return;
       await this.askMic();
       if (this.disposed) return;
-      this.segments = await this.plan();
+      this.segments = this.plan();
       this.segIndex = 0;
       await this.startSegment(false);
     } finally {
@@ -716,19 +716,13 @@ export class ServerLesson {
     }
   }
 
-  /** Taseem first (it needs the child's voice — not when the mic was refused), then quran, then hadith. */
-  private async plan(): Promise<Segment[]> {
+  /**
+   * Today's plan: today's surah, then today's hadith — nothing else. The recall of earlier
+   * surahs / hadiths (taseem / htaseem) belongs to the REVIEW session only (product owner,
+   * 2026-10-06: «التسميع يكون وقت المراجعة بس»), so the daily lesson never asks the server for it.
+   */
+  private plan(): Segment[] {
     const out: Segment[] = [];
-    if (this.hears) {
-      const [q, h] = await Promise.all([
-        this.d.api.taseemReady(this.d.deviceId).catch(() => []),
-        this.d.api.htaseemReady(this.d.deviceId).catch(() => []),
-      ]);
-      const tq = q.find((r) => r.surahNo !== undefined);
-      if (tq) out.push({ kind: 'taseem', surahNo: tq.surahNo!, chunk: tq.chunk ?? 0 });
-      const th = h.find((r) => r.hadithId !== undefined);
-      if (th) out.push({ kind: 'htaseem', hadithId: th.hadithId! });
-    }
     // the day plan, in order: today's surah, then today's hadith
     if (this.d.startAt === 'hadith') {
       lessonLog('ai', 'resume at the hadith (surah done earlier today)');
