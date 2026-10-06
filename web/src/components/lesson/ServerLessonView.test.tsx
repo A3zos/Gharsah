@@ -61,7 +61,7 @@ describe('ServerLessonView — the live call', () => {
     expect(screen.getByText('كيف حالك يا بطل؟')).toBeInTheDocument();
   });
 
-  it('show_words: the words table under the hadith card', () => {
+  it('show_words: the words table is no longer shown (removed 2026-10-06)', () => {
     view(
       live({
         segment: 'hadith',
@@ -69,8 +69,8 @@ describe('ServerLessonView — the live call', () => {
         words: [{ word: 'الصدق', meaning: 'قول الحق' }],
       }),
     );
-    expect(screen.getByText('كلمات جديدة')).toBeInTheDocument();
-    expect(screen.getByText('قول الحق')).toBeInTheDocument();
+    expect(screen.queryByText('كلمات جديدة')).toBeNull();
+    expect(screen.queryByText('قول الحق')).toBeNull();
   });
 
   it('a pure voice call: no reply buttons, no «اكتب», no text field — only the end-call ✕', () => {
@@ -146,7 +146,7 @@ describe('ServerLessonView — the live call', () => {
     expect(screen.getByText('قيد المراجعة الشرعية')).toBeInTheDocument();
   });
 
-  it('the server hadith text is shown like the ayat, with its word table (2026-10-05)', () => {
+  it('the server hadith text is shown like the ayat, without a word table (2026-10-06)', () => {
     view(
       live({
         segment: 'hadith',
@@ -157,8 +157,8 @@ describe('ServerLessonView — the live call', () => {
     );
     expect(screen.getByText('حديث اليوم عن برّ الوالدين')).toBeInTheDocument();
     expect(screen.getByText('«HADITH-TEXT»')).toBeInTheDocument();
-    expect(screen.getByText('صحابتي')).toBeInTheDocument();
-    expect(screen.getByText('مصاحبتي')).toBeInTheDocument();
+    expect(screen.queryByText('صحابتي')).toBeNull();
+    expect(screen.queryByText('مصاحبتي')).toBeNull();
     expect(screen.queryByText('قيد المراجعة الشرعية')).toBeNull();
   });
 

@@ -193,12 +193,11 @@ function Middle({ state: s, onAyat, dim }: { state: ServerLessonState; onAyat: b
         </Card>
       );
     // The server's own hadith text, shown like the ayat (SERVER_HADITH_TEXT_APPROVED): the topic
-    // chip + the text, then the word table once the meaning stage sends it. Same card as above.
+    // chip + the text. Same card as above. (The words table — show_words — was removed 2026-10-06.)
     if (SERVER_HADITH_TEXT_APPROVED && s.hadithText)
       return (
         <>
-          {/* overflow-y-auto: when the word table below takes the room, the hadith scrolls inside its
-              card instead of being cut off (same behaviour as the surah card) — no look change */}
+          {/* overflow-y-auto: a long hadith scrolls inside its card instead of being cut off */}
           <Card className="items-center gap-[10px] overflow-y-auto text-center">
             <span className="rounded-pill bg-berry-tint px-[14px] py-[6px] text-[16px] font-extrabold text-berry-deep">
               {fill(lang, m.lesson.hadith.about, {
@@ -213,7 +212,6 @@ function Middle({ state: s, onAyat, dim }: { state: ServerLessonState; onAyat: b
               «{s.hadithText}»
             </span>
           </Card>
-          {s.words.length > 0 && <WordsTable words={s.words} />}
         </>
       );
     return (
@@ -221,7 +219,6 @@ function Middle({ state: s, onAyat, dim }: { state: ServerLessonState; onAyat: b
         <HadithPendingCard
           topic={s.hadith.title ? hadithLabelIn(lang, s.hadith.title) : m.lesson.hadith.today}
         />
-        {s.words.length > 0 && <WordsTable words={s.words} />}
       </>
     );
   }
@@ -231,24 +228,6 @@ function Middle({ state: s, onAyat, dim }: { state: ServerLessonState; onAyat: b
 /** Today's hadith in OUR content (content/hadith/hadith.json), matched by its title / topic. */
 function ourHadith(title: string) {
   return hadithRepo.all().find((h) => hadithMatchesTopic(title, h.topic, normalizeArabic)) ?? null;
-}
-
-/** show_words — the hadith's new words and their meanings (filled only once the hadith is approved). */
-function WordsTable({ words }: { words: ServerLessonState['words'] }) {
-  const { m } = useI18n();
-  return (
-    <Card className="mt-[10px] shrink-0 grow-0 gap-[6px]">
-      <span className="text-[16px] font-extrabold text-text-muted">{m.lesson.hadith.newWords}</span>
-      <dl className="m-0 flex flex-col gap-[6px]">
-        {words.map((w) => (
-          <div key={w.word} className="flex gap-[8px] text-[16px] leading-[1.6]">
-            <dt className="font-classical font-bold">{w.word}</dt>
-            <dd className="m-0 text-text-muted">{w.meaning}</dd>
-          </div>
-        ))}
-      </dl>
-    </Card>
-  );
 }
 
 function Bottom({
