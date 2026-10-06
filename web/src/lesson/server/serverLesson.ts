@@ -999,7 +999,13 @@ export class ServerLesson {
       turn.kind === 'quran' && turn.actions.some((a) => a.type === 'play_all' && a.urls.length > 1);
     try {
       for (const a of turn.actions) this.show(a, turn);
-      const line = judged ? ENCOURAGE_LINE : turn.say;
+      let line = judged ? ENCOURAGE_LINE : turn.say;
+      // A hadith has no reciter audio to play again after a judging line: the encouragement alone would
+      // leave the child without the hadith to repeat. Keep the server's «listen, then repeat: <hadith>» part.
+      if (judged && turn.kind === 'hadith') {
+        const listen = turn.say.indexOf('استمع');
+        if (listen >= 0) line = `${ENCOURAGE_LINE} ${turn.say.slice(listen)}`;
+      }
       if (line.trim()) await this.say(line, abort);
       const plays = audio.length > 0 || (judged && this.turnAudio.length > 0);
       if (line.trim() && plays) await this.guard(abort, this.beat(LINE_GAP_MS));

@@ -313,6 +313,48 @@ describe('ServerLesson — the previous hadith’s project follow-up (2026-10-06
   });
 });
 
+const MEMORIZE_RETRY_STAGES: StageSpec[] = [
+  { id: 'greet', label: 'الترحيب', say: 'أهلًا!', expects: 'text', quick: ['تمام'] },
+  { id: 'intro', label: 'المقدمة', say: 'أي حديث تحب؟', expects: 'text', quick: ['برّ الوالدين', 'الكذب'] },
+  {
+    id: 'memorize',
+    label: 'الحفظ',
+    turns: 2,
+    say: 'نسيت كلمة: أُمُّكَ. استمع إلى الحديث، ثم ردّده بصوتك بعدي: SERVER-HADITH-TEXT',
+    expects: 'repeat',
+    quick: ['تخطّي'],
+  },
+  { id: 'done', label: 'النهاية', say: 'بارك الله فيك.', expects: 'none' },
+];
+
+describe('ServerLesson — the hadith is said again after a judging line (2026-10-06)', () => {
+  it('the encouragement is followed by the «listen, then repeat» part with the hadith — never the encouragement alone', async () => {
+    const server = new FakeAgentServer(QURAN_STAGES, MEMORIZE_RETRY_STAGES);
+    const presence: PresenceListener = {
+      waitForSpeech: async (_s, o) => {
+        if (o?.purpose === 'answer') return new Promise<never>(() => {});
+        o?.onVoiced?.(1500);
+        return 'spoke';
+      },
+    };
+    const t = setup({ server, startAt: 'hadith', presence });
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('تمام');
+    await at(t.lesson, 'intro', 'text');
+    t.lesson.answer('برّ الوالدين');
+    await until(t.lesson, (s) => s.phase === 'finished');
+    // the unverifiable «نسيت كلمة» is never claimed...
+    expect(t.spoken.some((x) => x.includes('نسيت'))).toBe(false);
+    // ...but the child still hears the encouragement AND the hadith to repeat
+    expect(
+      t.spoken.some(
+        (x) => x.startsWith(ENCOURAGE_LINE) && x.includes('استمع') && x.includes('SERVER-HADITH-TEXT'),
+      ),
+    ).toBe(true);
+  });
+});
+
 describe('ServerLesson — hearing the child', () => {
   it('a recitation goes to score-recitation and its transcription is the answer', async () => {
     const recorder: UtteranceRecorder = { record: async () => new Blob(['x']) };
