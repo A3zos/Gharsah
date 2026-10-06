@@ -65,6 +65,13 @@ describe('parseTurn', () => {
     expect(parseTurn({ ...base, kind: 'htaseem' }, 'hadith').kind).toBe('htaseem');
   });
 
+  it('followup / followup_ack: the project question and the teacher’s reaction (2026-10-06)', () => {
+    expect(parseTurn(base, 'hadith')).toMatchObject({ followup: false, followupAck: null });
+    expect(parseTurn({ ...base, followup: true }, 'hadith').followup).toBe(true);
+    expect(parseTurn({ ...base, followup: 'yes' }, 'hadith').followup).toBe(false);
+    expect(parseTurn({ ...base, followup_ack: 'سجّلته' }, 'hadith').followupAck).toBe('سجّلته');
+  });
+
   it.each(['text', 'continue', 'repeat', 'choice', 'none'] as const)('keeps expects=%s', (e) => {
     expect(parseTurn({ ...base, expects: e }, 'quran').expects).toBe(e);
   });

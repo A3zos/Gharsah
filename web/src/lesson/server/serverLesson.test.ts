@@ -253,6 +253,66 @@ describe('ServerLesson — mocked end-to-end', () => {
 
 const order = (s: string) => ['listen_full', 'ayah_repeat', 'full_twice', 'hadith', 'done'].indexOf(s);
 
+const FOLLOWUP_STAGES: StageSpec[] = [
+  { id: 'greet', label: 'الترحيب', say: 'أهلًا من جديد!', expects: 'text', quick: ['تمام'] },
+  {
+    id: 'intro',
+    label: 'المقدمة',
+    say: 'ما هو المشروع الذي طبّقته من حديث الكذب؟',
+    expects: 'text',
+    quick: ['لم أطبّق مشروعًا بعد', 'تخطّي'],
+    extra: { followup: true },
+  },
+  {
+    id: 'intro',
+    label: 'المقدمة',
+    say: 'ما شاء الله، سجّلته في مشاريعك المنجزة. أي حديث تحب؟',
+    expects: 'text',
+    quick: ['برّ الوالدين', 'الكذب'],
+    extra: { followup_ack: 'ما شاء الله، سجّلته في مشاريعك المنجزة.' },
+  },
+  {
+    id: 'text',
+    label: 'النص',
+    say: 'اسمع الحديث.',
+    expects: 'continue',
+    actions: () => [
+      { type: 'show_ayat', ayat: ['SERVER-HADITH-TEXT'], hadith_title: 'برّ الوالدين', source: 'x' },
+    ],
+  },
+  { id: 'done', label: 'النهاية', say: 'بارك الله فيك.', expects: 'none' },
+];
+
+describe('ServerLesson — the previous hadith’s project follow-up (2026-10-06)', () => {
+  it('the question reaches the child, their own answer is sent, the reaction is said before today’s hadith', async () => {
+    const server = new FakeAgentServer(QURAN_STAGES, FOLLOWUP_STAGES);
+    const t = setup({ server, startAt: 'hadith' });
+    void t.lesson.start();
+    await at(t.lesson, 'greet', 'text');
+    t.lesson.answer('تمام');
+    // the follow-up question is NOT answered for the child
+    await at(t.lesson, 'intro', 'text');
+    expect(server.messages()).toEqual(['تمام']);
+    expect(t.spoken.some((x) => x.includes('ما هو المشروع الذي طبّقته'))).toBe(true);
+    t.lesson.answer('ساعدت أمي في ترتيب البيت');
+    await at(t.lesson, 'text', 'continue');
+    // the child's own words went to the server; only then was today's hadith chosen for them
+    expect(server.messages()).toEqual(['تمام', 'ساعدت أمي في ترتيب البيت', 'برّ الوالدين']);
+    // the reaction is said in front of the hadith — and «which hadith?» is never asked
+    expect(t.spoken.some((x) => x.startsWith('ما شاء الله، سجّلته في مشاريعك المنجزة.'))).toBe(true);
+    expect(t.spoken.some((x) => x.includes('أي حديث تحب'))).toBe(false);
+  });
+
+  it('silence on the question is a skip, not «I did not apply anything»', async () => {
+    const server = new FakeAgentServer(QURAN_STAGES, FOLLOWUP_STAGES);
+    const t = setup({ server, startAt: 'hadith', presence: { waitForSpeech: async () => 'silent' } });
+    void t.lesson.start();
+    await until(t.lesson, (s) => s.phase === 'finished');
+    expect(server.messages()).toContain('تخطّي');
+    expect(server.messages()).not.toContain('لم أطبّق مشروعًا بعد');
+  });
+});
+
 describe('ServerLesson — hearing the child', () => {
   it('a recitation goes to score-recitation and its transcription is the answer', async () => {
     const recorder: UtteranceRecorder = { record: async () => new Blob(['x']) };

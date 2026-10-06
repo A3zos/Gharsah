@@ -55,6 +55,16 @@ export interface ServerTurn {
   readonly surahNo: number | null;
   readonly lessonTitle: string | null;
   readonly hadithTitle: string | null;
+  /**
+   * True on the hadith path's «what project did you apply from the last hadith?» turn
+   * (stage `intro`): the child's own answer — never answered for them with today's hadith.
+   */
+  readonly followup: boolean;
+  /**
+   * Set on the reply that ends that question: the teacher's reaction alone («سجّلته في
+   * مشاريعك المنجزة»…). The reply's `say` is this + the «which hadith?» question.
+   */
+  readonly followupAck: string | null;
   /** Ayah numbers in recitation_scores (quran). */
   readonly recitedAyat: readonly number[];
   /** Hadith ids in recitation_scores (hadith). */
@@ -201,6 +211,8 @@ export function parseTurn(json: unknown, mode: AgentMode): ServerTurn {
     surahNo: int(json.surah_no),
     lessonTitle: str(json.lesson_title),
     hadithTitle: str(json.hadith_title),
+    followup: json.followup === true,
+    followupAck: str(json.followup_ack),
     recitedAyat: scoreIds(json.recitation_scores, 'ayah'),
     hadithIds: scoreIds(json.recitation_scores, 'hadith'),
   };

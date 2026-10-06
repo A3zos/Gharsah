@@ -687,7 +687,9 @@ export class ServerLesson {
         ? SKIP_AYAH
         : t.expects === 'none'
           ? null
-          : (t.quickReplies[0] ?? DEFAULT_ANSWER);
+          : t.followup
+            ? skipReply(t.quickReplies)
+            : (t.quickReplies[0] ?? DEFAULT_ANSWER);
     if (next === null) void this.segmentEnded();
     else void this.send(next, false);
   }
@@ -1411,6 +1413,8 @@ export class ServerLesson {
       return this.send(first ?? DEFAULT_ANSWER);
     }
     if (h.text) return this.send(this.spokenAnswer(h.text) ?? h.text.trim());
+    // silence on the project question is a skip — never «I did not apply anything»
+    if (turn.followup) return this.send(skipReply(turn.quickReplies));
     return this.send(first ?? DEFAULT_ANSWER);
   }
 
@@ -1618,7 +1622,8 @@ export class ServerLesson {
     const t = this.turn;
     if (!t || this.disposed || this.halted) return;
     // «أي حديث؟» — whatever answered it (voice, a tap, the watchdog): today's hadith
-    if (t.kind === 'hadith' && t.stage === HADITH_CHOOSE_STAGE)
+    // — except the project follow-up, which shares the stage: that answer is the child's own
+    if (t.kind === 'hadith' && t.stage === HADITH_CHOOSE_STAGE && !t.followup)
       text = todayHadithAnswer(t.quickReplies, this.d.plan.hadithTopic);
     // en / id «continue» turns: the server doesn't take its own translated button back
     // («Complete the lesson» → it chats instead of moving on — live 2026-10-04); a plain
@@ -1651,7 +1656,23 @@ export class ServerLesson {
           : this.patient(() => this.d.api.message(t.sessionId, text, mode)),
       ),
     );
-    if (next) await this.play(next);
+    const turn = next ? await this.afterFollowup(next, mode) : null;
+    if (turn) await this.play(turn);
+  }
+
+  /**
+   * The project follow-up was just answered: the server now asks «which hadith?». Today's is
+   * chosen for the child silently — but the teacher's reaction to their project (registered
+   * in «المشاريع المنجزة» or not) is said first, in front of the hadith's own first turn.
+   */
+  private async afterFollowup(next: ServerTurn, mode: AgentMode): Promise<ServerTurn | null> {
+    if (!next.followupAck || next.followup || next.kind !== 'hadith' || next.stage !== HADITH_CHOOSE_STAGE)
+      return next;
+    const reply = todayHadithAnswer(next.quickReplies, this.d.plan.hadithTopic);
+    const chosen = await this.waiting(
+      this.call(() => this.patient(() => this.d.api.message(next.sessionId, reply, mode))),
+    );
+    return chosen ? { ...chosen, say: `${next.followupAck} ${chosen.say}` } : null;
   }
 
   // ── the surah → the hadith ──
@@ -1685,7 +1706,8 @@ export class ServerLesson {
       }),
     );
     void this.d.api.warmRecitation?.();
-    for (let i = 0; i < 4 && t.expects !== 'none'; i++) {
+    // (the project follow-up is not answered here: the child hears it and answers it themselves)
+    for (let i = 0; i < 4 && t.expects !== 'none' && !t.followup; i++) {
       const reply =
         t.stage === 'greet'
           ? safeReply(t.quickReplies.length ? t.quickReplies : [DEFAULT_ANSWER])
