@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>منارة</title>
+<style>
+:root{--bg:#fbf6ea;--card:#fff;--ink:#23324a;--mute:#6b7690;--gold:#e3a72f;--green:#2f8f6b;--green2:#1f6f52;--blue:#2c5f9e;--line:#eadfc6}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Tahoma,"Noto Naskh Arabic",Arial,sans-serif}
+button{font:inherit;cursor:pointer;border:0}
+.screen{display:none;max-width:760px;margin:0 auto;padding:16px}
+.screen.on{display:block}
+.top{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:12px}
+.logo{font-size:28px;font-weight:800;color:var(--green2)}
+.logo small{display:block;font-size:13px;color:var(--mute);font-weight:400}
+.back{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 14px;color:var(--ink)}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+.big{background:var(--card);border:2px solid var(--line);border-radius:22px;padding:28px 12px;text-align:center;font-size:22px;font-weight:700;color:var(--ink);box-shadow:0 4px 0 var(--line)}
+.big span{display:block;font-size:13px;color:var(--mute);font-weight:400;margin-top:6px}
+.big svg{width:64px;height:64px;margin-bottom:10px}
+.big:active{transform:translateY(2px);box-shadow:none}
+.hello{margin-top:8px;color:var(--mute)}
+/* teacher */
+.stage{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:14px;display:flex;gap:14px;align-items:center}
+.avatar{width:96px;height:96px;flex:none}
+.avatar .mouth{transform-origin:50px 71px;transition:transform .1s}
+.speaking .mouth{animation:talk .28s infinite alternate}
+@keyframes talk{from{transform:scaleY(.4)}to{transform:scaleY(1.6)}}
+.speaking .avatar{animation:bob 1.2s infinite ease-in-out}
+@keyframes bob{50%{transform:translateY(-3px)}}
+.tname{font-weight:800;color:var(--green2)}
+.bubble{flex:1;font-size:19px;line-height:1.75;min-height:96px;max-height:220px;overflow:auto}
+.status{font-size:13px;color:var(--mute);margin-top:6px}
+.bar{height:8px;background:#efe6cf;border-radius:8px;margin:12px 0 4px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--gold));width:0;transition:width .4s}
+.stagelbl{font-size:13px;color:var(--mute)}
+.ayat{background:#fffdf6;border:1px solid var(--line);border-radius:18px;padding:12px 16px;margin-top:12px;font-family:"Amiri","Traditional Arabic","Noto Naskh Arabic",serif;font-size:26px;line-height:2.1;text-align:center}
+.ayat:empty{display:none}
+.ayat .a{display:inline;padding:0 4px;border-radius:8px}
+.ayat .a.cur{background:#fde9b5}
+.ayat .n{font-size:14px;color:var(--gold);margin:0 4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{background:#fff;border:1.5px solid var(--green);color:var(--green2);border-radius:20px;padding:9px 16px;font-size:16px}
+.row{display:flex;gap:8px;margin-top:12px;align-items:center}
+.row input{flex:1;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;font:inherit;font-size:17px;background:#fff;color:var(--ink);min-width:0}
+.btn{border-radius:14px;padding:12px 16px;font-size:16px;font-weight:700}
+.send{background:var(--green);color:#fff}
+.mic{background:var(--blue);color:#fff;width:52px;height:48px;padding:0}
+.mic.on{background:#d64545;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.6}}
+.hand{background:var(--gold);color:#3a2a00;width:100%;margin-top:10px}
+.start{background:var(--green);color:#fff;width:100%;padding:16px;font-size:20px;border-radius:16px;margin-top:14px}
+.hd{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:12px}
+.hd .t{font-family:"Amiri","Traditional Arabic","Noto Naskh Arabic",serif;font-size:24px;line-height:2;text-align:center}
+.hd .src{color:var(--gold);font-size:13px;text-align:center}
+.hd .m{margin:8px 0;line-height:1.8}
+.hd .btn{background:var(--green);color:#fff}
+.note{font-size:12px;color:var(--mute);text-align:center;margin-top:20px}
+@media(max-width:520px){.stage{flex-direction:column;text-align:center}.bubble{max-height:none}}
+.gsel{display:flex;gap:10px;justify-content:center;margin:6px 0 14px}
+.gsel button{flex:1;max-width:170px;padding:12px 10px;border-radius:14px;border:2px solid #e2dcc8;background:#fff;font:inherit;font-weight:800;color:#3d4d40;cursor:pointer}
+.gsel button.on{border-color:var(--green2);background:#e8f3ee;color:var(--green2)}
+.gsel button.g.on{border-color:#8a4fa8;background:#f3eaf8;color:#8a4fa8}
+.avatar.hide{display:none}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="screen on">
+<div class="top"><div class="logo">منارة<small id="logosub">نتعلّم القرآن والحديث مع المعلم حمود</small></div></div>
+<div class="hello">أنا:</div>
+<div class="gsel"><button id="gBoy" class="on" onclick="setGender('boy')">ولد</button><button id="gGirl" class="g" onclick="setGender('girl')">بنت</button></div>
+<div class="hello" id="teachHello">معلّمك اليوم: المعلم حمود. اختر ما تحب أن نتعلمه:</div>
+<div class="cards">
+<button class="big" onclick="openQuran()">
+<svg viewBox="0 0 64 64"><rect x="10" y="8" width="44" height="48" rx="6" fill="#2f8f6b"/><rect x="15" y="12" width="34" height="40" rx="3" fill="#fffdf6"/><path d="M32 12v40" stroke="#e3a72f" stroke-width="2"/><path d="M20 22h8M20 29h8M20 36h8M36 22h8M36 29h8M36 36h8" stroke="#2f8f6b" stroke-width="2.5" stroke-linecap="round"/></svg>
+القرآن<span>جلسة تفاعلية مع المعلم</span></button>
+<button class="big" onclick="openHadith()">
+<svg viewBox="0 0 64 64"><path d="M32 6l6 12 13 2-9 9 2 13-12-6-12 6 2-13-9-9 13-2z" fill="#e3a72f"/><rect x="18" y="44" width="28" height="12" rx="3" fill="#2c5f9e"/></svg>
+مسار الحديث<span>أحاديث قصيرة وشرحها</span></button>
+</div>
+<div class="note">للتجربة: يعمل بأفضل شكل في متصفح Chrome</div>
+</div>
+
+<!-- TEACHER SESSION -->
+<div id="quran" class="screen">
+<div class="top"><button class="back" onclick="goHome()">رجوع</button><div class="logo" id="qtitle" style="font-size:20px">سورة الفاتحة</div></div>
+<div id="stageBox" class="stage">
+<svg class="avatar" id="avB" viewBox="0 0 100 100" aria-hidden="true">
+<circle cx="50" cy="50" r="46" fill="#e8f3ee"/>
+<path d="M22 96c2-18 14-24 28-24s26 6 28 24z" fill="#2c5f9e"/>
+<ellipse cx="50" cy="52" rx="24" ry="27" fill="#e8b98a"/>
+<path d="M26 56c2 20 14 28 24 28s22-8 24-28c-4 10-12 14-24 14s-20-4-24-14z" fill="#3a2a22"/>
+<path d="M25 38c0-16 11-24 25-24s25 8 25 24z" fill="#fff" stroke="#d9d2c0"/>
+<path d="M25 38h50" stroke="#e3a72f" stroke-width="3"/>
+<circle cx="41" cy="50" r="3" fill="#23324a"/><circle cx="59" cy="50" r="3" fill="#23324a"/>
+<path d="M36 44q5-3 10 0M54 44q5-3 10 0" stroke="#3a2a22" stroke-width="2" fill="none"/>
+<ellipse class="mouth" cx="50" cy="71" rx="7" ry="3.6" fill="#7a2f2f"/>
+</svg>
+<svg class="avatar hide" id="avG" viewBox="0 0 100 100" aria-hidden="true">
+<circle cx="50" cy="50" r="46" fill="#f3eaf8"/>
+<path d="M22 96c2-18 14-24 28-24s26 6 28 24z" fill="#8a4fa8"/>
+<path d="M18 62c-2-30 10-50 32-50s34 20 32 50c-4 14-16 22-32 22S22 76 18 62z" fill="#6f3c8c"/>
+<ellipse cx="50" cy="52" rx="21" ry="24" fill="#e8b98a"/>
+<circle cx="42" cy="50" r="3" fill="#23324a"/><circle cx="58" cy="50" r="3" fill="#23324a"/>
+<path d="M37 44q5-3 10 0M53 44q5-3 10 0" stroke="#3a2a22" stroke-width="2" fill="none"/>
+<ellipse class="mouth" cx="50" cy="68" rx="6" ry="3.2" fill="#7a2f2f"/>
+</svg>
+<div style="flex:1">
+<div class="tname" id="tname">المعلم حمود</div>
+<div class="bubble" id="bubble">اضغط "ابدأ الجلسة" لنبدأ.</div>
+<div class="status" id="status"></div>
+</div>
+</div>
+<div class="bar"><i id="prog"></i></div><div class="stagelbl" id="stagelbl"></div>
+<div class="ayat" id="ayat"></div>
+<button class="btn start" id="startBtn" onclick="startSession()">ابدأ الجلسة</button>
+<div id="ctl" style="display:none">
+<div class="chips" id="chips"></div>
+<div class="row">
+<input id="inp" placeholder="اكتب ردّك هنا…" onkeydown="if(event.key==='Enter')sendTxt()">
+<button class="btn mic" id="micBtn" onclick="toggleMic()" title="تكلّم">🎤</button>
+<button class="btn send" onclick="sendTxt()">إرسال</button>
+</div>
+<button class="btn hand" onclick="raiseHand()">✋ يا معلم، عندي سؤال</button>
+</div>
+</div>
+
+<!-- HADITH -->
+<div id="hadith" class="screen">
+<div class="top"><button class="back" onclick="goHome()">رجوع</button><div class="logo" style="font-size:20px">مسار الحديث</div></div>
+<div class="status" id="hstatus">اضغط "استمع" ليقرأ لك المعلّم الحديث ويشرحه.</div>
+<div id="hlist"></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let SID=null, TOKEN=0, ttsOK=null, curAudio=null, recog=null, listening=false, recAvail=false, lastResp=null;
+let micGen=0, micAuto=false, micFailStreak=0;
+const RecCls=window.SpeechRecognition||window.webkitSpeechRecognition;
+recAvail=!!RecCls; if(!recAvail) $('micBtn').style.display='none';
+
+function show(id){document.querySelectorAll('.screen').forEach(e=>e.classList.remove('on'));$(id).classList.add('on');window.scrollTo(0,0)}
+function goHome(){stopAll();show('home')}
+let MODE='quran', GENDER='boy';
+try{const g=localStorage.getItem('manara_gender');if(g==='girl'||g==='boy')GENDER=g}catch(e){}
+function tName(){return GENDER==='girl'?'المعلمة نور':'المعلم حمود'}
+function setGender(g){GENDER=g;try{localStorage.setItem('manara_gender',g)}catch(e){}applyGender()}
+function applyGender(){
+$('gBoy').classList.toggle('on',GENDER==='boy');$('gGirl').classList.toggle('on',GENDER==='girl');
+$('teachHello').textContent='معلّمك اليوم: '+tName()+'. اختر ما تحب أن نتعلمه:';
+$('logosub').textContent='نتعلّم القرآن والحديث مع '+tName();
+$('tname').textContent=tName();
+$('avB').classList.toggle('hide',GENDER==='girl');$('avG').classList.toggle('hide',GENDER!=='girl');
+$('hstatus').textContent='اضغط "استمع" ليقرأ لك '+(GENDER==='girl'?'المعلمة':'المعلم')+' الحديث ويشرحه.'}
+function openQuran(){stopAll();MODE='quran';$('qtitle').textContent='سورة الفاتحة';show('quran');resetSession()}
+function openHadith(){stopAll();MODE='hadith';$('qtitle').textContent='مسار الحديث';show('quran');resetSession()}
+
+/* ---------- voice (teacher) ---------- */
+function stopAll(){TOKEN++;try{speechSynthesis.cancel()}catch(e){}
+if(curAudio){try{curAudio.pause()}catch(e){}curAudio=null}
+stopMic();setSpeaking(false)}
+function setSpeaking(v){$('stageBox').classList.toggle('speaking',v)}
+function status(t){$('status').textContent=t||''}
+
+async function checkTTS(){
+if(ttsOK!==null) return ttsOK;
+try{const r=await fetch('/speak/status');const j=await r.json();ttsOK=!!j.elevenlabs}catch(e){ttsOK=false}
+return ttsOK}
+function chunks(text){
+const out=[];let cur='';
+text.split(/(?<=[.!؟?،:])\s+/).forEach(p=>{
+if((cur+' '+p).length>230&&cur){out.push(cur.trim());cur=p}else cur=(cur+' '+p)}
+);if(cur.trim())out.push(cur.trim());return out}
+async function fetchAudio(t){
+const r=await fetch('/speak',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,gender:GENDER})});
+if(!(r.headers.get('content-type')||'').includes('audio'))throw new Error('no-audio');
+return URL.createObjectURL(await r.blob())}
+function playBlob(url,tk){return new Promise(res=>{
+const a=new Audio(url);curAudio=a;
+a.onended=a.onerror=()=>res();
+a.play().catch(()=>res());
+const iv=setInterval(()=>{if(tk!==TOKEN){clearInterval(iv);try{a.pause()}catch(e){}res()}},150);
+a.addEventListener('ended',()=>clearInterval(iv))})}
+function pickVoice(){
+const vs=speechSynthesis.getVoices().filter(v=>/^ar/i.test(v.lang));if(!vs.length)return null;
+const female=/zariy|hoda|laila|salma|female|amira|fatima|mariam|noura|sara/i, male=/naayf|hamed|maged|majed|shakir|tarik|male|omar|ahmed|hamza/i;
+if(GENDER==='girl')return vs.find(v=>female.test(v.name))||vs.find(v=>!male.test(v.name))||vs[0];
+return vs.find(v=>male.test(v.name))||vs.find(v=>!female.test(v.name))||vs[0]}
+function browserSpeak(text,tk){return new Promise(res=>{
+if(!('speechSynthesis' in window)){res();return}
+const parts=chunks(text);let i=0;
+(function next(){
+if(tk!==TOKEN||i>=parts.length){res();return}
+const u=new SpeechSynthesisUtterance(parts[i++]);u.lang='ar-SA';const v=pickVoice();if(v)u.voice=v;
+u.pitch=GENDER==='girl'?1.1:0.6;u.rate=0.92;u.onend=next;u.onerror=()=>next();speechSynthesis.speak(u)})();
+setTimeout(()=>{if(!speechSynthesis.getVoices().length)res()},1500)})}
+async function speak(text){
+const tk=TOKEN;setSpeaking(true);status(GENDER==='girl'?'المعلمة تتكلّم…':'المعلم يتكلّم…');
+try{
+if(await checkTTS()){
+const parts=chunks(text);const jobs=parts.map(p=>fetchAudio(p).catch(()=>null));
+for(const j of jobs){if(tk!==TOKEN)break;const u=await j;
+if(u===null){await browserSpeak(text,tk);break}
+await playBlob(u,tk)}
+}else await browserSpeak(text,tk);
+}finally{if(tk===TOKEN){setSpeaking(false);status('')}}
+return tk===TOKEN}
+async function playUrls(urls,tk){
+for(const u of urls){if(tk!==TOKEN)return false;
+await new Promise(res=>{const a=new Audio(u);curAudio=a;a.onended=a.onerror=()=>res();a.play().catch(()=>res());
+const iv=setInterval(()=>{if(tk!==TOKEN){clearInterval(iv);try{a.pause()}catch(e){}res()}},150);a.addEventListener('ended',()=>clearInterval(iv))})}
+return tk===TOKEN}
+
+/* ---------- mic (child) ----------
+   The mic now opens automatically after the teacher finishes speaking, for
+   any turn that expects a reply — the child no longer has to press the mic
+   button each time (Abdulaziz, via razan, 2026-09-28). A capped, backing-off
+   auto-restart handles transient recognition errors ("no-speech", "network",
+   ...) so it never turns into an endless retry loop; a hard error (mic
+   permission denied / no mic) stops auto-retrying and tells the child to type
+   instead. The 🎤 button still works for a manual start/stop at any time. */
+function stopMic(){micGen++;micAuto=false;listening=false;$('micBtn').classList.remove('on');try{recog&&recog.abort()}catch(e){}recog=null}
+function toggleMic(){listening?stopMic():startMic(false)}
+function startMic(auto){
+if(!recAvail){if(!auto)status('التعرّف على الصوت غير مدعوم بهذا المتصفح');return}
+const gen=++micGen;micAuto=!!auto;
+if(!auto)micFailStreak=0;
+recog=new RecCls();recog.lang='ar-SA';recog.interimResults=false;recog.maxAlternatives=3;
+let hadResult=false,hardErr=false;
+recog.onresult=e=>{hadResult=true;micFailStreak=0;const t=e.results[0][0].transcript;stopMic();if(t)send(t)};
+recog.onerror=e=>{const err=e&&e.error;
+if(err==='not-allowed'||err==='audio-capture'||err==='service-not-allowed')hardErr=true};
+recog.onend=()=>{
+if(gen!==micGen)return;
+listening=false;$('micBtn').classList.remove('on');recog=null;
+if(hadResult)return;
+if(hardErr){status('تعذّر تشغيل المايكروفون — تأكدي من إذن المايكروفون وجهاز الإدخال في جهازك');return}
+if(micAuto){
+micFailStreak++;
+const MAX_STREAK=6;
+if(micFailStreak>=MAX_STREAK){status('تعذّر تشغيل المايكروفون بشكل متكرر — اكتب ردك في المربع من فضلك');return}
+status('');
+const delay=Math.min(300*micFailStreak,3000);
+setTimeout(()=>{if(gen===micGen)startMic(true)},delay)
+}else status('')};
+try{recog.start();listening=true;$('micBtn').classList.add('on');status('أسمعك… تكلّم الآن')}
+catch(e){listening=false;$('micBtn').classList.remove('on');if(!auto)status('تعذّر تشغيل المايكروفون — تأكدي من إذن المايكروفون وجهاز الإدخال في جهازك')}}
+
+/* ---------- session ---------- */
+function resetSession(){SID=null;$('bubble').textContent='اضغط "ابدأ الجلسة" لنبدأ.';$('ayat').innerHTML='';
+$('startBtn').style.display='';$('ctl').style.display='none';$('prog').style.width='0';$('stagelbl').textContent='';$('chips').innerHTML=''}
+async function api(path,body){
+const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+if(r.status===404)throw new Error('expired');if(!r.ok)throw new Error('http '+r.status);return r.json()}
+async function startSession(){
+// this click is the user gesture that lets the page play sound
+try{const a=new Audio();a.play().catch(()=>{});speechSynthesis.getVoices()}catch(e){}
+$('startBtn').style.display='none';$('ctl').style.display='';
+try{apply(await api('/agent/start',{mode:MODE,gender:GENDER}))}catch(e){$('bubble').textContent='تعذّر الاتصال بالمعلم، حاول مرة أخرى بعد قليل.';$('startBtn').style.display=''}}
+async function send(text){
+text=(text||'').trim();if(!text||!SID)return;stopAll();$('inp').value='';
+$('bubble').textContent='…';
+try{apply(await api('/agent/message',{session_id:SID,text,mode:MODE}))}
+catch(e){if(e.message==='expired'){$('bubble').textContent='انتهت الجلسة، لنبدأ من جديد.';SID=null;startSession()}else $('bubble').textContent='حدث خطأ بسيط، قل ما تريد مرة أخرى.'}}
+function sendTxt(){send($('inp').value)}
+function raiseHand(){stopAll();send('عندي سؤال')}
+function renderAyat(list,cur,first){first=first||1;
+$('ayat').innerHTML=list.map((a,i)=>`<span class="a${cur===i+1?' cur':''}">${a}${MODE==='hadith'?'':`<span class="n">﴿${first+i}﴾</span>`}</span>`).join(' ')}
+async function apply(r){
+lastResp=r;SID=r.session_id;const tk=++TOKEN;
+$('bubble').textContent=r.say;if(MODE==='quran'&&r.lesson_title)$('qtitle').textContent=r.lesson_title;
+const idx=r.stage_index,tot=r.stages.length;$('prog').style.width=Math.round((idx+1)/tot*100)+'%';
+$('stagelbl').textContent=r.stages[idx].label+' · '+(idx+1)+'/'+tot;
+$('chips').innerHTML='';
+(r.actions||[]).forEach(a=>{if(a.type==='show_ayat')renderAyat(a.ayat,a.current,a.first)});
+await speak(r.say);if(tk!==TOKEN)return;
+for(const a of r.actions||[]){
+if(a.type==='play_all'){status('استمع إلى التلاوة…');setSpeaking(false);if(!await playUrls(a.urls,tk))return;status('')}
+if(a.type==='play_ayah'){status('استمع للآية…');if(!await playUrls([a.url],tk))return;status('')}}
+if(tk!==TOKEN)return;
+(r.quick_replies||[]).forEach(q=>{const b=document.createElement('button');b.className='chip';b.textContent=q;b.onclick=()=>send(q);$('chips').appendChild(b)});
+if(r.expects&&r.expects!=='none'){if(recAvail)startMic(true)}
+else if(r.expects==='none'){status('انتهت الجلسة. بارك الله فيك!')}}
+
+/* ---------- hadith ---------- */
+async function loadHadith(){
+if($('hlist').dataset.ok)return;
+try{const j=await (await fetch('/agent/content')).json();
+$('hlist').innerHTML=j.hadiths.map(h=>`<div class="hd"><div class="t">${h.text}</div><div class="src">${h.source}</div><div class="m">${h.meaning}</div><button class="btn" onclick="readHadith(${h.id})">🔊 استمع</button></div>`).join('');
+window.HD=j.hadiths;$('hlist').dataset.ok=1}catch(e){$('hstatus').textContent='تعذّر تحميل الأحاديث.'}}
+async function readHadith(id){
+const h=window.HD.find(x=>x.id===id);stopAll();
+await speak('قال النبي صلى الله عليه وسلم: '+h.text+'. '+h.meaning)}
+try{speechSynthesis.onvoiceschanged=()=>{}}catch(e){}
+applyGender();
+</script>
+<div style="text-align:center;font-size:12px;color:#6b7b6e;padding:10px 8px 18px;direction:rtl">نصّ القرآن الكريم من مشروع <a href="https://tanzil.net" target="_blank" rel="noopener" style="color:inherit">تنزيل tanzil.net</a> · التفسير الميسّر · التلاوة: الشيخ مشاري العفاسي (everyayah.com)</div>
+</body>
+</html>

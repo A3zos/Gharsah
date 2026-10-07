@@ -1,0 +1,3 @@
+Quran text: Tanzil Project, Uthmani text v1.1 (imlaey variant), CC BY 3.0, https://tanzil.net  -- text must not be modified; credit and link required.
+Tafsir: Al-Tafsir Al-Muyassar (King Fahd Complex) as packaged in github.com/00AhmedMokhtar00/QuranTafseer-ar-json (no license file in that repo: verify redistribution/commercial terms before public release).
+Audio: everyayah.com Alafasy_128kbps per-ayah files (114 surahs). Verify terms before commercial use.
